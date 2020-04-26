@@ -1,0 +1,5 @@
+/conf.json
+/node_modules
+/tmp
+.directory
+*~
