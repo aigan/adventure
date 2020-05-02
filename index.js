@@ -145,9 +145,11 @@ class Server {
 
 		if( fresh( req.headers, {etag, 'last-modified': date})){
 			res.statusCode = 304;
+			
 			return res.end();
 		}
 
+		log('full headers of', path);
 		const responseMimeType = MIME.lookup(path);
 		res.setHeader( 'Content-Type', responseMimeType );
 		res.setHeader( 'Content-Length', stats.size );

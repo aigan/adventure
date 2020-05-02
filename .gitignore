@@ -1,5 +1,6 @@
 /conf.json
 /node_modules
 /tmp
+/public/vendor
 .directory
 *~
