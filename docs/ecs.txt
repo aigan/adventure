@@ -1,0 +1,16 @@
+Alternatives
+
+* ECSY - https://ecsy.io/
+* ces.js - https://github.com/qiao/ces.js
+* EC - https://gist.github.com/mflux/c32e2066948d5c8b591b
+* serpentity - https://gitlab.com/serpentity/serpentity
+* ecs - https://github.com/mreinstein/ecs
+* js.ecs - https://gitlab.com/JestDotty/js-ecs
+* TinyECS - https://www.npmjs.com/package/tiny-ecs
+* js13k-ecs - https://www.npmjs.com/package/js13k-ecs
+* ensy - https://github.com/adngdb/entity-system-js
+* aframe - https://aframe.io/
+* ecs-machina - https://github.com/scambier/ecs-machina
+* complex-engine - https://github.com/complexjs/complex-engine
+* ecs-js - https://github.com/fritzy/ecs-js
+* darlingjs - https://github.com/darlingjs/darlingjs

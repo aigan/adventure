@@ -1,74 +1,11 @@
-console.log('Loading');
-
-//#### Templates based on https://www.ultimate-adom.com/index.php/2018/10/25/making-ultimate-adom-moddable-by-using-entity-component-systems/
-
-const templates = {
-  Thing: {
-    components: [],
-  },
-  Actor: {
-    baseTempaltes: ['Thing'],
-    components: [],
-  },
-  Location: {
-    baseTempaltes: ['Thing'],
-    components: [],
-  },
-  Item: {
-    baseTemplate: ['Thing'],
-    components: [],
-  },
-  Being: {
-    baseTemplates: ['Actor'],
-    components: [],
-  },
-  Human: {
-    baseTemplates: ['Being'],
-    components: [
-      {defaultEquipment: []},
-      {
-        labeled: {
-          singular: 'HumanSingularName',
-          plural: 'HumanPluralName',
-        },
-      },
-      {
-        gendered: ['Male','Female'],
-      },
-      {
-        slot: {
-          template: 'HumanRace',
-          name: 'Race',
-        },
-      },
-      {
-        Description: {
-          verbosity: 'short',
-          description: ['HumanDescription0', 'HumanDescription1'],
-        },
-      },
-      {
-        capability: "",
-      },
-      {
-        triggeredEffect: {
-          trigger: "",
-          effects: [],
-        }
-      }
-    ],
-    types: ['Race'],
-  },
-  Player: {
-    baseTemplates: ['Human'],
-    components: ['controlled_by_ui'],
-  },
-};
+const log = console.log.bind(console);
+log('Loading');
 
 const store = {};
 
 async function init(){
-  console.log('import world');
+  // importScripts('./segments.js');
+  // log('world', typeof world, world);
   importScripts('./world.js');
 
   store.hero = {}
@@ -120,4 +57,4 @@ self.addEventListener('message', e =>{
 // }
 
 
-console.log('Ready');
+log('Ready');
