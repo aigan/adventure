@@ -1,4 +1,4 @@
-log('Loading world');
+// log('Loading world');
 // Taking some concepts from ECS and https://blog.mozvr.com/introducing-ecsy/
 // And stuff from https://github.com/bvalosek/tiny-ecs
 
@@ -31,6 +31,12 @@ const TEntity = {
   Human: {
     components: {
       // HasRace: 'HumanRace',
+      InLocation: {},
+      Labeled: {},
+    }
+  },
+  Player: {
+    components: {
       InLocation: {},
       Labeled: {},
     }
@@ -71,18 +77,21 @@ function entity_add( t, props ){
   e.addComponent( c[t] );
   const c_def = def.components;
   for( const ct in c_def ){
-    const ctval = c_def[ct];
-    // log('entity', sysdesig(e), 'adding', t, ct, 'with', ctval, props[ct] );
+    let ctval = c_def[ct];
+    let initvals =  props[ct];
+    // log('entity', sysdesig(e), 'adding', t, ct, 'with', ctval, initvals );
     if( ctval === true ){
       e.addComponent( c[ct] );
       continue;
     }
-    let initvals =  props[ct];
     if( initvals ){
       if( typeof initvals === 'string' ){
         initvals = {value:initvals}
+      } else if( initvals instanceof ECS.Entity ){
+        ctval = initvals;
+      } else {
+        Object.assign( ctval, initvals );
       }
-      Object.assign( ctval, initvals );
     }
     e.addComponent( c[ct], ctval );
   }
@@ -126,11 +135,11 @@ const npc1 = entity_add('Human', {
   Labeled: 'Catalina',
 })
 
-// world.execute();
-// desk.remove();
-// world.execute();
+const player = entity_add('Player', {
+  InLocation:lobby,
+})
 
-log( 'estore', npc1 );
+log( 'estore', lobby );
 
 
 

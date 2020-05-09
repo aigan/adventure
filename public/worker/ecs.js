@@ -1,4 +1,4 @@
-log('Loading ECS');
+// log('Loading ECS');
 // Taking some concepts from ECS and https://blog.mozvr.com/introducing-ecsy/
 // And stuff from https://github.com/bvalosek/tiny-ecs
 
@@ -24,9 +24,16 @@ class Entity {
   
   addComponent( Component, values ){
     // log('should add', this.id, Component.name, values);
-    const c = new Component( values );
+    const c = new Component( this, values );
     this[ Component.name ] = c;
     // log('res', this);
+  }
+  
+  set_referenced( ct, e ){
+    if( !this._referenced ) this._referenced = {};
+    const ref = this._referenced;
+    if( !ref[ ct ] ) ref[ct] = new Set();
+    ref[ct].add( e.id );
   }
   
 }
@@ -47,8 +54,8 @@ function createComponentClass( def, name ){
   if( !Object.keys(def).length ){
     C = class extends TagComponent{};
   } else {
-    C = function( values ){
-      // log('init', C.name, 'with', values);
+    C = function( entity, values ){
+      // log('init', entity.id, C.name, 'with', values);
 
       // Convert singulars
       if( typeof values === 'string' ){
@@ -70,7 +77,12 @@ function createComponentClass( def, name ){
             if( typeof val === 'string' ){
               throw `Component ${C.name} ${key} expects entity. Got ${val}`;
             }
+            //## TODO: verify type
+            const target = val;
             val = val.id;
+            
+            // log('set backref for', target, target.set_referenced);
+            target.set_referenced(C.name, entity);
           }
         }
 
@@ -92,6 +104,7 @@ function createComponentClass( def, name ){
 
 const ECS = {
   World,
+  Entity,
   Component,
   TagComponent,
   createComponentClass,

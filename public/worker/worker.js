@@ -1,5 +1,5 @@
 const log = console.log.bind(console);
-log('Loading');
+// log('Loading');
 
 const store = {};
 
@@ -57,4 +57,4 @@ self.addEventListener('message', e =>{
 // }
 
 
-log('Ready');
+// log('Ready');
