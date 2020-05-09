@@ -2,7 +2,9 @@
 // Taking some concepts from ECS and https://blog.mozvr.com/introducing-ecsy/
 // And stuff from https://github.com/bvalosek/tiny-ecs
 
-
+const component_registry = {};
+const CR = component_registry;
+const entity_templates = {};
 
 class World {
   constructor(){
@@ -14,6 +16,68 @@ class World {
     this.entity.set(e.id,e);
     return e;
   }
+
+  add( t, props ){
+    const def = entity_templates[t];
+    if( !def ) throw `Entity template ${t} missing`;
+    if( !props ) props = {};
+    const e = world.createEntity();
+    if( !CR[t] ) CR[t] = ECS.createComponentClass( {}, t );
+    // log('addComponent', t, CR[t]);
+    e.addComponent( CR[t] );
+    const c_def = def.components;
+    for( const ct in c_def ){
+      let ctval = c_def[ct];
+      let initvals =  props[ct];
+      // log('entity', world.sysdesig(e), 'adding', t, ct, 'with', ctval, initvals );
+      if( ctval === true ){
+        e.addComponent( CR[ct] );
+        continue;
+      }
+      if( initvals ){
+        if( typeof initvals === 'string' ){
+          initvals = {value:initvals}
+          Object.assign( ctval, initvals );
+        } else if( initvals instanceof ECS.Entity ){
+          ctval = initvals;
+        } else {
+          Object.assign( ctval, initvals );
+        }
+      }
+      e.addComponent( CR[ct], ctval );
+    }
+    return e;
+  }
+
+
+  sysdesig( entity ){
+    let id;
+    if( typeof entity === 'number' ){
+      id = entity;
+      entity = this.entity.get(id);
+      if( !entity ) return `${id}<deleted>`;
+    }
+    if( !entity ) return "<deleted>";
+    id = entity.id;
+    let name = entity.name;
+    if( !name ){
+      const label_component = entity.Labeled;
+      if( label_component ){
+        name = label_component.value;
+      }
+    }
+
+    let tags = "";
+    for( const ct in entity ){
+      if( entity[ct] instanceof TagComponent )   tags += ':'+ct;
+    }
+    
+    let desig = id;
+    if( name ) desig += `(${name})`;
+    desig += tags;
+    return desig;
+  }
+
 }
 
 class Entity {
@@ -35,7 +99,7 @@ class Entity {
     if( !ref[ ct ] ) ref[ct] = new Set();
     ref[ct].add( e.id );
   }
-  
+
 }
 Entity.cnt = 0;
 
@@ -108,4 +172,6 @@ const ECS = {
   Component,
   TagComponent,
   createComponentClass,
+  component_registry,
+  entity_templates,
 };
