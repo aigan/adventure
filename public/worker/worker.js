@@ -8,29 +8,21 @@ async function init(){
   // log('world', typeof world, world);
   importScripts('./world.js');
 
-  store.hero = {}
-  store.locs = {
-    lobby: {
-      title: "Lobby",
-    }
-  }
-  store.actors = {
-    marjorie: {
-      name: "Marjorie",
-      location: store.locs.lobby,
-    }
-  }
+  log('player', world.sysdesig(player));
+  // world.event('player_enter_location');
+  world.player_enter_location();
+  
 }
 
 const dispatch = {
   ping(){
-    self.postMessage('pong');
+    postMessage('pong');
   },
   async start(){
+    postMessage(['main_clear'])
+    postMessage(['main_add', "Welcome"])
+
     await init();
-    self.postMessage(['main_clear'])
-    self.postMessage(['header_set', "Location: Lobby"]);
-    self.postMessage(['main_add', "Welcome"])
   }
 }
 
@@ -40,7 +32,7 @@ const dispatch = {
 // }
 
 
-self.addEventListener('message', e =>{
+addEventListener('message', e =>{
   let data = e.data;
   if( typeof data === 'string') data = [data];
   // console.log("Recieved message", data);

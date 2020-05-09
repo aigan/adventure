@@ -1,11 +1,9 @@
+'use strict';
 // log('Loading ECS');
 // Taking some concepts from ECS and https://blog.mozvr.com/introducing-ecsy/
 // And stuff from https://github.com/bvalosek/tiny-ecs
 
-const component_registry = {};
-const CR = component_registry;
-const entity_templates = {};
-
+(()=>{
 class World {
   constructor(){
     // super();
@@ -17,38 +15,17 @@ class World {
     return e;
   }
 
-  add( t, props ){
-    const def = entity_templates[t];
-    if( !def ) throw `Entity template ${t} missing`;
+  add( et, props ){
     if( !props ) props = {};
     const e = world.createEntity();
-    if( !CR[t] ) CR[t] = ECS.createComponentClass( {}, t );
-    // log('addComponent', t, CR[t]);
-    e.addComponent( CR[t] );
-    const c_def = def.components;
-    for( const ct in c_def ){
-      let ctval = c_def[ct];
-      let initvals =  props[ct];
-      // log('entity', world.sysdesig(e), 'adding', t, ct, 'with', ctval, initvals );
-      if( ctval === true ){
-        e.addComponent( CR[ct] );
-        continue;
-      }
-      if( initvals ){
-        if( typeof initvals === 'string' ){
-          initvals = {value:initvals}
-          Object.assign( ctval, initvals );
-        } else if( initvals instanceof ECS.Entity ){
-          ctval = initvals;
-        } else {
-          Object.assign( ctval, initvals );
-        }
-      }
-      e.addComponent( CR[ct], ctval );
-    }
+
+    e.stamp(et, props);
     return e;
   }
 
+  get_by_id( id ){
+    return this.entity.get( id );
+  }
 
   sysdesig( entity ){
     let id;
@@ -77,6 +54,8 @@ class World {
     desig += tags;
     return desig;
   }
+  
+  // event( name, data ){}
 
 }
 
@@ -86,7 +65,7 @@ class Entity {
     this.id = ++ Entity.cnt;
   }
   
-  addComponent( Component, values ){
+  add_component( Component, values ){
     // log('should add', this.id, Component.name, values);
     const c = new Component( this, values );
     this[ Component.name ] = c;
@@ -99,6 +78,44 @@ class Entity {
     if( !ref[ ct ] ) ref[ct] = new Set();
     ref[ct].add( e.id );
   }
+  
+  stamp( et, props ){
+    const e = this;
+    const def = TR[et];
+    if( !def ) throw `Entity template ${et} missing`;
+
+    const bases = def.base || [];
+    for( const base of bases ){
+      // log('base', et, base);
+      e.stamp( base, props );
+    }
+
+    if( !CR[et] ) CR[et] = ComponentClass.create( {}, et );
+    // log('add_component', et, CR[et]);
+    e.add_component( CR[et] );
+
+    const c_def = def.components;
+    for( const ct in c_def ){
+      const ctval = c_def[ct];
+      let initvals =  props[ct];
+      // log('entity', world.sysdesig(e), 'adding', et, ct, 'with', ctval, initvals );
+      if( ctval === true ){
+        e.add_component( CR[ct] );
+        continue;
+      }
+      if( typeof initvals === 'string' ){
+        initvals = Object.assign( {value:initvals}, ctval, initvals );
+      } else if( initvals instanceof ECS.Entity ){
+        // keep
+      } else {
+        initvals = Object.assign( {}, ctval, initvals );
+      }
+      
+      e.add_component( CR[ct], initvals );
+    }
+
+    return this;
+  }
 
 }
 Entity.cnt = 0;
@@ -107,71 +124,98 @@ class Component {}
 
 class TagComponent extends Component {}
 
-function createComponentClass( def, name ){
-  // log('should create component', name, def);
+const ComponentClass = {
+  component: {},
+  create( def, name ){
+    // log('should create component', name, def);
 
-  if( typeof def === 'string'){
-    def = {value:{type:def}};
-  }
-  
-  let C;
-  if( !Object.keys(def).length ){
-    C = class extends TagComponent{};
-  } else {
-    C = function( entity, values ){
-      // log('init', entity.id, C.name, 'with', values);
-
-      // Convert singulars
-      if( typeof values === 'string' ){
-        values = {value:values};
-      }
-      
-      // Convert entity values to id
-      if( values.id ){
-        values = {value:values}
-      }
-
-      for( const key in def ){
-        let val = values[key];
-        const attr = def[key];
-        if( val ){
-          const type = attr.type;
-          if( type === 'string' ){}
-          else {
-            if( typeof val === 'string' ){
-              throw `Component ${C.name} ${key} expects entity. Got ${val}`;
+    if( typeof def === 'string'){
+      def = {value:{type:def}};
+    }
+    
+    let C;
+    if( !Object.keys(def).length ){
+      C = class extends TagComponent{};
+    } else {
+      C = class extends Component{
+        constructor( entity, values ){
+          super();
+          // log('init', entity.id, C.name, 'with', values);
+          
+          // Convert singulars
+          if( typeof values === 'string' ){
+            values = {value:values};
+          }
+          
+          // Convert entity values to id
+          if( values.id ){
+            values = {value:values}
+          }
+          
+          for( const key in def ){
+            let val = values[key];
+            const attr = def[key];
+            if( val ){
+              const type = attr.type;
+              if( type === 'string' ){}
+              else {
+                if( typeof val === 'string' ){
+                  throw `Component ${C.name} ${key} expects entity. Got ${val}`;
+                }
+                //## TODO: verify type
+                const target = val;
+                val = val.id;
+                
+                // log('set backref for', target, target.set_referenced);
+                target.set_referenced(C.name, entity);
+              }
             }
-            //## TODO: verify type
-            const target = val;
-            val = val.id;
             
-            // log('set backref for', target, target.set_referenced);
-            target.set_referenced(C.name, entity);
+            
+            // log('set', key, val, attr);
+            this[key] = val;
           }
         }
-
-
-        // log('set', key, val, attr);
-        this[key] = val;
       }
+      C.schema = def;
     }
-    C.prototype.schema = def;
-  }
 
-  if (typeof name !== "undefined") {
+    
+    if (typeof name === "undefined") throw "Component name missing";
     Object.defineProperty(C, "name", { value: name });
-  }
-
-  // log('created comp', C.name );
-  return C;
+    // log('created comp', C.name );
+    ComponentClass.component[name] = C;
+    return C;
+  },
+  
+  register( templates ){
+    for( const t in templates ){
+      ComponentClass.create( templates[t], t)
+    }
+  },
 }
 
-const ECS = {
+const CR = ComponentClass.component;
+
+const Templates = {
+  template: {},
+  register( templates ){
+    Object.assign( Templates.template, templates );
+  }  
+}
+
+const TR = Templates.template;
+
+
+// Set in global scope for Webworker
+self.ECS = {
   World,
   Entity,
   Component,
+  ComponentClass,
   TagComponent,
-  createComponentClass,
-  component_registry,
-  entity_templates,
-};
+  Templates,
+}
+
+
+})(); //IIFE

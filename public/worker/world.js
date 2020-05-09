@@ -16,7 +16,13 @@ const TComponent = {
 }
 
 const TEntity = {
+  ObjectPhysical: {
+    components: {
+      InLocation: {},
+    },
+  },
   Location: {
+    base: ['ObjectPhysical'],
     components: {
       // Referrable: true,
       Labeled: {},
@@ -27,16 +33,21 @@ const TEntity = {
       Labeled: {},
     }
   },
-  Human: {
+  Being: {
+    base: ['ObjectPhysical'],
     components: {
-      // HasRace: 'HumanRace',
-      InLocation: {},
       Labeled: {},
     }
   },
+  Human: {
+    base: ['Being'],
+  },
   Player: {
+    base: ['Being'],
+  },
+  Table: {
+    base: ['ObjectPhysical'],
     components: {
-      InLocation: {},
       Labeled: {},
     }
   }
@@ -44,21 +55,11 @@ const TEntity = {
 
 
 const world = new ECS.World; //## <<<-------
-
-for( const t in TComponent ){
-  ECS.component_registry[t] = ECS.createComponentClass(TComponent[t], t)
-}
-
-Object.assign( ECS.entity_templates, TEntity );
+ECS.ComponentClass.register( TComponent );
+ECS.Templates.register( TEntity );
 
 const lobby = world.add('Location',{Labeled:'Lobby'})
-
-// const desk = world.createEntity();
-// desk.name = 'desk';
-// desk.addComponent(c.InLocation, lobby);
-
-
-// const human_race = world.add('Race', {Labeled:'human'})
+const desk = world.add('Table',{InLocation:lobby, Labeled:'desk'});
 
 const npc1 = world.add('Human', {
   InLocation:lobby,
@@ -69,4 +70,22 @@ const player = world.add('Player', {
   InLocation:lobby,
 })
 
-log( 'estore', world.sysdesig(lobby), lobby );
+world.player_enter_location = ()=>{
+  const loc = world.entity.get( player.InLocation.value );
+
+  let location_name = loc.Labeled.value;
+  postMessage(['header_set', `Location: ${location_name}`]);
+
+  log('you', player)
+
+  let msg = "You see here:\n";
+  for( const eid of loc._referenced.InLocation){
+    const e = world.entity.get(eid);
+    // if( e === player ) continue;
+    msg += world.sysdesig(e) + "\n";
+  }
+
+  postMessage(['main_add', msg.trimEnd() ]);
+}
+
+// log( 'world', world.sysdesig(lobby), lobby );

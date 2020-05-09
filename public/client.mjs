@@ -16,10 +16,11 @@ const dispatch = {
   main_clear(){
     el_main.innerHTML = "";
   },
-  main_add( text ){
-    // console.log('appending', typeof text, text);
+  main_add( textarr ){
+    // console.log('appending', typeof textarr, textarr);
     const p = document.createElement('p');
-    p.innerHTML = text;
+    let text = textarr.join("\n");
+    p.innerHTML = text.replace(/\n/g,'<br>');
     el_main.appendChild(p);
   },
 };
