@@ -1,10 +1,13 @@
 // console.log('Loading');
+const log = console.log.bind(console);
 
 //## Firefox do not support worker modules yet!
 const worker = new Worker('./worker/worker.js', {type:"classic"});
 
 const el_header = document.querySelector('header');
 const el_main = document.querySelector('main');
+
+let refkey = 'a'.charCodeAt();
 
 const dispatch = {
   pong(){
@@ -19,7 +22,33 @@ const dispatch = {
   main_add( textarr ){
     // console.log('appending', typeof textarr, textarr);
     const p = document.createElement('p');
-    let text = textarr.join("\n");
+    let htmlparts = [];
+    for( const part of textarr ){
+      // log('part', part);
+      if( typeof part === 'string' ){
+        htmlparts.push( part );
+        continue;
+      }
+
+      const {strings,values} = part;
+      if( strings && values ){
+        let html = "";
+        for( let i=0; i<strings.length; i++){
+          html += strings[i];
+          if( values[i] ){
+            
+            html
+            += "<b><span class=select>["
+            + String.fromCodePoint(refkey++)
+            + "]</span> " + desig(values[i]) + "</b>";
+          }
+        }
+        htmlparts.push( html );
+      }
+
+    }
+
+    let text = htmlparts.join("\n");
     p.innerHTML = text.replace(/\n/g,'<br>');
     el_main.appendChild(p);
   },
@@ -33,6 +62,12 @@ worker.onmessage = e =>{
   if( dispatch[cmd] ) return dispatch[cmd](data);
 
   throw(Error(`Message ${cmd} not recognized`));
+}
+
+function desig( entity ){
+  let name = entity.id;
+  if( entity.Labeled ) name = entity.Labeled.value;
+  return name;
 }
 
 // document.body.addEventListener('keyup', e=>{

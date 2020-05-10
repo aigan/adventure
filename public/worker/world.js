@@ -70,6 +70,10 @@ const player = world.add('Player', {
   InLocation:lobby,
 })
 
+function tt( strings, ...values){
+  return {strings,values};
+}
+
 world.player_enter_location = ()=>{
   const loc = world.entity.get( player.InLocation.value );
 
@@ -77,15 +81,17 @@ world.player_enter_location = ()=>{
   postMessage(['header_set', `Location: ${location_name}`]);
 
   log('you', player)
-
-  let msg = "You see here:\n";
+  const lines = [];
+  lines.push( "You see here:" );
   for( const eid of loc._referenced.InLocation){
     const e = world.entity.get(eid);
-    // if( e === player ) continue;
-    msg += world.sysdesig(e) + "\n";
+    if( e === player ) continue;
+    lines.push( tt`${e}` );
   }
 
-  postMessage(['main_add', msg.trimEnd() ]);
+  // log('post', lines);
+
+  postMessage(['main_add', ...lines ]);
 }
 
 // log( 'world', world.sysdesig(lobby), lobby );
