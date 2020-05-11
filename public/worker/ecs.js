@@ -63,18 +63,41 @@ class Entity {
   constructor(){
     // super();
     this.id = ++ Entity.cnt;
+    this.name = undefined;
+    this._component = {};
+    this.referenced = {};
+  }
+  
+  get( ct ){
+    return this._component[ct];
+  }
+  
+  modify( ct ){
+  }
+  
+  component_names(){
+    return Object.keys( this._component );
+  }
+  
+  bake(){
+    const obj = {};
+    for( const ct in this._component ){
+      obj[ct] = this.get(ct);
+      obj.id = this.id;
+      obj.name = this.name;
+    }
+    return obj;
   }
   
   add_component( Component, values ){
     // log('should add', this.id, Component.name, values);
     const c = new Component( this, values );
-    this[ Component.name ] = c;
+    this._component[ Component.name ] = c;
     // log('res', this);
   }
   
   set_referenced( ct, e ){
-    if( !this._referenced ) this._referenced = {};
-    const ref = this._referenced;
+    const ref = this.referenced;
     if( !ref[ ct ] ) ref[ct] = new Set();
     ref[ct].add( e.id );
   }
@@ -104,7 +127,7 @@ class Entity {
         continue;
       }
       if( typeof initvals === 'string' ){
-        initvals = Object.assign( {value:initvals}, ctval, initvals );
+        initvals = Object.assign( {}, ctval, {value:initvals} );
       } else if( initvals instanceof ECS.Entity ){
         // keep
       } else {
@@ -140,8 +163,9 @@ const ComponentClass = {
       C = class extends Component{
         constructor( entity, values ){
           super();
-          // log('init', entity.id, C.name, 'with', values);
           
+          // log('init', entity.id, C.name, 'with', values, 'from', this);
+
           // Convert singulars
           if( typeof values === 'string' ){
             values = {value:values};
@@ -151,7 +175,7 @@ const ComponentClass = {
           if( values.id ){
             values = {value:values}
           }
-          
+
           for( const key in def ){
             let val = values[key];
             const attr = def[key];
@@ -160,6 +184,8 @@ const ComponentClass = {
               if( type === 'string' ){}
               else {
                 if( typeof val === 'string' ){
+                  // log('type', type);
+
                   throw `Component ${C.name} ${key} expects entity. Got ${val}`;
                 }
                 //## TODO: verify type

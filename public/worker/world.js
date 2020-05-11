@@ -13,6 +13,7 @@ const TComponent = {
   // },
   Labeled: 'string',
   HasRace: 'Race',
+  HasGender: 'Gender',
 }
 
 const TEntity = {
@@ -39,9 +40,25 @@ const TEntity = {
       Labeled: {},
     }
   },
+  Female: {
+    base: ['Gender'],
+    components: {
+      Labeled: 'women',
+    }
+  },
+  Male: {
+    base: ['Gender'],
+    components: {
+      Labeled: 'man',
+    }
+  },
   Human: {
     base: ['Being'],
+    components: {
+      HasGender: {},
+    },
   },
+  
   Player: {
     base: ['Being'],
   },
@@ -62,28 +79,35 @@ const lobby = world.add('Location',{Labeled:'Lobby'})
 const desk = world.add('Table',{InLocation:lobby, Labeled:'desk'});
 
 const npc1 = world.add('Human', {
-  InLocation:lobby,
+  InLocation: lobby,
   Labeled: 'Catalina',
+  // HasGender: 'Female',
 })
 
 const player = world.add('Player', {
   InLocation:lobby,
 })
 
-function tt( strings, ...values){
+function tt( strings, ...val_in){
+  const values = [];
+  for( const entity of val_in ){
+    if( !entity ) continue;
+    // Just expect enity for now
+    values.push( entity.bake() );
+  }
   return {strings,values};
 }
 
 world.player_enter_location = ()=>{
-  const loc = world.entity.get( player.InLocation.value );
+  const loc = world.entity.get( player.get('InLocation').value );
 
-  let location_name = loc.Labeled.value;
+  let location_name = loc.get('Labeled').value;
   postMessage(['header_set', `Location: ${location_name}`]);
 
   log('you', player)
   const lines = [];
   lines.push( "You see here:" );
-  for( const eid of loc._referenced.InLocation){
+  for( const eid of loc.referenced.InLocation){
     const e = world.entity.get(eid);
     if( e === player ) continue;
     lines.push( tt`${e}` );
