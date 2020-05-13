@@ -40,6 +40,7 @@ const TEntity = {
       Labeled: {},
     }
   },
+  Gender: {},
   Female: {
     base: ['Gender'],
     components: {
@@ -81,12 +82,20 @@ const desk = world.add('Table',{InLocation:lobby, Labeled:'desk'});
 const npc1 = world.add('Human', {
   InLocation: lobby,
   Labeled: 'Catalina',
-  // HasGender: 'Female',
+  HasGender: 'Female',
+})
+
+const npc2 = world.add('Human', {
+  InLocation: lobby,
+  Labeled: 'Kendal',
+  HasGender: 'Female',
 })
 
 const player = world.add('Player', {
   InLocation:lobby,
 })
+
+// log('npc', npc1);
 
 function tt( strings, ...val_in){
   const values = [];
@@ -99,12 +108,13 @@ function tt( strings, ...val_in){
 }
 
 world.player_enter_location = ()=>{
+  // log('you', player)
   const loc = world.entity.get( player.get('InLocation').value );
 
+  // log('loc', loc);
   let location_name = loc.get('Labeled').value;
   postMessage(['header_set', `Location: ${location_name}`]);
 
-  log('you', player)
   const lines = [];
   lines.push( "You see here:" );
   for( const eid of loc.referenced.InLocation){

@@ -8,7 +8,7 @@ async function init(){
   // log('world', typeof world, world);
   importScripts('./world.js');
 
-  log('player', world.sysdesig(player));
+  // log('player', world.sysdesig(player));
   // world.event('player_enter_location');
   world.player_enter_location();
   

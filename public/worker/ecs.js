@@ -9,18 +9,50 @@ class World {
     // super();
     this.entity = new Map();
   }
-  createEntity(){
+  create_entity(){
     const e = new Entity();
     this.entity.set(e.id,e);
+    e.world = this;
     return e;
   }
 
   add( et, props ){
     if( !props ) props = {};
-    const e = world.createEntity();
+    const e = world.create_entity();
 
-    e.stamp(et, props);
+    const base = this.get_by_template(et);
+    e.add_base( base );
+    e.stamp(props);
     return e;
+  }
+
+  get_by_template( et ){
+    const world = this;
+    const def = TR[et];
+    if( !def ) throw `Entity template ${et} missing`;
+    if( def.entity_prototype ) return def.entity_prototype;
+    const e = world.create_entity();
+
+    for( const bt of def.base || [] ){
+      const base = world.get_by_template( bt );
+      e.add_base( base );
+    }
+    
+    if( !CR[et] ) CR[et] = ComponentClass.create( {}, et );
+    e.add_component( CR[et] );
+    
+    const c_def = def.components;
+    for( const ct in c_def ){
+      const ctval = c_def[ct];
+      if( ctval === true ){
+        e.add_component( CR[ct] );
+        continue;
+      }
+      
+      e.add_component( CR[ct], ctval );
+    }
+
+    return def.entity_prototype = e;
   }
 
   get_by_id( id ){
@@ -64,7 +96,10 @@ class Entity {
     // super();
     this.id = ++ Entity.cnt;
     this.name = undefined;
+    this.base = [];
     this._component = {};
+    this.world = undefined,
+    this.forks = new Set();
     this.referenced = {};
   }
   
@@ -89,10 +124,51 @@ class Entity {
     return obj;
   }
   
-  add_component( Component, values ){
-    // log('should add', this.id, Component.name, values);
-    const c = new Component( this, values );
-    this._component[ Component.name ] = c;
+  add_component( C, values={} ){
+    const e = this;
+    // log('should add', this.id, C.name, values);
+    const c = new C();
+    e._component[ C.name ] = c;
+
+    // log('init', e.id, C.name, 'with', values, 'from', c );
+    
+    // Convert singulars
+    if( typeof values === 'string' ){
+      values = {value:values};
+    }
+    
+    // Convert entity values to id
+    if( values.id ){
+      values = {value:values}
+    }
+    
+    const def = C.schema;
+    for( const key in def ){
+      let val = values[key];
+      const attr = def[key];
+      if( val ){
+        const type = attr.type;
+        if( type === 'string' ){}
+        else {
+          if( typeof val === 'string' ){
+            // log('set', e.id, C.name, key, val );
+            val = e.world.get_by_template( val );
+            // log('resolved to', val.id);
+          }
+          //## TODO: verify type
+          const target = val;
+          val = val.id;
+          
+          // log('set backref for', target, target.set_referenced);
+          target.set_referenced(C.name, e);
+        }
+      }
+      
+      
+      // log('set', key, val, attr);
+      c[key] = val;
+    }
+
     // log('res', this);
   }
   
@@ -102,36 +178,23 @@ class Entity {
     ref[ct].add( e.id );
   }
   
-  stamp( et, props ){
+  add_base( base ){
     const e = this;
-    const def = TR[et];
-    if( !def ) throw `Entity template ${et} missing`;
+    if( base.forks.has( e )) return e;
+    base.forks.add( e );
+    e.base.push( base );
+  }
+  
+  stamp( props ){
+    const e = this;
 
-    const bases = def.base || [];
-    for( const base of bases ){
-      // log('base', et, base);
-      e.stamp( base, props );
-    }
+    for( const ct in props ){
 
-    if( !CR[et] ) CR[et] = ComponentClass.create( {}, et );
-    // log('add_component', et, CR[et]);
-    e.add_component( CR[et] );
-
-    const c_def = def.components;
-    for( const ct in c_def ){
-      const ctval = c_def[ct];
       let initvals =  props[ct];
-      // log('entity', world.sysdesig(e), 'adding', et, ct, 'with', ctval, initvals );
-      if( ctval === true ){
-        e.add_component( CR[ct] );
-        continue;
-      }
+      // log('entity', world.sysdesig(e), 'adding', ct, 'with', initvals );
+
       if( typeof initvals === 'string' ){
-        initvals = Object.assign( {}, ctval, {value:initvals} );
-      } else if( initvals instanceof ECS.Entity ){
-        // keep
-      } else {
-        initvals = Object.assign( {}, ctval, initvals );
+        initvals = {value:initvals};
       }
       
       e.add_component( CR[ct], initvals );
@@ -160,49 +223,7 @@ const ComponentClass = {
     if( !Object.keys(def).length ){
       C = class extends TagComponent{};
     } else {
-      C = class extends Component{
-        constructor( entity, values ){
-          super();
-          
-          // log('init', entity.id, C.name, 'with', values, 'from', this);
-
-          // Convert singulars
-          if( typeof values === 'string' ){
-            values = {value:values};
-          }
-          
-          // Convert entity values to id
-          if( values.id ){
-            values = {value:values}
-          }
-
-          for( const key in def ){
-            let val = values[key];
-            const attr = def[key];
-            if( val ){
-              const type = attr.type;
-              if( type === 'string' ){}
-              else {
-                if( typeof val === 'string' ){
-                  // log('type', type);
-
-                  throw `Component ${C.name} ${key} expects entity. Got ${val}`;
-                }
-                //## TODO: verify type
-                const target = val;
-                val = val.id;
-                
-                // log('set backref for', target, target.set_referenced);
-                target.set_referenced(C.name, entity);
-              }
-            }
-            
-            
-            // log('set', key, val, attr);
-            this[key] = val;
-          }
-        }
-      }
+      C = class extends Component{};
       C.schema = def;
     }
 
