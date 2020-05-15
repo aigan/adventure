@@ -4,14 +4,15 @@ importScripts('./ecs.js'); // ECS
 
 
 const TComponent = {
-  // Referrable: {},
-  // Parenting: {},
   InLocation: 'Location',
   // Slot: {
   //   template: {default:''},
   //   name: {default:''},
   // },
   Labeled: 'string',
+  Description: {
+    short: 'string',
+  },
   HasRace: 'Race',
   HasGender: 'Gender',
 }
@@ -25,19 +26,18 @@ const TEntity = {
   Location: {
     base: ['ObjectPhysical'],
     components: {
-      // Referrable: true,
-      Labeled: {},
+      // Labeled: {},
     }
   },
   Race: {
     components: {
-      Labeled: {},
+      // Labeled: {},
     }
   },
   Being: {
     base: ['ObjectPhysical'],
     components: {
-      Labeled: {},
+      // Labeled: {},
     }
   },
   Gender: {},
@@ -57,6 +57,7 @@ const TEntity = {
     base: ['Being'],
     components: {
       HasGender: {},
+      Description: {short:'a human'},
     },
   },
   
@@ -66,7 +67,10 @@ const TEntity = {
   Table: {
     base: ['ObjectPhysical'],
     components: {
-      Labeled: {},
+      Description: {
+        short: 'a table',
+      },
+      // Labeled: {},
     }
   }
 }
@@ -85,11 +89,11 @@ const npc1 = world.add('Human', {
   HasGender: 'Female',
 })
 
-const npc2 = world.add('Human', {
-  InLocation: lobby,
-  Labeled: 'Kendal',
-  HasGender: 'Female',
-})
+// const npc2 = world.add('Human', {
+//   InLocation: lobby,
+//   Labeled: 'Kendal',
+//   HasGender: 'Female',
+// })
 
 const player = world.add('Player', {
   InLocation:lobby,
@@ -102,9 +106,66 @@ function tt( strings, ...val_in){
   for( const entity of val_in ){
     if( !entity ) continue;
     // Just expect enity for now
-    values.push( entity.bake() );
+    const obj = { id: entity.id };
+    obj.description_short = world.description_short( entity );
+    // values.push( entity.bake() );
+    values.push( obj );
   }
   return {strings,values};
+}
+
+world.description_short = (e)=>{
+  const desc = e.get('Description','short');
+  if( desc ) return desc;
+  const label = e.get('Labeled').value;
+  if( label ) return label;
+  log('describe', e);
+  return 'stuff';
+}
+
+world.observation = ( agent, focus, perspective )=>{
+  const observed = { entity: focus };
+
+  if( focus === perspective ){
+    observed.here = true;
+  }
+
+  const seeing_inloc = [];
+  const inloc = focus.referenced.InLocation || [];
+  for( const eid of inloc ){
+    const e = world.entity.get(eid);
+    if( e === player ) continue;
+    const obi = world.observation( agent, e, perspective );
+    seeing_inloc.push( obi );
+  }
+  if( seeing_inloc.length ){
+    observed.inLocation = seeing_inloc;
+  }
+
+  return observed;
+}
+
+function observation_text( obs ){
+  const lines = [];
+  // log('text for', obs);
+
+  if( !obs.here ){
+      lines.push( tt`${obs.entity}` );
+  }
+
+  if( obs.inLocation ){
+    if( obs.here ){
+      lines.push( "You see here:" );
+    } else {
+      const edesig = world.description_short( obs.entity );
+      lines.push( `In ${edesig} you see:` );
+    }
+    for( const subobs of obs.inLocation ){
+      lines.push( ... observation_text( subobs ));
+      // lines.push( tt`${e}` );
+    }
+  }
+  return lines;
 }
 
 world.player_enter_location = ()=>{
@@ -115,16 +176,12 @@ world.player_enter_location = ()=>{
   let location_name = loc.get('Labeled').value;
   postMessage(['header_set', `Location: ${location_name}`]);
 
-  const lines = [];
-  lines.push( "You see here:" );
-  for( const eid of loc.referenced.InLocation){
-    const e = world.entity.get(eid);
-    if( e === player ) continue;
-    lines.push( tt`${e}` );
-  }
+  const observed = world.observation( player, loc, loc );
+  log('observed', observed);
 
+  const lines = observation_text( observed );
+  
   // log('post', lines);
-
   postMessage(['main_add', ...lines ]);
 }
 

@@ -66,6 +66,7 @@ worker.onmessage = e =>{
 
 function desig( entity ){
   let name = entity.id;
+  if( entity.description_short ) return entity.description_short;
   if( entity.Labeled ) name = entity.Labeled.value;
   return name;
 }

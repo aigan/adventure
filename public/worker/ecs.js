@@ -29,7 +29,7 @@ class World {
   get_by_template( et ){
     const world = this;
     const def = TR[et];
-    if( !def ) throw `Entity template ${et} missing`;
+    if( !def ) throw Error(`Entity template ${et} missing`);
     if( def.entity_prototype ) return def.entity_prototype;
     const e = world.create_entity();
 
@@ -103,8 +103,27 @@ class Entity {
     this.referenced = {};
   }
   
-  get( ct ){
-    return this._component[ct];
+  get( ct, pred ){
+    // This will be accessed frequently. Compare with linked lists or maby bring
+    // up frequently accessed properties to the top. Maby try iteration rather
+    // than shift.
+    const queue = []; // breadth first tree search
+    queue.push( this );
+    let c;
+    while( queue.length ){
+      const e = queue.shift();
+      c = e._component[ct];
+      // log(`Looking for ${ct} in ${e.id}. Found`, c );
+      if( c ) break;
+      queue.push( ...(e.base||[]) );
+    }
+    if( !c ){
+      console.error('For entity', this);
+      throw Error(`Component ${ct} not found in entity`);  
+    }
+    // log('returning found', c);
+    if( pred ) return c[pred];
+    return c;
   }
   
   modify( ct ){
@@ -126,11 +145,10 @@ class Entity {
   
   add_component( C, values={} ){
     const e = this;
-    // log('should add', this.id, C.name, values);
     const c = new C();
     e._component[ C.name ] = c;
 
-    // log('init', e.id, C.name, 'with', values, 'from', c );
+    // log('init', e.id, C.name, 'with', values, 'from', c, 'with schema', C.schema );
     
     // Convert singulars
     if( typeof values === 'string' ){
@@ -224,6 +242,13 @@ const ComponentClass = {
       C = class extends TagComponent{};
     } else {
       C = class extends Component{};
+      for( const pred in def ){
+        // log('def', pred, def[pred]);
+        if( typeof def[pred] === 'string' ){
+          def[pred] = {type:def[pred]};
+        }
+      }
+
       C.schema = def;
     }
 

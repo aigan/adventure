@@ -20,7 +20,7 @@ const dispatch = {
   },
   async start(){
     postMessage(['main_clear'])
-    postMessage(['main_add', "Welcome"])
+    // postMessage(['main_add', "Welcome"])
 
     await init();
   }
