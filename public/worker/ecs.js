@@ -43,13 +43,10 @@ class World {
     
     const c_def = def.components;
     for( const ct in c_def ){
-      const ctval = c_def[ct];
-      if( ctval === true ){
-        e.add_component( CR[ct] );
-        continue;
+      if( !CR[ct] ){
+        throw Error(`Component ${ct} not in registry`);
       }
-      
-      e.add_component( CR[ct], ctval );
+      e.add_component( CR[ct], c_def[ct] );
     }
 
     return def.entity_prototype = e;

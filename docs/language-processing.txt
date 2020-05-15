@@ -1,0 +1,9 @@
+https://gitlab.com/rosaenlg-projects/rosaenlg/
+
+* aan --- AN elephant
+* determiners --- THEIR stuff
+* ordinals --- THIRD
+* plurals --- woman
+* gerunds --- beginNING
+* conjugation --- (helper) EATS
+* irregular --- woven
