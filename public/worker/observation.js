@@ -1,3 +1,7 @@
+// log("Loading observation");
+
+importScripts("../vendor/indefinite.min.js"); // indefinite
+
 function tt( strings, ...val_in){
   const values = [];
   for( const entity of val_in ){
@@ -12,12 +16,14 @@ function tt( strings, ...val_in){
 }
 
 function description_short(e){
-  const desc = e.get('Description','short');
-  if( desc ) return desc;
-  const label = e.get('Labeled').value;
-  if( label ) return label;
-  log('describe', e);
-  return 'stuff';
+  let short;
+  short = e.get('Description','short');
+  if( !short ) short = e.get('Labeled','value');
+  // log('desc', e.id, short, indefinite(short));
+  short = indefinite(short);
+
+  if( !short ) short = 'stuff';
+  return short;
 }
 
 const observation_pattern = {
@@ -27,14 +33,17 @@ const observation_pattern = {
 
 function observation( agent, focus, perspective ){
   const observed = { entity: focus };
+  // log('obs', focus.sysdesig(), pattern);
 
   if( focus === perspective ){
     observed.here = true;
   }
   
+  const pattern = focus.get('ObservationPattern','value');
+  if( pattern ){
+    observation_pattern[pattern]({agent,focus,perspective,observed});
+  }
   
-  
-
   const world = agent.world;
   const seeing_inloc = [];
   const inloc = focus.referenced.InLocation || [];
@@ -51,7 +60,12 @@ function observation( agent, focus, perspective ){
   return observed;
 }
 
-function observing_human(){}
+function observing_human({focus,observed}){
+  const gender = focus.getEntity('HasGender');
+  observed.primary = gender;
+  // log('Obs Human', gender);
+}
+
 function observing_artifact(){}
 
 function observation_text( obs ){
@@ -59,7 +73,8 @@ function observation_text( obs ){
   // log('text for', obs);
 
   if( !obs.here ){
-      lines.push( tt`${obs.entity}` );
+    const primary = obs.primary || obs.entity;
+    lines.push( tt`${primary}` );
   }
 
   if( obs.inLocation ){

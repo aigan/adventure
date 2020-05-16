@@ -1,6 +1,6 @@
 https://gitlab.com/rosaenlg-projects/rosaenlg/
 
-* aan --- AN elephant
+* indefinite --- (aan) AN elephant
 * determiners --- THEIR stuff
 * ordinals --- THIRD
 * plurals --- woman

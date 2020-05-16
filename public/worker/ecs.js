@@ -114,13 +114,19 @@ class Entity {
       if( c ) break;
       queue.push( ...(e.base||[]) );
     }
+    
     if( !c ){
+      return null;
       console.error('For entity', this);
       throw Error(`Component ${ct} not found in entity`);  
     }
-    // log('returning found', c);
+    // log('returning found', c, Object.getPrototypeOf(c).constructor.schema);
     if( pred ) return c[pred];
     return c;
+  }
+
+  getEntity( ct, pred='value' ){
+    return this.world.get_by_id( this.get(ct,pred) );
   }
   
   modify( ct ){
@@ -216,6 +222,10 @@ class Entity {
     }
 
     return this;
+  }
+  
+  sysdesig(){
+    return this.world.sysdesig(this);
   }
 
 }

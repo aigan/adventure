@@ -12,6 +12,7 @@
     "debug": "^4.1.1",
     "etag": "^1.8.1",
     "fresh": "^0.5.2",
+    "indefinite": "^2.3.2",
     "mime-types": "^2.1.27",
     "ndarray": "^1.0.19",
     "ndarray-segment": "0.0.0"

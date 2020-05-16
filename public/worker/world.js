@@ -9,7 +9,7 @@ const TComponent = {
   //   template: {default:''},
   //   name: {default:''},
   // },
-  ObservationPattern: true,
+  ObservationPattern: 'string',
   Labeled: 'string',
   Description: {
     short: 'string',
@@ -44,14 +44,14 @@ const TEntity = {
   Artifact: {
     base: ['ObjectPhysical'],
     components: {
-      ObservationPattern: {},
+      ObservationPattern: 'Artifact',
     },
   },
   Gender: {},
   Female: {
     base: ['Gender'],
     components: {
-      Labeled: 'women',
+      Labeled: 'woman',
     }
   },
   Male: {
@@ -64,8 +64,8 @@ const TEntity = {
     base: ['Being'],
     components: {
       HasGender: {},
-      Description: {short:'a human'},
-      ObservationPattern: {},
+      Description: {short:'human'},
+      ObservationPattern: 'Human',
     },
   },
   
@@ -75,10 +75,7 @@ const TEntity = {
   Table: {
     base: ['Artifact'],
     components: {
-      Description: {
-        short: 'a table',
-      },
-      // Labeled: {},
+      Labeled: 'table',
     }
   }
 }
