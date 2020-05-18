@@ -1,0 +1,10 @@
+j = previous
+k = next
+/ = search
+? = help
+enter = select
+g = go to section
+space = toggle
+esc = close window
+ctrl-z = undo
+alt-up = scroll 1 step up

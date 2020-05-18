@@ -4,11 +4,14 @@ importScripts("../vendor/indefinite.min.js"); // indefinite
 
 function tt( strings, ...val_in){
   const values = [];
-  for( const entity of val_in ){
-    if( !entity ) continue;
-    // Just expect enity for now
-    const obj = { id: entity.id };
-    obj.description_short = description_short( entity );
+  for( const obs of val_in ){
+    if( !obs ) continue;
+    const primary = obs.primary_descriptor || obs.entity;
+
+    const obj = { id: obs.entity.id };
+    obj.description_short = description_short( primary );
+    obj.actions = obs.actions;
+    
     // values.push( entity.bake() );
     values.push( obj );
   }
@@ -32,7 +35,7 @@ const observation_pattern = {
 }
 
 function observation( agent, focus, perspective ){
-  const observed = { entity: focus };
+  const observed = { entity: focus, actions: [] };
   // log('obs', focus.sysdesig(), pattern);
 
   if( focus === perspective ){
@@ -62,7 +65,10 @@ function observation( agent, focus, perspective ){
 
 function observing_human({focus,observed}){
   const gender = focus.getEntity('HasGender');
-  observed.primary = gender;
+  observed.primary_descriptor = gender;
+  
+  observed.actions.push({greet:true});
+  
   // log('Obs Human', gender);
 }
 
@@ -73,8 +79,7 @@ function observation_text( obs ){
   // log('text for', obs);
 
   if( !obs.here ){
-    const primary = obs.primary || obs.entity;
-    lines.push( tt`${primary}` );
+    lines.push( tt`${obs}` );
   }
 
   if( obs.inLocation ){
