@@ -1,6 +1,6 @@
 // console.log('Loading');
 const log = console.log.bind(console);
-import {Topic} from "./lib/gui.mjs";
+import {Topic,desig} from "./lib/gui.mjs";
 
 //## Firefox do not support worker modules yet!
 const worker = new Worker('./worker/worker.js', {type:"classic"});
@@ -22,6 +22,7 @@ const dispatch = {
     // console.log('appending', typeof textarr, textarr);
     const p = document.createElement('p');
     let htmlparts = [];
+    const main = Topic.main;
     for( const part of textarr ){
       // log('part', part);
       if( typeof part === 'string' ){
@@ -36,9 +37,9 @@ const dispatch = {
           html += strings[i];
           const obj = values[i];
           if( obj ){
-            const topic = Topic.add(obj)
+            const topic = Topic.add(main, obj)
             log('displaying', topic);
-            html += `<b class=topic id="${topic.id}" tabindex=0>${desig(obj)}</b>`;
+            html += `<b class=topic id="${topic.slug}" tabindex=0>${desig(obj)}</b>`;
           }
         }
         htmlparts.push( html );
@@ -49,7 +50,7 @@ const dispatch = {
     let text = htmlparts.join("\n");
     p.innerHTML = text.replace(/\n/g,'<br>');
     el_main.appendChild(p);
-    Topic.register( p );
+    Topic.register( main, p );
   },
 };
 
@@ -62,14 +63,6 @@ worker.onmessage = e =>{
 
   throw(Error(`Message ${cmd} not recognized`));
 }
-
-function desig( entity ){
-  if( entity.description_short ) return entity.description_short;
-  if( entity.Labeled ) return entity.Labeled.value;
-  if( entity.name ) return entity.name;
-  return entity.id;
-}
-
 
 //#### Not implemented consistantly!
 /*
