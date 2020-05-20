@@ -117,8 +117,8 @@ class Entity {
     
     if( !c ){
       return null;
-      console.error('For entity', this);
-      throw Error(`Component ${ct} not found in entity`);  
+      // console.error('For entity', this);
+      // throw Error(`Component ${ct} not found in entity`);  
     }
     // log('returning found', c, Object.getPrototypeOf(c).constructor.schema);
     if( pred ) return c[pred];

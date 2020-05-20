@@ -6,13 +6,6 @@ log('Loading GUI');
 
 import dialogPolyfill from "../vendor/dialog-polyfill.esm.js";
 
-setTimeout(()=>{
-  const dialog = document.querySelector('dialog');
-  dialogPolyfill.registerDialog(dialog);
-  // dialog.showModal()
-}, 1000);
-
-
 // let refkey = 'a'.charCodeAt();
 // function nextkey(){
 //   return String.fromCodePoint(refkey++);
@@ -31,6 +24,13 @@ const Content = {
       top: -80,
       behavior: 'smooth',
     })
+  },
+  dialog(){
+    const el_dialog = document.createElement('dialog');
+    document.body.appendChild(el_dialog);
+    dialogPolyfill.registerDialog(el_dialog);
+    return el_dialog;
+    // el_dialog.showModal();
   },
 }
 
@@ -75,7 +75,7 @@ export const Topic = {
     Topic.selected = selected_new;
     const el = Topic.selected.element;
     el.classList.add('selected');
-    log('focus', tid);
+    log('focus', tid, Topic.selected);
   },
 
   select_previous(){
@@ -102,8 +102,38 @@ export const Topic = {
     topic.element.focus();
   },
   
-  enter_submenu(){
-    log('submenu');
+  enter_subtopic(){
+    if( !Topic.selected ) return;
+    // FIXME: enter dialog. Not subtopic
+    const subtopic = Topic.subtopic( Topic.selected );
+    if( !subtopic ) return;
+    if( subtopic.dialog ){
+      Topic.enter_dialog( subtopic )
+    } else {
+      throw "select subtopic";
+      // Topic.select( subtopic )
+    }
+  },
+  
+  subtopic( topic ){
+    if( topic.subtopic ) return topic.subtopic;
+    const subtopic = {
+      parent: topic,
+    };
+    
+    const dialog = Content.dialog();
+    dialog.innerHTML = `<header>submenu</header>
+    <b class=topic id="${topic.id}">Never mind</b>
+    `;
+    subtopic.dialog = dialog;
+    return subtopic;
+  },
+  
+  enter_dialog( topic ){
+    const dialog = topic.dialog;
+    if( !dialog ) throw "No dialog for topic";
+    dialog.showModal();
+    Topic.selected = topic;
   },
 
 }
@@ -150,7 +180,7 @@ const shortcut = {
   ArrowUp(){ Topic.select_previous() },
   ArrowDown(){ Topic.select_next() },
   Escape(){ Topic.back() },
-  ArrowRight(){ Topic.enter_submenu() },
+  ArrowRight(){ Topic.enter_subtopic() },
   ArrowLeft(){ Topic.back() },
 };
 
