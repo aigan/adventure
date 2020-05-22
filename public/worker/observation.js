@@ -6,10 +6,10 @@ function tt( strings, ...val_in){
   const values = [];
   for( const obs of val_in ){
     if( !obs ) continue;
-    const primary = obs.primary_descriptor || obs.entity;
+    // const primary = obs.primary_descriptor || obs.entity;
 
     const obj = { id: obs.entity.id };
-    obj.description_short = description_short( primary );
+    obj.description_short = description_short( obs );
     obj.actions = obs.actions;
     
     // values.push( entity.bake() );
@@ -18,12 +18,23 @@ function tt( strings, ...val_in){
   return {strings,values};
 }
 
-function description_short(e){
+function description_short(e, {form='indefinite'}={}){
   let short;
+
+  // support passing of either entity orobservation 
+  if( e.entity ){
+    e = e.primary_descriptor || e.entity;
+  }
+
   short = e.get('Description','short');
   if( !short ) short = e.get('Labeled','value');
   // log('desc', e.id, short, indefinite(short));
-  short = indefinite(short);
+
+  if( form === 'indefinite'){
+    short = indefinite(short);
+  } else if( form === 'definite' ){
+    short = "the " + short;
+  }
 
   if( !short ) short = 'stuff';
   return short;
@@ -38,6 +49,7 @@ function observation( agent, focus, perspective ){
   const observed = { entity: focus, actions: [] };
   // log('obs', focus.sysdesig(), pattern);
 
+  if( !perspective ) perspective = agent;
   if( focus === perspective ){
     observed.here = true;
   }
