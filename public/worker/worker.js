@@ -19,10 +19,16 @@ const dispatch = {
     postMessage('pong');
   },
   async start(){
+    log('Starting');
     postMessage(['main_clear'])
     // postMessage(['main_add', "Welcome"])
 
     await init();
+  },
+  async greet(context){
+    log("Greeting", context)
+    const lines = ["&#8250; You greet"];
+    postMessage(['main_add', ...lines ]);
   }
 }
 
@@ -32,15 +38,21 @@ const dispatch = {
 // }
 
 
-addEventListener('message', e =>{
-  let data = e.data;
-  if( typeof data === 'string') data = [data];
+addEventListener('message', async e =>{
+  let msg = e.data;
+  if( typeof msg === 'string') msg = [msg];
   // console.log("Recieved message", data);
-  const cmd = data.shift();
+  const [cmd, data, ackid] = msg;
 
-  if( dispatch[cmd] ) return dispatch[cmd](data);
+  if( !dispatch[cmd] ) throw(Error(`Message ${cmd} not recognized`));
 
-  throw(Error(`Message ${cmd} not recognized`));
+  // log('dispatch', cmd, data);
+  const res = await dispatch[cmd](data);
+  
+  if( ackid ){
+    postMessage(['ack', ackid, res ]);
+  }
+
 }, false);
 
 //## Not implemented consistently

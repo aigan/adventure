@@ -30,6 +30,10 @@ dialog li {
   list-style: none;
 }
 
+dialog[disabled] {
+  opacity:.5;
+}
+
 /* dialog polyfill */
 dialog::backdrop, dialog + .backdrop {
   background: rgba(0,0,8,.30);

@@ -66,8 +66,12 @@ function observation( agent, focus, perspective ){
 function observing_human({focus,observed}){
   const gender = focus.getEntity('HasGender');
   observed.primary_descriptor = gender;
-  
-  observed.actions.push({do:'greet',name:"Initiate dialog"});
+  // log('observing human', focus, observed);
+  observed.actions.push({
+    do:'greet',
+    target: focus.id,
+    name:"Initiate dialog",
+  });
   
   // log('Obs Human', gender);
 }

@@ -1,18 +1,17 @@
 const log = console.log.bind(console);
-log('Loading GUI');
+// log('Loading GUI');
 
 // import {cssP} from "./lib/load.mjs";
 // cssP("./vendor/dialog-polyfill.css");
 
 import dialogPolyfill from "../vendor/dialog-polyfill.esm.js";
+// import {worker} from "./boot.mjs";
+import {Message} from "./message.mjs";
 
-// let refkey = 'a'.charCodeAt();
-// function nextkey(){
-//   return String.fromCodePoint(refkey++);
-// }
+const el_header = document.querySelector('header');
+const el_main = document.querySelector('main');
 
-
-const Content = {
+export const Content = {
   scrollStepDown(){
     window.scrollBy({
       top: 80,
@@ -34,6 +33,51 @@ const Content = {
   },
 }
 
+
+
+Message.register({
+  header_set( html ){
+    el_header.innerHTML = html;
+  },
+  main_clear(){
+    el_main.innerHTML = "";
+  },
+  main_add( textarr ){
+    // console.log('appending', typeof textarr, textarr);
+    const p = document.createElement('p');
+    let htmlparts = [];
+    const main = Topic.main;
+    for( const part of textarr ){
+      // log('part', part);
+      if( typeof part === 'string' ){
+        htmlparts.push( part );
+        continue;
+      }
+
+      const {strings,values} = part;
+      if( strings && values ){
+        let html = "";
+        for( let i=0; i<strings.length; i++){
+          html += strings[i];
+          const subject = values[i];
+          if( subject ){
+            const topic = Topic.add(main, subject)
+            // log('displaying', topic);
+            html += `<b class=topic id="${topic.slug}" tabindex=0>${desig(subject)}</b>`;
+          }
+        }
+        htmlparts.push( html );
+      }
+
+    }
+
+    let text = htmlparts.join("\n");
+    p.innerHTML = text.replace(/\n/g,'<br>');
+    el_main.appendChild(p);
+    Topic.register( main, p );
+  }
+})
+
 export const Topic = {
   main: {
     topics: [],
@@ -43,6 +87,7 @@ export const Topic = {
   },
   topics: {},
   selected: null,
+  lock: false,
   
   add( menu, subject ){
     const topic = {
@@ -152,16 +197,35 @@ export const Topic = {
     }
   },
   
-  execute(){
+  async execute(){
     const selected = Topic.selected;
     if( !selected ) return;
     const subj = selected.subject;
     if( !subj ) return;
     const action = subj.do || null;
-    if( action === 'abort' ){
-      return Topic.back();
+    if( !action ) return Topic.enter_submenu();
+    if( action === 'abort' ) return Topic.back();
+    // log('action', selected, action, subj);
+
+    const target = subj.target;
+    const menu = selected.parent;
+    if( menu.dialog ){
+      menu.dialog.setAttribute("disabled","");
     }
-    Topic.enter_submenu();
+    Topic.lock = true;
+    
+    try{
+      const res = await Message.send(action,{target})
+      // log('action', action, res);
+    } catch( err ){
+      console.error(`Action ${action} got`, err);
+    }
+    
+    Topic.lock = false;
+    if( menu.dialog ){
+      menu.dialog.removeAttribute("disabled");
+      Topic.back();
+    }
   },
   
   menu( topic ){
@@ -217,6 +281,7 @@ export const Topic = {
 let delayedFocus = null;
 let delayedClick = null;
 document.addEventListener('focusin', e=>{
+  if( Topic.lock ) return;
   const topic = Topic.topics[ e.target.id ];
   if( !topic ) return;
   // log('focus', e.target);
@@ -227,6 +292,7 @@ document.addEventListener('focusin', e=>{
 })
 
 document.addEventListener('focusout', e=>{
+  if( Topic.lock ) return;
   if(delayedFocus){
     log('prevented focus');
     clearTimeout(delayedFocus);
@@ -236,6 +302,7 @@ document.addEventListener('focusout', e=>{
 
 // fallback click handler for deselecting target
 document.addEventListener('click', e=>{
+  if( Topic.lock ) return;
   if( !Topic.selected ) return;
   const path = e.composedPath();
   // log('click', path);
@@ -264,8 +331,8 @@ const shortcut = {
 
 const shortcut_filter = Object.keys(shortcut).map(key=>key.match(/\w+$/)[0]);
 
-document.addEventListener('keydown', e=>{
-   if( !shortcut_filter.includes(e.key) ) return;
+document.addEventListener('keydown', e=>{  
+  if( !shortcut_filter.includes(e.key) ) return;
   let desc = "";
   if( e.ctrlKey ) desc += "ctrl-";
   if( e.shiftKey ) desc += "shift-";
@@ -275,8 +342,9 @@ document.addEventListener('keydown', e=>{
 
   // log('key', desc);
   if( !shortcut[desc] ) return;
-  shortcut[desc]();
   e.preventDefault();
+  if( Topic.lock ) return;
+  shortcut[desc]();
 })
 
 export function desig( entity ){
