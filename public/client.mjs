@@ -35,11 +35,11 @@ const dispatch = {
         let html = "";
         for( let i=0; i<strings.length; i++){
           html += strings[i];
-          const obj = values[i];
-          if( obj ){
-            const topic = Topic.add(main, obj)
-            log('displaying', topic);
-            html += `<b class=topic id="${topic.slug}" tabindex=0>${desig(obj)}</b>`;
+          const subject = values[i];
+          if( subject ){
+            const topic = Topic.add(main, subject)
+            // log('displaying', topic);
+            html += `<b class=topic id="${topic.slug}" tabindex=0>${desig(subject)}</b>`;
           }
         }
         htmlparts.push( html );

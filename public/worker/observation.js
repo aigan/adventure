@@ -67,7 +67,7 @@ function observing_human({focus,observed}){
   const gender = focus.getEntity('HasGender');
   observed.primary_descriptor = gender;
   
-  observed.actions.push({greet:true});
+  observed.actions.push({do:'greet',name:"Initiate dialog"});
   
   // log('Obs Human', gender);
 }

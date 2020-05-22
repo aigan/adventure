@@ -44,11 +44,11 @@ export const Topic = {
   topics: {},
   selected: null,
   
-  add( menu, obj ){
+  add( menu, subject ){
     const topic = {
       id: menu.next_id ++,
       parent: menu,
-      obj,
+      subject,
     };
     topic.slug = `${menu.slug}-${topic.id}`;
     menu.topics[ topic.id ] = topic;
@@ -58,21 +58,24 @@ export const Topic = {
 
   register( menu, el_container ){
     for( const el of el_container.querySelectorAll('.topic') ){
-      log('register', el.id );
+      // log('register', el.id );
       Topic.topics[el.id].element = el;
       // log('matched', Topic.main[el.id]);
     }
   },
   
   back(){
-    const selected = Topic.selected;
+    let selected = Topic.selected;
+    // log('back from', selected);
     if( !selected ) return;
-    if( selected.element ) return Topic.unselect( selected );
+    if( selected.element ){
+       selected = Topic.unselect( selected );
+     }
     if( selected.dialog ){
       selected.dialog.close();
       Topic.selected = selected.parent;
-      // log('should close');
     }
+    return Topic.selected;
   },
 
   unselect( topic = Topic.selected ){
@@ -83,7 +86,7 @@ export const Topic = {
       el.classList.remove('selected');
       // log('blur', el, document.activeElement);
     }
-    Topic.selected = null;
+    return Topic.selected = topic.parent;
   },
 
   select( selected_new ){
@@ -149,20 +152,55 @@ export const Topic = {
     }
   },
   
+  execute(){
+    const selected = Topic.selected;
+    if( !selected ) return;
+    const subj = selected.subject;
+    if( !subj ) return;
+    const action = subj.do || null;
+    if( action === 'abort' ){
+      return Topic.back();
+    }
+    Topic.enter_submenu();
+  },
+  
   menu( topic ){
     if( topic.menu ) return topic.menu;
+
+    if( !topic.subject.actions ) return;
+    // log('Create menu for', topic);
+
     const menu = {
       parent: topic,
       topics: [],
       is_menu: true,
+      next_id: 1,
+      slug: topic.slug,
     };
-    
+
+    const subj = topic.subject;
+    // log('action', subj.actions);
+    if( subj.actions ){
+      for( const action of subj.actions ){
+        Topic.add( menu, action );
+      }
+    }
+    Topic.add( menu, {do:'abort',name:"Never mind"});
+
+    const html_subtopics = menu.topics.filter(t=>t).map( t=>
+      `<li class=topic id="${t.slug}" tabindex=0>`+
+      `${desig(t.subject)}</li>`).join("\n");
+
     const dialog = Content.dialog();
-    log('submenu', topic);
-    dialog.innerHTML = `<header>submenu ${desig(topic.obj)}</header>
-    <b class=topic id="${topic.id}">Never mind</b>
+    dialog.innerHTML = `
+    <header>${ucfirst(desig(topic.subject))}</header>
+    <ul>
+      ${html_subtopics}
+    </ul>
     `;
     menu.dialog = dialog;
+    // log('submenu', menu);
+    Topic.register( menu, dialog);
     return menu;
   },
   
@@ -176,15 +214,14 @@ export const Topic = {
 }
 
 
-
-
 let delayedFocus = null;
 let delayedClick = null;
 document.addEventListener('focusin', e=>{
-  // log('focus', e.target.id);
+  const topic = Topic.topics[ e.target.id ];
+  if( !topic ) return;
+  // log('focus', e.target);
   delayedFocus = setTimeout(()=>{
     delayedFocus = null;
-    const topic = Topic.topics[ e.target.id ];
     Topic.select( topic );
   })
 })
@@ -204,7 +241,8 @@ document.addEventListener('click', e=>{
   // log('click', path);
   for( const el of path ){
     if( el.id && el.classList.contains('topic')){
-      // log('is topic');
+      // Focus is done before click. But maby check?
+      Topic.execute();
       break;
     }
     if( el === document ){
@@ -221,7 +259,7 @@ const shortcut = {
   Escape(){ Topic.back() },
   ArrowRight(){ Topic.enter_submenu() },
   ArrowLeft(){ Topic.back() },
-  Enter(){ Topic.enter_submenu() },
+  Enter(){ Topic.execute() },
 };
 
 const shortcut_filter = Object.keys(shortcut).map(key=>key.match(/\w+$/)[0]);
@@ -246,4 +284,8 @@ export function desig( entity ){
   if( entity.Labeled ) return entity.Labeled.value;
   if( entity.name ) return entity.name;
   return entity.id;
+}
+
+export function ucfirst( str ){
+  return str[0].toUpperCase() + str.slice(1); 
 }
