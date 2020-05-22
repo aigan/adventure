@@ -118,6 +118,7 @@ export const Topic = {
      }
     if( selected.dialog ){
       selected.dialog.close();
+      // log('back to parent', selected.parent);
       Topic.selected = selected.parent;
     }
     return Topic.selected;
@@ -126,23 +127,23 @@ export const Topic = {
   unselect( topic = Topic.selected ){
     if( !topic ) return;
     const el = topic.element;
-    if( el ){    
+    // log('blur', topic.slug, topic.is_menu, el);
+    if( el ){
       if( document.activeElement === el ) el.blur();
       el.classList.remove('selected');
-      // log('blur', el, document.activeElement);
     }
     return Topic.selected = topic.parent;
   },
 
   select( selected_new ){
-    // const selected_new = Topic.main[tid];
     if( Topic.selected === selected_new ) return;
     // log('select', selected_new);
     Topic.unselect();
+    // log('selected', selected_new.slug, selected_new.is_menu );
     Topic.selected = selected_new;
     const el = Topic.selected.element;
+    // log('selected marked', el, Topic.selected)
     el.classList.add('selected');
-    // log('focus', selected_new.id );
   },
 
   select_previous(){
@@ -176,7 +177,7 @@ export const Topic = {
       tid = selected.id;
     }
     
-    // log('select_next', tid, menu.topics.length);
+    // log('select_next', tid);
     if( tid >= menu.topics.length - 1 ){ // At top 
       // flash
       return;
@@ -285,7 +286,9 @@ document.addEventListener('focusin', e=>{
   const topic = Topic.topics[ e.target.id ];
   if( !topic ) return;
   // log('focus', e.target);
+  // Topic.select( topic );
   delayedFocus = setTimeout(()=>{
+    // log('focus delayed', e.target);
     delayedFocus = null;
     Topic.select( topic );
   })
@@ -294,7 +297,7 @@ document.addEventListener('focusin', e=>{
 document.addEventListener('focusout', e=>{
   if( Topic.lock ) return;
   if(delayedFocus){
-    log('prevented focus');
+    // log('prevented focus');
     clearTimeout(delayedFocus);
     return;
   }
@@ -305,10 +308,13 @@ document.addEventListener('click', e=>{
   if( Topic.lock ) return;
   if( !Topic.selected ) return;
   const path = e.composedPath();
-  // log('click', path);
+  // log('click', e.target);
   for( const el of path ){
     if( el.id && el.classList.contains('topic')){
-      // Focus is done before click. But maby check?
+      // Delayed focus not done before click on mobile
+      const topic = Topic.topics[ e.target.id ];
+      if( !topic ) break;
+      Topic.select( topic );
       Topic.execute();
       break;
     }
@@ -340,7 +346,7 @@ document.addEventListener('keydown', e=>{
   if( e.metaKey ) desc += "meta-";
   desc += e.key;
 
-  // log('key', desc);
+  // log('KEY', desc);
   if( !shortcut[desc] ) return;
   e.preventDefault();
   if( Topic.lock ) return;
