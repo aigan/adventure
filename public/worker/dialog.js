@@ -6,7 +6,7 @@ handler_register( 'greet', async function(context){
   // TODO: Remember observation
   const obs = observation(player,target);
 
-  const html_target = description_short(obs, {form:'definite'});
+  const html_target = description(obs, {form:'definite'});
   log("Greeting", target)
 
   const lines = [`&#8250; You greet ${html_target}`];

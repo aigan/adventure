@@ -16,6 +16,18 @@ const TComponent = {
   },
   HasRace: 'Race',
   HasGender: 'Gender',
+  HasThoughts: {
+    list: 'array',
+  },
+  IncidentFacts: {
+    victim: 'Being',
+    offender: 'Thing',
+    plaintiff: 'Being',
+  },
+  Time: {
+    epoch: 'number',
+    precision: 'number',
+  },
 }
 
 const TEntity = {
@@ -24,15 +36,35 @@ const TEntity = {
       InLocation: {},
     },
   },
+  Situation: {
+    components:{
+      InLocation: {},
+    },
+  },
+  Kidnapping: {
+    base: ['Situation'],
+    components: {
+      IncidentFacts: {},
+      Time: {},
+    },
+  },
+  Thought: {},
+  SituationThought: {
+    base: ['Thought']
+  },
+  IncidentThought: {
+    base: ['SituationThought'],
+    components: {
+      Incident: {},
+    },
+  },
   Location: {
     base: ['ObjectPhysical'],
     components: {
-      // Labeled: {},
     }
   },
   Race: {
     components: {
-      // Labeled: {},
     }
   },
   Being: {
@@ -68,9 +100,11 @@ const TEntity = {
       ObservationPattern: 'Human',
     },
   },
-  
   Player: {
     base: ['Being'],
+    components: {
+      HasThoughts: {},
+    },
   },
   Table: {
     base: ['Artifact'],
@@ -94,17 +128,35 @@ const npc1 = world.add('Human', {
   HasGender: 'Female',
 })
 
-// const npc2 = world.add('Human', {
-//   InLocation: lobby,
-//   Labeled: 'Kendal',
-//   HasGender: 'Female',
-// })
+const ted = world.add('Human', {
+  Labeled: 'Emvin',
+  HasGender: 'Male',
+});
+
+const kidnapping = world.add('Kidnapping', {
+  IncidentFacts: {
+    victim: ted,
+  },
+  Time: {
+    epoch: Date.UTC(2021, 2, 1, 11),
+    precision: 1000*60*60,
+  }
+});
 
 const player = world.add('Player', {
-  InLocation:lobby,
+  InLocation: lobby,
+  // HasThoughts: {
+  //   list: [{
+  //   }],
+  // },
 })
 
-// log('npc', npc1);
+function inspect( entity ){
+  log('👁️', world.sysdesig(entity), entity.bake());
+}
+
+inspect( kidnapping );
+
 
 
 world.player_enter_location = ()=>{
@@ -116,7 +168,7 @@ world.player_enter_location = ()=>{
   postMessage(['header_set', `Location: ${location_name}`]);
 
   const observed = observation( player, loc, loc );
-  log('observed', observed);
+  // log('observed', observed);
 
   const lines = observation_text( observed );
   

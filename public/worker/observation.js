@@ -9,7 +9,7 @@ function tt( strings, ...val_in){
     // const primary = obs.primary_descriptor || obs.entity;
 
     const obj = { id: obs.entity.id };
-    obj.description_short = description_short( obs );
+    obj.description_short = description( obs );
     obj.actions = obs.actions;
     
     // values.push( entity.bake() );
@@ -18,26 +18,26 @@ function tt( strings, ...val_in){
   return {strings,values};
 }
 
-function description_short(e, {form='indefinite'}={}){
-  let short;
+function description(e, {form='indefinite',length='short'}={}){
+  let desc;
 
   // support passing of either entity orobservation 
   if( e.entity ){
     e = e.primary_descriptor || e.entity;
   }
 
-  short = e.get('Description','short');
-  if( !short ) short = e.get('Labeled','value');
-  // log('desc', e.id, short, indefinite(short));
+  desc = e.get('Description','short');
+  if( !desc ) desc = e.get('Labeled','value');
+  // log('desc', e.id, desc, indefinite(short));
 
   if( form === 'indefinite'){
-    short = indefinite(short);
+    desc = indefinite(desc);
   } else if( form === 'definite' ){
-    short = "the " + short;
+    desc = "the " + desc;
   }
 
-  if( !short ) short = 'stuff';
-  return short;
+  if( !desc ) desc = 'stuff';
+  return desc;
 }
 
 const observation_pattern = {
@@ -102,7 +102,7 @@ function observation_text( obs ){
     if( obs.here ){
       lines.push( "You see here:" );
     } else {
-      const edesig = description_short( obs.entity );
+      const edesig = description( obs.entity );
       lines.push( `In ${edesig} you see:` );
     }
     for( const subobs of obs.inLocation ){
