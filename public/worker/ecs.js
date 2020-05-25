@@ -56,6 +56,7 @@ class World {
     return this.entity.get( id );
   }
 
+  //## Maby rename to be similar to nodejs util.inspect
   sysdesig( entity ){
     let id;
     if( typeof entity === 'number' ){
@@ -64,18 +65,21 @@ class World {
       if( !entity ) return `${id}<deleted>`;
     }
     if( !entity ) return "<deleted>";
+
+    // return entity.bake();
+    
     id = entity.id;
     let name = entity.name;
     if( !name ){
-      const label_component = entity.Labeled;
-      if( label_component ){
-        name = label_component.value;
-      }
+      name =  entity.get('Labeled','value');
     }
 
     let tags = "";
-    for( const ct in entity ){
-      if( entity[ct] instanceof TagComponent )   tags += ':'+ct;
+    for( const child of [entity, ...entity.base]){
+      for( const ct in child._component ){
+        // log('ct', ct, child._component[ct]);
+        if( child._component[ct] instanceof TagComponent ) tags += ':'+ct;
+      }
     }
     
     let desig = id;
@@ -83,8 +87,6 @@ class World {
     desig += tags;
     return desig;
   }
-  
-  // event( name, data ){}
 
 }
 
@@ -133,16 +135,29 @@ class Entity {
   }
   
   component_names(){
+    throw "fixme recursion";
     return Object.keys( this._component );
   }
   
+  // Generalized version of get()
   bake(){
-    const obj = {};
-    for( const ct in this._component ){
-      obj[ct] = this.get(ct);
-      obj.id = this.id;
-      obj.name = this.name;
+    const obj = {
+      id: this.id,
+      name: this.name,
+    };
+  
+    const queue = []; // breadth first tree search
+    queue.push( this );
+    while( queue.length ){
+      const e = queue.shift();
+  
+      for( const ct in e._component ){
+        if( ct in obj ) continue;
+        obj[ct] = e._component[ct];
+      }
+      queue.push( ...(e.base||[]) );
     }
+  
     return obj;
   }
   
@@ -169,7 +184,7 @@ class Entity {
       const attr = def[key];
       if( val ){
         const type = attr.type;
-        if( type === 'string' ){}
+        if( ['string','number'].includes(type) ){}
         else {
           if( typeof val === 'string' ){
             // log('set', e.id, C.name, key, val );
@@ -240,7 +255,7 @@ const ComponentClass = {
   create( def, name ){
     // log('should create component', name, def);
 
-    if( typeof def === 'string'){
+    if( ['string','number'].includes(typeof def)){
       def = {value:{type:def}};
     }
     
