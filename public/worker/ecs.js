@@ -131,7 +131,8 @@ class Entity {
     return this.world.get_by_id( this.get(ct,pred) );
   }
   
-  modify( ct ){
+  modify( ct, props ){
+    log('should modify', ct, props);
   }
   
   component_names(){
@@ -191,12 +192,23 @@ class Entity {
             val = e.world.get_by_template( val );
             // log('resolved to', val.id);
           }
-          //## TODO: verify type
-          const target = val;
-          val = val.id;
-          
-          // log('set backref for', target, target.set_referenced);
-          target.set_referenced(C.name, e);
+
+          if( Array.isArray(val) ){
+            const val_in = val;
+            val = [];
+            for( const target of val_in ){
+              //## TODO: verify type
+              val.push( target.id );
+              target.set_referenced(C.name, e);
+            }
+          } else {
+            //## TODO: verify type
+            const target = val;
+            val = val.id;
+
+            // log('set backref for', target, target.set_referenced);
+            target.set_referenced(C.name, e);
+          }
         }
       }
       

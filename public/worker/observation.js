@@ -64,7 +64,7 @@ function observation( agent, focus, perspective ){
   const inloc = focus.referenced.InLocation || [];
   for( const eid of inloc ){
     const e = world.entity.get(eid);
-    if( e === player ) continue;
+    if( e === Adventure.player ) continue;
     const obi = observation( agent, e, perspective );
     seeing_inloc.push( obi );
   }

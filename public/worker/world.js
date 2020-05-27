@@ -19,7 +19,7 @@ const TComponent = {
   HasThoughts: {
     list: 'array',
   },
-  IncidentFacts: {
+  IncidentFacts: { // Problem
     victim: 'Being',
     offender: 'Thing',
     plaintiff: 'Being',
@@ -28,6 +28,12 @@ const TComponent = {
     epoch: 'number',
     precision: 'number',
   },
+  KnowledgeAbout: {
+    list: 'array',
+  },
+  Attention: {
+    focus: 'ObjectPhysical',
+  }
 }
 
 const TEntity = {
@@ -41,23 +47,24 @@ const TEntity = {
       InLocation: {},
     },
   },
-  Kidnapping: {
-    base: ['Situation'],
+  MissingPerson: {
+    base: ['Situation'], // Problem
     components: {
       IncidentFacts: {},
       Time: {},
     },
   },
-  Thought: {},
-  SituationThought: {
-    base: ['Thought']
-  },
-  IncidentThought: {
-    base: ['SituationThought'],
+  Thought: {
     components: {
-      Incident: {},
+      KnowledgeAbout: {},
     },
   },
+  // Problem: {
+  //   base: ['Thought'],
+  //   components: {
+  //     KnowledgeAbout: {},
+  //   },
+  // },
   Location: {
     base: ['ObjectPhysical'],
     components: {
@@ -98,6 +105,7 @@ const TEntity = {
       HasGender: {},
       Description: {short:'human'},
       ObservationPattern: 'Human',
+      Attention: {},
     },
   },
   Player: {
@@ -128,46 +136,81 @@ const npc1 = world.add('Human', {
   HasGender: 'Female',
 })
 
-const ted = world.add('Human', {
+const bride = world.add('Human', {
+  HasGender: 'Female'
+});
+
+const investigator = world.add('Human', {
+});
+
+const missing1 = world.add('MissingPerson', {
+  IncidentFacts: {
+    victim: bride,
+  },
+  Time: {
+    epoch: Date.UTC(2001,1,14),
+    precision: 1000*60*60*24*3,
+  }
+});
+
+const emvin = world.add('Human', {
   Labeled: 'Emvin',
   HasGender: 'Male',
 });
 
-const kidnapping = world.add('Kidnapping', {
+const missing2 = world.add('MissingPerson', {
   IncidentFacts: {
-    victim: ted,
+    victim: emvin,
   },
   Time: {
-    epoch: Date.UTC(2021, 2, 1, 11),
+    epoch: Date.UTC(2001, 2, 1, 11),
     precision: 1000*60*60,
   }
 });
 
-const player = world.add('Player', {
+const quest1 = world.add('Thought', {
+  KnowledgeAbout: missing2,
+  IncidentFacts: {
+    victim: emvin,
+  },
+  Time: {
+    epoch: Date.UTC(2001, 2, 1, 11),
+    precision: 1000*60*60,
+  }
+});
+
+const knowsEmvin = world.add('Thought', {
+  KnowledgeAbout: emvin,
+  Labeled: 'Emvin',
+  HasGender: 'Male',
+});
+
+const player = Adventure.player = world.add('Player', {
   InLocation: lobby,
-  // HasThoughts: {
-  //   list: [{
-  //   }],
-  // },
+  HasThoughts: {
+    list: [
+      quest1,
+      knowsEmvin,
+    ],
+  },
 })
+
+
 
 function inspect( entity ){
   log('👁️', world.sysdesig(entity), entity.bake());
 }
 
-inspect( kidnapping );
-
-
 
 world.player_enter_location = ()=>{
   // log('you', player)
-  const loc = world.entity.get( player.get('InLocation').value );
+  const loc = world.entity.get( Adventure.player.get('InLocation').value );
 
   // log('loc', loc);
   let location_name = loc.get('Labeled').value;
   postMessage(['header_set', `Location: ${location_name}`]);
 
-  const observed = observation( player, loc, loc );
+  const observed = observation( Adventure.player, loc, loc );
   // log('observed', observed);
 
   const lines = observation_text( observed );

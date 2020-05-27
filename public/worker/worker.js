@@ -1,6 +1,8 @@
 const log = console.log.bind(console);
 // log('Loading');
 
+const Adventure = {};
+
 async function init(){
   // importScripts('./segments.js');
   // log('world', typeof world, world);
@@ -30,15 +32,23 @@ function handler_register( label, handler ){
   dispatch[label] = handler;
 }
 
+// function lookup( obj ){
+//   const world = obj.world;
+// }
+
 
 addEventListener('message', async e =>{
   let msg = e.data;
   if( typeof msg === 'string') msg = [msg];
   // console.log("Recieved message", data);
-  const [cmd, data, ackid] = msg;
+  const [cmd, data={}, ackid] = msg;
 
   if( !dispatch[cmd] ) throw(Error(`Message ${cmd} not recognized`));
 
+  if( !data.from ) data.from = Adventure.player;
+  if( data.from ) data.world = data.from.world;
+  if( data.target ) data.target = data.world.entity.get( data.target );
+  
   // log('dispatch', cmd, data);
   const res = await dispatch[cmd](data);
   
