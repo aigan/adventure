@@ -75,7 +75,11 @@ Message.register({
     p.innerHTML = text.replace(/\n/g,'<br>');
     el_main.appendChild(p);
     Topic.register( main, p );
-  }
+  },
+  topic_update([subject]){
+    log('update subject', subject, Topic.topics);
+    
+  },
 })
 
 export const Topic = {
@@ -214,10 +218,13 @@ export const Topic = {
       menu.dialog.setAttribute("disabled","");
     }
     Topic.lock = true;
+    let navigate = 'back';
     
     try{
       const res = await Message.send(action,{target})
-      // log('action', action, res);
+      log('action', action, res);
+      if( res === 'stay') navigate = res;
+      
     } catch( err ){
       console.error(`Action ${action} got`, err);
     }
@@ -225,7 +232,8 @@ export const Topic = {
     Topic.lock = false;
     if( menu.dialog ){
       menu.dialog.removeAttribute("disabled");
-      Topic.back();
+
+      if( navigate === 'back') Topic.back();
     }
   },
   

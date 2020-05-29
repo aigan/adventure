@@ -7,11 +7,11 @@ async function init(){
   // importScripts('./segments.js');
   // log('world', typeof world, world);
   importScripts('./world.js');
+  importScripts('./dialog.js');
 
   // log('player', world.sysdesig(player));
   world.player_enter_location();
   
-  importScripts('./dialog.js');
 }
 
 const dispatch = {

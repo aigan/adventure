@@ -132,7 +132,13 @@ class Entity {
   }
   
   modify( ct, props ){
-    log('should modify', ct, props);
+    const _c = this._component;
+    if( _c[ct] ){
+      return Object.assign( _c[ct], props );
+    }
+
+    const Cc = ECS.ComponentClass.component[ct];
+    return this.add_component( Cc, props );
   }
   
   component_names(){
@@ -218,6 +224,7 @@ class Entity {
     }
 
     // log('res', this);
+    return c;
   }
   
   set_referenced( ct, e ){
