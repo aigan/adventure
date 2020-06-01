@@ -76,8 +76,14 @@ Message.register({
     el_main.appendChild(p);
     Topic.register( main, p );
   },
-  topic_update([subject]){
-    log('update subject', subject, Topic.topics);
+  subject_update([subject]){
+    log('update subject', desig(subject));
+    for( const slug in Topic.topics ){
+      const subj = Topic.topics[slug].subject;
+      if( subj.is !== 'entity' ) continue;
+      if( subj.id !== subject.id ) continue;
+      Object.assign( subj, subject );
+    }
     
   },
 })
@@ -232,8 +238,12 @@ export const Topic = {
     Topic.lock = false;
     if( menu.dialog ){
       menu.dialog.removeAttribute("disabled");
-
-      if( navigate === 'back') Topic.back();
+      Topic.back();
+    }
+    
+    if( navigate === 'stay' ){
+      log('selected', Topic.selected);
+      Topic.enter_submenu(); // Should fixate on right subject first
     }
   },
   

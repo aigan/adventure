@@ -30,8 +30,12 @@ handler_register( 'greet', async context =>{
 
   // Observe change
   obs = observation(from,target);
-  postMessage(['topic_update', bake_obs(obs)]);
+  postMessage(['subject_update', bake_obs(obs)]);
 
   return "stay";
 
+});
+
+handler_register('ask-about-self', async context =>{
+  log('asking');
 });

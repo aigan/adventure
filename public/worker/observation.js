@@ -19,6 +19,7 @@ function bake_obs( obs ){
   const obj = { id: obs.entity.id };
   obj.description_short = description( obs );
   obj.actions = obs.actions;
+  obj.is = 'entity';
   return obj;
 }
 
@@ -96,8 +97,12 @@ function observing_human({agent, target, observed}){
   if( gender ) observed.primary_descriptor = gender;
   // log('observing human', target, observed);
 
+
+  //TODO: Factor out
   if( Dialog.has_attention({agent,target}) ){
     const html_target = description(observed,{form:'third-obj'})
+
+    // Should introduce yourself first
     observed.actions.push({
       do: 'ask-about-self',
       target: target.id,
