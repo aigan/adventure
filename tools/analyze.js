@@ -66,6 +66,9 @@ fs.createReadStream("./docs/GDEM-10km-colorized-reduced2.png")
 
   const sl5p = {}; // Seglev 5 patterns
 
+  // Seglev 6 patterns for directions
+  const sl6pdir = [{},{},{},{},{},{},{},{},{}];
+
   log('tiles', tymax, txmax, tile_sum.length);
   
   const tilepng = new PNG({ width: 32, height: 16 });
@@ -97,6 +100,95 @@ fs.createReadStream("./docs/GDEM-10km-colorized-reduced2.png")
     }
     log( row );
   }
+
+  //## Iterate through each tile (seglev6). 3x3
+  for( let y=-2; y<tymax+2; y++ ){
+    for( let x=-2; x<txmax+2; x++){
+
+      // Compute key
+      let key = "";
+      for( let sy=0; sy<3; sy++){
+        for( let sx=0; sx<3; sx++){
+          const gy = y+sy;
+          const gx = x+sx;
+          if( gy >= tymax || gy < 0 || gx >= txmax || gx < 0 ){key+="0";continue}
+          key += tile[gy*txmax+gx].toString(16);
+        }
+      }
+
+      // Store key
+      for( let sy=0; sy<3; sy++){
+        for( let sx=0; sx<3; sx++){
+          const gy = y+sy;
+          const gx = x+sx;
+          if( gy >= tymax || gy < 0 || gx >= txmax || gx < 0 ) continue;
+          const dir = sl6pdir[sy*3+sx];
+          if( !dir[key] ) dir[key] = 0;
+          dir[key] ++;
+        }
+      }
+    }
+  }
+
+  //### Time to generate worldmap
+  const sl6map = [];
+  sl6map.length = tymax * txmax;
+  const sl6fit = new Set();
+  
+  function sl6_add( y, x ){
+    const pos = y*txmax + x;
+    const fit = {};
+    sl6fit.add(pos, fit);
+    return [y,x];
+  }
+  
+  function sl6_select(){
+    // TODO: iterate through fits
+    return sl6_add( 8, 16 );
+  }
+
+  function sl6_pick( patterns ){
+    const keys =  Object.keys(patterns);
+    const key = keys[Math.floor( Math.random()*keys.length)];
+    return key;
+  }
+
+  sl6_select();
+  let sanity = 3;
+  while( sl6fit.size ){
+    if( -- sanity < 1 ) throw "panic";
+    log('todo', sl6fit.size);
+
+    const [y,x] = sl6_select();
+    log('selected', y,x);
+
+    // const dir = [];
+    // for( let i=0; i<9; i++ ) dir[i]=".........";
+    
+    // for( let dy=-1; dy<2; dy++){
+    //   for( let dx=-1; dx<2; dx++){
+    //     const gy = y+sy;
+    //     const gx = x+sx;
+    //     if( gy >= tymax || gy < 0 || gx >= txmax || gx < 0 ) continue;
+    //     // const height = sl6map[ gy*txmax + gx ];
+    //     // const sign = height ? height.toString(16) : '.';
+    // 
+    //   }
+    // }
+
+    const key = sl6_pick( sl6pdir[4] );
+    log('using', key);
+
+
+    throw('and now');
+
+  }
+  
+  
+  
+
+
+  throw "checkme";
 
   //## Iterate through each subtile and store relationship to neighbour. 3x3
   for( let y=-2; y<ymax+2; y++ ){

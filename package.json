@@ -17,7 +17,8 @@
     "indefinite": "^2.3.2",
     "mime-types": "^2.1.27",
     "ndarray": "^1.0.19",
-    "ndarray-segment": "0.0.0"
+    "ndarray-segment": "0.0.0",
+    "pngjs": "^5.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^11.1.0",
