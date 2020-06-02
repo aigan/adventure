@@ -10,14 +10,20 @@ const TComponent = {
   //   name: {default:''},
   // },
   ObservationPattern: 'string',
-  Labeled: 'string',
+
+  //### https://tei-c.org/release/doc/tei-p5-doc/en/html/ND.html
+  //### http://xmlns.com/foaf/spec/#term_name
+  Name: {
+    value: 'string', // most general unspecific variant of name
+  },
+
   Description: {
-    short: 'string',
+    short: 'string', // commonly known designation or brief description
   },
   HasRace: 'Race',
   HasGender: 'Gender',
   HasThoughts: {
-    list: 'array',
+    about: 'map', // TODO: support Map amd Set 
   },
   IncidentFacts: { // Problem
     victim: 'Being',
@@ -90,13 +96,13 @@ const TEntity = {
   Female: {
     base: ['Gender'],
     components: {
-      Labeled: 'woman',
+      Description: {short:'woman'},
     }
   },
   Male: {
     base: ['Gender'],
     components: {
-      Labeled: 'man',
+      Description: {short:'man'},
     }
   },
   Human: {
@@ -117,7 +123,7 @@ const TEntity = {
   Table: {
     base: ['Artifact'],
     components: {
-      Labeled: 'table',
+      Description: {short:'table'},
     }
   }
 }
@@ -127,12 +133,18 @@ const world = new ECS.World; //## <<<-------
 ECS.ComponentClass.register( TComponent );
 ECS.Templates.register( TEntity );
 
-const lobby = world.add('Location',{Labeled:'Lobby'})
-const desk = world.add('Table',{InLocation:lobby, Labeled:'desk'});
+const lobby = world.add('Location',{
+  Description: {short:'Lobby'},
+});
 
-const npc1 = world.add('Human', {
+const desk = world.add('Table',{
+  InLocation:lobby,
+  Description: {short:'Desk'},
+});
+
+const catalina = world.add('Human', {
   InLocation: lobby,
-  Labeled: 'Catalina',
+  Name: 'Catalina',
   HasGender: 'Female',
 })
 
@@ -154,7 +166,7 @@ const missing1 = world.add('MissingPerson', {
 });
 
 const emvin = world.add('Human', {
-  Labeled: 'Emvin',
+  Name: 'Emvin',
   HasGender: 'Male',
 });
 
@@ -168,8 +180,28 @@ const missing2 = world.add('MissingPerson', {
   }
 });
 
-const quest1 = world.add('Thought', {
-  KnowledgeAbout: missing2,
+// const quest1 = world.add('Thought', {
+//   KnowledgeAbout: missing2,
+//   IncidentFacts: {
+//     victim: emvin,
+//   },
+//   Time: {
+//     epoch: Date.UTC(2001, 2, 1, 11),
+//     precision: 1000*60*60,
+//   }
+// });
+
+// const knowsEmvin = world.add('Thought', {
+//   KnowledgeAbout: emvin,
+//   Name: 'Emvin',
+//   HasGender: 'Male',
+// });
+
+const player = Adventure.player = world.add('Player', {
+  InLocation: lobby,
+})
+
+Ponder.remember( player, missing2, {
   IncidentFacts: {
     victim: emvin,
   },
@@ -179,22 +211,10 @@ const quest1 = world.add('Thought', {
   }
 });
 
-const knowsEmvin = world.add('Thought', {
-  KnowledgeAbout: emvin,
-  Labeled: 'Emvin',
+Ponder.remember( player, emvin, {
+  Name: 'Emvin',
   HasGender: 'Male',
 });
-
-const player = Adventure.player = world.add('Player', {
-  InLocation: lobby,
-  HasThoughts: {
-    list: [
-      quest1,
-      knowsEmvin,
-    ],
-  },
-})
-
 
 
 function inspect( entity ){
@@ -207,7 +227,7 @@ world.player_enter_location = ()=>{
   const loc = world.entity.get( Adventure.player.get('InLocation').value );
 
   // log('loc', loc);
-  let location_name = loc.get('Labeled').value;
+  let location_name = loc.get('Description','short');
   postMessage(['header_set', `Location: ${location_name}`]);
 
   const observed = observation( Adventure.player, loc, loc );

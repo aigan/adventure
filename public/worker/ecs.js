@@ -49,6 +49,8 @@ class World {
       e.add_component( CR[ct], c_def[ct] );
     }
 
+    if( def.label ) e.label = def.label;
+
     return def.entity_prototype = e;
   }
 
@@ -69,7 +71,7 @@ class World {
     // return entity.bake();
     
     id = entity.id;
-    let name = entity.name;
+    let name = entity.label;
     if( !name ){
       name =  entity.get('Labeled','value');
     }
@@ -90,11 +92,15 @@ class World {
 
 }
 
+// label property reserved for debugging or programmatic identifier. Use the
+// Name component for public description, with extra info for if the name is
+// common knowledge or not.
+
 class Entity {
   constructor(){
     // super();
     this.id = ++ Entity.cnt;
-    this.name = undefined;
+    this.label = undefined; // private for internal user
     this.base = [];
     this._component = {};
     this.world = undefined,
@@ -131,7 +137,7 @@ class Entity {
     return this.world.get_by_id( this.get(ct,pred) );
   }
   
-  modify( ct, props ){
+  modify( ct, props ){ // modify now or soon
     const _c = this._component;
     if( _c[ct] ){
       return Object.assign( _c[ct], props );
@@ -150,7 +156,7 @@ class Entity {
   bake(){
     const obj = {
       id: this.id,
-      name: this.name,
+      label: this.label,
     };
   
     const queue = []; // breadth first tree search

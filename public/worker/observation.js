@@ -1,6 +1,7 @@
 // log("Loading observation");
 
 importScripts("../vendor/indefinite.min.js"); // indefinite
+importScripts("./ponder.js");
 
 function ucfirst( str ){
   return str[0].toUpperCase() + str.slice(1); 
@@ -16,6 +17,7 @@ function tt( strings, ...val_in){
 }
 
 function bake_obs( obs ){
+  // log('bake obs', obs);
   const obj = { id: obs.entity.id };
   obj.description_short = description( obs );
   obj.actions = obs.actions;
@@ -30,16 +32,24 @@ function description(e, {form='indefinite',length='short'}={}){
   let descriptor = e;
   if( e.entity ){
     descriptor = e.primary_descriptor || e.entity;
+    // descriptor = e.entity;
     e = e.entity;
   }
 
-  desc = descriptor.get('Description','short');
-  if( !desc ) desc = descriptor.get('Labeled','value');
+  // const name = e.get('Name','value');
+  
+  desc = descriptor.get('Description',length);
+  if( !desc ) desc = descriptor.get('Description','short');
+  // if( !desc ) desc = descriptor.get('Labeled','value');
   // log('desc', e.id, desc, indefinite(short));
 
+  if( !desc ) return 'stuff';
+
   if( form === 'indefinite'){
+    // if( name ) return name;
     desc = indefinite(desc);
   } else if( form === 'definite' ){
+    // if( name ) return name;
     desc = "the " + desc;
   } else if( form === 'third-subj' ){
     const gender = e.getEntity('HasGender');
@@ -53,7 +63,6 @@ function description(e, {form='indefinite',length='short'}={}){
     return 'it';
   }
 
-  if( !desc ) desc = 'stuff';
   return desc;
 }
 
@@ -64,7 +73,7 @@ const observation_pattern = {
 
 function observation( agent, target, perspective ){
   const observed = { entity: target, actions: [] };
-  // log('obs', target.sysdesig(), pattern);
+  // log('obs', target.sysdesig() );
 
   if( !perspective ) perspective = agent;
   if( target === perspective ){
@@ -89,6 +98,7 @@ function observation( agent, target, perspective ){
     observed.inLocation = seeing_inloc;
   }
 
+  // log('obs', observed);
   return observed;
 }
 
@@ -97,6 +107,11 @@ function observing_human({agent, target, observed}){
   if( gender ) observed.primary_descriptor = gender;
   // log('observing human', target, observed);
 
+  const memory = Ponder.memoryOf( agent, target );
+  if( memory ){
+    const name = memory.get('Name','value');
+    if( name ) observed.knownAs = name;
+  }
 
   //TODO: Factor out
   if( Dialog.has_attention({agent,target}) ){
@@ -106,13 +121,13 @@ function observing_human({agent, target, observed}){
     observed.actions.push({
       do: 'ask-about-self',
       target: target.id,
-      name:`ask about ${html_target}self`,
+      label:`ask about ${html_target}self`,
     });
   } else {
     observed.actions.push({
       do:'greet',
       target: target.id,
-      name:"Initiate dialog",
+      label:"Initiate dialog",
     });
   }
 }

@@ -268,7 +268,7 @@ export const Topic = {
         Topic.add( menu, action );
       }
     }
-    Topic.add( menu, {do:'abort',name:"Never mind"});
+    Topic.add( menu, {do:'abort',label:"Never mind"});
 
     const html_subtopics = menu.topics.filter(t=>t).map( t=>
       `<li class=topic id="${t.slug}" tabindex=0>`+
@@ -374,7 +374,7 @@ document.addEventListener('keydown', e=>{
 export function desig( entity ){
   if( entity.description_short ) return entity.description_short;
   if( entity.Labeled ) return entity.Labeled.value;
-  if( entity.name ) return entity.name;
+  if( entity.label ) return entity.label;
   return entity.id;
 }
 
