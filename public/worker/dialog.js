@@ -36,20 +36,29 @@ handler_register( 'greet', async context =>{
 
 });
 
-handler_register('ask-about-self', async context =>{
-  const {from,target} = context;
+handler_register('ask-about', async context =>{
+  const {from,target,world} = context;
+
+  const subject = world.entity.get( context.subject );
+  
+  // log('ask about', from.sysdesig(), target.sysdesig(), subject.sysdesig());
 
   // TODO: Remember observation
   let obs = observation(from,target);
 
   action: {
     const hdef = description(obs, {form:'definite'});
-    const hthird = description(obs, {form:'third-obj'});
-    const lines = [`&#8250; You ask ${hdef} about ${hthird}self.`];
+    let hsubj;
+    if( target === subject ){
+      hsubj = description(obs, {form:'third-obj'}) + "self";
+    } else {
+      hsubj = Ponder.designation( from, subject );
+    }
+    const lines = [`&#8250; You ask ${hdef} about ${hsubj}.`];
     postMessage(['main_add', ...lines ]);
   }
-  
-  response: {
+
+  if( target === subject ){
     const html_target = ucfirst(description(obs,{form:'third-subj'}));
     const name = target.get('Name','value');
     const lines = [`${html_target} gives you the name ${name}.`];
@@ -60,6 +69,8 @@ handler_register('ask-about-self', async context =>{
     postMessage(['subject_update', bake_obs(obs)]);
 
     postMessage(['main_add', ...lines ]);
+  } else {
+      postMessage(['main_add', "Blank stare..." ]);
   }
 
 });

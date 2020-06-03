@@ -34,9 +34,9 @@ const TComponent = {
     epoch: 'number',
     precision: 'number',
   },
-  KnowledgeAbout: {
-    list: 'array',
-  },
+  // KnowledgeAbout: {
+  //   list: 'array',
+  // },
   Attention: {
     focus: 'ObjectPhysical',
   }
@@ -58,12 +58,13 @@ const TEntity = {
     components: {
       IncidentFacts: {},
       Time: {},
+      Description: {short:'missing person incident'},
     },
   },
   Thought: {
-    components: {
-      KnowledgeAbout: {},
-    },
+    // components: {
+    //   KnowledgeAbout: {},
+    // },
   },
   // Problem: {
   //   base: ['Thought'],
@@ -149,7 +150,7 @@ const catalina = world.add('Human', {
 })
 
 const bride = world.add('Human', {
-  HasGender: 'Female'
+  HasGender: 'Female',
 });
 
 const investigator = world.add('Human', {
@@ -199,12 +200,25 @@ Ponder.remember( player, emvin, {
   HasGender: 'Male',
 });
 
+Ponder.remember( catalina, missing1, {
+  IncidentFacts: {
+    victim: bride,
+  },
+  Time: {
+    epoch: Date.UTC(2001,1,14),
+    precision: 1000*60*60*24*3,
+  }
+});
+
+Ponder.remember( catalina, bride, {
+  HasGender: 'Female',
+});
 
 function inspect( entity ){
   log('👁️', world.sysdesig(entity), entity.bake());
 }
 
-log('player', player)
+// log('player', player)
 
 world.player_enter_location = ()=>{
   // log('you', player)

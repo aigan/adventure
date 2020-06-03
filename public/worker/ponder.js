@@ -23,13 +23,27 @@
       thought.modify( prop, props[prop] );
     }
 
-    log('agent', agent);
+    // log('agent', agent);
     return;
+  }
+  
+  function designation( agent, target ){
+    const memory = Ponder.memoryOf( agent, target );
+    // log('agent', agent.sysdesig(), 'target', target.sysdesig(), memory.bake());
+
+    if( !memory ) throw("agent has no memory of target");
+
+    const name = memory.get('Name','value');
+    if( name ) return name;
+
+    // TODO: add context for distinguising between identical designations
+    return description(target,{form:'definite'});
   }
 
   self.Ponder = {
     memoryOf,
     remember,
+    designation,
   }
 
 })(); //IIFE

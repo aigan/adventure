@@ -119,10 +119,27 @@ function observing_human({agent, target, observed}){
 
     // Should introduce yourself first
     observed.actions.push({
-      do: 'ask-about-self',
+      do: 'ask-about',
       target: target.id,
+      subject: target.id,
       label:`ask about ${html_target}self`,
     });
+    
+    const about = agent.get('HasThoughts','about');
+    for( const [subject,thought] of about ){
+      if( subject === target ) continue;
+      const desig = Ponder.designation(agent,subject);
+      observed.actions.push({
+        do: 'ask-about',
+        target: target.id,
+        subject: subject.id,
+        label:`ask about ${desig}`,
+      });
+      
+      // log('ask about', Ponder.designation(agent,target),thought);
+    }
+    
+    
   } else {
     observed.actions.push({
       do:'greet',
