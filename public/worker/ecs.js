@@ -143,6 +143,7 @@ class Entity {
       return Object.assign( _c[ct], props );
     }
 
+    // log('modify', ct, props);
     const Cc = ECS.ComponentClass.component[ct];
     return this.add_component( Cc, props );
   }
@@ -195,35 +196,43 @@ class Entity {
     for( const key in def ){
       let val = values[key];
       const attr = def[key];
-      if( val ){
-        const type = attr.type;
-        if( ['string','number'].includes(type) ){}
-        else {
-          if( typeof val === 'string' ){
-            // log('set', e.id, C.name, key, val );
-            val = e.world.get_by_template( val );
-            // log('resolved to', val.id);
-          }
+      const type = attr.type;
+      if( attr.type === 'map' ){
+        if( val ) throw "handle map val";
+        c[key] = new Map();
+        continue;
+      }
 
-          if( Array.isArray(val) ){
-            const val_in = val;
-            val = [];
-            for( const target of val_in ){
-              //## TODO: verify type
-              val.push( target.id );
-              target.set_referenced(C.name, e);
-            }
-          } else {
-            //## TODO: verify type
-            const target = val;
-            val = val.id;
-
-            // log('set backref for', target, target.set_referenced);
-            target.set_referenced(C.name, e);
-          }
-        }
+      if( !val ){
+        c[key] = val;
+        continue;
       }
       
+      if( ['string','number'].includes(type) ){}
+      else {
+        if( typeof val === 'string' ){
+          // log('set', e.id, C.name, type, key, val );
+          val = e.world.get_by_template( val );
+          // log('resolved to', val.id);
+        }
+        
+        if( Array.isArray(val) ){
+          const val_in = val;
+          val = [];
+          for( const target of val_in ){
+            //## TODO: verify type
+            val.push( target.id );
+            target.set_referenced(C.name, e);
+          }
+        } else {
+          //## TODO: verify type
+          const target = val;
+          val = val.id;
+          
+          // log('set backref for', target, target.set_referenced);
+          target.set_referenced(C.name, e);
+        }
+      }
       
       // log('set', key, val, attr);
       c[key] = val;
@@ -280,13 +289,14 @@ const ComponentClass = {
   create( def, name ){
     // log('should create component', name, def);
 
-    if( ['string','number'].includes(typeof def)){
+    if( ['string','number','map','set'].includes(typeof def)){
       def = {value:{type:def}};
     }
     
     let C;
     if( !Object.keys(def).length ){
       C = class extends TagComponent{};
+      C.schema = {}; // Todo. Could just use the same object for all
     } else {
       C = class extends Component{};
       for( const pred in def ){

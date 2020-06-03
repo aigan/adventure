@@ -28,7 +28,7 @@ const dispatch = {
 }
 
 function handler_register( label, handler ){
-  log('register handler', label);
+  // log('register handler', label);
   dispatch[label] = handler;
 }
 

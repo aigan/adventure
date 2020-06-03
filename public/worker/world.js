@@ -23,7 +23,7 @@ const TComponent = {
   HasRace: 'Race',
   HasGender: 'Gender',
   HasThoughts: {
-    about: 'map', // TODO: support Map amd Set 
+    about: 'map',
   },
   IncidentFacts: { // Problem
     victim: 'Being',
@@ -180,23 +180,6 @@ const missing2 = world.add('MissingPerson', {
   }
 });
 
-// const quest1 = world.add('Thought', {
-//   KnowledgeAbout: missing2,
-//   IncidentFacts: {
-//     victim: emvin,
-//   },
-//   Time: {
-//     epoch: Date.UTC(2001, 2, 1, 11),
-//     precision: 1000*60*60,
-//   }
-// });
-
-// const knowsEmvin = world.add('Thought', {
-//   KnowledgeAbout: emvin,
-//   Name: 'Emvin',
-//   HasGender: 'Male',
-// });
-
 const player = Adventure.player = world.add('Player', {
   InLocation: lobby,
 })
@@ -221,6 +204,7 @@ function inspect( entity ){
   log('👁️', world.sysdesig(entity), entity.bake());
 }
 
+log('player', player)
 
 world.player_enter_location = ()=>{
   // log('you', player)

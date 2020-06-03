@@ -19,7 +19,7 @@ function tt( strings, ...val_in){
 function bake_obs( obs ){
   // log('bake obs', obs);
   const obj = { id: obs.entity.id };
-  obj.description_short = description( obs );
+  obj.description_short = obs.knownAs || description( obs );
   obj.actions = obs.actions;
   obj.is = 'entity';
   return obj;
