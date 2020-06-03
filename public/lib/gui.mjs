@@ -218,7 +218,6 @@ export const Topic = {
     if( action === 'abort' ) return Topic.back();
     // log('action', selected, action, subj);
 
-    const target = subj.target;
     const menu = selected.parent;
     if( menu.dialog ){
       menu.dialog.setAttribute("disabled","");
@@ -227,8 +226,8 @@ export const Topic = {
     let navigate = 'back';
     
     try{
-      const res = await Message.send(action,{target})
-      log('action', action, res);
+      const res = await Message.send(action,subj)
+      // log('action', action, res);
       if( res === 'stay') navigate = res;
       
     } catch( err ){
@@ -242,7 +241,7 @@ export const Topic = {
     }
     
     if( navigate === 'stay' ){
-      log('selected', Topic.selected);
+      // log('selected', Topic.selected);
       Topic.enter_submenu(); // Should fixate on right subject first
     }
   },
