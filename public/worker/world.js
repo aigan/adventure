@@ -164,7 +164,7 @@ const missing1 = world.add('MissingPerson', {
   },
   Time: {
     epoch: Time.from(1001,1,14),
-    precision: Time.DAY*3,
+    precision: Time.DAY,
   }
 });
 
@@ -220,7 +220,9 @@ function inspect( entity ){
   log('👁️', world.sysdesig(entity), entity.bake());
 }
 
-log( Time.relative( missing1 ) );
+log( "today", Time.format( world.Time ));
+log( "target", Time.format( missing1 ) );
+log( Time.designation( missing1 ) );
 
 
 world.player_enter_location = ()=>{
