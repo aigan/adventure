@@ -2,6 +2,7 @@
 
 importScripts('./ecs.js'); // ECS
 importScripts('./observation.js');
+importScripts('./Time.js');
 
 const TComponent = {
   InLocation: 'Location',
@@ -131,6 +132,7 @@ const TEntity = {
 
 
 const world = new ECS.World; //## <<<-------
+world.Time = {epoch:Time.from(1001,2,1,12,15)};
 ECS.ComponentClass.register( TComponent );
 ECS.Templates.register( TEntity );
 
@@ -161,8 +163,8 @@ const missing1 = world.add('MissingPerson', {
     victim: bride,
   },
   Time: {
-    epoch: Date.UTC(2001,1,14),
-    precision: 1000*60*60*24*3,
+    epoch: Time.from(1001,1,14),
+    precision: Time.DAY*3,
   }
 });
 
@@ -176,8 +178,8 @@ const missing2 = world.add('MissingPerson', {
     victim: emvin,
   },
   Time: {
-    epoch: Date.UTC(2001, 2, 1, 11),
-    precision: 1000*60*60,
+    epoch: Time.from(1001,2,1,11),
+    precision: Time.HOUR,
   }
 });
 
@@ -190,8 +192,8 @@ Ponder.remember( player, missing2, {
     victim: emvin,
   },
   Time: {
-    epoch: Date.UTC(2001, 2, 1, 11),
-    precision: 1000*60*60,
+    epoch: Time.from(1001,2,1,11),
+    precision: Time.HOUR,
   }
 });
 
@@ -205,8 +207,8 @@ Ponder.remember( catalina, missing1, {
     victim: bride,
   },
   Time: {
-    epoch: Date.UTC(2001,1,14),
-    precision: 1000*60*60*24*3,
+    epoch: Time.from(1001,1,14),
+    precision: Time.DAY*3,
   }
 });
 
@@ -218,7 +220,8 @@ function inspect( entity ){
   log('👁️', world.sysdesig(entity), entity.bake());
 }
 
-// log('player', player)
+log( Time.relative( missing1 ) );
+
 
 world.player_enter_location = ()=>{
   // log('you', player)

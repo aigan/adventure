@@ -8,6 +8,7 @@ class World {
   constructor(){
     // super();
     this.entity = new Map();
+    this.Time = undefined; // reserved for Time component
   }
   create_entity(){
     const e = new Entity();
