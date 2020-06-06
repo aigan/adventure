@@ -101,7 +101,7 @@ class Entity {
   constructor(){
     // super();
     this.id = ++ Entity.cnt;
-    this.label = undefined; // private for internal user
+    // this.label = undefined; // private for internal user
     this.base = [];
     this._component = {};
     this.world = undefined,
@@ -158,8 +158,9 @@ class Entity {
   bake(){
     const obj = {
       id: this.id,
-      label: this.label,
     };
+
+    if( this.label ) obj.label = this.label;
   
     const queue = []; // breadth first tree search
     queue.push( this );

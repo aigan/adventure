@@ -35,9 +35,8 @@ const TComponent = {
     epoch: 'number',
     precision: 'number',
   },
-  // KnowledgeAbout: {
-  //   list: 'array',
-  // },
+  ThoughtAbout: 'Entity',
+  ThoughtContent: 'Entity',
   Attention: {
     focus: 'ObjectPhysical',
   }
@@ -63,9 +62,10 @@ const TEntity = {
     },
   },
   Thought: {
-    // components: {
-    //   KnowledgeAbout: {},
-    // },
+    components: {
+      ThoughtAbout: {},
+      ThoughtContent: {},
+    },
   },
   // Problem: {
   //   base: ['Thought'],
@@ -188,6 +188,7 @@ const player = Adventure.player = world.add('Player', {
 })
 
 Ponder.remember( player, missing2, {
+  MissingPerson: {},
   IncidentFacts: {
     victim: emvin,
   },
@@ -198,11 +199,13 @@ Ponder.remember( player, missing2, {
 });
 
 Ponder.remember( player, emvin, {
+  Human: {},
   Name: 'Emvin',
   HasGender: 'Male',
 });
 
 Ponder.remember( catalina, missing1, {
+  MissingPerson: {},
   IncidentFacts: {
     victim: bride,
   },
@@ -213,16 +216,24 @@ Ponder.remember( catalina, missing1, {
 });
 
 Ponder.remember( catalina, bride, {
+  Human: {},
   HasGender: 'Female',
+});
+
+Ponder.remember( catalina, emvin, {
+  Human: {},
+  HasGender: 'Male',
 });
 
 function inspect( entity ){
   log('👁️', world.sysdesig(entity), entity.bake());
 }
 
-log( "today", Time.format( world.Time ));
-log( "target", Time.format( missing1 ) );
-log( Time.designation( missing1 ) );
+inspect( player );
+
+// log( "today", Time.format( world.Time ));
+// log( "target", Time.format( missing1 ) );
+// log( Time.designation( missing1 ) );
 
 
 world.player_enter_location = ()=>{

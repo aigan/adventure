@@ -113,7 +113,7 @@
     if( day < 21 ) return "waning gibbous";
     if( day < 24 ) return "last quarter";
     if( day < 28 ) return "waning crescent";
-    return "new moon";
+    return "last day before the new moon";
   }
   
   // TODO: also handle Duration
