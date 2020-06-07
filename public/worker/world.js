@@ -187,10 +187,21 @@ const player = Adventure.player = world.add('Player', {
   InLocation: lobby,
 })
 
+// const mem_catalina_emvin = Ponder.remember( catalina, emvin, {
+//   Human: {},
+//   HasGender: 'Male',
+// });
+
+const mem_player_emvin = Ponder.remember( player, emvin, {
+  Human: {},
+  Name: 'Emvin',
+  HasGender: 'Male',
+});
+
 Ponder.remember( player, missing2, {
   MissingPerson: {},
   IncidentFacts: {
-    victim: emvin,
+    victim: mem_player_emvin,
   },
   Time: {
     epoch: Time.from(1001,2,1,11),
@@ -198,16 +209,15 @@ Ponder.remember( player, missing2, {
   }
 });
 
-Ponder.remember( player, emvin, {
+const mem_catalina_bride = Ponder.remember( catalina, bride, {
   Human: {},
-  Name: 'Emvin',
-  HasGender: 'Male',
+  HasGender: 'Female',
 });
 
 Ponder.remember( catalina, missing1, {
   MissingPerson: {},
   IncidentFacts: {
-    victim: bride,
+    victim: mem_catalina_bride,
   },
   Time: {
     epoch: Time.from(1001,1,14),
@@ -215,15 +225,6 @@ Ponder.remember( catalina, missing1, {
   }
 });
 
-Ponder.remember( catalina, bride, {
-  Human: {},
-  HasGender: 'Female',
-});
-
-Ponder.remember( catalina, emvin, {
-  Human: {},
-  HasGender: 'Male',
-});
 
 function inspect( entity ){
   log('👁️', world.sysdesig(entity), entity.bake());

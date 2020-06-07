@@ -101,7 +101,7 @@ class Entity {
   constructor(){
     // super();
     this.id = ++ Entity.cnt;
-    // this.label = undefined; // private for internal user
+    // this.label = undefined; // private for internal use
     this.base = [];
     this._component = {};
     this.world = undefined,

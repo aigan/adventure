@@ -2,6 +2,7 @@ const log = console.log.bind(console);
 // log('Loading');
 
 const Adventure = {};
+let DEBUG = true;
 
 async function init(){
   // importScripts('./segments.js');
