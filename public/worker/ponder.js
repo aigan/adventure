@@ -3,7 +3,7 @@
 (()=>{
 
   function memoryOf( agent, target ){
-    const world = agent.world;
+    const world = ECS.World.get(agent.world);
     // log( 'remember', world.sysdesig(agent), world.sysdesig(target) );
     const thoughts = agent.get('HasThoughts','about');
     const thought = thoughts.get(target); // from Map
@@ -14,7 +14,7 @@
   function remember( agent, entity, props ){
     const thoughts = agent.modify('HasThoughts');
     const about = thoughts.about;
-    const world = agent.world;
+    const world = ECS.World.get(agent.world);
 
     // Check that all referred entites are your own thoughts
     if( DEBUG )

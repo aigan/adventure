@@ -33,11 +33,6 @@ function handler_register( label, handler ){
   dispatch[label] = handler;
 }
 
-// function lookup( obj ){
-//   const world = obj.world;
-// }
-
-
 addEventListener('message', async e =>{
   let msg = e.data;
   if( typeof msg === 'string') msg = [msg];
@@ -47,7 +42,7 @@ addEventListener('message', async e =>{
   if( !dispatch[cmd] ) throw(Error(`Message ${cmd} not recognized`));
 
   if( !data.from ) data.from = Adventure.player;
-  if( data.from ) data.world = data.from.world;
+  if( data.from ) data.world = ECS.World.get(data.from.world);
   if( data.target ) data.target = data.world.entity.get( data.target );
   
   // log('dispatch', cmd, data);

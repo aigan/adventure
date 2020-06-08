@@ -85,7 +85,7 @@ function observation( agent, target, perspective ){
     observation_pattern[pattern]({agent,target,perspective,observed});
   }
   
-  const world = agent.world;
+  const world = ECS.World.get(agent.world);
   const seeing_inloc = [];
   const inloc = target.referenced.InLocation || [];
   for( const eid of inloc ){

@@ -9,11 +9,18 @@ class World {
     // super();
     this.entity = new Map();
     this.Time = undefined; // reserved for Time component
+    this.id = World.cnt ++;
+    World.store[this.id] = this;
   }
+  
+  static get( id ){
+    return World.store[id];
+  }
+  
   create_entity(){
     const e = new Entity();
     this.entity.set(e.id,e);
-    e.world = this;
+    e.world = this.id;
     return e;
   }
 
@@ -39,6 +46,7 @@ class World {
       e.add_base( base );
     }
     
+    // TODO: Lock infered hierarchy of 'hypernym' or 'genls'
     if( !CR[et] ) CR[et] = ComponentClass.create( {}, et );
     e.add_component( CR[et] );
     
@@ -93,6 +101,9 @@ class World {
 
 }
 
+World.cnt = 0;
+World.store = [];
+
 // label property reserved for debugging or programmatic identifier. Use the
 // Name component for public description, with extra info for if the name is
 // common knowledge or not.
@@ -135,7 +146,7 @@ class Entity {
   }
 
   getEntity( ct, pred='value' ){
-    return this.world.get_by_id( this.get(ct,pred) );
+    return World.get(this.world).get_by_id( this.get(ct,pred) );
   }
   
   modify( ct, props ){ // modify now or soon
@@ -214,7 +225,7 @@ class Entity {
       else {
         if( typeof val === 'string' ){
           // log('set', e.id, C.name, type, key, val );
-          val = e.world.get_by_template( val );
+          val = World.get(e.world).get_by_template( val );
           // log('resolved to', val.id);
         }
         
@@ -276,7 +287,7 @@ class Entity {
   }
   
   sysdesig(){
-    return this.world.sysdesig(this);
+    return World.get(this.world).sysdesig(this);
   }
 
 }

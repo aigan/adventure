@@ -120,7 +120,7 @@
   function relative( time, base ){
     let fromNow = false;
     if( !base ){
-      base = Adventure.player.world.Time;
+      base = World.get(Adventure.player.world).Time;
       fromNow = true;
     }
     if( time instanceof ECS.Entity ) time = time.get('Time');
@@ -296,7 +296,7 @@
   }
 
   function designation( time ){
-    const base = Adventure.player.world.Time;
+    const base = World.get(Adventure.player.world).Time;
     if( time instanceof ECS.Entity ) time = time.get('Time');
     const epoch = time.epoch;
     if( !epoch ) throw "epoch not found";
