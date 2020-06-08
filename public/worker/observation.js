@@ -45,7 +45,8 @@ function description(e, {form='indefinite',length='short'}={}){
 
   if( !desc ) return 'stuff';
 
-  if( form === 'indefinite'){
+  if( form === 'base' ){} // no change
+  else if( form === 'indefinite'){
     // if( name ) return name;
     desc = indefinite(desc);
   } else if( form === 'definite' ){
@@ -61,6 +62,8 @@ function description(e, {form='indefinite',length='short'}={}){
     if( gender.get('Female') ) return 'her';
     if( gender.get('Male') ) return 'him';
     return 'it';
+  } else {
+    throw `form ${form} not recognized`;
   }
 
   return desc;
