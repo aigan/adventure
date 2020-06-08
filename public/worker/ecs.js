@@ -81,9 +81,9 @@ class World {
     
     id = entity.id;
     let name = entity.label;
-    if( !name ){
-      name =  entity.get('Labeled','value');
-    }
+    // if( !name ){
+    //   name =  entity.get('Labeled','value');
+    // }
 
     let tags = "";
     for( const child of [entity, ...entity.base]){
@@ -190,6 +190,7 @@ class Entity {
   
   add_component( C, values={} ){
     const e = this;
+    // log('add component', C);
     const c = new C();
     e._component[ C.name ] = c;
 
@@ -280,6 +281,10 @@ class Entity {
         initvals = {value:initvals};
       }
       
+      if( DEBUG ){
+        if( !CR[ct] ) throw `Component ${ct} not found`;
+      }
+      
       e.add_component( CR[ct], initvals );
     }
 
@@ -293,7 +298,21 @@ class Entity {
 }
 Entity.cnt = 0;
 
-class Component {}
+class Component {
+  static uniqueness = .6;
+  similarTo( target ){
+    const weight = Object.getPrototypeOf( this ).constructor.uniqueness;
+    for( const key in target ){
+      if( target[key] !== this[key] ) return {weight, similarity:0};
+    }
+
+    for( const key in this ){
+      if( !target[key] ) return {weight, similarity:0};
+    }
+
+    return {weight, similarity:1};
+  }
+}
 
 class TagComponent extends Component {}
 
@@ -325,6 +344,7 @@ const ComponentClass = {
     
     if (typeof name === "undefined") throw "Component name missing";
     Object.defineProperty(C, "name", { value: name });
+    // log('created comp', Object.getPrototypeOf(C).name );
     // log('created comp', C.name );
     ComponentClass.component[name] = C;
     return C;
@@ -335,6 +355,17 @@ const ComponentClass = {
       ComponentClass.create( templates[t], t)
     }
   },
+  
+  add( C ){
+    if( DEBUG ){
+      const ct = C.name;
+      if( !ct ) throw "No name for component class";
+      if( CR[ct] ) throw `Component class ${ct} already registred`;
+      if( !C.schema ) throw `Schema missing from ${ct}`;
+    }
+
+    CR[C.name] = C;
+  }
 }
 
 const CR = ComponentClass.component;

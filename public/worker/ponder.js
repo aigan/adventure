@@ -75,6 +75,63 @@
     return content;
   }
   
+  function recall( agent, components, context ){
+    // TODO: maby use indexes
+
+    // TODO: Add back-reference (rev) components
+    // log('recall', agent.sysdesig(), components );
+
+    const matches = [];
+
+    const thoughts = agent.get('HasThoughts','about');
+    for( const thought of thoughts.values()){
+      const content = thought.getEntity('ThoughtContent');
+      const contentc = content.bake();
+      // log('t', contentc);
+      
+      // Rough apriximation for sorting matches
+      const match = {
+        neg: 0,
+        unk: 0,
+        pos: 0,
+        thought,
+        context,
+      };
+      for( const ct in components ){
+        if( ct === 'id' ) continue; // todo: id not allowed
+        const c = contentc[ct];
+        if( !c ){
+          match.unk ++;
+          continue;
+        }
+        
+        if( c instanceof ECS.TagComponent ){
+          match.pos ++; continue
+        }
+
+        // Compare similarity
+        // log( 'check', ct);
+        const {weight, similarity} = c.similarTo( contentc[ct] );
+        if( similarity > 0.5 ){
+          match.pos += weight;
+        } else {
+          match.neg += weight;
+        }
+      }
+
+      if( !match.pos ) continue;
+      matches.push( match );
+      // log( 'association', contentc, neg, unk, pos );
+    }
+
+    // log( 'matches', matches.map( el => el.thought.sysdesig() ));
+    log( 'matches', matches.map( el => el.thought.bake() ));
+
+    // sort by max pos, min neg, min unk
+    // return matches.sort( (a,b)=>{
+    // })
+  }
+  
   function designation( agent, target ){
     const memory = Ponder.memoryOf( agent, target );
     // log('agent', agent.sysdesig(), 'target', target.sysdesig(), memory.bake());
@@ -86,11 +143,14 @@
     // TODO: add context for distinguising between identical designations
     return description(target,{form:'definite'});
   }
+  
+  
 
   self.Ponder = {
     memoryOf,
     remember,
     designation,
+    recall,
   }
 
 })(); //IIFE
