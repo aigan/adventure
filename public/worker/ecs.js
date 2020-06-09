@@ -273,6 +273,10 @@ class Entity {
     const e = this;
 
     for( const ct in props ){
+      if( ct === 'label' ){
+        e.label = props.label;
+        continue;
+      }
 
       let initvals =  props[ct];
       // log('entity', world.sysdesig(e), 'adding', ct, 'with', initvals );
@@ -295,6 +299,35 @@ class Entity {
     return World.get(this.world).sysdesig(this);
   }
 
+  inspect(){
+    // TODO: add seen for loops. add depth
+    const baked = this.bake();
+    const obj = {id:baked.id};
+    if( this.label ) obj.label = this.label;
+    for( const ct in baked ){
+      if( ['id','label'].includes(ct) ) continue;
+      const cb = {};
+      obj[ct] = cb;
+      const c = baked[ct];
+      const def = Object.getPrototypeOf(c).constructor.schema;
+      for( const pred in c ){
+        // log('get entity', ct, pred, def[pred].type, c[pred]);
+        if( def[pred] && c[pred] ){
+          const type = def[pred].type;
+          if( type === 'Entity' || CR[type] ){
+            cb[pred] = World.get(this.world).get_by_id(c[pred]).inspect();;
+            continue;
+          } else if( type === 'map'){
+            cb[pred] = [...c[pred].values()].map(e => e.inspect());
+            continue;
+          }
+        }
+        cb[pred] = c[pred];
+      }
+    }
+    return obj;
+  }
+
 }
 Entity.cnt = 0;
 
@@ -314,7 +347,9 @@ class Component {
   }
 }
 
-class TagComponent extends Component {}
+class TagComponent extends Component {
+  static uniqueness = .3;
+}
 
 const ComponentClass = {
   component: {},
