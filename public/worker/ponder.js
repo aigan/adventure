@@ -106,7 +106,10 @@
         }
         
         if( c instanceof ECS.TagComponent ){
-          match.pos ++; continue
+          const weight = Object.getPrototypeOf( c ).constructor.uniqueness;
+          // log('tag score', weight, c)
+          match.pos += weight;
+          continue;
         }
 
         // Compare similarity
@@ -124,12 +127,23 @@
       // log( 'association', contentc, neg, unk, pos );
     }
 
-    // log( 'matches', matches.map( el => el.thought.sysdesig() ));
-    log( 'matches', matches.map( el => el.thought.bake() ));
-
     // sort by max pos, min neg, min unk
-    // return matches.sort( (a,b)=>{
-    // })
+    matches.sort( (a,b)=>{
+      if( a.pos > b.pos ) return -1;
+      if( a.pos < b.pos ) return +1;
+      if( a.neg > b.neg ) return +1;
+      if( a.neg < b.neg ) return -1;
+      if( a.unk > b.unk ) return +1;
+      if( a.unk < b.unk ) return -1;
+      return 0;
+    });
+    
+    log( 'matches', matches.map( el =>{
+      el.thought = el.thought.inspect();
+      return el;
+    } ));
+
+    return matches;
   }
   
   function designation( agent, target ){
