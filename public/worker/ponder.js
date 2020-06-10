@@ -94,11 +94,13 @@
         neg: 0,
         unk: 0,
         pos: 0,
+        certainty: undefined,
         thought,
         context,
       };
       for( const ct in components ){
         if( ct === 'id' ) continue; // todo: id not allowed
+        // log( 'check', ct);
         const c = contentc[ct];
         if( !c ){
           match.unk ++;
@@ -113,8 +115,8 @@
         }
 
         // Compare similarity
-        // log( 'check', ct);
-        const {weight, similarity} = c.similarTo( contentc[ct] );
+        const {weight, similarity} = c.similarTo( components[ct] );
+        // log('similarity', similarity, weight);
         if( similarity > 0.5 ){
           match.pos += weight;
         } else {
@@ -123,6 +125,13 @@
       }
 
       if( !match.pos ) continue;
+      
+      // just for rough comparisons
+      match.certainty = (
+        (match.pos - match.unk - 2*match.neg) /
+        (match.pos + match.unk + 2*match.neg)
+      );
+      
       matches.push( match );
       // log( 'association', contentc, neg, unk, pos );
     }
@@ -137,13 +146,53 @@
       if( a.unk < b.unk ) return -1;
       return 0;
     });
-    
-    log( 'matches', matches.map( el =>{
-      el.thought = el.thought.inspect();
-      return el;
-    } ));
 
-    return matches;
+    // log( 'matches', ...matches );
+
+    const res = {
+      certain: undefined,
+      uncertain: [],
+      similar: [],
+      confidence: 0,
+    };
+
+    if( !matches[0] ){
+      res.certain = null;
+      return res;
+    }
+
+    let level = 'uncertain';
+    let consider = matches.shift();
+    res.confidence = consider.certainty;
+    if( consider.neg || (consider.unk > consider.pos) ){
+      res.certain = null;
+      res.similar.push( consider );
+      level = 'similar';
+    } else {
+      res.certain = consider;
+    }
+    
+    for( const match of matches ){
+      // log('diff', consider.certainty - match.certainty);
+      if( consider.certainty - match.certainty > .5  ){
+        if( level === 'similar' ) break;
+        if( res.certain ) break;
+        level = 'similar';
+      } else {
+        if( res.certain ){
+          res.uncertain.push( res.certain );
+          res.certain = null;
+          res.confidence = res.confidence / 2;
+        }
+      }
+      
+      res[level].push( match );
+      consider = match;
+
+      if( res.similar.length > 6 ) break;
+    }    
+
+    return res;
   }
   
   function designation( agent, target ){
