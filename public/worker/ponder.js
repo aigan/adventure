@@ -75,62 +75,131 @@
     return content;
   }
   
-  function recall( agent, components, context ){
-    // TODO: maby use indexes
+  
+  function compare( a, b, context ){
+    const res = {
+      neg: 0,
+      unk: 0,
+      pos: 0,
+      certainty: undefined,
+      thought: undefined,
+    };
+    
+    log('compare entity', a, b);
+    for( const ct in a ){
+      if( ['id','label','referenced'].includes(ct) ) continue;
+      log( 'check', ct);
+      const c = b[ct];
+      if( !c ){
+        res.unk ++;
+        continue;
+      }
+      
+      if( c instanceof ECS.TagComponent ){
+        const weight = Object.getPrototypeOf( c ).constructor.uniqueness;
+        // log('tag score', weight, c)
+        res.pos += weight;
+        continue;
+      }
+      
+      // Compare similarity
+      const {weight, similarity} = c.similarTo( a[ct], context );
+      log('similarity', similarity, weight);
+      if( similarity > 0.5 ){
+        res.pos += weight;
+      } else {
+        res.neg += weight;
+      }
+    }
 
-    // TODO: Add back-reference (rev) components
-    // log('recall', agent.sysdesig(), components );
+    // just for rough comparisons
+    res.certainty = (
+      (res.pos - res.unk - 2*res.neg) /
+      (res.pos + res.unk + 2*res.neg)
+    );
+
+    return res;
+  }
+
+
+  function recall( agent, components, context={} ){
+    // TODO: maby use indexes
+    log('recall', agent.sysdesig(), components );
+
+    if( !context.seen ) context.seen={};
+
+    const res = {
+      certain: undefined,
+      uncertain: [],
+      similar: [],
+      confidence: 0,
+    };
+
 
     const matches = [];
-
+    if( !context.world ) context.world = ECS.World.get(agent.world);
+    
     const thoughts = agent.get('HasThoughts','about');
     for( const thought of thoughts.values()){
       const content = thought.getEntity('ThoughtContent');
       const contentc = content.bake();
-      // log('t', contentc);
+      log('compare to thought content', contentc);
       
       // Rough apriximation for sorting matches
-      const match = {
-        neg: 0,
-        unk: 0,
-        pos: 0,
-        certainty: undefined,
-        thought,
-        context,
-      };
-      for( const ct in components ){
-        if( ct === 'id' ) continue; // todo: id not allowed
-        // log( 'check', ct);
-        const c = contentc[ct];
-        if( !c ){
+      const match = compare( components, contentc, context );
+      match.thought = thought;
+
+      const contref = contentc.referenced;
+      for( const ct in components.referenced ){
+        if( ct === "ThoughtContent") continue; // private
+        if( !contref[ct] ){
+          // log('no match for', ct);
           match.unk ++;
           continue;
         }
-        
-        if( c instanceof ECS.TagComponent ){
-          const weight = Object.getPrototypeOf( c ).constructor.uniqueness;
-          // log('tag score', weight, c)
-          match.pos += weight;
-          continue;
+        const target_refs = components.referenced[ct];
+        const weight = ECS.ComponentClass.component[ct].uniqueness;
+        // log('check ref', ct, weight);
+        for( const target_id of target_refs ){
+          if( context.seen[target_id] ){
+            console.warn('skip', target_id);
+            continue;
+          }
+          const target = context.world.get_by_id(target_id).bake();
+          context.seen[target_id] = target;
+          log('check ref', ct, target);
+          for( const ref_id of contref[ct] ){
+            if( target_id === ref_id ){
+              match.pos += weight;
+              break;
+            }
+
+            if( context.seen[ref_id] ){
+              console.warn('skip', ref_id);
+              continue;
+            }
+            const e = context.world.get_by_id(ref_id).bake();
+            context.seen[ref_id] = e;
+            const partmatch = compare( target, e, context );
+            log('FIXME compare', partmatch);
+          }
         }
 
-        // Compare similarity
-        const {weight, similarity} = c.similarTo( components[ct] );
-        // log('similarity', similarity, weight);
-        if( similarity > 0.5 ){
-          match.pos += weight;
-        } else {
-          match.neg += weight;
-        }
+        
       }
+
+      // for( const ct in contentc.referenced ){
+      //   const refs = contentc.referenced[ct];
+      //   log('ref', ct);
+      //   for( const id of refs ){
+      //     const e = world.get_by_id( id );
+      //     log('id',id, e)
+      //   }
+      // }
+
 
       if( !match.pos ) continue;
       
-      // just for rough comparisons
-      match.certainty = (
-        (match.pos - match.unk - 2*match.neg) /
-        (match.pos + match.unk + 2*match.neg)
-      );
       
       matches.push( match );
       // log( 'association', contentc, neg, unk, pos );
@@ -148,13 +217,6 @@
     });
 
     // log( 'matches', ...matches );
-
-    const res = {
-      certain: undefined,
-      uncertain: [],
-      similar: [],
-      confidence: 0,
-    };
 
     if( !matches[0] ){
       res.certain = null;
@@ -207,8 +269,6 @@
     return description(target,{form:'definite'});
   }
   
-  
-
   self.Ponder = {
     memoryOf,
     remember,

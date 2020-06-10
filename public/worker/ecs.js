@@ -169,6 +169,7 @@ class Entity {
   bake(){
     const obj = {
       id: this.id,
+      referenced: {},
     };
 
     if( this.label ) obj.label = this.label;
@@ -182,6 +183,17 @@ class Entity {
         if( ct in obj ) continue;
         obj[ct] = e._component[ct];
       }
+      
+      for( const ct in e.referenced ){
+        // log('ref', ct);
+        if( ct in obj.referenced ) continue;
+        if( e.referenced[ct].size > 100 ){
+          console.error('referenced for', e);
+          throw "To many references for bake";
+        }
+        obj.referenced[ct] = [... e.referenced[ct].values()];
+      }
+      
       queue.push( ...(e.base||[]) );
     }
   
@@ -299,13 +311,22 @@ class Entity {
     return World.get(this.world).sysdesig(this);
   }
 
-  inspect(){
+  inspect({seen={}}={}){
     // TODO: add seen for loops. add depth
+    if(seen[this.id]) return seen[this.id];
     const baked = this.bake();
-    const obj = {id:baked.id};
+    const world = World.get(this.world);
+    // log('baked', baked);
+    const obj = seen[this.id] = {id:baked.id,referenced:{}};
     if( this.label ) obj.label = this.label;
+    for( const ct in baked.referenced ){
+      const refs = obj.referenced[ct] = [];
+      for( const id of baked.referenced[ct]){
+        refs.push( world.get_by_id(id).inspect({seen}) );
+      }
+    }
     for( const ct in baked ){
-      if( ['id','label'].includes(ct) ) continue;
+      if( ['id','label','referenced'].includes(ct) ) continue;
       const cb = {};
       obj[ct] = cb;
       const c = baked[ct];
@@ -315,10 +336,10 @@ class Entity {
         if( def[pred] && c[pred] ){
           const type = def[pred].type;
           if( type === 'Entity' || CR[type] ){
-            cb[pred] = World.get(this.world).get_by_id(c[pred]).inspect();;
+            cb[pred] = world.get_by_id(c[pred]).inspect({seen});
             continue;
           } else if( type === 'map'){
-            cb[pred] = [...c[pred].values()].map(e => e.inspect());
+            cb[pred] = [...c[pred].values()].map(e => e.inspect({seen}));
             continue;
           }
         }
@@ -333,10 +354,23 @@ Entity.cnt = 0;
 
 class Component {
   static uniqueness = .6;
-  similarTo( target ){
-    const weight = Object.getPrototypeOf( this ).constructor.uniqueness;
+  similarTo( target, context ){
+    const C = Object.getPrototypeOf( this );
+    const weight = C.constructor.uniqueness;
+    const def = C.constructor.schema;
+    
+    log('similarTo', this, target, context, def);
     for( const key in target ){
-      if( target[key] !== this[key] ) return {weight, similarity:0};
+      const type = def[key].type;
+      if( type === 'Entity' || CR[type] ){
+        const world = context.world;
+        
+        log('FIXME compare', key, type);
+        // cb[pred] = world.get_by_id(c[pred]).inspect({seen});
+        // continue;
+      } else {
+        if( target[key] !== this[key] ) return {weight, similarity:0};
+      }
     }
 
     for( const key in this ){
