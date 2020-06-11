@@ -359,22 +359,32 @@ class Component {
     const weight = C.constructor.uniqueness;
     const def = C.constructor.schema;
     
-    log('similarTo', this, target, context, def);
+    // log('similarTo', this, target, context.compare_b, context.compare_a);
     for( const key in target ){
+      if( target[key] === this[key] ) continue;
+
       const type = def[key].type;
       if( type === 'Entity' || CR[type] ){
         const world = context.world;
+
+        if( this[key] === context.compare_b && target[key] === context.compare_a ){
+          // log('similarity assumed for sake of comparison here');
+          continue;
+        }
         
-        log('FIXME compare', key, type);
+        log('FIXME similarTo', key, type, this[key], context.compare_b, target[key], context.compare_a );
         // cb[pred] = world.get_by_id(c[pred]).inspect({seen});
         // continue;
-      } else {
-        if( target[key] !== this[key] ) return {weight, similarity:0};
       }
+
+      return {weight, similarity:0};
     }
 
     for( const key in this ){
-      if( !target[key] ) return {weight, similarity:0};
+      if(!( key in target )){
+        // log('key', key, 'missing in target');
+        return {weight, similarity:0};  
+      }
     }
 
     return {weight, similarity:1};
