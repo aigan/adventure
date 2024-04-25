@@ -2,30 +2,16 @@
   "name": "adv",
   "version": "0.0.1",
   "description": "Adventure",
-  "main": "index.js",
+  "browser": "public/client.mjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "postinstall": "gulp copy"
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "debug": "^4.1.1",
-    "dialog-polyfill": "^0.5.1",
-    "etag": "^1.8.1",
-    "fresh": "^0.5.2",
-    "indefinite": "^2.3.2",
-    "mime-types": "^2.1.27",
-    "ndarray": "^1.0.19",
-    "ndarray-segment": "0.0.0",
-    "pngjs": "^5.0.0"
-  },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^11.1.0",
-    "@rollup/plugin-json": "^4.0.3",
-    "@rollup/plugin-node-resolve": "^7.1.3",
-    "esm": "^3.2.25",
-    "gulp": "^4.0.2",
-    "rollup": "^2.7.6"
+    "dialog-polyfill": "^0.5.1",
+    "gulp": "^5.0.0",
+    "indefinite": "^2.3.2"
   }
 }

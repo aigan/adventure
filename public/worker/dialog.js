@@ -5,6 +5,26 @@ const Dialog = {
     const attention = target.getEntity('Attention','focus');
     if( attention === agent) return true;
     return false;
+  },
+
+  // stopgap solution for selecting how to describe something
+  descriptor_preference: {
+    priority: ['HasRace','HasGender','Name'],
+  },
+  
+  descriptors_from_memory( mem ){
+    // log('select descriptors from', mem);
+    const descr = [];
+    for( const ct of Dialog.descriptor_preference.priority ){
+      const c = mem.get(ct);
+      // log('ct',ct, c);
+      if( c ) descr.push( c );
+    }
+    return descr;
+  },
+  
+  description_text( descriptors ){
+    log('descr', descriptors);
   }
 };
 
@@ -70,7 +90,19 @@ handler_register('ask-about', async context =>{
 
     postMessage(['main_add', ...lines ]);
   } else {
-      postMessage(['main_add', "Blank stare..." ]);
+    const a_mem = Ponder.memoryOf( from, subject );
+
+    // log('obs', observation(from,a_mem));
+    const descriptors = Dialog.descriptors_from_memory( a_mem );
+    // log('desc', descriptors);
+    const text = Dialog.description_text(descriptors);
+
+    log('a_mem', text);
+
+    // const t_mem = Ponder.memoryOf( target, subject );
+    // log('t_mem', subject, t_mem);
+    
+    postMessage(['main_add', "Blank stare..." ]);
   }
 
 });

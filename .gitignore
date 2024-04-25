@@ -1,7 +1,6 @@
 /conf.json
 /node_modules
 /tmp
-/lab
 /public/vendor
 /public/lab
 /public/procgen
