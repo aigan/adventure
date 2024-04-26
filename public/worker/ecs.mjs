@@ -1,10 +1,11 @@
-'use strict';
-// log('Loading ECS');
+const log = console.log.bind(console);
+const DEBUG = false;
+
+log('Loading ECS');
 // Taking some concepts from ECS and https://blog.mozvr.com/introducing-ecsy/
 // And stuff from https://github.com/bvalosek/tiny-ecs
 
-(()=>{
-class World {
+export class World {
   constructor(){
     // super();
     this.entity = new Map();
@@ -25,6 +26,7 @@ class World {
   }
 
   add( et, props ){
+		const world = this;
     if( !props ) props = {};
     const e = world.create_entity();
 
@@ -108,7 +110,7 @@ World.store = [];
 // Name component for public description, with extra info for if the name is
 // common knowledge or not.
 
-class Entity {
+export class Entity {
   constructor(){
     // super();
     this.id = ++ Entity.cnt;
@@ -156,7 +158,7 @@ class Entity {
     }
 
     // log('modify', ct, props);
-    const Cc = ECS.ComponentClass.component[ct];
+    const Cc = ComponentClass.component[ct];
     return this.add_component( Cc, props );
   }
   
@@ -352,7 +354,7 @@ class Entity {
 }
 Entity.cnt = 0;
 
-class Component {
+export class Component {
   static uniqueness = .6;
   similarTo( target, context ){
     const C = Object.getPrototypeOf( this );
@@ -391,11 +393,11 @@ class Component {
   }
 }
 
-class TagComponent extends Component {
+export class TagComponent extends Component {
   static uniqueness = .3;
 }
 
-const ComponentClass = {
+export const ComponentClass = {
   component: {},
   create( def, name ){
     // log('should create component', name, def);
@@ -449,7 +451,7 @@ const ComponentClass = {
 
 const CR = ComponentClass.component;
 
-const Templates = {
+export const Templates = {
   template: {},
   register( templates ){
     Object.assign( Templates.template, templates );
@@ -457,17 +459,3 @@ const Templates = {
 }
 
 const TR = Templates.template;
-
-
-// Set in global scope for Webworker
-self.ECS = {
-  World,
-  Entity,
-  Component,
-  ComponentClass,
-  TagComponent,
-  Templates,
-}
-
-
-})(); //IIFE

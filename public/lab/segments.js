@@ -3,8 +3,8 @@ console.log("Loading segments");
 
 // Using term SEGLEV for segment level. Seglev7 is the world, continging
 // 16x16x16 cubes of Seglev6. Seglev2 contains 16x16x16 cubic meters.
-// Coordinates for each level can be referenced by 0..F for XYZ. Plain is at
-// X,Z. Up is Y. Levels detailed in /docs/sizes.ods
+// Coordinates for each level can be referenced by 0..F for XYZ. Plane is at
+// X,Z. Up is Y.
 
 importScripts('../vendor/ndarray.js');
 importScripts('../vendor/ndseg.js');

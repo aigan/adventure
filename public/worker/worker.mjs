@@ -1,15 +1,17 @@
-const log = console.log.bind(console);
-// log('Loading');
+//import {world} from "world.mjs";
 
-const Adventure = {};
+const log = console.log.bind(console);
+log('Loading');
+
 let DEBUG = true;
 
+/*
+All imports async here in top worker for catching errors
+ */
+let world,ECS;
 async function init(){
-  // importScripts('./segments.js');
-  // log('world', typeof world, world);
-  importScripts('./world.js');
-  importScripts('./dialog.js');
-
+	({world} = await import("./world.mjs"));
+	ECS = await import("./ecs.mjs");
   // log('player', world.sysdesig(player));
   world.player_enter_location();
   
@@ -28,7 +30,7 @@ const dispatch = {
   },
 }
 
-function handler_register( label, handler ){
+export function handler_register( label, handler ){
   // log('register handler', label);
   dispatch[label] = handler;
 }
@@ -36,12 +38,14 @@ function handler_register( label, handler ){
 addEventListener('message', async e =>{
   let msg = e.data;
   if( typeof msg === 'string') msg = [msg];
-  // console.log("Recieved message", data);
   const [cmd, data={}, ackid] = msg;
+  log("Recieved message", cmd, data );
 
+	if( cmd === "start" ) return await dispatch.start(data);
+	
   if( !dispatch[cmd] ) throw(Error(`Message ${cmd} not recognized`));
 
-  if( !data.from ) data.from = Adventure.player;
+  if( !data.from ) data.from = world.Adventure.player;
   if( data.from ) data.world = ECS.World.get(data.from.world);
   if( data.target ) data.target = data.world.entity.get( data.target );
   
@@ -55,9 +59,9 @@ addEventListener('message', async e =>{
 }, false);
 
 //## Not implemented consistently
-// self.onerror = err =>{
-//   console.log("worker on error");
-// }
+self.onerror = err =>{
+   console.log("worker on error");
+}
 
 
-// log('Ready');
+log('Ready');

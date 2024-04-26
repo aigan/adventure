@@ -5,13 +5,17 @@
   "browser": "public/client.mjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "postinstall": "gulp copy"
+    "postinstall": "gulp default"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
     "dialog-polyfill": "^0.5.1",
     "gulp": "^5.0.0",
-    "indefinite": "^2.3.2"
+    "gulp-exec": "^5.0.0",
+    "indefinite": "^2.3.2",
+    "rollup": "^4.16.4"
   }
 }

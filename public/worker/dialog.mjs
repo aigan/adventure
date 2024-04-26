@@ -1,32 +1,36 @@
-// log('Loading');
+const log = console.log.bind(console);
+log('Loading Dialog');
 
-const Dialog = {
-  has_attention({agent,target}){
-    const attention = target.getEntity('Attention','focus');
-    if( attention === agent) return true;
-    return false;
-  },
+import {handler_register} from "./worker.mjs";
+import {observation,description,ucfirst, bake_obs} from "./observation.mjs";
+import * as Ponder from "./ponder.mjs";
 
-  // stopgap solution for selecting how to describe something
-  descriptor_preference: {
-    priority: ['HasRace','HasGender','Name'],
-  },
-  
-  descriptors_from_memory( mem ){
-    // log('select descriptors from', mem);
-    const descr = [];
-    for( const ct of Dialog.descriptor_preference.priority ){
-      const c = mem.get(ct);
-      // log('ct',ct, c);
-      if( c ) descr.push( c );
-    }
-    return descr;
-  },
-  
-  description_text( descriptors ){
-    log('descr', descriptors);
+export function has_attention({agent,target}){
+  const attention = target.getEntity('Attention','focus');
+  if( attention === agent) return true;
+  return false;
+}
+
+// stopgap solution for selecting how to describe something
+export const descriptor_preference = {
+  priority: ['HasRace','HasGender','Name'],
+}
+
+export function descriptors_from_memory( mem ){
+  // log('select descriptors from', mem);
+  const descr = [];
+  for( const ct of descriptor_preference.priority ){
+    const c = mem.get(ct);
+    // log('ct',ct, c);
+    if( c ) descr.push( c );
   }
-};
+  return descr;
+}
+
+export function description_text( descriptors ){
+  log('descr', descriptors);
+}
+
 
 handler_register( 'greet', async context =>{
   const {from,target} = context;
@@ -93,9 +97,9 @@ handler_register('ask-about', async context =>{
     const a_mem = Ponder.memoryOf( from, subject );
 
     // log('obs', observation(from,a_mem));
-    const descriptors = Dialog.descriptors_from_memory( a_mem );
+    const descriptors = descriptors_from_memory( a_mem );
     // log('desc', descriptors);
-    const text = Dialog.description_text(descriptors);
+    const text = description_text(descriptors);
 
     log('a_mem', text);
 

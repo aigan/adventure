@@ -1,9 +1,12 @@
-// log("Loading observation");
+const log = console.log.bind(console);
+log("Loading observation");
 
-importScripts("../vendor/indefinite.min.js"); // indefinite
-importScripts("./ponder.js");
+import indefinite from "../vendor/indefinite.mjs";
+import * as Ponder from "./ponder.mjs";
+import * as ECS from "./ecs.mjs";
+import * as Dialog from "./dialog.mjs";
 
-function ucfirst( str ){
+export function ucfirst( str ){
   return str[0].toUpperCase() + str.slice(1); 
 }
 
@@ -16,7 +19,7 @@ function tt( strings, ...val_in){
   return {strings,values};
 }
 
-function bake_obs( obs ){
+export function bake_obs( obs ){
   // log('bake obs', obs);
   const obj = { id: obs.entity.id };
   obj.description_short = obs.knownAs || description( obs );
@@ -25,7 +28,7 @@ function bake_obs( obs ){
   return obj;
 }
 
-function description(e, {form='indefinite',length='short'}={}){
+export function description(e, {form='indefinite',length='short'}={}){
   let desc;
 
   // support passing of either entity orobservation
@@ -74,7 +77,7 @@ const observation_pattern = {
   Artifact: observing_artifact,
 }
 
-function observation( agent, target, perspective ){
+export function observation( agent, target, perspective ){
   const observed = { entity: target, actions: [] };
   // log('obs', target.sysdesig() );
 
@@ -93,7 +96,7 @@ function observation( agent, target, perspective ){
   const inloc = target.referenced.InLocation || [];
   for( const eid of inloc ){
     const e = world.entity.get(eid);
-    if( e === Adventure.player ) continue;
+    if( e === world.Adventure.player ) continue;
     const obi = observation( agent, e, perspective );
     seeing_inloc.push( obi );
   }
@@ -154,7 +157,7 @@ function observing_human({agent, target, observed}){
 
 function observing_artifact(){}
 
-function observation_text( obs ){
+export function observation_text( obs ){
   const lines = [];
   // log('text for', obs);
 

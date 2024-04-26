@@ -1,8 +1,9 @@
-// log('Loading world');
+import * as ECS from "./ecs.mjs";
+import {observation,observation_text} from "./observation.mjs";
+import Time from "./time.mjs";
+import * as Ponder from "./ponder.mjs";
 
-importScripts('./ecs.js'); // ECS
-importScripts('./observation.js');
-importScripts('./Time.js');
+const log = console.log.bind(console);
 
 const TComponent = {
   InLocation: 'Location',
@@ -131,8 +132,11 @@ const TEntity = {
 }
 
 
-const world = new ECS.World; //## <<<-------
+const Adventure = {};
+
+export const world = new ECS.World; //## <<<-------
 world.Time = {epoch:Time.from(1001,2,1,12,15)};
+world.Adventure = Adventure;
 ECS.ComponentClass.register( TComponent );
 ECS.Templates.register( TEntity );
 

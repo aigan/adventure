@@ -2,7 +2,7 @@ const log = console.log.bind(console);
 // import {worker} from "./boot.mjs";
 //## Firefox do not support worker modules yet!
 // URL relative to containing HTML page.
-export const worker = new Worker('worker/worker.js', {type:"classic"});
+export const worker = new Worker('worker/worker.mjs', {type:"module"});
 
 const jobs = {};
 
@@ -49,22 +49,24 @@ export const Message = {
 }
 
 //#### Not implemented consistantly!
-/*
 worker.onerror = e =>{
-  console.error("catched worker error");
-  console.log( e.data );
+  console.error("catched worker error", e);
+	// No info about what error
   e.preventDefault();
 }
+
 worker.onmessageerror = err =>{
   console.error("catched worker message error");
   err.preventDefault();
 }
 
-worker.addEventListener("error", e=>{
-  console.log("worker on error");
-}, false);
+//worker.addEventListener("error", e=>{
+//  console.log("worker on error", e);
+//}, false);
+//
+//worker.addEventListener("messageerror", e=>{
+//  console.log("worker on error");
+//}, false);
+//
 
-worker.addEventListener("messageerror", e=>{
-  console.log("worker on error");
-}, false);
-*/
+

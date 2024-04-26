@@ -1,9 +1,15 @@
-const { src, dest } = require("gulp");
-
-function copy(cb){
-  src('node_modules/indefinite/dist/indefinite.min.js').pipe(dest('public/vendor/'));
-
-  src('node_modules/dialog-polyfill/dist/*').pipe(dest('public/vendor/'));
-	cb();
+const { series, src, dest } = require("gulp");
+const {exec} = require('child_process');
+ 
+const rollupBuild = (cb)=>{
+  exec('node_modules/rollup/dist/bin/rollup -c', (err, stdout, stderr)=>{
+    if(stderr) console.error(stderr);
+    cb(err);
+  });
 }
-exports.copy = copy;
+
+function copy(){
+  return src('node_modules/dialog-polyfill/dist/*').pipe(dest('public/vendor/'));
+}
+
+exports.default = series(rollupBuild, copy);
