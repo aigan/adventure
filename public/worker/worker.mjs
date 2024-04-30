@@ -1,7 +1,7 @@
 //import {world} from "world.mjs";
 
 const log = console.log.bind(console);
-log('Loading');
+log('Loading Worker');
 
 let DEBUG = true;
 
@@ -12,7 +12,9 @@ let world,ECS;
 async function init(){
 	({world} = await import("./world.mjs"));
 	ECS = await import("./ecs.mjs");
-  // log('player', world.sysdesig(player));
+	await import("./channel.mjs");
+
+	// log('player', world.sysdesig(player));
   world.player_enter_location();
   
 }
@@ -62,6 +64,7 @@ addEventListener('message', async e =>{
 self.onerror = err =>{
    console.log("worker on error");
 }
+
 
 
 log('Ready');

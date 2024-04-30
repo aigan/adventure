@@ -31,7 +31,7 @@ export function bake_obs( obs ){
 export function description(e, {form='indefinite',length='short'}={}){
   let desc;
 
-  // support passing of either entity orobservation
+  // support passing of either entity or observation
   let descriptor = e;
   if( e.entity ){
     descriptor = e.primary_descriptor || e.entity;
@@ -39,21 +39,17 @@ export function description(e, {form='indefinite',length='short'}={}){
     e = e.entity;
   }
 
-  // const name = e.get('Name','value');
-  
   desc = descriptor.get('Description',length);
   if( !desc ) desc = descriptor.get('Description','short');
   // if( !desc ) desc = descriptor.get('Labeled','value');
-  // log('desc', e.id, desc, indefinite(short));
+  //log('desc', e.id, desc);
 
   if( !desc ) return 'stuff';
 
   if( form === 'base' ){} // no change
   else if( form === 'indefinite'){
-    // if( name ) return name;
     desc = indefinite(desc);
   } else if( form === 'definite' ){
-    // if( name ) return name;
     desc = "the " + desc;
   } else if( form === 'third-subj' ){
     const gender = e.getEntity('HasGender');
@@ -159,7 +155,7 @@ function observing_artifact(){}
 
 export function observation_text( obs ){
   const lines = [];
-  // log('text for', obs);
+  //log('text for', obs);
 
   if( !obs.here ){
     lines.push( tt`${obs}` );
@@ -172,6 +168,7 @@ export function observation_text( obs ){
       const edesig = description( obs.entity );
       lines.push( `In ${edesig} you see:` );
     }
+		
     for( const subobs of obs.inLocation ){
       lines.push( ... observation_text( subobs ));
       // lines.push( tt`${e}` );

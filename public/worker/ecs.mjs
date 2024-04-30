@@ -5,6 +5,14 @@ log('Loading ECS');
 // Taking some concepts from ECS and https://blog.mozvr.com/introducing-ecsy/
 // And stuff from https://github.com/bvalosek/tiny-ecs
 
+/*
+	ct: Component template (property class) Rename to trait schema?
+	et: Entity template (object class) Rename to blueprint or archetype?
+	ER: Entity template Registry
+	CR: Component template Registry
+*/
+
+
 export class World {
   constructor(){
     // super();
@@ -38,11 +46,12 @@ export class World {
 
   get_by_template( et ){
     const world = this;
-    const def = TR[et];
+    const def = ER[et];
     if( !def ) throw Error(`Entity template ${et} missing`);
     if( def.entity_prototype ) return def.entity_prototype;
     const e = world.create_entity();
-
+		e.is_template = et;
+		
     for( const bt of def.base || [] ){
       const base = world.get_by_template( bt );
       e.add_base( base );
@@ -69,7 +78,7 @@ export class World {
     return this.entity.get( id );
   }
 
-  //## Maby rename to be similar to nodejs util.inspect
+  //## Maybe rename to be similar to nodejs util.inspect
   sysdesig( entity ){
     let id;
     if( typeof entity === 'number' ){
@@ -82,23 +91,33 @@ export class World {
     // return entity.bake();
     
     id = entity.id;
-    let name = entity.label;
-    // if( !name ){
-    //   name =  entity.get('Labeled','value');
-    // }
+    const label = entity.label;
 
-    let tags = "";
+		if( entity.is_template ){
+			return `${id} ${entity.is_template} Template`;
+		}
+
+		let tags = "";
     for( const child of [entity, ...entity.base]){
       for( const ct in child._component ){
         // log('ct', ct, child._component[ct]);
         if( child._component[ct] instanceof TagComponent ) tags += ':'+ct;
       }
     }
-    
+
+		const desc = entity.get("Description", "short");
+		const name = entity.get("Name", "value");
+		
     let desig = id;
-    if( name ) desig += `(${name})`;
+
+    if( label ) desig += `#${label}`;
     desig += tags;
-    return desig;
+
+		if( label ){}
+		else if( name ) desig += ` "${name}"`;
+		else if( desc ) desig += ` "${desc}"`;
+
+		return desig;
   }
 
 }
@@ -106,9 +125,20 @@ export class World {
 World.cnt = 0;
 World.store = [];
 
-// label property reserved for debugging or programmatic identifier. Use the
-// Name component for public description, with extra info for if the name is
-// common knowledge or not.
+/*
+label property reserved for debugging or programmatic identifier. Use
+the Name component for public description, with extra info for if the
+name is common knowledge or not.
+
+base: Inheritence
+
+_component: Hash with this entity components
+
+forks: entities using this as a base
+
+referenced: entities pointing to this
+
+*/
 
 export class Entity {
   constructor(){
@@ -123,16 +153,16 @@ export class Entity {
   }
   
   get( ct, pred ){
-    // This will be accessed frequently. Compare with linked lists or maby bring
-    // up frequently accessed properties to the top. Maby try iteration rather
-    // than shift.
+    // This will be accessed frequently. Compare with linked lists or
+    // maybe bring up frequently accessed properties to the top. Maybe
+    // try iteration rather than shift.
     const queue = []; // breadth first tree search
     queue.push( this );
     let c;
     while( queue.length ){
       const e = queue.shift();
       c = e._component[ct];
-      // log(`Looking for ${ct} in ${e.id}. Found`, c );
+      //log(`Looking for ${ct} in ${e.id}. Found`, c );
       if( c ) break;
       queue.push( ...(e.base||[]) );
     }
@@ -204,11 +234,11 @@ export class Entity {
   
   add_component( C, values={} ){
     const e = this;
-    // log('add component', C);
+    //log('add component', C);
     const c = new C();
     e._component[ C.name ] = c;
 
-    // log('init', e.id, C.name, 'with', values, 'from', c, 'with schema', C.schema );
+    //log('init', e.id, C.name, 'with', values, 'from', c, 'with schema', C.schema );
     
     // Convert singulars
     if( typeof values === 'string' ){
@@ -273,6 +303,7 @@ export class Entity {
   set_referenced( ct, e ){
     const ref = this.referenced;
     if( !ref[ ct ] ) ref[ct] = new Set();
+		//log("set_referenced", this, ct, e);
     ref[ct].add( e.id );
   }
   
@@ -393,6 +424,10 @@ export class Component {
   }
 }
 
+/*
+	A TagComponent is a component that has no content. It is only used
+	for adding a tag to the entity.
+ */
 export class TagComponent extends Component {
   static uniqueness = .3;
 }
@@ -400,7 +435,7 @@ export class TagComponent extends Component {
 export const ComponentClass = {
   component: {},
   create( def, name ){
-    // log('should create component', name, def);
+//    log('should create component', name, def);
 
     if( ['string','number','map','set'].includes(typeof def)){
       def = {value:{type:def}};
@@ -413,7 +448,7 @@ export const ComponentClass = {
     } else {
       C = class extends Component{};
       for( const pred in def ){
-        // log('def', pred, def[pred]);
+//        log('def', pred, def[pred]);
         if( typeof def[pred] === 'string' ){
           def[pred] = {type:def[pred]};
         }
@@ -451,11 +486,11 @@ export const ComponentClass = {
 
 const CR = ComponentClass.component;
 
-export const Templates = {
+export const Entity_Templates = {
   template: {},
   register( templates ){
-    Object.assign( Templates.template, templates );
+    Object.assign( Entity_Templates.template, templates );
   }  
 }
 
-const TR = Templates.template;
+const ER = Entity_Templates.template;

@@ -61,6 +61,7 @@ const TEntity = {
       Time: {},
       Description: {short:'missing person incident'},
     },
+		//behaviors
   },
   Thought: {
     components: {
@@ -138,16 +139,22 @@ export const world = new ECS.World; //## <<<-------
 world.Time = {epoch:Time.from(1001,2,1,12,15)};
 world.Adventure = Adventure;
 ECS.ComponentClass.register( TComponent );
-ECS.Templates.register( TEntity );
+ECS.Entity_Templates.register( TEntity );
 
 const lobby = world.add('Location',{
   Description: {short:'Lobby'},
 });
 
+const player = Adventure.player = world.add('Player', {
+  InLocation: lobby,
+})
+
+
 const desk = world.add('Table',{
   InLocation:lobby,
   Description: {short:'Desk'},
 });
+
 
 const catalina = world.add('Human', {
   InLocation: lobby,
@@ -156,11 +163,14 @@ const catalina = world.add('Human', {
 })
 
 const bride = world.add('Human', {
+	label: "bride",
   HasGender: 'Female',
 });
 
 const investigator = world.add('Human', {
+	label: 'investigator',
 });
+
 
 const missing1 = world.add('MissingPerson', {
   IncidentFacts: {
@@ -187,21 +197,16 @@ const missing2 = world.add('MissingPerson', {
   }
 });
 
-const player = Adventure.player = world.add('Player', {
-  InLocation: lobby,
-})
-
-// const mem_catalina_emvin = Ponder.remember( catalina, emvin, {
-//   Human: {},
-//   HasGender: 'Male',
-// });
-
+// This will create a virtual human entity that exists as a though for
+// the player.
 const mem_player_emvin = Ponder.remember( player, emvin, {
   Human: {},
   Name: 'Emvin',
   HasGender: 'Male',
 });
 
+// This will creat a virtual missin person entity that exists as a
+// thought for the player
 Ponder.remember( player, missing2, {
   MissingPerson: {},
   IncidentFacts: {
@@ -212,6 +217,7 @@ Ponder.remember( player, missing2, {
     precision: Time.HOUR,
   }
 });
+
 
 const mem_catalina_bride = Ponder.remember( catalina, bride, {
   Human: {},
@@ -230,11 +236,27 @@ Ponder.remember( catalina, missing1, {
 });
 
 
+
+
 function inspect( entity ){
   log('👁️', world.sysdesig(entity), entity.bake());
 }
 
-inspect( player );
+//inspect( player );
+//log("player", player);
+log("world", world);
+//log("find", world.get_by_template("Player"));
+//log("ER", ECS.Entity_Templates.template);
+//inspect(world.get_by_id(7));
+
+for( const e of world.entity.values() ){
+	if( e.is_template ) continue;
+	inspect( e );
+//	log( world.sysdesig(e), e );
+}
+
+
+
 
 // log( "today", Time.format( world.Time ));
 // log( "target", Time.format( missing1 ) );
