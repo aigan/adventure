@@ -41,18 +41,18 @@ const trait_defs = {
 
 const archetypes = {
   ObjectPhysical: {
-    components: {
+    traits: {
       InLocation: {},
     },
   },
   Situation: {
-    components:{
+    traits:{
       InLocation: {},
     },
   },
   MissingPerson: {
     base: ['Situation'], // Problem
-    components: {
+    traits: {
       IncidentFacts: {},
       Time: {},
       Description: {short:'missing person incident'},
@@ -60,24 +60,24 @@ const archetypes = {
 		//behaviors
   },
   Thought: {
-    components: {
+    traits: {
       ThoughtAbout: {},
       ThoughtContent: {},
     },
   },
   // Problem: {
   //   base: ['Thought'],
-  //   components: {
+  //   traits: {
   //     KnowledgeAbout: {},
   //   },
   // },
   Location: {
     base: ['ObjectPhysical'],
-    components: {
+    traits: {
     }
   },
   Race: {
-    components: {
+    traits: {
     }
   },
   Being: {
@@ -88,26 +88,26 @@ const archetypes = {
   },
   Artifact: {
     base: ['ObjectPhysical'],
-    components: {
+    traits: {
       ObservationPattern: 'Artifact',
     },
   },
   Gender: {},
   Female: {
     base: ['Gender'],
-    components: {
+    traits: {
       Description: {short:'woman'},
     }
   },
   Male: {
     base: ['Gender'],
-    components: {
+    traits: {
       Description: {short:'man'},
     }
   },
   Human: {
     base: ['Being'],
-    components: {
+    traits: {
       HasGender: {},
       Description: {short:'human'},
       ObservationPattern: 'Human',
@@ -116,13 +116,13 @@ const archetypes = {
   },
   Player: {
     base: ['Being'],
-    components: {
+    traits: {
       HasThoughts: {},
     },
   },
   Table: {
     base: ['Artifact'],
-    components: {
+    traits: {
       Description: {short:'table'},
     }
   }
