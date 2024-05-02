@@ -5,12 +5,8 @@ import * as Ponder from "./ponder.mjs";
 
 const log = console.log.bind(console);
 
-const TComponent = {
+const trait_defs = {
   InLocation: 'Location',
-  // Slot: {
-  //   template: {default:''},
-  //   name: {default:''},
-  // },
   ObservationPattern: 'string',
 
   //### https://tei-c.org/release/doc/tei-p5-doc/en/html/ND.html
@@ -43,7 +39,7 @@ const TComponent = {
   }
 }
 
-const TEntity = {
+const archetypes = {
   ObjectPhysical: {
     components: {
       InLocation: {},
@@ -138,8 +134,8 @@ const Adventure = {};
 export const world = new DB.World; //## <<<-------
 world.Time = {epoch:Time.from(1001,2,1,12,15)};
 world.Adventure = Adventure;
-DB.ComponentClass.register( TComponent );
-DB.Entity_Templates.register( TEntity );
+DB.Trait_def.register( trait_defs );
+DB.Entity_Archetypes.register( archetypes );
 
 const lobby = world.add('Location',{
   Description: {short:'Lobby'},
@@ -245,12 +241,12 @@ function inspect( entity ){
 //inspect( player );
 //log("player", player);
 log("world", world);
-//log("find", world.get_by_template("Player"));
-//log("ER", DB.Entity_Templates.template);
+//log("find", world.get_by_archetype("Player"));
+//log("ER", DB.Entity_Archetypes.archetype);
 //inspect(world.get_by_id(7));
 
 for( const e of world.entity.values() ){
-	if( e.is_template ) continue;
+	if( e.is_archetype ) continue;
 	inspect( e );
 //	log( world.sysdesig(e), e );
 }

@@ -6,10 +6,10 @@ log('Loading DB');
 // And stuff from https://github.com/bvalosek/tiny-ecs
 
 /*
-	ct: Component template (property class) Rename to trait definition?
-	et: Entity template (object class) Rename to blueprint or archetype?
-	ER: Entity template Registry
-	CR: Component template Registry
+	trait_def: trait definition (property class)
+	archetype: Entity archetype (object class)
+	ER: Entity archetype Registry
+	TR: Trait definition Registry
 */
 
 
@@ -33,40 +33,40 @@ export class World {
     return e;
   }
 
-  add( et, props ){
+  add( archetype, props ){
 		const world = this;
     if( !props ) props = {};
     const e = world.create_entity();
 
-    const base = this.get_by_template(et);
+    const base = this.get_by_archetype(archetype);
     e.add_base( base );
     e.stamp(props);
     return e;
   }
 
-  get_by_template( et ){
+  get_by_archetype( archetype ){
     const world = this;
-    const def = ER[et];
-    if( !def ) throw Error(`Entity template ${et} missing`);
+    const def = ER[archetype];
+    if( !def ) throw Error(`Entity archetype ${archetype} missing`);
     if( def.entity_prototype ) return def.entity_prototype;
     const e = world.create_entity();
-		e.is_template = et;
+		e.is_archetype = archetype;
 		
     for( const bt of def.base || [] ){
-      const base = world.get_by_template( bt );
+      const base = world.get_by_archetype( bt );
       e.add_base( base );
     }
     
     // TODO: Lock infered hierarchy of 'hypernym' or 'genls'
-    if( !CR[et] ) CR[et] = ComponentClass.create( {}, et );
-    e.add_component( CR[et] );
+    if( !TR[archetype] ) TR[archetype] = Trait_def.create( {}, archetype );
+    e.add_component( TR[archetype] );
     
     const c_def = def.components;
-    for( const ct in c_def ){
-      if( !CR[ct] ){
-        throw Error(`Component ${ct} not in registry`);
+    for( const trait_def in c_def ){
+      if( !TR[trait_def] ){
+        throw Error(`Component ${trait_def} not in registry`);
       }
-      e.add_component( CR[ct], c_def[ct] );
+      e.add_component( TR[trait_def], c_def[trait_def] );
     }
 
     if( def.label ) e.label = def.label;
@@ -93,15 +93,15 @@ export class World {
     id = entity.id;
     const label = entity.label;
 
-		if( entity.is_template ){
-			return `${id} ${entity.is_template} Template`;
+		if( entity.is_archetype ){
+			return `${id} ${entity.is_archetype} Archetype`;
 		}
 
 		let tags = "";
     for( const child of [entity, ...entity.base]){
-      for( const ct in child._component ){
-        // log('ct', ct, child._component[ct]);
-        if( child._component[ct] instanceof TagComponent ) tags += ':'+ct;
+      for( const trait_def in child._component ){
+        // log('trait_def', trait_def, child._component[trait_def]);
+        if( child._component[trait_def] instanceof TagComponent ) tags += ':'+trait_def;
       }
     }
 
@@ -152,7 +152,7 @@ export class Entity {
     this.referenced = {};
   }
   
-  get( ct, pred ){
+  get( trait_def, pred ){
     // This will be accessed frequently. Compare with linked lists or
     // maybe bring up frequently accessed properties to the top. Maybe
     // try iteration rather than shift.
@@ -161,8 +161,8 @@ export class Entity {
     let c;
     while( queue.length ){
       const e = queue.shift();
-      c = e._component[ct];
-      //log(`Looking for ${ct} in ${e.id}. Found`, c );
+      c = e._component[trait_def];
+      //log(`Looking for ${trait_def} in ${e.id}. Found`, c );
       if( c ) break;
       queue.push( ...(e.base||[]) );
     }
@@ -170,25 +170,25 @@ export class Entity {
     if( !c ){
       return null;
       // console.error('For entity', this);
-      // throw Error(`Component ${ct} not found in entity`);  
+      // throw Error(`Component ${trait_def} not found in entity`);  
     }
     // log('returning found', c, Object.getPrototypeOf(c).constructor.schema);
     if( pred ) return c[pred];
     return c;
   }
 
-  getEntity( ct, pred='value' ){
-    return World.get(this.world).get_by_id( this.get(ct,pred) );
+  getEntity( trait_def, pred='value' ){
+    return World.get(this.world).get_by_id( this.get(trait_def,pred) );
   }
   
-  modify( ct, props ){ // modify now or soon
+  modify( trait_def, props ){ // modify now or soon
     const _c = this._component;
-    if( _c[ct] ){
-      return Object.assign( _c[ct], props );
+    if( _c[trait_def] ){
+      return Object.assign( _c[trait_def], props );
     }
 
-    // log('modify', ct, props);
-    const Cc = ComponentClass.component[ct];
+    // log('modify', trait_def, props);
+    const Cc = Trait_def.component[trait_def];
     return this.add_component( Cc, props );
   }
   
@@ -211,19 +211,19 @@ export class Entity {
     while( queue.length ){
       const e = queue.shift();
   
-      for( const ct in e._component ){
-        if( ct in obj ) continue;
-        obj[ct] = e._component[ct];
+      for( const trait_def in e._component ){
+        if( trait_def in obj ) continue;
+        obj[trait_def] = e._component[trait_def];
       }
       
-      for( const ct in e.referenced ){
-        // log('ref', ct);
-        if( ct in obj.referenced ) continue;
-        if( e.referenced[ct].size > 100 ){
+      for( const trait_def in e.referenced ){
+        // log('ref', trait_def);
+        if( trait_def in obj.referenced ) continue;
+        if( e.referenced[trait_def].size > 100 ){
           console.error('referenced for', e);
           throw "To many references for bake";
         }
-        obj.referenced[ct] = [... e.referenced[ct].values()];
+        obj.referenced[trait_def] = [... e.referenced[trait_def].values()];
       }
       
       queue.push( ...(e.base||[]) );
@@ -270,7 +270,7 @@ export class Entity {
       else {
         if( typeof val === 'string' ){
           // log('set', e.id, C.name, type, key, val );
-          val = World.get(e.world).get_by_template( val );
+          val = World.get(e.world).get_by_archetype( val );
           // log('resolved to', val.id);
         }
         
@@ -300,11 +300,11 @@ export class Entity {
     return c;
   }
   
-  set_referenced( ct, e ){
+  set_referenced( trait_def, e ){
     const ref = this.referenced;
-    if( !ref[ ct ] ) ref[ct] = new Set();
-		//log("set_referenced", this, ct, e);
-    ref[ct].add( e.id );
+    if( !ref[ trait_def ] ) ref[trait_def] = new Set();
+		//log("set_referenced", this, trait_def, e);
+    ref[trait_def].add( e.id );
   }
   
   add_base( base ){
@@ -317,24 +317,24 @@ export class Entity {
   stamp( props ){
     const e = this;
 
-    for( const ct in props ){
-      if( ct === 'label' ){
+    for( const trait_def in props ){
+      if( trait_def === 'label' ){
         e.label = props.label;
         continue;
       }
 
-      let initvals =  props[ct];
-      // log('entity', world.sysdesig(e), 'adding', ct, 'with', initvals );
+      let initvals =  props[trait_def];
+      // log('entity', world.sysdesig(e), 'adding', trait_def, 'with', initvals );
 
       if( typeof initvals === 'string' ){
         initvals = {value:initvals};
       }
       
       if( DEBUG ){
-        if( !CR[ct] ) throw `Component ${ct} not found`;
+        if( !TR[trait_def] ) throw `Component ${trait_def} not found`;
       }
       
-      e.add_component( CR[ct], initvals );
+      e.add_component( TR[trait_def], initvals );
     }
 
     return this;
@@ -352,23 +352,23 @@ export class Entity {
     // log('baked', baked);
     const obj = seen[this.id] = {id:baked.id,referenced:{}};
     if( this.label ) obj.label = this.label;
-    for( const ct in baked.referenced ){
-      const refs = obj.referenced[ct] = [];
-      for( const id of baked.referenced[ct]){
+    for( const trait_def in baked.referenced ){
+      const refs = obj.referenced[trait_def] = [];
+      for( const id of baked.referenced[trait_def]){
         refs.push( world.get_by_id(id).inspect({seen}) );
       }
     }
-    for( const ct in baked ){
-      if( ['id','label','referenced'].includes(ct) ) continue;
+    for( const trait_def in baked ){
+      if( ['id','label','referenced'].includes(trait_def) ) continue;
       const cb = {};
-      obj[ct] = cb;
-      const c = baked[ct];
+      obj[trait_def] = cb;
+      const c = baked[trait_def];
       const def = Object.getPrototypeOf(c).constructor.schema;
       for( const pred in c ){
-        // log('get entity', ct, pred, def[pred].type, c[pred]);
+        // log('get entity', trait_def, pred, def[pred].type, c[pred]);
         if( def[pred] && c[pred] ){
           const type = def[pred].type;
-          if( type === 'Entity' || CR[type] ){
+          if( type === 'Entity' || TR[type] ){
             cb[pred] = world.get_by_id(c[pred]).inspect({seen});
             continue;
           } else if( type === 'map'){
@@ -397,7 +397,7 @@ export class Component {
       if( target[key] === this[key] ) continue;
 
       const type = def[key].type;
-      if( type === 'Entity' || CR[type] ){
+      if( type === 'Entity' || TR[type] ){
         const world = context.world;
 
         if( this[key] === context.compare_b && target[key] === context.compare_a ){
@@ -432,7 +432,7 @@ export class TagComponent extends Component {
   static uniqueness = .3;
 }
 
-export const ComponentClass = {
+export const Trait_def = {
   component: {},
   create( def, name ){
 //    log('should create component', name, def);
@@ -462,35 +462,35 @@ export const ComponentClass = {
     Object.defineProperty(C, "name", { value: name });
     // log('created comp', Object.getPrototypeOf(C).name );
     // log('created comp', C.name );
-    ComponentClass.component[name] = C;
+    Trait_def.component[name] = C;
     return C;
   },
   
-  register( templates ){
-    for( const t in templates ){
-      ComponentClass.create( templates[t], t)
+  register( archetypes ){
+    for( const t in archetypes ){
+      Trait_def.create( archetypes[t], t)
     }
   },
   
   add( C ){
     if( DEBUG ){
-      const ct = C.name;
-      if( !ct ) throw "No name for component class";
-      if( CR[ct] ) throw `Component class ${ct} already registred`;
-      if( !C.schema ) throw `Schema missing from ${ct}`;
+      const trait_def = C.name;
+      if( !trait_def ) throw "No name for component class";
+      if( TR[trait_def] ) throw `Component class ${trait_def} already registred`;
+      if( !C.schema ) throw `Schema missing from ${trait_def}`;
     }
 
-    CR[C.name] = C;
+    TR[C.name] = C;
   }
 }
 
-const CR = ComponentClass.component;
+const TR = Trait_def.component;
 
-export const Entity_Templates = {
-  template: {},
-  register( templates ){
-    Object.assign( Entity_Templates.template, templates );
+export const Entity_Archetypes = {
+  archetype: {},
+  register( archetypes ){
+    Object.assign( Entity_Archetypes.archetype, archetypes );
   }  
 }
 
-const ER = Entity_Templates.template;
+const ER = Entity_Archetypes.archetype;
