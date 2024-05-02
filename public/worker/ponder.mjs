@@ -1,4 +1,4 @@
-import * as ECS from "./ecs.mjs";
+import * as DB from "./db.mjs";
 import {description} from "./observation.mjs";
 
 const log = console.log.bind(console);
@@ -7,7 +7,7 @@ const DEBUG = false;
 log('Loading Ponder');
 
 export function memoryOf( agent, target ){
-  const world = ECS.World.get(agent.world);
+  const world = DB.World.get(agent.world);
   // log( 'remember', world.sysdesig(agent), world.sysdesig(target) );
   const thoughts = agent.get('HasThoughts','about');
   const thought = thoughts.get(target); // from Map
@@ -18,7 +18,7 @@ export function memoryOf( agent, target ){
 export function remember( agent, entity, props ){
   const thoughts = agent.modify('HasThoughts');
   const about = thoughts.about;
-  const world = ECS.World.get(agent.world);
+  const world = DB.World.get(agent.world);
 
   // Check that all referred entites are your own thoughts
   if( DEBUG )
@@ -29,7 +29,7 @@ export function remember( agent, entity, props ){
       }
       for( const field in initvals ){
         const val = initvals[field];
-        if(!( val instanceof ECS.Entity )) continue;
+        if(!( val instanceof DB.Entity )) continue;
 
         // const thoughts = val.referenced.ThoughtContent;
         const thoughts = val.referenced.ThoughtContent;
@@ -99,7 +99,7 @@ function compare( a, b, context ){
       continue;
     }
     
-    if( c instanceof ECS.TagComponent ){
+    if( c instanceof DB.TagComponent ){
       const weight = Object.getPrototypeOf( c ).constructor.uniqueness;
       // log('tag score', weight, c)
       res.pos += weight;
@@ -146,7 +146,7 @@ export function recall( agent, components, context={} ){
 
 
   const matches = [];
-  if( !context.world ) context.world = ECS.World.get(agent.world);
+  if( !context.world ) context.world = DB.World.get(agent.world);
   context.compare_a = components.id;
   
   const thoughts = agent.get('HasThoughts','about');
@@ -170,7 +170,7 @@ export function recall( agent, components, context={} ){
         continue;
       }
       const target_refs = components.referenced[ct];
-      const weight = ECS.ComponentClass.component[ct].uniqueness;
+      const weight = DB.ComponentClass.component[ct].uniqueness;
       // log('check ref', ct, weight);
 
       for( const target_id of target_refs ){

@@ -2,7 +2,6 @@ const log = console.log.bind(console);
 log('Loading Channel');
 
 import {world} from "./world.mjs";
-//import * as ECS from "./ecs.mjs";
 
 const channel = new BroadcastChannel('inspect');
 let client_id_sequence = 0; // Client id

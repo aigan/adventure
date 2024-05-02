@@ -1,12 +1,12 @@
 const log = console.log.bind(console);
 const DEBUG = false;
 
-log('Loading ECS');
+log('Loading DB');
 // Taking some concepts from ECS and https://blog.mozvr.com/introducing-ecsy/
 // And stuff from https://github.com/bvalosek/tiny-ecs
 
 /*
-	ct: Component template (property class) Rename to trait schema?
+	ct: Component template (property class) Rename to trait definition?
 	et: Entity template (object class) Rename to blueprint or archetype?
 	ER: Entity template Registry
 	CR: Component template Registry

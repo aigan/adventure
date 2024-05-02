@@ -3,7 +3,7 @@ log("Loading observation");
 
 import indefinite from "../vendor/indefinite.mjs";
 import * as Ponder from "./ponder.mjs";
-import * as ECS from "./ecs.mjs";
+import * as DB from "./db.mjs";
 import * as Dialog from "./dialog.mjs";
 
 export function ucfirst( str ){
@@ -87,7 +87,7 @@ export function observation( agent, target, perspective ){
     observation_pattern[pattern]({agent,target,perspective,observed});
   }
   
-  const world = ECS.World.get(agent.world);
+  const world = DB.World.get(agent.world);
   const seeing_inloc = [];
   const inloc = target.referenced.InLocation || [];
   for( const eid of inloc ){

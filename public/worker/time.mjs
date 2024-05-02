@@ -1,6 +1,8 @@
 const log = console.log.bind(console);
 log('Loading Time');
 
+import * as DB from "./db.mjs";
+
 // Fantasy Time system. Simplified dates.
 
 // Northen hemisphere seasons;
@@ -37,7 +39,7 @@ function from( year, month=1, day=1, hour=12, minute=0, second=0 ){
 }
 
 function format( time ){
-  if( time instanceof ECS.Entity ) time = time.get('Time');
+  if( time instanceof DB.Entity ) time = time.get('Time');
   const [year,month,day,hour,minute,second] = Time.split( time );
   const m = month.toString().padStart(2,0);
   const d = day.toString().padStart(2,0);
@@ -123,7 +125,7 @@ function relative( time, base ){
     base = World.get(Adventure.player.world).Time;
     fromNow = true;
   }
-  if( time instanceof ECS.Entity ) time = time.get('Time');
+  if( time instanceof DB.Entity ) time = time.get('Time');
   const epoch = time.epoch;
   if( !epoch ) throw "epoch not found";
 
@@ -297,7 +299,7 @@ function relative( time, base ){
 
 function designation( time ){
   const base = World.get(Adventure.player.world).Time;
-  if( time instanceof ECS.Entity ) time = time.get('Time');
+  if( time instanceof DB.Entity ) time = time.get('Time');
   const epoch = time.epoch;
   if( !epoch ) throw "epoch not found";
 

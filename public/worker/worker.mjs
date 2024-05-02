@@ -8,10 +8,10 @@ let DEBUG = true;
 /*
 All imports async here in top worker for catching errors
  */
-let world,ECS;
+let world,DB;
 async function init(){
 	({world} = await import("./world.mjs"));
-	ECS = await import("./ecs.mjs");
+	DB = await import("./db.mjs");
 	await import("./channel.mjs");
 
 	// log('player', world.sysdesig(player));
@@ -48,7 +48,7 @@ addEventListener('message', async e =>{
   if( !dispatch[cmd] ) throw(Error(`Message ${cmd} not recognized`));
 
   if( !data.from ) data.from = world.Adventure.player;
-  if( data.from ) data.world = ECS.World.get(data.from.world);
+  if( data.from ) data.world = DB.World.get(data.from.world);
   if( data.target ) data.target = data.world.entity.get( data.target );
   
   // log('dispatch', cmd, data);

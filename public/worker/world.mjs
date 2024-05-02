@@ -1,4 +1,4 @@
-import * as ECS from "./ecs.mjs";
+import * as DB from "./db.mjs";
 import {observation,observation_text} from "./observation.mjs";
 import Time from "./time.mjs";
 import * as Ponder from "./ponder.mjs";
@@ -135,11 +135,11 @@ const TEntity = {
 
 const Adventure = {};
 
-export const world = new ECS.World; //## <<<-------
+export const world = new DB.World; //## <<<-------
 world.Time = {epoch:Time.from(1001,2,1,12,15)};
 world.Adventure = Adventure;
-ECS.ComponentClass.register( TComponent );
-ECS.Entity_Templates.register( TEntity );
+DB.ComponentClass.register( TComponent );
+DB.Entity_Templates.register( TEntity );
 
 const lobby = world.add('Location',{
   Description: {short:'Lobby'},
@@ -246,7 +246,7 @@ function inspect( entity ){
 //log("player", player);
 log("world", world);
 //log("find", world.get_by_template("Player"));
-//log("ER", ECS.Entity_Templates.template);
+//log("ER", DB.Entity_Templates.template);
 //inspect(world.get_by_id(7));
 
 for( const e of world.entity.values() ){
