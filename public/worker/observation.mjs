@@ -52,12 +52,12 @@ export function description(e, {form='indefinite',length='short'}={}){
   } else if( form === 'definite' ){
     desc = "the " + desc;
   } else if( form === 'third-subj' ){
-    const gender = e.getEntity('HasGender');
+    const gender = e.get_entity('HasGender');
     if( gender.get('Female') ) return 'she';
     if( gender.get('Male') ) return 'he';
     return 'it';
   } else if( form === 'third-obj' ){
-    const gender = e.getEntity('HasGender');
+    const gender = e.get_entity('HasGender');
     if( gender.get('Female') ) return 'her';
     if( gender.get('Male') ) return 'him';
     return 'it';
@@ -75,7 +75,7 @@ const observation_pattern = {
 
 export function observation( agent, target, perspective ){
   const observed = { entity: target, actions: [] };
-  // log('obs', target.sysdesig() );
+  //console.warn('obs', target );
 
   if( !perspective ) perspective = agent;
   if( target === perspective ){
@@ -87,11 +87,13 @@ export function observation( agent, target, perspective ){
     observation_pattern[pattern]({agent,target,perspective,observed});
   }
   
-  const world = DB.World.get(agent.world);
   const seeing_inloc = [];
-  const inloc = target.referenced.InLocation || [];
-  for( const eid of inloc ){
-    const e = world.entity.get(eid);
+  const inloc = target.get_referenced("InLocation");
+  //const inloc = target.referenced.InLocation || [];
+  //log("Target referenced InLocation", ... inloc.values() );
+
+  const world = target.world;
+  for( const e of inloc ){
     if( e === world.Adventure.player ) continue;
     const obi = observation( agent, e, perspective );
     seeing_inloc.push( obi );
@@ -105,7 +107,7 @@ export function observation( agent, target, perspective ){
 }
 
 function observing_human({agent, target, observed}){
-  const gender = target.getEntity('HasGender');
+  const gender = target.get_entity('HasGender');
   if( gender ) observed.primary_descriptor = gender;
   // log('observing human', target, observed);
 
@@ -168,7 +170,7 @@ export function observation_text( obs ){
       const edesig = description( obs.entity );
       lines.push( `In ${edesig} you see:` );
     }
-		
+    
     for( const subobs of obs.inLocation ){
       lines.push( ... observation_text( subobs ));
       // lines.push( tt`${e}` );

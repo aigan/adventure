@@ -6,7 +6,7 @@ import {observation,description,ucfirst, bake_obs} from "./observation.mjs";
 import * as Ponder from "./ponder.mjs";
 
 export function has_attention({agent,target}){
-  const attention = target.getEntity('Attention','focus');
+  const attention = target.get_entity('Attention','focus');
   if( attention === agent) return true;
   return false;
 }
@@ -63,9 +63,9 @@ handler_register( 'greet', async context =>{
 handler_register('ask-about', async context =>{
   const {from,target,world} = context;
 
-  const subject = world.entity.get( context.subject );
-  
-  // log('ask about', from.sysdesig(), target.sysdesig(), subject.sysdesig());
+  log('ask about', from.sysdesig(), target.sysdesig(), context);
+
+  const subject = world.get_entity_current( context.subject );
 
   // TODO: Remember observation
   let obs = observation(from,target);

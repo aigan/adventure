@@ -7,18 +7,18 @@ const DEBUG = false;
 log('Loading Ponder');
 
 export function memoryOf( agent, target ){
-  const world = DB.World.get(agent.world);
+  const world = agent.world;
   // log( 'remember', world.sysdesig(agent), world.sysdesig(target) );
   const thoughts = agent.get('HasThoughts','about');
   const thought = thoughts.get(target); // from Map
   if( !thought ) return null;
-  return thought.getEntity('ThoughtContent');
+  return thought.get_entity('ThoughtContent');
 }
 
 export function remember( agent, entity, props ){
   const thoughts = agent.modify('HasThoughts');
   const about = thoughts.about;
-  const world = DB.World.get(agent.world);
+  const world = agent.world;
 
   // Check that all referred entites are your own thoughts
   if( DEBUG )
@@ -36,8 +36,8 @@ export function remember( agent, entity, props ){
 
         if( val.referenced.ThoughtAbout || !thoughts ){
           console.error(agent.sysdesig(), "thought about",
-												entity.sysdesig(), "has content",
-												ct, field, "reffering outside their mind", props)
+                        entity.sysdesig(), "has content",
+                        ct, field, "reffering outside their mind", props)
           throw("mind breach");
         }
 
@@ -47,8 +47,8 @@ export function remember( agent, entity, props ){
           for( const aid of thought.referenced.HasThoughts ){
             if( aid !== agent.id ){
               console.error(agent.sysdesig(), "thought about",
-														entity.sysdesig(), "has content",
-														ct, field, "reffering to another mind", props)
+                            entity.sysdesig(), "has content",
+                            ct, field, "reffering to another mind", props)
               throw("mind mismatch");
             }
           }
@@ -70,7 +70,7 @@ export function remember( agent, entity, props ){
     return content;
   }
 
-  const content = thought.getEntity('ThoughtContent');
+  const content = thought.get_entity('ThoughtContent');
   for( const prop in props ){
     content.modify( prop, props[prop] );
   }
@@ -146,12 +146,12 @@ export function recall( agent, components, context={} ){
 
 
   const matches = [];
-  if( !context.world ) context.world = DB.World.get(agent.world);
+  if( !context.world ) context.world = agent.world;
   context.compare_a = components.id;
   
   const thoughts = agent.get('HasThoughts','about');
   for( const thought of thoughts.values()){
-    const content = thought.getEntity('ThoughtContent');
+    const content = thought.get_entity('ThoughtContent');
     const contentc = content.bake();
     // log('compare to thought content', contentc);
     

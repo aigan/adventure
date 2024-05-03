@@ -57,7 +57,7 @@ const archetypes = {
       Time: {},
       Description: {short:'missing person incident'},
     },
-		//behaviors
+    //behaviors
   },
   Thought: {
     traits: {
@@ -145,7 +145,6 @@ const player = Adventure.player = world.add('Player', {
   InLocation: lobby,
 })
 
-
 const desk = world.add('Table',{
   InLocation:lobby,
   Description: {short:'Desk'},
@@ -159,12 +158,12 @@ const catalina = world.add('Human', {
 })
 
 const bride = world.add('Human', {
-	label: "bride",
+  label: "bride",
   HasGender: 'Female',
 });
 
 const investigator = world.add('Human', {
-	label: 'investigator',
+  label: 'investigator',
 });
 
 
@@ -233,24 +232,24 @@ Ponder.remember( catalina, missing1, {
 
 
 
-
-function inspect( entity ){
-  log('👁️', world.sysdesig(entity), entity.bake());
+function inspect( obj ){
+  const e = obj.versions ? obj.versions.slice(-1)[0] : obj;
+  log('👁️', world.sysdesig(obj), e.bake());
 }
 
 //inspect( player );
-//log("player", player);
-log("world", world);
+//log("player", Adventure.player);
+//log("world", world);
 //log("find", world.get_by_archetype("Player"));
 //log("ER", DB.Entity_Archetypes.archetype);
 //inspect(world.get_by_id(7));
 
-for( const e of world.entity.values() ){
-	if( e.is_archetype ) continue;
-	inspect( e );
-//	log( world.sysdesig(e), e );
-}
-
+/*
+  for( const eh of world.entity.values() ){
+  if( eh.is_archetype ) continue;
+  inspect( eh );
+  }
+*/
 
 
 
@@ -260,10 +259,13 @@ for( const e of world.entity.values() ){
 
 
 world.player_enter_location = ()=>{
-  // log('you', player)
-  const loc = world.entity.get( Adventure.player.get('InLocation').value );
+  //log('you', Adventure.player)
 
-  // log('loc', loc);
+  const loc = Adventure.player.get('InLocation').entity();
+
+  //const loc = world.entity.get( Adventure.player.get('InLocation').value );
+
+  //log('loc', loc);
   let location_name = loc.get('Description','short');
   postMessage(['header_set', `Location: ${location_name}`]);
 

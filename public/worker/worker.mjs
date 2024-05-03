@@ -6,15 +6,15 @@ log('Loading Worker');
 let DEBUG = true;
 
 /*
-All imports async here in top worker for catching errors
- */
+	All imports async here in top worker for catching errors
+*/
 let world,DB;
 async function init(){
-	({world} = await import("./world.mjs"));
-	DB = await import("./db.mjs");
-	await import("./channel.mjs");
+  ({world} = await import("./world.mjs"));
+  DB = await import("./db.mjs");
+  await import("./channel.mjs");
 
-	// log('player', world.sysdesig(player));
+  // log('player', world.sysdesig(player));
   world.player_enter_location();
   
 }
@@ -48,8 +48,8 @@ addEventListener('message', async e =>{
   if( !dispatch[cmd] ) throw(Error(`Message ${cmd} not recognized`));
 
   if( !data.from ) data.from = world.Adventure.player;
-  if( data.from ) data.world = DB.World.get(data.from.world);
-  if( data.target ) data.target = data.world.entity.get( data.target );
+  if( data.from ) data.world = DB.World.get(data.from._world);
+  if( data.target ) data.target = data.world.get_entity_current( data.target );
   
   // log('dispatch', cmd, data);
   const res = await dispatch[cmd](data);
@@ -62,7 +62,7 @@ addEventListener('message', async e =>{
 
 //## Not implemented consistently
 self.onerror = err =>{
-   console.log("worker on error");
+  console.log("worker on error");
 }
 
 
