@@ -25,16 +25,15 @@ export class World {
     return World.store[id];
   }
   
-  create_entity(){
-    const eh = new EntityHistory(this.id);
+  create_entity({label}={}){
+    const eh = new EntityHistory(this.id, label);
     this.entity_history.set(eh.id,eh);
     return eh.add_version();
   }
 
-  add( archetype, props ){
+  add( archetype, props={} ){
     const world = this;
-    if( !props ) props = {};
-    const e = world.create_entity();
+    const e = world.create_entity({label:props.label});
     const base = this.get_by_archetype(archetype);
     e.add_base( base );
     e.stamp(props);
@@ -91,7 +90,7 @@ export class World {
 
   //## Maybe rename to be similar to nodejs util.inspect
   sysdesig( entity ){
-    let id, eh;
+    let id, eh, label;
     //log("sysdesig", entity);
 
     if( typeof entity === 'number' ){
@@ -102,7 +101,6 @@ export class World {
     if( !entity ) return "<deleted>";
 
     id = entity.id;
-    const label = entity.label;
 
     let desig = id;
 		
@@ -113,6 +111,9 @@ export class World {
     } else {
 			eh = entity.history;
 		}
+
+		//log("sysdesig from eh", eh);
+		label = eh.label;
     
     if( eh.is_archetype ){
       return `${desig} ${eh.is_archetype} Archetype`;
@@ -164,10 +165,10 @@ World.store = [];
 export class EntityHistory {
   static cnt = 0;
 
-  constructor( world_id ){
+  constructor( world_id, label ){
     //log("create entity in world", world_id);
     this.id = ++ EntityHistory.cnt;
-    this.label = undefined; // private for internal use
+    this.label = label; // private for internal use
     this.is_archetype = undefined;
     this._world = world_id;
     this.versions = [];
@@ -200,8 +201,7 @@ export class Entity {
   
   get( trait, pred ){
     // This will be accessed frequently. Compare with linked lists or
-    // maybe bring up frequently accessed properties to the top. Maybe
-    // try iteration rather than shift.
+    // maybe bring up frequently accessed properties to the top
 		
 		// breadth first tree search
     const queue = [this];
@@ -211,14 +211,10 @@ export class Entity {
 			const e = queue[i];
 			t = e.traits[trait];
 			if(t) break;
-			if(e.bases) {
-				for(const base of e.bases.values()) {
-					queue.push(base);
-				}
-			}
+			queue.push( ...(e.bases||[]) );
 		}
 
-		if(!t) return null;  // Return null if trait not found
+		if(!t) return null; 
 
 		return pred ? t[pred] : t;
   }
@@ -284,50 +280,47 @@ export class Entity {
     return Object.keys( this.traits );
   }
   
-  // Generalized version of get()
 	bake(){
 		//log("bake", this);
 
-		// TODO: separate referenced
-		
+		const eh = this.history;
+		const rel = {};
+		const rev = {};
 		const obj = {
       id: this.id,
 			v: this.v,
-			//_world: this._world,
-      referenced: {},
+			rel,
+			rev,
+			label: eh.label ?? null,
+			is_archetype: eh.is_archetype ?? null,
     };
 
-    if( this.label ) obj.label = this.label;
-		
 		// breadth first tree search
     const queue = [this];
-
-		while( queue.length ){
-      const e = queue.shift();
-			
+		for(let i = 0; i < queue.length; i++) {
+      const e = queue[i];
       for( const trait in e.traits ){
-        if( trait in obj ) continue;
-        obj[trait] = e.traits[trait];
+        if( trait in rel ) continue;
+        rel[trait] = e.traits[trait];
       }
       
       for( const trait in e.referenced ){
-        // log('ref', trait);
         if( e.referenced[trait].size > 100 ){
           console.error('referenced for', e);
           throw "To many references for bake";
         }
 
 				if(  e.referenced[trait].size ){
-					obj.referenced[trait] = [
+					rev[trait] = [
 						... e.referenced[trait].values(),
-						... (obj.referenced[trait] ?? []),
+						... (rev[trait] ?? []),
 					]
 				}
       }
       
       queue.push( ...(e.bases||[]) );
     }
-		
+
     return obj;
   }
   
@@ -419,10 +412,7 @@ export class Entity {
     const e = this;
 
     for( const trait in props ){
-      if( trait === 'label' ){
-        e.label = props.label;
-        continue;
-      }
+      if( trait === 'label' ) continue; // See EntityHistory constructor
 
       let initvals =  props[trait];
 
@@ -457,21 +447,22 @@ export class Entity {
 			id:baked.id,
 			v:baked.v,
 			//_world:baked._world,
-			referenced:{},
+			rel:{},
+			rev:{},
 		};
     if( this.label ) obj.label = this.label;
-    for( const trait in baked.referenced ){
-      const refs = obj.referenced[trait] = [];
-      for( const id of baked.referenced[trait]){
+    for( const trait in baked.rev ){
+      const refs = obj.rev[trait] = [];
+      for( const id of baked.rev[trait]){
 				log("subinspect", id);
 				refs.push( world.get_entity_current(id).inspect({seen}) );
       }
     }
-    for( const trait in baked ){
+    for( const trait in baked.rel ){
       if( ['id','v','_world','label','referenced'].includes(trait) ) continue;
       const cb = {};
-      obj[trait] = cb;
-      const t = baked[trait];
+      obj.rel[trait] = cb;
+      const t = baked.rel[trait];
       const def = Object.getPrototypeOf(t).constructor.schema;
       for( const pred in t ){
         // log('get entity', trait, pred, def[pred].type, t[pred]);
@@ -571,6 +562,7 @@ export class Trait {
 */
 export class Tag extends Trait {
   static uniqueness = .3;
+	static schema = {};
 }
 
 export const Trait_def = {
@@ -582,12 +574,12 @@ export const Trait_def = {
       def = {value:{type:def}};
     }
     
-    let C;
+    let T;
     if( !Object.keys(def).length ){
-      C = class extends Tag{};
-      C.schema = {}; // Todo. Could just use the same object for all
+      T = class extends Tag{};
+      T.schema = Tag.schema;
     } else {
-      C = class extends Trait{};
+      T = class extends Trait{};
       for( const pred in def ){
 				//        log('def', pred, def[pred]);
         if( typeof def[pred] === 'string' ){
@@ -595,16 +587,16 @@ export const Trait_def = {
         }
       }
 
-      C.schema = def;
+      T.schema = def;
     }
 
     
     if (typeof name === "undefined") throw "Trait name missing";
-    Object.defineProperty(C, "name", { value: name });
-    // log('created comp', Object.getPrototypeOf(C).name );
-    // log('created comp', C.name );
-    Trait_def.definition[name] = C;
-    return C;
+    Object.defineProperty(T, "name", { value: name });
+    // log('created comp', Object.getPrototypeOf(T).name );
+    // log('created comp', T.name );
+    Trait_def.definition[name] = T;
+    return T;
   },
   
   register( archetypes ){
@@ -613,15 +605,15 @@ export const Trait_def = {
     }
   },
   
-  add( C ){
+  add( T ){
     if( DEBUG ){
-      const trait = C.name;
+      const trait = T.name;
       if( !trait ) throw "No name for trait definition";
       if( TR[trait] ) throw `Trait class ${trait} already registred`;
-      if( !C.schema ) throw `Schema missing from ${trait}`;
+      if( !T.schema ) throw `Schema missing from ${trait}`;
     }
 
-    TR[C.name] = C;
+    TR[T.name] = T;
   }
 }
 

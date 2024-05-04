@@ -153,6 +153,7 @@ export function recall( agent, components, context={} ){
   for( const thought of thoughts.values()){
     const content = thought.get_entity('ThoughtContent');
     const contentc = content.bake();
+		throw("FIXME");
     // log('compare to thought content', contentc);
     
     // Rough apriximation for sorting matches
@@ -161,7 +162,7 @@ export function recall( agent, components, context={} ){
     // overwrite with current matching to avoid loops
     context.compare_b = contentc.id;
 
-    const contref = contentc.referenced;
+    const contref = contentc.rev;
     for( const ct in components.referenced ){
       if( ct === "ThoughtContent") continue; // private
       if( !contref[ct] ){

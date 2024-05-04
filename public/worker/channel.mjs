@@ -24,6 +24,9 @@ const dispatch = {
 			server_id,
 		});
 	},
+	hello(dat){
+		throw Error("Multiple servers");
+	},
 	query(dat){
 		const label = dat.label;
 		log(`Asking for ${label}`);
@@ -52,7 +55,12 @@ const dispatch = {
 		v = Number(v);
 		log("query_entity", id, v);
 		const e = world.get_entity(id,v);
-		log(e.bake())
+		channel.postMessage({
+			msg: "world_entity",
+			data: e.bake(),
+			desig: e.sysdesig(),
+			bases: e.bases.map(b=>({id:b.id,v:b.v})),
+		});
 	},
 }
 

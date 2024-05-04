@@ -58,6 +58,12 @@ const dispatch = {
 			},
 		});
 	},
+	world_entity(dat){
+		render({
+			header: dat.desig,
+			entity: dat,
+		});
+	},
 	
 }
 
@@ -81,6 +87,7 @@ function log_line(text){
 function render(a){
 	if( a.header != null ) $header.innerText = a.header;
 	if( a.table ) render_table( a );
+	if( a.entity ) render_entity( a );
 }
 
 function render_table(a){
@@ -103,6 +110,17 @@ function render_table(a){
 	
 	const h_table = `<table><tr>${h_th}</tr>${h_body}</table>`;
 	$main.innerHTML = h_table;
+}
+
+function render_entity(a){
+	const {rel,rev} = a.entity.data;
+	
+	let hout = "";
+	for( const [trait,t] of Object.entries( rel )){
+		hout += `<p>${trait}</p>`;
+	}
+
+	$main.innerHTML = hout;
 }
 
 function parse_url(){
