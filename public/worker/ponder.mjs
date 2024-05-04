@@ -16,7 +16,7 @@ export function memoryOf( agent, target ){
 }
 
 export function remember( agent, entity, props ){
-  const thoughts = agent.modify('HasThoughts');
+  const thoughts = agent.modify('HasThoughts', {});
   const about = thoughts.about;
   const world = agent.world;
 

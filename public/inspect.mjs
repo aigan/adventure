@@ -29,7 +29,7 @@ const dispatch = {
 		server_id = dat.server_id;
 		log_line(`Connected as client ${client_id} to server ${server_id}`);
 
-		if( query ){
+		if( query?.msg ){
 			channel.postMessage({
 				... query,
 			client_id,

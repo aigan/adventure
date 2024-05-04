@@ -30,7 +30,7 @@ const dispatch = {
 		const et = world.get_by_template(label);
 		log(et);
 	},
-	query_world(dat){
+	query_world({client_id}){
 		const data = [];
 		for( const eh of world.entity_history.values()){
 			const e = eh.current();
@@ -43,9 +43,16 @@ const dispatch = {
 		channel.postMessage({
 			msg: "world_entity_list",
 			server_id,
-			client_id: dat.client_id,
+			client_id,
 			data,
 		});
+	},
+	query_entity({id,v,client_id}){
+		id = Number(id);
+		v = Number(v);
+		log("query_entity", id, v);
+		const e = world.get_entity(id,v);
+		log(e.bake())
 	},
 }
 

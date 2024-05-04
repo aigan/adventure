@@ -84,8 +84,9 @@ export class World {
   }
 
   get_entity_current( id ){
-    return this.get_history_by_id( id ).current();
-    
+		const eh = this.get_history_by_id( id );
+		if( !eh ) throw Error(`Id ${id} not found`);
+		return eh.current()
   }
 
   //## Maybe rename to be similar to nodejs util.inspect
@@ -201,52 +202,26 @@ export class Entity {
     // This will be accessed frequently. Compare with linked lists or
     // maybe bring up frequently accessed properties to the top. Maybe
     // try iteration rather than shift.
-    const queue = []; // breadth first tree search
-    queue.push( this );
-    let t;
-    while( queue.length ){
-      const e = queue.shift();
-      t = e.traits[trait];
-      //log(`Looking for ${trait} ${pred ?? 'value'} in ${e.id}. Found`, t );
-      if( t ) break;
-      queue.push( ...(e.bases||[]) );
-    }
-    
-    if( !t ){
-      return null;
-      // console.error('For entity', this);
-      // throw Error(`Trait ${trait} not found in entity`);  
-    }
-    //log('returning found', t, Object.getPrototypeOf(t).constructor.schema);
+		
+		// breadth first tree search
+    const queue = [this];
+    let t = null;
 
-    if( pred ) return t.get(pred);
+		for(let i = 0; i < queue.length; i++) {
+			const e = queue[i];
+			t = e.traits[trait];
+			if(t) break;
+			if(e.bases) {
+				for(const base of e.bases.values()) {
+					queue.push(base);
+				}
+			}
+		}
 
+		if(!t) return null;  // Return null if trait not found
 
-    return t;
+		return pred ? t[pred] : t;
   }
-
-  /* // suggested changes
-		 get(trait, pred) {
-		 const queue = [this];
-		 let c = null;
-
-		 for (let i = 0; i < queue.length; i++) {
-     const e = queue[i];
-     c = e.traits[trait];
-     if (c) break;
-     if (e.bases) {
-     for (const base of e.bases.values()) {
-     queue.push(base);
-     }
-     }
-		 }
-
-		 if (!c) return null;  // Return null if trait not found
-
-		 return pred ? c[pred] : c;
-		 }
-	*/
-  
 
   
   get_entity( trait, pred='value' ){
@@ -254,7 +229,7 @@ export class Entity {
 		const val = this.get(trait,pred);
 		if( !val ) return null;
 		return this.world.get_entity( val.id, val.v );
-    //return this.world.get_by_id( this.get(trait,pred) );
+    //return this.world.get_entity_current( this.get(trait,pred) );
   }
 
 	get_referenced( trait ){
@@ -287,13 +262,19 @@ export class Entity {
 		return World.store[ this._world ];
 	}
   
-  modify( trait, props ){ // modify now or soon
-    const _c = this.traits;
+	/*
+		returns trait.
+		... may modify trait later. Set to {} temporarily.
+	*/
+  modify( trait, props ){
+		if( props == null ) throw Error(`props missing while modifying ${trait} for ${this.id}`);
+
+		const _c = this.traits;
     if( _c[trait] ){
       return Object.assign( _c[trait], props );
     }
 
-    log('modify', trait, props);
+    //log('modify', trait, props);
     const Cc = Trait_def.definition[trait];
     return this.add_trait( Cc, props );
   }
@@ -304,19 +285,24 @@ export class Entity {
   }
   
   // Generalized version of get()
-  bake(){
-		log("bake", this);
+	bake(){
+		//log("bake", this);
 
+		// TODO: separate referenced
+		
 		const obj = {
       id: this.id,
+			v: this.v,
+			//_world: this._world,
       referenced: {},
     };
 
     if( this.label ) obj.label = this.label;
 		
-    const queue = []; // breadth first tree search
-    queue.push( this );
-    while( queue.length ){
+		// breadth first tree search
+    const queue = [this];
+
+		while( queue.length ){
       const e = queue.shift();
 			
       for( const trait in e.traits ){
@@ -326,13 +312,17 @@ export class Entity {
       
       for( const trait in e.referenced ){
         // log('ref', trait);
-        if( trait in obj.referenced ) continue;
         if( e.referenced[trait].size > 100 ){
           console.error('referenced for', e);
           throw "To many references for bake";
         }
-				// FIXME
-        obj.referenced[trait] = [... e.referenced[trait].values()];
+
+				if(  e.referenced[trait].size ){
+					obj.referenced[trait] = [
+						... e.referenced[trait].values(),
+						... (obj.referenced[trait] ?? []),
+					]
+				}
       }
       
       queue.push( ...(e.bases||[]) );
@@ -456,39 +446,49 @@ export class Entity {
     return this.world.sysdesig(this);
   }
 
+	
+	// Resolves entity references and bake them in the object
   inspect({seen={}}={}){
-    // TODO: add seen for loops. add depth
     if(seen[this.id]) return seen[this.id];
     const baked = this.bake();
     const world = World.get(this._world);
     // log('baked', baked);
-    const obj = seen[this.id] = {id:baked.id,referenced:{}};
+    const obj = seen[this.id] = {
+			id:baked.id,
+			v:baked.v,
+			//_world:baked._world,
+			referenced:{},
+		};
     if( this.label ) obj.label = this.label;
     for( const trait in baked.referenced ){
       const refs = obj.referenced[trait] = [];
       for( const id of baked.referenced[trait]){
-        refs.push( world.get_by_id(id).inspect({seen}) );
+				log("subinspect", id);
+				refs.push( world.get_entity_current(id).inspect({seen}) );
       }
     }
     for( const trait in baked ){
-      if( ['id','label','referenced'].includes(trait) ) continue;
+      if( ['id','v','_world','label','referenced'].includes(trait) ) continue;
       const cb = {};
       obj[trait] = cb;
-      const c = baked[trait];
-      const def = Object.getPrototypeOf(c).constructor.schema;
-      for( const pred in c ){
-        // log('get entity', trait, pred, def[pred].type, c[pred]);
-        if( def[pred] && c[pred] ){
+      const t = baked[trait];
+      const def = Object.getPrototypeOf(t).constructor.schema;
+      for( const pred in t ){
+        // log('get entity', trait, pred, def[pred].type, t[pred]);
+        if( def[pred] && t[pred] ){
           const type = def[pred].type;
           if( type === 'Entity' || TR[type] ){
-            cb[pred] = world.get_by_id(c[pred]).inspect({seen});
+						log("subinspect", t[pred]);
+						const val = t[pred];
+            cb[pred] = world.get_entity(val.id, val.v).inspect({seen});
             continue;
           } else if( type === 'map'){
-            cb[pred] = [...c[pred].values()].map(e => e.inspect({seen}));
+						log("inspect", trait, type, pred, t[pred].values());
+            cb[pred] = t[pred].values().map(e => e.inspect({seen}));
             continue;
           }
         }
-        cb[pred] = c[pred];
+        cb[pred] = t[pred];
       }
     }
     return obj;
@@ -547,7 +547,7 @@ export class Trait {
         }
         
         log('FIXME similar_to', key, type, this[key], context.compare_b, target[key], context.compare_a );
-        // cb[pred] = world.get_by_id(c[pred]).inspect({seen});
+        // cb[pred] = world.get_entity_current(c[pred]).inspect({seen});
         // continue;
       }
 

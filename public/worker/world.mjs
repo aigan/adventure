@@ -200,6 +200,8 @@ const mem_player_emvin = Ponder.remember( player, emvin, {
   HasGender: 'Male',
 });
 
+/*
+
 // This will creat a virtual missin person entity that exists as a
 // thought for the player
 Ponder.remember( player, missing2, {
@@ -230,7 +232,7 @@ Ponder.remember( catalina, missing1, {
   }
 });
 
-
+*/
 
 function inspect( obj ){
   const e = obj.versions ? obj.versions.slice(-1)[0] : obj;
@@ -238,19 +240,17 @@ function inspect( obj ){
 }
 
 //inspect( player );
-//log("player", Adventure.player);
+//log("player", Adventure.player, world);
 //log("world", world);
 //log("find", world.get_by_archetype("Player"));
 //log("ER", DB.Entity_Archetypes.archetype);
 //inspect(world.get_by_id(7));
 
-/*
-  for( const eh of world.entity.values() ){
-  if( eh.is_archetype ) continue;
-  inspect( eh );
-  }
-*/
 
+  for( const eh of world.entity_history.values() ){
+		if( eh.is_archetype ) continue;
+		//inspect( eh );
+  }
 
 
 // log( "today", Time.format( world.Time ));
