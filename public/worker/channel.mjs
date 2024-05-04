@@ -31,14 +31,21 @@ const dispatch = {
 		log(et);
 	},
 	query_world(dat){
-		const out = [];
-		for( const entity of world.entity.values()){
-			out.push({
-				id: entity.id,
-				desig: world.sysdesig(entity),
+		const data = [];
+		for( const eh of world.entity_history.values()){
+			const e = eh.current();
+			data.push({
+				id: e.id,
+				v: e.v,
+				desig: e.sysdesig(),
 			});
 		}
-		log(out);
+		channel.postMessage({
+			msg: "world_entity_list",
+			server_id,
+			client_id: dat.client_id,
+			data,
+		});
 	},
 }
 
@@ -51,6 +58,8 @@ channel.onmessage = ev => {
 	if( !msg ) return console.error("Got confused message", dat);
 	if( !dispatch[msg] ) return console.error('Message confused:', dat );
 	log("message", dat);
+	if( dat.server_id !== server_id && dat.msg !== "connect" )
+		return console.error('Server mismatch', dat);
 	dispatch[msg](dat);
 };
 

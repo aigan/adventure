@@ -90,7 +90,7 @@ export class World {
 
   //## Maybe rename to be similar to nodejs util.inspect
   sysdesig( entity ){
-    let id;
+    let id, eh;
     //log("sysdesig", entity);
 
     if( typeof entity === 'number' ){
@@ -104,14 +104,17 @@ export class World {
     const label = entity.label;
 
     let desig = id;
-
+		
     if( entity instanceof EntityHistory ){
+			eh = entity;
       desig += "*";
       entity = entity.versions.slice(-1)[0];
-    }
+    } else {
+			eh = entity.history;
+		}
     
-    if( entity.is_archetype ){
-      return `${desig} ${entity.is_archetype} Archetype`;
+    if( eh.is_archetype ){
+      return `${desig} ${eh.is_archetype} Archetype`;
     }
 
     //log("getting tags from", entity);
