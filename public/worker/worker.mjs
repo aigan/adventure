@@ -1,7 +1,7 @@
 //import {world} from "world.mjs";
 
 const log = console.log.bind(console);
-log('Loading Worker');
+//log('Loading Worker');
 
 let DEBUG = true;
 
@@ -40,7 +40,7 @@ addEventListener('message', async e =>{
   let msg = e.data;
   if( typeof msg === 'string') msg = [msg];
   const [cmd, data={}, ackid] = msg;
-  log("Recieved message", cmd, data );
+  //log("Recieved message", cmd, data );
 
 	if( cmd === "start" ) return await dispatch.start(data);
 	
@@ -64,6 +64,4 @@ self.onerror = err =>{
   console.log("worker on error");
 }
 
-
-
-log('Ready');
+//log('Ready');

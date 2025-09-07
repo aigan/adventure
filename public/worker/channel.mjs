@@ -1,5 +1,5 @@
 const log = console.log.bind(console);
-log('Loading Channel');
+//log('Loading Channel');
 
 //import {world} from "./world.mjs";
 
