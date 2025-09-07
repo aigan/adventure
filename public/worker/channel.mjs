@@ -1,7 +1,7 @@
 const log = console.log.bind(console);
 log('Loading Channel');
 
-import {world} from "./world.mjs";
+//import {world} from "./world.mjs";
 
 const channel = new BroadcastChannel('inspect');
 let client_id_sequence = 0; // Client id
@@ -27,41 +27,42 @@ const dispatch = {
 	hello(dat){
 		throw Error("Multiple servers");
 	},
-	query(dat){
-		const label = dat.label;
-		log(`Asking for ${label}`);
-		const et = world.get_by_template(label);
-		log(et);
-	},
-	query_world({client_id}){
-		const data = [];
-		for( const eh of world.entity_history.values()){
-			const e = eh.current();
-			data.push({
-				id: e.id,
-				v: e.v,
-				desig: e.sysdesig(),
-			});
-		}
-		channel.postMessage({
-			msg: "world_entity_list",
-			server_id,
-			client_id,
-			data,
-		});
-	},
-	query_entity({id,v,client_id}){
-		id = Number(id);
-		v = Number(v);
-		log("query_entity", id, v);
-		const e = world.get_entity(id,v);
-		channel.postMessage({
-			msg: "world_entity",
-			data: e.bake(),
-			desig: e.sysdesig(),
-			bases: e.bases.map(b=>({id:b.id,v:b.v})),
-		});
-	},
+
+//	query(dat){
+//		const label = dat.label;
+//		log(`Asking for ${label}`);
+//		const et = world.get_by_template(label);
+//		log(et);
+//	},
+//	query_world({client_id}){
+//		const data = [];
+//		for( const eh of world.entity_history.values()){
+//			const e = eh.current();
+//			data.push({
+//				id: e.id,
+//				v: e.v,
+//				desig: e.sysdesig(),
+//			});
+//		}
+//		channel.postMessage({
+//			msg: "world_entity_list",
+//			server_id,
+//			client_id,
+//			data,
+//		});
+//	},
+//	query_entity({id,v,client_id}){
+//		id = Number(id);
+//		v = Number(v);
+//		log("query_entity", id, v);
+//		const e = world.get_entity(id,v);
+//		channel.postMessage({
+//			msg: "world_entity",
+//			data: e.bake(),
+//			desig: e.sysdesig(),
+//			bases: e.bases.map(b=>({id:b.id,v:b.v})),
+//		});
+//	},
 }
 
 

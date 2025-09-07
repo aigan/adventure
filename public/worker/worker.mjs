@@ -11,10 +11,9 @@ let DEBUG = true;
 let world,DB;
 async function init(){
   ({world} = await import("./world.mjs"));
-  DB = await import("./db.mjs");
+  //DB = await import("./db.mjs");
   await import("./channel.mjs");
 
-  // log('player', world.sysdesig(player));
   world.player_enter_location();
   
 }
