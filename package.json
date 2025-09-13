@@ -12,6 +12,8 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
+    "eslint": "^9.35.0",
+    "globals": "^16.4.0",
     "gulp": "^5.0.0",
     "gulp-exec": "^5.0.0",
     "indefinite": "^2.3.2",
