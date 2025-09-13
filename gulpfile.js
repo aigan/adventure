@@ -9,7 +9,7 @@ const rollupBuild = (cb)=>{
 }
 
 function copy(){
-  return src('node_modules/dialog-polyfill/dist/*').pipe(dest('public/vendor/'));
+  //return src('node_modules/dialog-polyfill/dist/*').pipe(dest('public/vendor/'));
 }
 
-exports.default = series(rollupBuild, copy);
+exports.default = series(rollupBuild);

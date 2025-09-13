@@ -2,9 +2,6 @@ const log = console.log.bind(console);
 // log('Loading GUI');
 
 // import {cssP} from "./lib/load.mjs";
-// cssP("./vendor/dialog-polyfill.css");
-
-import dialogPolyfill from "../vendor/dialog-polyfill.esm.js";
 // import {worker} from "./boot.mjs";
 import {Message} from "./message.mjs";
 
@@ -27,7 +24,6 @@ export const Content = {
   dialog(){
     const el_dialog = document.createElement('dialog');
     document.body.appendChild(el_dialog);
-    dialogPolyfill.registerDialog(el_dialog);
     return el_dialog;
     // el_dialog.showModal();
   },
