@@ -25,26 +25,39 @@ export class Mind {
 
     for (const [label, def] of Object.entries(beliefs)) {
       def.label = label;
-      const belief = new Belief(this, def);
-      this.belief.add(belief);
-      if (def.label != null) {
-        this.belief_by_label[def.label] = belief;
-      }
+      this.add(def);
     }
   }
 
-  create_state(tick, beliefs) {
-    const state = new State(this, tick, beliefs);
+  add(belief_def) {
+    const belief = new Belief(this, belief_def);
+    this.belief.add(belief);
+    if (belief_def.label != null) {
+      this.belief_by_label[belief_def.label] = belief;
+    }
+    return belief;
+  }
+
+  create_state(timestamp, beliefs) {
+    const state = new State(this, timestamp, beliefs);
     this.state.add(state);
     return state;
   }
 }
 
 export class State {
-  constructor(mind, tick, added) {
+  constructor(mind, timestamp, base=null, insert=[], remove=[]) {
     this.mind = mind;
-    this.tick = tick;
-    this.added = added;
+    this.base = base;
+    this.timestamp = timestamp;
+    this.insert = insert;
+    this.remove = remove;
+  }
+
+  tick({insert=[], remove=[], replace=[]}) {
+    const state = new State(this.mine, ++ this.timestamp, this, insert, remove);
+    // TODO: handle replace
+    return state;
   }
 }
 

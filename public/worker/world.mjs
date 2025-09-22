@@ -57,10 +57,27 @@ const world_belief = {
 
 DB.register(archetypes, traittypes);
 
-export const world = new DB.Mind('world', world_belief);
-const state = world.create_state(1, world.belief);
+const world = new DB.Mind('world', world_belief);
+let state = world.create_state(1, world.belief);
+
+//log(state);
+
+const ball = world.add({
+  label: 'ball',
+  archetypes: ['PortableObject'],
+  traits: {
+    location: 'workshop',
+  },
+});
+
+state = state.tick({
+  insert: [ball],
+});
+
+
 const player = world.belief_by_label.player;
 
+// Adventure would be its own module later...
 export const Adventure = {
   world,
   player,

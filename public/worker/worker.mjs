@@ -10,10 +10,13 @@ let DEBUG = true;
 */
 let world,DB;
 async function init(){
-  ({world} = await import("./world.mjs"));
+  const World = await import("./world.mjs");
+  const Adventure = World.Adventure;
+
   //DB = await import("./db.mjs");
   await import("./channel.mjs");
 
+  const world = Adventure.world;
   world.player_enter_location();
   
 }
