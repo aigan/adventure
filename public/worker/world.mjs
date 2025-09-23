@@ -7,13 +7,22 @@ const log = console.log.bind(console);
 
 
 const traittypes = {
- 'location': 'Location',
+  location: 'Location',
+  mind: 'Mind',
+  color: 'String',
 }
 
 const archetypes = {
   ObjectPhysical: {
     traits: {
       location: null,
+      color: null,
+    },
+  },
+
+  Mental: {
+    traits: {
+      mind: null,
     },
   },
 
@@ -30,7 +39,7 @@ const archetypes = {
   },
 
   Player: {
-    bases: ['Actor'],
+    bases: ['Actor', 'Mental'],
   },
 }
 
@@ -62,7 +71,7 @@ let state = world.create_state(1, world.belief);
 
 //log(state);
 
-const ball = world.add({
+let ball = world.add({
   label: 'ball',
   archetypes: ['PortableObject'],
   traits: {
@@ -74,8 +83,21 @@ state = state.tick({
   insert: [ball],
 });
 
+ball = ball.with_traits({
+  color: 'blue',
+});
 
-const player = world.belief_by_label.player;
+state = state.tick({
+  replace: [ball],
+});
+
+log(state);
+
+
+let player = world.belief_by_label.player;
+//player = player.with_traits({mind:new DB.Mind('player_mind', {}));
+//log(player);
+
 
 // Adventure would be its own module later...
 export const Adventure = {
@@ -84,7 +106,7 @@ export const Adventure = {
   state,
 }
 
-log(Adventure);
+// log(Adventure);
 
 
 //function inspect( obj ){

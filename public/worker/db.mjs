@@ -55,14 +55,19 @@ export class State {
   }
 
   tick({insert=[], remove=[], replace=[]}) {
-    const state = new State(this.mine, ++ this.timestamp, this, insert, remove);
-    // TODO: handle replace
+    for (const belief of replace) {
+      remove.push(...belief.bases);
+      insert.push(belief);
+    }
+
+    const state = new State(this.mind, ++ this.timestamp, this, insert, remove);
     return state;
   }
 }
 
 export class Belief {
   constructor(mind, {label=null, archetypes=[], bases=[], traits={}}) {
+    this.in_mind = mind;
     this.label = label;
     this.archetypes = new Set([]);
     this.bases = new Set([]);
@@ -132,6 +137,10 @@ export class Belief {
         yield* archetype.get_archetypes(seen);
       }
     }
+  }
+
+  with_traits(traits) {
+    return new Belief(this.in_mind, {bases: [this], traits});
   }
 }
 
@@ -214,7 +223,11 @@ export class Traittype {
       if (!belief.archetypes.has(range)) throw "Archetype mismatch";
       return belief;
     }
+    if (range === String) {
+      return data;
+    }
 
+    log('resolve traittype', this.label, data, range);
     throw "Not archetype";
   }
 
