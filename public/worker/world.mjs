@@ -9,7 +9,7 @@ const log = console.log.bind(console);
 const traittypes = {
   location: 'Location',
   mind: 'Mind',
-  color: 'String',
+  color: 'string',
 }
 
 const archetypes = {

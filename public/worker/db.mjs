@@ -88,12 +88,12 @@ export class Belief {
     }
 
     for (const [trait_label, trait_data] of Object.entries(traits)) {
-      this.resolve_and_add_trait(mind, trait_label, trait_data);
+      this.resolve_and_add_trait(trait_label, trait_data);
     }
     // TODO: add default trait values
   }
 
-  resolve_and_add_trait(mind, label, data) {
+  resolve_and_add_trait(label, data) {
     const traittype = db_traittypes[label];
     //log('looking up traittype', label, traittype);
     if (traittype == null) {
@@ -101,7 +101,7 @@ export class Belief {
       throw `Trait ${label} do not exist `;
     }
 
-    const value = traittype.resolve(mind, data);
+    const value = traittype.resolve(this.in_mind, data);
 
     if (!this.can_have_trait(label)) {
       log('belief', this.label, 'add trait', label, data, value);
@@ -176,11 +176,14 @@ export class Archetype {
 
 export class Traittype {
   static data_type_map = {
-    Number: Number,
-    String: String,
-    Boolean: Boolean,
     Map: Map,
     Set: Set,
+  }
+
+  static literal_type_map = {
+    'number': Number,
+    'string': String,
+    'boolean': Boolean,
   }
 
   constructor(label, def) {
@@ -204,37 +207,46 @@ export class Traittype {
     }
   }
 
-  get_datatype() {
-    // Assume single slot type
-    return Traittype.get_datatype( this.schema.value.range );
-  }
-
   resolve(mind, data) {
-    const range = this.get_datatype();
-    //log('resolve traittype', this.label, data, range);
-    if (range instanceof Archetype) {
+    const range_label = this.schema.value.range;
+
+    if (db_archetypes[range_label]) {
+      const range = db_archetypes[range_label];
       let belief;
       if (typeof data === 'string') {
         belief = mind.belief_by_label[data];
       } else {
         belief = data;
       }
-      //log('validate archetype', belief);
-      if (!belief.archetypes.has(range)) throw "Archetype mismatch";
-      return belief;
+
+      if (belief.archetypes.has(range)) {
+        return belief;
+      }
+
+      log('resolve traittype', this.label, data, range_label);
+      throw "Archetype mismatch";
     }
-    if (range === String) {
-      return data;
+
+    if (Traittype.literal_type_map[range_label]) {
+      if (typeof data === range_label) {
+        return data;
+      }
+
+      log('resolve traittype', this.label, data, range_label);
+      throw "type mismatch";
     }
 
-    log('resolve traittype', this.label, data, range);
-    throw "Not archetype";
-  }
+    if (Traittype.data_type_map[range_label]) {
+      const range =  Traittype.data_type_map[range_label];
+      if (data instanceof range) {
+        return data;
+      }
 
-  static get_datatype(label) {
-    //log('Get traittype datatype', label);
-    if (Traittype.data_type_map[label]) return Traittype.data_type_map[label];
-    if (db_archetypes[label]) return db_archetypes[label];
-  }
+      log('resolve traittype', this.label, data, range);
+      throw "type mismatch";
+    }
 
+    log('resolve traittype', this.label, data, range_label);
+    throw "Type not found";
+  }
 }
