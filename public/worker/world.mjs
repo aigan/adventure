@@ -87,16 +87,24 @@ ball = ball.with_traits({
   color: 'blue',
 });
 
+//log(state);
+
 state = state.tick({
   replace: [ball],
 });
 
 //log(state);
+//log(world);
 
 
 let player = world.belief_by_label.player;
 player = player.with_traits({mind:new DB.Mind('player_mind', {})});
-log(player);
+state = state.tick({
+  replace: [player],
+});
+
+log(JSON.stringify(world)); log(world);
+//log(JSON.stringify(state)); log(state);
 
 
 // Adventure would be its own module later...

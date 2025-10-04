@@ -3,6 +3,8 @@ const log = console.log.bind(console);
 const db_archetypes = {};
 const db_traittypes = {};
 
+let id_sequence = 0;
+
 export function register( archetypes, traittypes ) {
   for (const [label, def] of Object.entries(traittypes)) {
     //traittypes[label] = def; // TODO: resolve trait datatypes
@@ -18,6 +20,7 @@ export function register( archetypes, traittypes ) {
 
 export class Mind {
   constructor(label, beliefs) {
+    this._id = ++ id_sequence;
     this.label = label;
     this.state = new Set([]);
     this.belief = new Set([]);
@@ -43,11 +46,22 @@ export class Mind {
     this.state.add(state);
     return state;
   }
+
+  toJSON() {
+    return {
+      _type: 'Mind',
+      _id: this._id,
+      label: this.label,
+      belief: [...this.belief].map(b => b.toJSON()),
+      state: [...this.state].map(s => s.toJSON())
+    };
+  }
 }
 
 export class State {
   constructor(mind, timestamp, base=null, insert=[], remove=[]) {
-    this.mind = mind;
+    this._id = ++ id_sequence;
+    this.in_mind = mind;
     this.base = base;
     this.timestamp = timestamp;
     this.insert = insert;
@@ -60,13 +74,25 @@ export class State {
       insert.push(belief);
     }
 
-    const state = new State(this.mind, ++ this.timestamp, this, insert, remove);
+    const state = new State(this.in_mind, ++ this.timestamp, this, insert, remove);
+    this.in_mind.state.add(state);
     return state;
+  }
+
+  toJSON() {
+    return {
+      _type: 'State',
+      _id: this._id,
+      base: this.base?._id ?? null,
+      insert: this.insert.map(b => b._id),
+      remove: this.remove.map(b => b._id)
+    };
   }
 }
 
 export class Belief {
   constructor(mind, {label=null, archetypes=[], bases=[], traits={}}) {
+    this._id = ++ id_sequence;
     this.in_mind = mind;
     this.label = label;
     this.archetypes = new Set([]);
@@ -140,7 +166,22 @@ export class Belief {
   }
 
   with_traits(traits) {
-    return new Belief(this.in_mind, {bases: [this], traits});
+    const belief = new Belief(this.in_mind, {bases: [this], traits});
+    this.in_mind.belief.add(belief);
+    return belief;
+  }
+
+  toJSON() {
+    return {
+      _type: 'Belief',
+      _id: this._id,
+      label: this.label,
+      archetypes: [...this.archetypes].map(a => a.label),
+      bases: [...this.bases].map(b => b._id),
+      traits: Object.fromEntries(
+        [...this.traits].map(([k, v]) => [k, Traittype.serializeTraitValue(v)])
+      )
+    };
   }
 }
 
@@ -249,5 +290,13 @@ export class Traittype {
 
     log('resolve traittype', this.label, data, range_label);
     throw "Type not found";
+  }
+
+  static serializeTraitValue(value) {
+    if (value instanceof Belief || value instanceof State) {
+      //return {_ref: value._id};
+    }
+    if (value?.toJSON) return value.toJSON();
+    return value;
   }
 }
