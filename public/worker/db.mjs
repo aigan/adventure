@@ -178,6 +178,7 @@ export class Traittype {
   static data_type_map = {
     Map: Map,
     Set: Set,
+    Mind: Mind,
   }
 
   static literal_type_map = {

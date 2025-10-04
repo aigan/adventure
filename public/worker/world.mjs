@@ -91,12 +91,12 @@ state = state.tick({
   replace: [ball],
 });
 
-log(state);
+//log(state);
 
 
 let player = world.belief_by_label.player;
-//player = player.with_traits({mind:new DB.Mind('player_mind', {}));
-//log(player);
+player = player.with_traits({mind:new DB.Mind('player_mind', {})});
+log(player);
 
 
 // Adventure would be its own module later...
