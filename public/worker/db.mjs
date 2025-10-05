@@ -42,7 +42,7 @@ export class Mind {
   }
 
   create_state(timestamp, beliefs) {
-    const state = new State(this, timestamp, beliefs);
+    const state = new State(this, timestamp, null, [...beliefs]);
     this.state.add(state);
     return state;
   }
@@ -77,6 +77,21 @@ export class State {
     const state = new State(this.in_mind, ++ this.timestamp, this, insert, remove);
     this.in_mind.state.add(state);
     return state;
+  }
+
+  *get_beliefs() {
+    const removed = new Set();
+
+    for (let s = this; s; s = s.base) {
+      for (const belief of s.insert) {
+        if (!removed.has(belief._id)) {
+          yield belief;
+        }
+      }
+      for (const belief of s.remove) {
+        removed.add(belief._id);
+      }
+    }
   }
 
   toJSON() {
@@ -169,6 +184,30 @@ export class Belief {
     const belief = new Belief(this.in_mind, {bases: [this], traits});
     this.in_mind.belief.add(belief);
     return belief;
+  }
+
+  sysdesig() {
+    const parts = [];
+
+    if (this.label) {
+      parts.push(this.label);
+    }
+
+    const first_archetypes = [...this.archetypes];
+    if (first_archetypes.length === 0) {
+      for (const base of this.bases) {
+        first_archetypes.push(...base.archetypes);
+        if (first_archetypes.length > 0) break;
+      }
+    }
+
+    if (first_archetypes.length > 0) {
+      parts.push(`[${first_archetypes.map(a => a.label).join(', ')}]`);
+    }
+
+    parts.push(`#${this._id}`);
+
+    return parts.join(' ');
   }
 
   toJSON() {

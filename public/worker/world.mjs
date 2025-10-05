@@ -98,14 +98,19 @@ state = state.tick({
 
 
 let player = world.belief_by_label.player;
-player = player.with_traits({mind:new DB.Mind('player_mind', {})});
-state = state.tick({
-  replace: [player],
-});
 
-log(JSON.stringify(world)); log(world);
-//log(JSON.stringify(state)); log(state);
+//player = player.with_traits({mind:new DB.Mind('player_mind', {})});
+//state = state.tick({replace: [player]});
 
+
+//log(JSON.stringify(world)); log(world);
+//log(JSON.stringify(state));
+
+log(state);
+
+for (const belief of  state.get_beliefs()) {
+  log("Belief", belief.sysdesig());
+}
 
 // Adventure would be its own module later...
 export const Adventure = {
