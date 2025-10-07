@@ -35,36 +35,52 @@ const dispatch = {
 //		log(et);
 //	},
 
-//	query_world({client_id}){
-//		const data = [];
-//		for( const eh of Adventure.world.entity_history.values()){
-//			const e = eh.current();
-//			data.push({
-//				id: e.id,
-//				v: e.v,
-//				desig: e.sysdesig(),
-//			});
-//		}
-//		channel.postMessage({
-//			msg: "world_entity_list",
-//			server_id,
-//			client_id,
-//			data,
-//		});
-//	},
+	query_world({client_id}){
+		const data = [];
+		for (const belief of Adventure.state.get_beliefs()) {
+			data.push({
+				id: belief._id,
+				label: belief.label,
+				desig: belief.sysdesig(),
+			});
+		}
+		channel.postMessage({
+			msg: "world_entity_list",
+			server_id,
+			client_id,
+			data,
+		});
+	},
 
-  //	query_entity({id,v,client_id}){
-//		id = Number(id);
-//		v = Number(v);
-//		log("query_entity", id, v);
-//		const e = world.get_entity(id,v);
-//		channel.postMessage({
-//			msg: "world_entity",
-//			data: e.bake(),
-//			desig: e.sysdesig(),
-//			bases: e.bases.map(b=>({id:b.id,v:b.v})),
-//		});
-//	},
+	query_entity({id, client_id}){
+		id = Number(id);
+		log("query_entity", id);
+
+		// Find belief by id in current state
+		let belief = null;
+		for (const b of Adventure.state.get_beliefs()) {
+			if (b._id === id) {
+				belief = b;
+				break;
+			}
+		}
+
+		if (!belief) {
+			log("Belief not found", id);
+			return;
+		}
+
+		channel.postMessage({
+			msg: "world_entity",
+			server_id,
+			client_id,
+			data: {
+				data: belief.toJSON(),
+			},
+			desig: belief.sysdesig(),
+			bases: [...belief.bases].map(b => ({id: b._id, label: b.label})),
+		});
+	},
 }
 
 

@@ -53,7 +53,7 @@ const dispatch = {
         rows: dat.data,
         row_link: {
           query: "entity",
-          pass_column: ["id","v"],
+          pass_column: ["id"],
         }
       },
     });
@@ -112,12 +112,49 @@ function render_table(a){
 }
 
 function render_entity(a){
-  const {rel,rev} = a.entity.data;
+  const belief_data = a.entity.data.data;
 
-  let hout = "";
-  for( const [trait,t] of Object.entries( rel )){
-    hout += `<p>${trait}</p>`;
+  let hout = "<dl>";
+
+  // Display ID
+  hout += `<dt>ID</dt><dd>#${belief_data._id}</dd>`;
+
+  // Display label
+  if (belief_data.label) {
+    hout += `<dt>Label</dt><dd>${belief_data.label}</dd>`;
   }
+
+  // Display archetypes
+  if (belief_data.archetypes?.length > 0) {
+    hout += `<dt>Archetypes</dt><dd>${belief_data.archetypes.join(', ')}</dd>`;
+  }
+
+  // Display bases
+  if (a.bases?.length > 0) {
+    hout += `<dt>Bases</dt><dd>`;
+    for (const base of a.bases) {
+      hout += `<a href="?entity&id=${base.id}">#${base.id}${base.label ? ' (' + base.label + ')' : ''}</a> `;
+    }
+    hout += `</dd>`;
+  }
+
+  // Display traits
+  if (belief_data.traits && Object.keys(belief_data.traits).length > 0) {
+    hout += `<dt>Traits</dt><dd><dl>`;
+    for (const [trait, value] of Object.entries(belief_data.traits)) {
+      let display_value = value;
+      if (typeof value === 'object' && value !== null) {
+        display_value = JSON.stringify(value, null, 2);
+      }
+      hout += `<dt>${trait}</dt><dd><pre>${display_value}</pre></dd>`;
+    }
+    hout += `</dl></dd>`;
+  }
+
+  hout += "</dl>";
+
+  // Display raw JSON for debugging
+  hout += `<details><summary>Raw JSON</summary><pre>${JSON.stringify(belief_data, null, 2)}</pre></details>`;
 
   $main.innerHTML = hout;
 }
