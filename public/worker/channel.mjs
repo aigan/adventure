@@ -2,6 +2,7 @@ const log = console.log.bind(console);
 //log('Loading Channel');
 
 import {Adventure} from "./world.mjs";
+import * as DB from "./db.mjs";
 
 const channel = new BroadcastChannel('inspect');
 let client_id_sequence = 0; // Client id
@@ -35,20 +36,46 @@ const dispatch = {
 //		log(et);
 //	},
 
-	query_world({client_id}){
+	query_mind({mind, client_id}){
+		// Accept mind id (number) or label (string)
+		const mind_obj = typeof mind === 'number'
+			? DB.Mind.get_by_id(mind)
+			: DB.Mind.get_by_label(mind);
+
+		if (!mind_obj) {
+			log("Mind not found", mind);
+			return;
+		}
+
+		// Get the latest state from this mind
+		const states = [...mind_obj.state];
+		const state = states[states.length - 1];
+
+		if (!state) {
+			log("No state found for mind", mind);
+			return;
+		}
+
 		const data = [];
-		for (const belief of Adventure.state.get_beliefs()) {
+		for (const belief of state.get_beliefs()) {
 			data.push({
 				id: belief._id,
 				label: belief.label,
 				desig: belief.sysdesig(),
 			});
 		}
+
 		channel.postMessage({
 			msg: "world_entity_list",
 			server_id,
 			client_id,
-			data,
+			state: {
+				id: state._id,
+				timestamp: state.timestamp,
+				mind_id: state.in_mind._id,
+				mind_label: state.in_mind.label,
+				beliefs: data,
+			},
 		});
 	},
 

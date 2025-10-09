@@ -99,8 +99,12 @@ state = state.tick({
 
 let player = world.belief_by_label.player;
 
-//player = player.with_traits({mind:new DB.Mind('player_mind', {})});
-//state = state.tick({replace: [player]});
+player = player.with_traits({mind:new DB.Mind('player_mind', {
+  player_mind_workshop: {
+    archetypes: ['Location'],
+  },
+})});
+state = state.tick({replace: [player]});
 
 
 //log(JSON.stringify(world)); log(world);

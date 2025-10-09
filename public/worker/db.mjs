@@ -19,6 +19,9 @@ export function register( archetypes, traittypes ) {
 }
 
 export class Mind {
+  static db_by_id = new Map();
+  static db_by_label = new Map();
+
   constructor(label, beliefs) {
     this._id = ++ id_sequence;
     this.label = label;
@@ -30,6 +33,20 @@ export class Mind {
       def.label = label;
       this.add(def);
     }
+
+    // Register globally
+    Mind.db_by_id.set(this._id, this);
+    if (label) {
+      Mind.db_by_label.set(label, this);
+    }
+  }
+
+  static get_by_id(id) {
+    return Mind.db_by_id.get(id);
+  }
+
+  static get_by_label(label) {
+    return Mind.db_by_label.get(label);
   }
 
   add(belief_def) {
@@ -298,6 +315,11 @@ export class Traittype {
         belief = mind.belief_by_label[data];
       } else {
         belief = data;
+      }
+
+      if (belief == null) {
+        log('resolve traittype', this.label, data, range_label);
+        throw "Belief not found";
       }
 
       if (belief.archetypes.has(range)) {

@@ -15,7 +15,8 @@ parse_url();
 window.q = {
   world(){
     channel.postMessage({
-      msg:'query_world',
+      msg:'query_mind',
+      mind: 'world',
       client_id,
       server_id,
     });
@@ -47,10 +48,10 @@ const dispatch = {
   },
   world_entity_list(dat){
     render({
-      header: "World entities",
+      header: `World entities (State #${dat.state.id}, timestamp: ${dat.state.timestamp})`,
       table: {
         columns: ["desig"],
-        rows: dat.data,
+        rows: dat.state.beliefs,
         row_link: {
           query: "entity",
           pass_column: ["id"],
@@ -164,7 +165,11 @@ function parse_url(){
   query = {};
   for( const [key,val] of new URLSearchParams(location.search)){
     if( !query.msg && !val ){
-      query.msg = "query_" + key;
+      const msg_name = key === 'world' ? 'query_mind' : 'query_' + key;
+      query.msg = msg_name;
+      if( key === 'world' ){
+        query.mind = 'world';
+      }
       continue;
     }
     query[key]=val;
