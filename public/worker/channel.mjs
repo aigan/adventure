@@ -17,7 +17,7 @@ channel.postMessage({
 
 
 const dispatch = {
-	connect(dat){
+	connect(_dat){
 		const client_id = ++ client_id_sequence;
 		channel.postMessage({
 			msg: "welcome",
@@ -25,7 +25,8 @@ const dispatch = {
 			server_id,
 		});
 	},
-	hello(dat){
+
+	hello(_dat){
 		throw Error("Multiple servers");
 	},
 
@@ -87,7 +88,7 @@ const dispatch = {
 
 		// Find state by searching all minds
 		let state_obj = null;
-		for (const [id, mind] of DB.Mind.db_by_id) {
+		for (const [_id, mind] of DB.Mind.db_by_id) {
 			for (const s of mind.state) {
 				if (s._id === state_id) {
 					state_obj = s;
@@ -131,7 +132,7 @@ const dispatch = {
 
 		// Find belief by searching all minds
 		let belief_obj = null;
-		for (const [id, mind] of DB.Mind.db_by_id) {
+		for (const [_id, mind] of DB.Mind.db_by_id) {
 			for (const b of mind.belief) {
 				if (b._id === belief_id) {
 					belief_obj = b;
@@ -207,7 +208,7 @@ channel.onmessage = ev => {
 function increment_sequence( label ){
 	// Using IndexedID to absolutely elliminate race conditions
 
-	return new Promise( (resolve,reject)=>{
+	return new Promise( (resolve,_reject)=>{
 		const db_req = indexedDB.open("adventure");
 		db_req.onupgradeneeded = ev => {
 			const db = ev.target.result;
@@ -221,7 +222,7 @@ function increment_sequence( label ){
 
 			const req_get = st.get(label);
 			req_get.onsuccess = ()=>{
-				let res = req_get.result;
+				//let res = req_get.result;
 				const value = 1 + (req_get.result ?? 0);
 				st.put(value, label);
 				resolve( value );

@@ -112,10 +112,8 @@ player = player.with_traits({mind:player_mind});
 state = state.tick({replace: [player]});
 
 
-//log(JSON.stringify(world_mind)); log(world_mind);
+log(JSON.stringify(world_mind));
 //log(JSON.stringify(state));
-
-log(state);
 
 for (const belief of  state.get_beliefs()) {
   log("Belief", belief.sysdesig());

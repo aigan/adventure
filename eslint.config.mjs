@@ -10,10 +10,19 @@ export default [
       globals: globals.worker,
     },
     rules: {
-      "no-unused-vars": "warn",
+      "no-unused-vars": ["warn", {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }],
       "no-undef": "error",
       "prefer-const": "error",
       "semi": "off",
+    }
+  },
+  {
+    files: ["test/**/*.mjs"],
+    languageOptions: {
+      globals: globals.mocha,
     }
   }
 ];

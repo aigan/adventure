@@ -4,7 +4,7 @@
   "description": "Adventure",
   "browser": "public/client.mjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "mocha test/**/*.test.mjs",
     "postinstall": "gulp default"
   },
   "author": "",
@@ -12,11 +12,13 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
+    "chai": "^6.2.0",
     "eslint": "^9.35.0",
     "globals": "^16.4.0",
     "gulp": "^5.0.0",
     "gulp-exec": "^5.0.0",
     "indefinite": "^2.3.2",
+    "mocha": "^11.7.4",
     "rollup": "^4.16.4"
   }
 }

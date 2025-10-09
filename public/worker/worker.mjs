@@ -3,7 +3,7 @@
 const log = console.log.bind(console);
 //log('Loading Worker');
 
-let DEBUG = true;
+//let DEBUG = true;
 
 /*
 	All imports async here in top worker for catching errors
@@ -63,7 +63,7 @@ addEventListener('message', async e =>{
 }, false);
 
 //## Not implemented consistently
-self.onerror = err =>{
+self.onerror = _err =>{
   console.log("worker on error");
 }
 
