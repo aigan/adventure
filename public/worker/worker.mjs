@@ -45,13 +45,13 @@ addEventListener('message', async e =>{
   const [cmd, data={}, ackid] = msg;
   //log("Recieved message", cmd, data );
 
-	if( cmd === "start" ) return await dispatch.start(data);
+	if( cmd === "start" ) return await dispatch.start();
 	
   if( !dispatch[cmd] ) throw(Error(`Message ${cmd} not recognized`));
 
-  if( !data.from ) data.from = world.Adventure.player;
-  if( data.from ) data.world = DB.World.get(data.from._world);
-  if( data.target ) data.target = data.world.get_entity_current( data.target );
+  //if( !data.from ) data.from = world.Adventure.player;
+  //if( data.from ) data.world = DB.World.get(data.from._world);
+  //if( data.target ) data.target = data.world.get_entity_current( data.target );
   
   // log('dispatch', cmd, data);
   const res = await dispatch[cmd](data);

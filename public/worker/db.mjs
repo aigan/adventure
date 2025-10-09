@@ -22,10 +22,16 @@ export class Mind {
   static db_by_id = new Map();
   static db_by_label = new Map();
 
+  /**
+   * @param {string} label - Mind identifier
+   * @param {object} beliefs - Initial beliefs {label: definition}
+   */
   constructor(label, beliefs) {
     this._id = ++ id_sequence;
     this.label = label;
+    /** @type {Set<State>} */
     this.state = new Set([]);
+    /** @type {Set<Belief>} */
     this.belief = new Set([]);
     this.belief_by_label = {};
 
@@ -80,15 +86,32 @@ export class Mind {
 }
 
 export class State {
+  /**
+   * @param {Mind} mind
+   * @param {number} timestamp
+   * @param {State|null} base
+   * @param {Belief[]} insert
+   * @param {Belief[]} remove
+   */
   constructor(mind, timestamp, base=null, insert=[], remove=[]) {
     this._id = ++ id_sequence;
     this.in_mind = mind;
+    /** @type {State|null} */
     this.base = base;
     this.timestamp = timestamp;
+    /** @type {Belief[]} */
     this.insert = insert;
+    /** @type {Belief[]} */
     this.remove = remove;
   }
 
+  /**
+   * @param {object} param0
+   * @param {Belief[]} [param0.insert]
+   * @param {Belief[]} [param0.remove]
+   * @param {Belief[]} [param0.replace]
+   * @returns {State}
+   */
   tick({insert=[], remove=[], replace=[]}) {
     for (const belief of replace) {
       remove.push(...belief.bases);
@@ -103,7 +126,8 @@ export class State {
   *get_beliefs() {
     const removed = new Set();
 
-    for (let s = this; s; s = s.base) {
+    /** @type {State|null} s */ let s;
+    for (s = this; s; s = s.base) {
       for (const belief of s.insert) {
         if (!removed.has(belief._id)) {
           yield belief;
@@ -127,24 +151,34 @@ export class State {
 }
 
 export class Belief {
+  /**
+   * @param {Mind} mind
+   * @param {object} param1
+   * @param {string|null} [param1.label]
+   * @param {(string|Archetype)[]} [param1.archetypes]
+   * @param {(string|Belief)[]} [param1.bases]
+   * @param {object} [param1.traits]
+   */
   constructor(mind, {label=null, archetypes=[], bases=[], traits={}}) {
     this._id = ++ id_sequence;
     this.in_mind = mind;
     this.label = label;
+    /** @type {Set<Archetype>} */
     this.archetypes = new Set([]);
+    /** @type {Set<Belief>} */
     this.bases = new Set([]);
     this.traits = new Map();
 
     for (let type of archetypes) {
       if (typeof type === 'string') {
-        type = db_archetypes[type];
+        type = /** @type {Archetype} type */ (db_archetypes[type]);
       }
       this.archetypes.add(type);
     }
 
     for (let base of bases) {
       if (typeof base === 'string') {
-        base = mind.belief_by_label[base];
+        base = /** @type {Belief} type */ (mind.belief_by_label[base]);
       }
       this.bases.add(base);
     }
@@ -178,17 +212,23 @@ export class Belief {
   can_have_trait(label) {
     for (const archetype of this.get_archetypes()) {
       //log ("check traits of archetype", archetype.label, archetype);
+      // @ts-ignore - generator always yields valid archetypes
       if (label in archetype.traits_template) return true;
     }
     return false;
   }
 
+  /**
+   * @param {Set<Belief|Archetype>} seen
+   * @returns {Generator<Archetype>}
+   */
   *get_archetypes(seen = new Set([])) {
     // bredth first
+    /** @type {Belief[]} */
     const bases = [this];
     while (bases.length > 0) {
       const base = bases.shift();
-      if (seen.has(base)) continue;
+      if (!base || seen.has(base)) continue;
 
       //log ("Check archetypes of", base.label);
       seen.add(base);
@@ -263,6 +303,7 @@ export class Archetype {
     this.label = label;
 
     //log("Construct archetype with bases", bases);
+    /** @type {Set<Archetype>} */
     this.bases = new Set([]);
     for (const base_label of bases) {
       this.bases.add(db_archetypes[base_label]);
@@ -272,12 +313,17 @@ export class Archetype {
     this.traits_template = traits;
   }
 
+  /**
+   * @param {Set<Belief|Archetype>} seen
+   * @returns {Generator<Archetype>}
+   */
   *get_archetypes(seen = new Set([])) {
     // bredth first
+    /** @type {Archetype[]} */
     const bases = [this];
     while (bases.length > 0) {
       const base = bases.shift();
-      if (seen.has(base)) continue;
+      if (!base || seen.has(base)) continue;
 
       //log ("Check archetype", base.label);
       seen.add(base);
@@ -380,7 +426,11 @@ export class Traittype {
 
   static inspectTraitValue(value) {
     if (value instanceof Belief || value instanceof State || value instanceof Mind) {
-      return {_ref: value._id, _type: value.constructor.name, label: value.label};
+      const result = {_ref: value._id, _type: value.constructor.name};
+      if (value instanceof Belief || value instanceof Mind) {
+        result.label = value.label;
+      }
+      return result;
     }
     if (value?.toJSON) return value.toJSON();
     return value;

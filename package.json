@@ -5,6 +5,7 @@
   "browser": "public/client.mjs",
   "scripts": {
     "test": "mocha test/**/*.test.mjs",
+    "typecheck": "tsc",
     "postinstall": "gulp default"
   },
   "author": "",
@@ -14,11 +15,13 @@
     "@rollup/plugin-node-resolve": "^15.2.3",
     "chai": "^6.2.0",
     "eslint": "^9.35.0",
+    "eslint-plugin-jsdoc": "^61.0.1",
     "globals": "^16.4.0",
     "gulp": "^5.0.0",
     "gulp-exec": "^5.0.0",
     "indefinite": "^2.3.2",
     "mocha": "^11.7.4",
-    "rollup": "^4.16.4"
+    "rollup": "^4.16.4",
+    "typescript": "^5.9.3"
   }
 }

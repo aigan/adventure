@@ -205,18 +205,22 @@ channel.onmessage = ev => {
 };
 
 
+/**
+ * @param {string} label
+ * @returns {Promise<number>}
+ */
 function increment_sequence( label ){
 	// Using IndexedID to absolutely elliminate race conditions
 
 	return new Promise( (resolve,_reject)=>{
 		const db_req = indexedDB.open("adventure");
-		db_req.onupgradeneeded = ev => {
-			const db = ev.target.result;
+		db_req.onupgradeneeded = /** @param {IDBVersionChangeEvent} ev */ (ev) => {
+			const db = /** @type {IDBOpenDBRequest} */ (ev.target).result;
 			db.createObjectStore("counters");
 		}
 
-		db_req.onsuccess = ev => {
-			const db = ev.target.result;
+		db_req.onsuccess = /** @param {Event} ev */ (ev) => {
+			const db = /** @type {IDBOpenDBRequest} */ (ev.target).result;
 			const tr = db.transaction('counters', 'readwrite');
 			const st = tr.objectStore('counters');
 
