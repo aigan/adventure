@@ -20,4 +20,4 @@ Alpha 5: Threads
 Alpha 6: Psychology  
 Alpha 7: Planning  
 Alpha 8: Sociology  
-Aplha 9: Grounding  
+Alpha 9: Grounding  

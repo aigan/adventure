@@ -1,0 +1,54 @@
+:root {
+  --color-text: #ffe5c6;
+  --color-surface-1: #222;
+  --color-surface-2: #333;
+  --color-surface-3: #343;
+  --color-backdrop: rgba(0,0,8,.30);
+}
+
+body {
+  font-family: 'IBM Plex Mono', "Courier New", Courier, monospace;
+  color: var(--color-text);
+  background: var(--color-surface-1);
+  font-size: 1rem;
+}
+
+@media (pointer:coarse) {
+  body {
+    font-size: 1.3rem;
+  }
+  p {
+    line-height: 2;
+  }
+}
+
+.selected {
+  background: var(--color-surface-3);
+}
+
+.topic {
+  cursor: pointer;
+}
+
+dialog {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  width: 80%;
+}
+
+dialog ul {
+  padding: 0;
+}
+
+dialog li {
+  list-style: none;
+}
+
+dialog[disabled] {
+  opacity:.5;
+}
+
+/* dialog polyfill */
+dialog::backdrop, dialog + .backdrop {
+  background: var(--color-backdrop);
+}
