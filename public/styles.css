@@ -4,6 +4,8 @@
   --color-surface-2: #333;
   --color-surface-3: #343;
   --color-backdrop: rgba(0,0,8,.30);
+  --color-link: #8cf;
+  --color-link-hover: #acf;
 }
 
 body {
@@ -11,6 +13,16 @@ body {
   color: var(--color-text);
   background: var(--color-surface-1);
   font-size: 1rem;
+}
+
+a {
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--color-link-hover);
+  text-decoration: underline;
 }
 
 @media (pointer:coarse) {

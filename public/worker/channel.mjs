@@ -39,7 +39,7 @@ const dispatch = {
 	query_mind({mind, client_id}){
 		// Accept mind id (number) or label (string)
 		const mind_obj = typeof mind === 'number'
-			? DB.Mind.get_by_id(mind)
+			? DB.Mind.get_by_id(Number(mind))
 			: DB.Mind.get_by_label(mind);
 
 		if (!mind_obj) {
@@ -74,8 +74,85 @@ const dispatch = {
 				timestamp: state.timestamp,
 				mind_id: state.in_mind._id,
 				mind_label: state.in_mind.label,
+				base_id: state.base?._id ?? null,
 				beliefs: data,
 			},
+		});
+	},
+
+	query_state({state, client_id}){
+		const state_id = Number(state);
+
+		// Find state by searching all minds
+		let state_obj = null;
+		for (const [id, mind] of DB.Mind.db_by_id) {
+			for (const s of mind.state) {
+				if (s._id === state_id) {
+					state_obj = s;
+					break;
+				}
+			}
+			if (state_obj) break;
+		}
+
+		if (!state_obj) {
+			log("State not found", state_id);
+			return;
+		}
+
+		const data = [];
+		for (const belief of state_obj.get_beliefs()) {
+			data.push({
+				id: belief._id,
+				label: belief.label,
+				desig: belief.sysdesig(),
+			});
+		}
+
+		channel.postMessage({
+			msg: "world_entity_list",
+			server_id,
+			client_id,
+			state: {
+				id: state_obj._id,
+				timestamp: state_obj.timestamp,
+				mind_id: state_obj.in_mind._id,
+				mind_label: state_obj.in_mind.label,
+				base_id: state_obj.base?._id ?? null,
+				beliefs: data,
+			},
+		});
+	},
+
+	query_belief({belief, client_id}){
+		const belief_id = Number(belief);
+
+		// Find belief by searching all minds
+		let belief_obj = null;
+		for (const [id, mind] of DB.Mind.db_by_id) {
+			for (const b of mind.belief) {
+				if (b._id === belief_id) {
+					belief_obj = b;
+					break;
+				}
+			}
+			if (belief_obj) break;
+		}
+
+		if (!belief_obj) {
+			log("Belief not found", belief_id);
+			return;
+		}
+
+		channel.postMessage({
+			msg: "world_entity",
+			server_id,
+			client_id,
+			data: {
+				data: belief_obj.toJSON(),
+			},
+			desig: belief_obj.sysdesig(),
+			bases: [...belief_obj.bases].map(b => ({id: b._id, label: b.label})),
 		});
 	},
 

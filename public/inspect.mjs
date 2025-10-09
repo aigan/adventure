@@ -47,13 +47,17 @@ const dispatch = {
     channel.postMessage({msg:"connect"});
   },
   world_entity_list(dat){
+    const state_nav = dat.state.base_id
+      ? `<a href="?state=${dat.state.base_id}">← Previous State</a>`
+      : '';
+
     render({
-      header: `World entities (State #${dat.state.id}, timestamp: ${dat.state.timestamp})`,
+      header: `${dat.state.mind_label} entities (State #${dat.state.id}, timestamp: ${dat.state.timestamp}) ${state_nav}`,
       table: {
         columns: ["desig"],
         rows: dat.state.beliefs,
         row_link: {
-          query: "entity",
+          query: "belief",
           pass_column: ["id"],
         }
       },
@@ -85,7 +89,7 @@ function log_line(text){
 }
 
 function render(a){
-  if( a.header != null ) $header.innerText = a.header;
+  if( a.header != null ) $header.innerHTML = a.header;
   if( a.table ) render_table( a );
   if( a.entity ) render_entity( a );
 }
@@ -161,18 +165,17 @@ function render_entity(a){
 }
 
 function parse_url(){
-  let msg;
-  query = {};
-  for( const [key,val] of new URLSearchParams(location.search)){
-    if( !query.msg && !val ){
-      const msg_name = key === 'world' ? 'query_mind' : 'query_' + key;
-      query.msg = msg_name;
-      if( key === 'world' ){
-        query.mind = 'world';
-      }
-      continue;
-    }
-    query[key]=val;
+  const params = new URLSearchParams(location.search);
+
+  if (params.has('mind')) {
+    query = {msg: 'query_mind', mind: params.get('mind')};
+  } else if (params.has('state')) {
+    query = {msg: 'query_state', state: params.get('state')};
+  } else if (params.has('belief')) {
+    query = {msg: 'query_belief', belief: params.get('belief')};
+  } else {
+    // Default to world
+    query = {msg: 'query_mind', mind: 'world'};
   }
 
   return query;

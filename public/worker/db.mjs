@@ -91,7 +91,7 @@ export class State {
       insert.push(belief);
     }
 
-    const state = new State(this.in_mind, ++ this.timestamp, this, insert, remove);
+    const state = new State(this.in_mind, this.timestamp + 1, this, insert, remove);
     this.in_mind.state.add(state);
     return state;
   }
