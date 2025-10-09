@@ -37,13 +37,14 @@ const dispatch = {
 //	},
 
 	query_mind({mind, client_id}){
-		// Accept mind id (number) or label (string)
-		const mind_obj = typeof mind === 'number'
+		// Accept mind id (numeric string) or label (string)
+		const mind_obj = /^\d+$/.test(mind)
 			? DB.Mind.get_by_id(Number(mind))
 			: DB.Mind.get_by_label(mind);
 
 		if (!mind_obj) {
 			log("Mind not found", mind);
+			log(DB.Mind.db_by_id);
 			return;
 		}
 
@@ -53,6 +54,7 @@ const dispatch = {
 
 		if (!state) {
 			log("No state found for mind", mind);
+      log(mind_obj.state);
 			return;
 		}
 
@@ -149,7 +151,7 @@ const dispatch = {
 			server_id,
 			client_id,
 			data: {
-				data: belief_obj.toJSON(),
+				data: belief_obj.inspect(),
 			},
 			desig: belief_obj.sysdesig(),
 			bases: [...belief_obj.bases].map(b => ({id: b._id, label: b.label})),

@@ -100,10 +100,7 @@ function render_table(a){
 
   let h_body = "";
   for( const row of at.rows ){
-    let link = "?"+at.row_link.query;
-    for( const col of at.row_link.pass_column ){
-      link += `&${col}=${row[col]}`;
-    }
+    let link = `?${at.row_link.query}=${row[at.row_link.pass_column[0]]}`;
 
     let h_row = "";
     for( const col of at.columns ){
@@ -149,9 +146,16 @@ function render_entity(a){
     for (const [trait, value] of Object.entries(belief_data.traits)) {
       let display_value = value;
       if (typeof value === 'object' && value !== null) {
-        display_value = JSON.stringify(value, null, 2);
+        if (value._ref && value._type) {
+          // Reference to another entity
+          const type_lower = value._type.toLowerCase();
+          const label_text = value.label ? ` (${value.label})` : '';
+          display_value = `<a href="?${type_lower}=${value._ref}">#${value._ref}${label_text}</a>`;
+        } else {
+          display_value = JSON.stringify(value, null, 2);
+        }
       }
-      hout += `<dt>${trait}</dt><dd><pre>${display_value}</pre></dd>`;
+      hout += `<dt>${trait}</dt><dd>${display_value}</dd>`;
     }
     hout += `</dl></dd>`;
   }

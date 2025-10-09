@@ -66,12 +66,12 @@ const world_belief = {
 
 DB.register(archetypes, traittypes);
 
-const world = new DB.Mind('world', world_belief);
-let state = world.create_state(1, world.belief);
+const world_mind = new DB.Mind('world', world_belief);
+let state = world_mind.create_state(1, world_mind.belief);
 
 //log(state);
 
-let ball = world.add({
+let ball = world_mind.add({
   label: 'ball',
   archetypes: ['PortableObject'],
   traits: {
@@ -94,20 +94,25 @@ state = state.tick({
 });
 
 //log(state);
-//log(world);
+//log(world_mind);
 
 
-let player = world.belief_by_label.player;
+let player = world_mind.belief_by_label.player;
 
-player = player.with_traits({mind:new DB.Mind('player_mind', {
+const player_belief = {
   player_mind_workshop: {
     archetypes: ['Location'],
   },
-})});
+};
+
+const player_mind = new DB.Mind('player_mind', player_belief);
+player_mind.create_state(1, player_mind.belief);
+player = player.with_traits({mind:player_mind});
+
 state = state.tick({replace: [player]});
 
 
-//log(JSON.stringify(world)); log(world);
+//log(JSON.stringify(world_mind)); log(world_mind);
 //log(JSON.stringify(state));
 
 log(state);
@@ -118,7 +123,7 @@ for (const belief of  state.get_beliefs()) {
 
 // Adventure would be its own module later...
 export const Adventure = {
-  world,
+  world: world_mind,
   player,
   state,
 }
@@ -133,7 +138,7 @@ export const Adventure = {
 
 
 
-world.player_enter_location = ()=>{
+world_mind.player_enter_location = ()=>{
   //log('you', Adventure.player)
   //const loc = Adventure.player.get('InLocation').entity();
 

@@ -39,13 +39,17 @@ export class Mind {
     if (label) {
       Mind.db_by_label.set(label, this);
     }
+
+    log(`Created mind ${this._id}`);
   }
 
   static get_by_id(id) {
+    log(`Get mind by id ${id}`);
     return Mind.db_by_id.get(id);
   }
 
   static get_by_label(label) {
+    log(`Get mind by label ${label}`);
     return Mind.db_by_label.get(label);
   }
 
@@ -239,6 +243,19 @@ export class Belief {
       )
     };
   }
+
+  inspect() {
+    return {
+      _type: 'Belief',
+      _id: this._id,
+      label: this.label,
+      archetypes: [...this.archetypes].map(a => a.label),
+      bases: [...this.bases].map(b => b._id),
+      traits: Object.fromEntries(
+        [...this.traits].map(([k, v]) => [k, Traittype.inspectTraitValue(v)])
+      )
+    };
+  }
 }
 
 export class Archetype {
@@ -356,6 +373,14 @@ export class Traittype {
   static serializeTraitValue(value) {
     if (value instanceof Belief || value instanceof State) {
       //return {_ref: value._id};
+    }
+    if (value?.toJSON) return value.toJSON();
+    return value;
+  }
+
+  static inspectTraitValue(value) {
+    if (value instanceof Belief || value instanceof State || value instanceof Mind) {
+      return {_ref: value._id, _type: value.constructor.name, label: value.label};
     }
     if (value?.toJSON) return value.toJSON();
     return value;
