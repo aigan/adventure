@@ -113,8 +113,17 @@ npx eslint public/worker/world.mjs        # Lint specific file
 - Worker globals
 - prefer-const enforced, semi disabled, no-unused-vars as warnings
 
-### No Tests
-The project currently has no test suite (`npm test` will fail).
+### Testing
+```bash
+npm test                # Run mocha test suite
+```
+
+The project has comprehensive tests in `test/db.test.mjs` covering:
+- Core archetype composition and inheritance
+- Belief versioning with `with_traits()`
+- `learn_about()` functionality (some tests currently failing - documenting correct behavior)
+- State operations and mind isolation
+- Cross-mind visibility
 
 ## Key Patterns & Implementation Details
 

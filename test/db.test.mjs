@@ -259,3 +259,460 @@ describe('Archetypes', () => {
     });
   });
 });
+
+describe('Pre-Refactor Tests', () => {
+  beforeEach(() => {
+    const traittypes = {
+      location: 'Location',
+      color: 'string',
+    }
+
+    const archetypes = {
+      ObjectPhysical: {
+        traits: {
+          location: null,
+          color: null,
+        },
+      },
+      Location: {
+        bases: ['ObjectPhysical'],
+      },
+      PortableObject: {
+        bases: ['ObjectPhysical'],
+      },
+    }
+
+    DB.register(archetypes, traittypes);
+  });
+
+  describe('Current Iteration Patterns', () => {
+    it('mind.belief Set contains all beliefs for that mind', () => {
+      const mind = new DB.Mind('test', {
+        workshop: { bases: ['Location'] }
+      });
+
+      const hammer = mind.add({
+        label: 'hammer',
+        bases: ['PortableObject']
+      });
+
+      expect(mind.belief.size).to.equal(2);
+      expect(mind.belief.has(mind.belief_by_label.workshop)).to.be.true;
+      expect(mind.belief.has(hammer)).to.be.true;
+    });
+
+    it('can iterate over mind.belief', () => {
+      const mind = new DB.Mind('test', {
+        workshop: { bases: ['Location'] },
+        hammer: { bases: ['PortableObject'] }
+      });
+
+      const labels = [];
+      for (const belief of mind.belief) {
+        labels.push(belief.label);
+      }
+
+      expect(labels).to.have.members(['workshop', 'hammer']);
+    });
+
+    it('mind.belief_by_label provides fast label lookup', () => {
+      const mind = new DB.Mind('test', {
+        workshop: { bases: ['Location'] }
+      });
+
+      expect(mind.belief_by_label.workshop).to.exist;
+      expect(mind.belief_by_label.workshop.label).to.equal('workshop');
+    });
+  });
+
+  describe('Cross-Mind Visibility via States', () => {
+    it('state.get_beliefs only returns beliefs from that state\'s mind', () => {
+      const mind_a = new DB.Mind('mind_a', {
+        item_a: { bases: ['PortableObject'] }
+      });
+      const state_a = mind_a.create_state(1, mind_a.belief);
+
+      const mind_b = new DB.Mind('mind_b', {
+        item_b: { bases: ['PortableObject'] }
+      });
+      const state_b = mind_b.create_state(1, mind_b.belief);
+
+      const beliefs_a = [...state_a.get_beliefs()];
+      const beliefs_b = [...state_b.get_beliefs()];
+
+      expect(beliefs_a).to.have.lengthOf(1);
+      expect(beliefs_a[0].label).to.equal('item_a');
+
+      expect(beliefs_b).to.have.lengthOf(1);
+      expect(beliefs_b[0].label).to.equal('item_b');
+    });
+
+    it('beliefs from different minds don\'t mix in states', () => {
+      const mind_a = new DB.Mind('mind_a', {
+        workshop_a: { bases: ['Location'] }
+      });
+
+      const mind_b = new DB.Mind('mind_b', {
+        workshop_b: { bases: ['Location'] }
+      });
+
+      const state_a = mind_a.create_state(1, mind_a.belief);
+      const state_b = mind_b.create_state(1, mind_b.belief);
+
+      const labels_a = [...state_a.get_beliefs()].map(b => b.label);
+      const labels_b = [...state_b.get_beliefs()].map(b => b.label);
+
+      expect(labels_a).to.deep.equal(['workshop_a']);
+      expect(labels_b).to.deep.equal(['workshop_b']);
+    });
+  });
+
+  describe('learn_about Edge Cases', () => {
+    it('learn_about on versioned belief currently has no bases', () => {
+      const world_mind = new DB.Mind('world', {
+        hammer_v1: { bases: ['PortableObject'] }
+      });
+
+      const hammer_v1 = world_mind.belief_by_label.hammer_v1;
+      const hammer_v2 = hammer_v1.with_traits({ color: 'red' });
+
+      const npc_mind = new DB.Mind('npc', {});
+      const hammer_knowledge = npc_mind.learn_about(hammer_v2);
+
+      // Current behavior: hammer_v2.bases only contains hammer_v1 (Belief)
+      // So learn_about finds no archetype bases and creates empty bases
+      const bases = [...hammer_knowledge.bases];
+      expect(bases).to.have.lengthOf(0);
+
+      // But get_archetypes won't work without bases
+      const archetypes = [...hammer_knowledge.get_archetypes()];
+      expect(archetypes).to.have.lengthOf(0);
+    });
+
+    it('learned belief can be used as trait reference', () => {
+      const world_mind = new DB.Mind('world', {
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop' }
+        }
+      });
+
+      const player_mind = new DB.Mind('player', {});
+      const workshop_knowledge = player_mind.learn_about(
+        world_mind.belief_by_label.workshop
+      );
+
+      // Should be able to reference learned belief in traits
+      const hammer_knowledge = player_mind.add({
+        label: 'hammer_knowledge',
+        bases: ['PortableObject'],
+        traits: { location: workshop_knowledge }
+      });
+
+      expect(hammer_knowledge.traits.get('location')).to.equal(workshop_knowledge);
+    });
+
+    it('learn_about directly from base belief works', () => {
+      const world_mind = new DB.Mind('world', {
+        base_hammer: { bases: ['PortableObject'] }
+      });
+
+      const base_hammer = world_mind.belief_by_label.base_hammer;
+
+      const npc_mind = new DB.Mind('npc', {});
+      const learned = npc_mind.learn_about(base_hammer);
+
+      // Works when learning directly from belief with archetype bases
+      const archetypes = [...learned.get_archetypes()].map(a => a.label);
+      expect(archetypes).to.include('PortableObject');
+      expect(archetypes).to.include('ObjectPhysical');
+    });
+
+    it('learn_about should dereference trait beliefs to learning mind', () => {
+      const world_mind = new DB.Mind('world', {
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop' }  // References world_mind.belief_by_label.workshop
+        }
+      });
+
+      const npc_mind = new DB.Mind('npc', {});
+      const hammer_knowledge = npc_mind.learn_about(
+        world_mind.belief_by_label.hammer,
+        ['location']
+      );
+
+      // Expected behavior: trait references should be dereferenced to npc_mind
+      const location_ref = hammer_knowledge.traits.get('location');
+
+      // Should be a belief in npc_mind, not world_mind
+      expect(location_ref.in_mind).to.equal(npc_mind);
+
+      // Should be about the workshop from world_mind
+      expect(location_ref.about).to.equal(world_mind.belief_by_label.workshop);
+
+      // Should have the same archetypes
+      const archetypes = [...location_ref.get_archetypes()].map(a => a.label);
+      expect(archetypes).to.include('Location');
+    });
+
+    it('learn_about should reuse existing beliefs with same about reference', () => {
+      const world_mind = new DB.Mind('world', {
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop' }
+        }
+      });
+
+      const npc_mind = new DB.Mind('npc', {});
+
+      // NPC already knows about the workshop
+      const existing_workshop = npc_mind.add({
+        label: 'my_workshop',
+        about: world_mind.belief_by_label.workshop,
+        bases: ['Location']
+      });
+
+      const hammer_knowledge = npc_mind.learn_about(
+        world_mind.belief_by_label.hammer,
+        ['location']
+      );
+
+      // Should reuse existing belief about the workshop
+      const location_ref = hammer_knowledge.traits.get('location');
+      expect(location_ref).to.equal(existing_workshop);
+    });
+
+    it('learn_about should error when multiple beliefs about same entity exist', () => {
+      const world_mind = new DB.Mind('world', {
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop' }
+        }
+      });
+
+      const npc_mind = new DB.Mind('npc', {});
+
+      // NPC has two different beliefs about the workshop (uncertainty case)
+      npc_mind.add({
+        label: 'workshop_belief_1',
+        about: world_mind.belief_by_label.workshop,
+        bases: ['Location']
+      });
+
+      npc_mind.add({
+        label: 'workshop_belief_2',
+        about: world_mind.belief_by_label.workshop,
+        bases: ['Location']
+      });
+
+      // Should error - can't determine which to use without certainty tracking
+      expect(() => {
+        npc_mind.learn_about(
+          world_mind.belief_by_label.hammer,
+          ['location']
+        );
+      }).to.throw();
+    });
+
+    it('learn_about should follow about chain to original entity', () => {
+      const world_mind = new DB.Mind('world', {
+        workshop: { bases: ['Location'] }
+      });
+
+      const npc1_mind = new DB.Mind('npc1', {});
+      const workshop_from_npc1 = npc1_mind.add({
+        label: 'workshop_knowledge',
+        about: world_mind.belief_by_label.workshop,
+        bases: ['Location']
+      });
+
+      const npc2_mind = new DB.Mind('npc2', {});
+      // NPC2 learns about NPC1's belief
+      const workshop_from_npc2 = npc2_mind.learn_about(workshop_from_npc1);
+
+      // Should follow about chain: npc2_belief.about = world.workshop (not npc1_belief)
+      expect(workshop_from_npc2.about).to.equal(world_mind.belief_by_label.workshop);
+      expect(workshop_from_npc2.about).to.not.equal(workshop_from_npc1);
+    });
+
+    it('learn_about should walk belief chain to find archetypes', () => {
+      const world_mind = new DB.Mind('world', {
+        hammer_v1: { bases: ['PortableObject'] }
+      });
+
+      const hammer_v1 = world_mind.belief_by_label.hammer_v1;
+      const hammer_v2 = hammer_v1.with_traits({ color: 'red' });
+
+      const npc_mind = new DB.Mind('npc', {});
+      const hammer_knowledge = npc_mind.learn_about(hammer_v2);
+
+      // Should walk belief chain to find PortableObject
+      const archetypes = [...hammer_knowledge.get_archetypes()].map(a => a.label);
+      expect(archetypes).to.include('PortableObject');
+      expect(archetypes).to.include('ObjectPhysical');
+    });
+
+    it('learn_about should copy non-Belief trait values as-is', () => {
+      const world_mind = new DB.Mind('world', {
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { color: 'red' }
+        }
+      });
+
+      const npc_mind = new DB.Mind('npc', {});
+      const hammer_knowledge = npc_mind.learn_about(
+        world_mind.belief_by_label.hammer,
+        ['color']
+      );
+
+      // String trait should be copied as-is
+      expect(hammer_knowledge.traits.get('color')).to.equal('red');
+    });
+  });
+
+  describe('State Operations', () => {
+    it('state.tick with replace removes correct belief', () => {
+      const mind = new DB.Mind('test', {
+        hammer_v1: { bases: ['PortableObject'] }
+      });
+
+      const state1 = mind.create_state(1, mind.belief);
+      const hammer_v1 = mind.belief_by_label.hammer_v1;
+      const hammer_v2 = hammer_v1.with_traits({ color: 'red' });
+
+      const state2 = state1.tick({ replace: [hammer_v2] });
+
+      const beliefs = [...state2.get_beliefs()];
+      expect(beliefs).to.have.lengthOf(1);
+      expect(beliefs[0]).to.equal(hammer_v2);
+      expect(beliefs[0].traits.get('color')).to.equal('red');
+    });
+
+    it('multiple minds can have states without interference', () => {
+      const mind_a = new DB.Mind('mind_a', {
+        item: { bases: ['PortableObject'] }
+      });
+      const state_a1 = mind_a.create_state(1, mind_a.belief);
+
+      const mind_b = new DB.Mind('mind_b', {
+        item: { bases: ['PortableObject'] }
+      });
+      const state_b1 = mind_b.create_state(1, mind_b.belief);
+
+      // Add different beliefs to each mind
+      const item_a2 = mind_a.belief_by_label.item.with_traits({ color: 'red' });
+      const state_a2 = state_a1.tick({ replace: [item_a2] });
+
+      const item_b2 = mind_b.belief_by_label.item.with_traits({ color: 'blue' });
+      const state_b2 = state_b1.tick({ replace: [item_b2] });
+
+      // Verify states are independent
+      const beliefs_a = [...state_a2.get_beliefs()];
+      const beliefs_b = [...state_b2.get_beliefs()];
+
+      expect(beliefs_a[0].traits.get('color')).to.equal('red');
+      expect(beliefs_b[0].traits.get('color')).to.equal('blue');
+    });
+
+    it('state inheritance chain works correctly', () => {
+      const mind = new DB.Mind('test', {
+        item1: { bases: ['PortableObject'] },
+        item2: { bases: ['PortableObject'] }
+      });
+
+      const state1 = mind.create_state(1, mind.belief);
+      const item3 = mind.add({ label: 'item3', bases: ['PortableObject'] });
+      const state2 = state1.tick({ insert: [item3] });
+
+      // state2 should have all three items
+      const beliefs = [...state2.get_beliefs()];
+      expect(beliefs).to.have.lengthOf(3);
+
+      const labels = beliefs.map(b => b.label).sort();
+      expect(labels).to.deep.equal(['item1', 'item2', 'item3']);
+    });
+  });
+
+  describe('Label Uniqueness (Current Behavior)', () => {
+    it('currently allows duplicate labels across minds', () => {
+      const mind_a = new DB.Mind('mind_a', {
+        workshop: { bases: ['Location'] }
+      });
+
+      const mind_b = new DB.Mind('mind_b', {
+        workshop: { bases: ['Location'] }
+      });
+
+      // Currently this works - both have 'workshop' label
+      expect(mind_a.belief_by_label.workshop).to.exist;
+      expect(mind_b.belief_by_label.workshop).to.exist;
+      expect(mind_a.belief_by_label.workshop).to.not.equal(
+        mind_b.belief_by_label.workshop
+      );
+    });
+
+    it('labels within same mind are unique', () => {
+      const mind = new DB.Mind('test', {
+        item1: { bases: ['PortableObject'] }
+      });
+
+      // Adding another with same label overwrites
+      mind.add({ label: 'item1', bases: ['Location'] });
+
+      // Should have 2 beliefs in set, but label points to latest
+      expect(mind.belief.size).to.equal(2);
+      const item1 = mind.belief_by_label.item1;
+      const archetypes = [...item1.get_archetypes()].map(a => a.label);
+      expect(archetypes).to.include('Location');
+    });
+  });
+
+  describe('Mind Isolation (Current Behavior)', () => {
+    it('beliefs store in_mind reference', () => {
+      const mind = new DB.Mind('test', {
+        workshop: { bases: ['Location'] }
+      });
+
+      const workshop = mind.belief_by_label.workshop;
+      expect(workshop.in_mind).to.equal(mind);
+    });
+
+    it('each mind has independent belief storage', () => {
+      const mind_a = new DB.Mind('mind_a', {});
+      const mind_b = new DB.Mind('mind_b', {});
+
+      const item_a = mind_a.add({ label: 'item', bases: ['PortableObject'] });
+      const item_b = mind_b.add({ label: 'item', bases: ['PortableObject'] });
+
+      // Stored in different minds
+      expect(mind_a.belief.has(item_a)).to.be.true;
+      expect(mind_a.belief.has(item_b)).to.be.false;
+
+      expect(mind_b.belief.has(item_b)).to.be.true;
+      expect(mind_b.belief.has(item_a)).to.be.false;
+    });
+
+    it('currently allows referencing other mind\'s beliefs in bases', () => {
+      const mind_a = new DB.Mind('mind_a', {
+        workshop: { bases: ['Location'] }
+      });
+
+      const mind_b = new DB.Mind('mind_b', {});
+
+      // Currently this works - mind_b can reference mind_a's belief
+      const workshop_a = mind_a.belief_by_label.workshop;
+      const item = mind_b.add({
+        label: 'item',
+        bases: [workshop_a]  // Using belief from another mind
+      });
+
+      expect(item.bases.has(workshop_a)).to.be.true;
+    });
+  });
+});
