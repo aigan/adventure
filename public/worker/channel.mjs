@@ -155,6 +155,12 @@ const dispatch = {
 				data: belief_obj.inspect(),
 			},
 			desig: belief_obj.sysdesig(),
+			mind: {id: belief_obj.in_mind._id, label: belief_obj.in_mind.label},
+			about: belief_obj.about ? {
+				id: belief_obj.about._id,
+				label: belief_obj.about.label,
+				mind: {id: belief_obj.about.in_mind._id, label: belief_obj.about.in_mind.label}
+			} : null,
 			bases: [...belief_obj.bases].map(b => ({id: b._id, label: b.label})),
 		});
 	},
@@ -185,6 +191,12 @@ const dispatch = {
 				data: belief.toJSON(),
 			},
 			desig: belief.sysdesig(),
+			mind: {id: belief.in_mind._id, label: belief.in_mind.label},
+			about: belief.about ? {
+				id: belief.about._id,
+				label: belief.about.label,
+				mind: {id: belief.about.in_mind._id, label: belief.about.in_mind.label}
+			} : null,
 			bases: [...belief.bases].map(b => ({id: b._id, label: b.label})),
 		});
 	},

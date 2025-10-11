@@ -64,8 +64,9 @@ const dispatch = {
     });
   },
   world_entity(dat){
+    const mind_prefix = dat.mind?.label || `Mind #${dat.mind?.id}`;
     render({
-      header: dat.desig,
+      header: `${mind_prefix}: ${dat.desig}`,
       entity: dat,
     });
   },
@@ -129,6 +130,15 @@ function render_entity(a){
   // Display archetypes
   if (belief_data.archetypes?.length > 0) {
     hout += `<dt>Archetypes</dt><dd>${belief_data.archetypes.join(', ')}</dd>`;
+  }
+
+  // Display about
+  if (a.entity.about) {
+    const about = a.entity.about;
+    const mind_prefix = about.mind?.label || `Mind #${about.mind?.id}`;
+    hout += `<dt>About</dt><dd>`;
+    hout += `<a href="?belief=${about.id}">${mind_prefix}: #${about.id}${about.label ? ' (' + about.label + ')' : ''}</a>`;
+    hout += `</dd>`;
   }
 
   // Display bases

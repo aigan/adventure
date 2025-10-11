@@ -96,6 +96,26 @@ export class Mind {
     return state;
   }
 
+  /**
+   * @param {Belief} belief - Belief from parent mind
+   * @param {string[]} trait_names - Traits to copy
+   * @returns {Belief}
+   */
+  learn_about(belief, trait_names = []) {
+    const copied_traits = {};
+    for (const name of trait_names) {
+      if (belief.traits.has(name)) {
+        copied_traits[name] = belief.traits.get(name);
+      }
+    }
+
+    return this.add({
+      about: belief,
+      archetypes: [...belief.archetypes].map(a => a.label),
+      traits: copied_traits
+    });
+  }
+
   toJSON() {
     return {
       _type: 'Mind',
@@ -177,14 +197,16 @@ export class Belief {
    * @param {Mind} mind
    * @param {object} param1
    * @param {string|null} [param1.label]
+   * @param {Belief|null} [param1.about]
    * @param {(string|Archetype)[]} [param1.archetypes]
    * @param {(string|Belief)[]} [param1.bases]
    * @param {object} [param1.traits]
    */
-  constructor(mind, {label=null, archetypes=[], bases=[], traits={}}) {
+  constructor(mind, {label=null, about=null, archetypes=[], bases=[], traits={}}) {
     this._id = ++ id_sequence;
     this.in_mind = mind;
     this.label = label;
+    this.about = about;
     /** @type {Set<Archetype>} */
     this.archetypes = new Set([]);
     /** @type {Set<Belief>} */
@@ -310,6 +332,7 @@ export class Belief {
       _type: 'Belief',
       _id: this._id,
       label: this.label,
+      about: this.about?._id ?? null,
       archetypes: [...this.archetypes].map(a => a.label),
       bases: [...this.bases].map(b => b._id),
       traits: Object.fromEntries(
@@ -323,6 +346,7 @@ export class Belief {
       _type: 'Belief',
       _id: this._id,
       label: this.label,
+      about: this.about ? {_ref: this.about._id, label: this.about.label} : null,
       archetypes: [...this.archetypes].map(a => a.label),
       bases: [...this.bases].map(b => b._id),
       traits: Object.fromEntries(
