@@ -8,7 +8,7 @@ const log = console.log.bind(console);
 
 const traittypes = {
   location: 'Location',
-  mind: 'Mind',
+  mind: 'State',
   color: 'string',
 }
 
@@ -66,10 +66,10 @@ const world_belief = {
 
 DB.register(archetypes, traittypes);
 
-const world_mind = new DB.Mind('world', world_belief);
-let state = world_mind.create_state(1, world_mind.belief);
-
-//log(state);
+// Create world mind and initial state
+const world_mind = new DB.Mind('world');
+let state = world_mind.create_state(1);
+state.add_beliefs(world_belief);
 
 let ball = world_mind.add({
   label: 'ball',
@@ -87,33 +87,32 @@ ball = ball.with_traits({
   color: 'blue',
 });
 
-//log(state);
-
 state = state.tick({
   replace: [ball],
 });
-
-//log(state);
-//log(world_mind);
 
 
 let player = world_mind.belief_by_label.player;
 
 
-const player_mind = new DB.Mind('player_mind', {});
-player = player.with_traits({mind:player_mind});
+// Create player mind and initial empty state
+const player_mind = new DB.Mind('player_mind');
+const player_mind_state = player_mind.create_state(1);
+
+// Player learns about hammer on the state (automatically adds to insert list)
+const hammer_knowledge = player_mind_state.learn_about(
+  world_mind.belief_by_label.hammer,
+  ['location']
+);
+
+
+// Lock the state when done learning
+player_mind_state.lock();
+
+// Update player entity with the locked state
+player = player.with_traits({mind: player_mind_state});
 state = state.tick({replace: [player]});
 
-const workshop = world_mind.belief_by_label.workshop;
-const workshop_knowledge = player_mind.learn_about(workshop);
-player_mind.create_state(1, [workshop_knowledge]);
-
-//log(JSON.stringify(world_mind));
-//log(JSON.stringify(state));
-
-//for (const belief of  state.get_beliefs()) {
-//  log("Belief", belief.sysdesig());
-//}
 
 // Adventure would be its own module later...
 export const Adventure = {
@@ -129,14 +128,3 @@ export const Adventure = {
 //  const e = obj.versions ? obj.versions.slice(-1)[0] : obj;
 //  log('👁️', world.sysdesig(obj), e.bake());
 //}
-
-//world_mind.player_enter_location = ()=>{
-//  //log('you', Adventure.player)
-//  //const loc = Adventure.player.get('InLocation').entity();
-//
-//  postMessage(['header_set', `Good morning`]);
-//  const lines = ['Dizzy...'];
-//
-//  postMessage(['main_add', ...lines ]);
-//}
-

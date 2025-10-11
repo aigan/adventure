@@ -29,9 +29,8 @@ export class Mind {
 
   /**
    * @param {string} label - Mind identifier
-   * @param {object} beliefs - Initial beliefs {label: definition}
    */
-  constructor(label, beliefs) {
+  constructor(label) {
     this._id = ++ id_sequence;
     this.label = label;
     /** @type {Set<State>} */
@@ -39,11 +38,6 @@ export class Mind {
     /** @type {Set<Belief>} */
     this.belief = new Set([]);
     this.belief_by_label = {};
-
-    for (const [label, def] of Object.entries(beliefs)) {
-      def.label = label;
-      this.add(def);
-    }
 
     // Register globally
     Mind.db_by_id.set(this._id, this);
@@ -87,36 +81,12 @@ export class Mind {
 
   /**
    * @param {number} timestamp
-   * @param {Iterable<Belief>} beliefs
    * @returns {State}
    */
-  create_state(timestamp, beliefs) {
-    const state = new State(this, timestamp, null, [...beliefs]);
+  create_state(timestamp) {
+    const state = new State(this, timestamp, null, []);
     this.state.add(state);
     return state;
-  }
-
-  /**
-   * @param {Belief} belief - Belief from parent mind
-   * @param {string[]} trait_names - Traits to copy
-   * @returns {Belief}
-   */
-  learn_about(belief, trait_names = []) {
-    const copied_traits = {};
-    for (const name of trait_names) {
-      if (belief.traits.has(name)) {
-        copied_traits[name] = belief.traits.get(name);
-      }
-    }
-
-    // Copy only Archetype bases (not Belief bases which are version chains)
-    const archetype_bases = [...belief.bases].filter(b => b instanceof Archetype);
-
-    return this.add({
-      about: belief,
-      bases: archetype_bases,
-      traits: copied_traits
-    });
   }
 
   toJSON() {
@@ -148,6 +118,26 @@ export class State {
     this.insert = insert;
     /** @type {Belief[]} */
     this.remove = remove;
+    this.locked = false;
+  }
+
+  lock() {
+    this.locked = true;
+    for (const belief of this.insert) {
+      belief.lock();
+    }
+  }
+
+  /**
+   * @param {Object<string, object>} beliefs - Object mapping labels to belief definitions
+   */
+  add_beliefs(beliefs) {
+    for (const [label, def] of Object.entries(beliefs)) {
+      const belief = new Belief(this.in_mind, {...def, label});
+      this.insert.push(belief);
+      this.in_mind.belief.add(belief);
+      this.in_mind.belief_by_label[label] = belief;
+    }
   }
 
   /**
@@ -186,6 +176,118 @@ export class State {
     }
   }
 
+  /**
+   * @param {Belief} belief - Belief from another mind/state
+   * @param {string[]} trait_names - Traits to copy
+   * @returns {Belief}
+   */
+  learn_about(belief, trait_names = []) {
+    // Follow about chain to original entity
+    let original = belief;
+    const seen_in_chain = new Set();
+    while (original.about != null) {
+      if (seen_in_chain.has(original)) {
+        throw new Error(`Cycle detected in about chain for belief ${belief._id}`);
+      }
+      seen_in_chain.add(original);
+      original = original.about;
+    }
+
+    // Walk belief chain to collect all archetype bases
+    const archetype_bases = [];
+    const seen = new Set();
+    const to_check = [belief];
+
+    while (to_check.length > 0) {
+      const current = to_check.shift();
+      if (seen.has(current)) continue;
+      seen.add(current);
+
+      for (const base of current.bases) {
+        if (base instanceof Archetype) {
+          if (!archetype_bases.includes(base)) {
+            archetype_bases.push(base);
+          }
+        } else if (base instanceof Belief) {
+          to_check.push(base);
+        }
+      }
+    }
+
+    // Copy traits, dereferencing belief references to this mind
+    const copied_traits = {};
+    for (const name of trait_names) {
+      if (belief.traits.has(name)) {
+        const value = belief.traits.get(name);
+
+        if (value instanceof Belief) {
+          // Find or create belief in this state about the referenced entity
+
+          // Follow about chain for the referenced belief
+          let ref_original = value;
+          const ref_seen = new Set();
+          while (ref_original.about != null) {
+            if (ref_seen.has(ref_original)) {
+              throw new Error(`Cycle detected in about chain for belief ${value._id}`);
+            }
+            ref_seen.add(ref_original);
+            ref_original = ref_original.about;
+          }
+
+          // Search for existing belief about this entity in current state
+          const existing_beliefs = [];
+          for (const b of this.get_beliefs()) {
+            // Follow about chain for candidate
+            let candidate_original = b;
+            const candidate_seen = new Set();
+            while (candidate_original.about != null) {
+              if (candidate_seen.has(candidate_original)) {
+                // Skip beliefs with cycles
+                break;
+              }
+              candidate_seen.add(candidate_original);
+              candidate_original = candidate_original.about;
+            }
+
+            if (candidate_original === ref_original) {
+              existing_beliefs.push(b);
+            }
+          }
+
+          if (existing_beliefs.length > 1) {
+            throw new Error(`Multiple beliefs about entity ${ref_original._id} exist in mind ${this.in_mind.label}`);
+          }
+
+          if (existing_beliefs.length === 1) {
+            copied_traits[name] = existing_beliefs[0];
+          } else {
+            // Create new belief about the referenced entity
+            const new_belief = this.learn_about(value);
+            copied_traits[name] = new_belief;
+          }
+        } else {
+          // Copy non-Belief values as-is
+          copied_traits[name] = value;
+        }
+      }
+    }
+
+    // Create the belief and add to state's insert list
+    const new_belief = new Belief(this.in_mind, {
+      about: original,
+      bases: archetype_bases,
+      traits: copied_traits
+    });
+
+    this.insert.push(new_belief);
+    this.in_mind.belief.add(new_belief);
+    if (new_belief.label) {
+      this.in_mind.belief_by_label[new_belief.label] = new_belief;
+    }
+
+    return new_belief;
+  }
+
   toJSON() {
     return {
       _type: 'State',
@@ -214,6 +316,7 @@ export class Belief {
     /** @type {Set<Belief|Archetype>} */
     this.bases = new Set([]);
     this.traits = new Map();
+    this.locked = false;
 
     for (let base of bases) {
       if (typeof base === 'string') {
@@ -301,6 +404,10 @@ export class Belief {
     const belief = new Belief(this.in_mind, {bases: [this], traits});
     this.in_mind.belief.add(belief);
     return belief;
+  }
+
+  lock() {
+    this.locked = true;
   }
 
   sysdesig() {
@@ -419,6 +526,7 @@ export class Traittype {
     Map: Map,
     Set: Set,
     Mind: Mind,
+    State: State,
   }
 
   static literal_type_map = {
