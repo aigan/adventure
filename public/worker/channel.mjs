@@ -161,7 +161,11 @@ const dispatch = {
 				label: belief_obj.about.label,
 				mind: {id: belief_obj.about.in_mind._id, label: belief_obj.about.in_mind.label}
 			} : null,
-			bases: [...belief_obj.bases].map(b => ({id: b._id, label: b.label})),
+			bases: [...belief_obj.bases].map(b => ({
+				id: b instanceof DB.Belief ? b._id : null,
+				label: b.label,
+				type: b instanceof DB.Archetype ? 'Archetype' : 'Belief'
+			})),
 		});
 	},
 
@@ -197,7 +201,11 @@ const dispatch = {
 				label: belief.about.label,
 				mind: {id: belief.about.in_mind._id, label: belief.about.in_mind.label}
 			} : null,
-			bases: [...belief.bases].map(b => ({id: b._id, label: b.label})),
+			bases: [...belief.bases].map(b => ({
+				id: b instanceof DB.Belief ? b._id : null,
+				label: b.label,
+				type: b instanceof DB.Archetype ? 'Archetype' : 'Belief'
+			})),
 		});
 	},
 }

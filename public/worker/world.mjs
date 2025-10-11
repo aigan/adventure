@@ -45,18 +45,18 @@ const archetypes = {
 
 const world_belief = {
   workshop: {
-    archetypes: ['Location'],
+    bases: ['Location'],
   },
 
   hammer: {
-    archetypes: ['PortableObject'],
+    bases: ['PortableObject'],
     traits: {
       location: 'workshop',
     },
   },
 
   player: {
-    archetypes: ['Player'],
+    bases: ['Player'],
     traits: {
       location: 'workshop',
     },
@@ -73,7 +73,7 @@ let state = world_mind.create_state(1, world_mind.belief);
 
 let ball = world_mind.add({
   label: 'ball',
-  archetypes: ['PortableObject'],
+  bases: ['PortableObject'],
   traits: {
     location: 'workshop',
   },
@@ -104,8 +104,8 @@ const player_mind = new DB.Mind('player_mind', {});
 player = player.with_traits({mind:player_mind});
 state = state.tick({replace: [player]});
 
-let workshop = world_mind.belief_by_label.workshop;
-let workshop_knowledge = player_mind.learn_about(workshop);
+const workshop = world_mind.belief_by_label.workshop;
+const workshop_knowledge = player_mind.learn_about(workshop);
 player_mind.create_state(1, [workshop_knowledge]);
 
 //log(JSON.stringify(world_mind));

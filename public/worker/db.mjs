@@ -109,9 +109,12 @@ export class Mind {
       }
     }
 
+    // Copy only Archetype bases (not Belief bases which are version chains)
+    const archetype_bases = [...belief.bases].filter(b => b instanceof Archetype);
+
     return this.add({
       about: belief,
-      archetypes: [...belief.archetypes].map(a => a.label),
+      bases: archetype_bases,
       traits: copied_traits
     });
   }
@@ -156,7 +159,9 @@ export class State {
    */
   tick({insert=[], remove=[], replace=[]}) {
     for (const belief of replace) {
-      remove.push(...belief.bases);
+      // Only remove Belief bases (version chains), not Archetypes
+      const belief_bases = [...belief.bases].filter(b => b instanceof Belief);
+      remove.push(...belief_bases);
       insert.push(belief);
     }
 
@@ -198,33 +203,28 @@ export class Belief {
    * @param {object} param1
    * @param {string|null} [param1.label]
    * @param {Belief|null} [param1.about]
-   * @param {(string|Archetype)[]} [param1.archetypes]
-   * @param {(string|Belief)[]} [param1.bases]
+   * @param {(string|Archetype|Belief)[]} [param1.bases]
    * @param {object} [param1.traits]
    */
-  constructor(mind, {label=null, about=null, archetypes=[], bases=[], traits={}}) {
+  constructor(mind, {label=null, about=null, bases=[], traits={}}) {
     this._id = ++ id_sequence;
     this.in_mind = mind;
     this.label = label;
     this.about = about;
-    /** @type {Set<Archetype>} */
-    this.archetypes = new Set([]);
-    /** @type {Set<Belief>} */
+    /** @type {Set<Belief|Archetype>} */
     this.bases = new Set([]);
     this.traits = new Map();
 
-    for (let type of archetypes) {
-      if (typeof type === 'string') {
-        type = /** @type {Archetype} type */ (db_archetypes[type]);
-      }
-      this.archetypes.add(type);
-    }
-
     for (let base of bases) {
       if (typeof base === 'string') {
-        base = /** @type {Belief} type */ (mind.belief_by_label[base]);
+        const base_label = base;
+        // Resolution order: own mind → archetype registry
+        base = mind.belief_by_label[base] ?? db_archetypes[base];
+        if (!base) {
+          throw `Base '${base_label}' not found in mind '${mind.label}' or archetype registry`;
+        }
       }
-      this.bases.add(base);
+      this.bases.add(/** @type {Belief|Archetype} */ (base));
     }
 
     for (const [trait_label, trait_data] of Object.entries(traits)) {
@@ -276,19 +276,19 @@ export class Belief {
    */
   *get_archetypes(seen = new Set([])) {
     // bredth first
-    /** @type {Belief[]} */
+    /** @type {(Belief|Archetype)[]} */
     const bases = [this];
     while (bases.length > 0) {
       const base = bases.shift();
       if (!base || seen.has(base)) continue;
 
-      //log ("Check archetypes of", base.label);
-      seen.add(base);
-      bases.push(... base.bases);
-
-      for (const archetype of base.archetypes) {
-        if (seen.has(archetype)) continue;
-        yield* archetype.get_archetypes(seen);
+      // If base is an Archetype, yield it and its bases
+      if (base instanceof Archetype) {
+        yield* base.get_archetypes(seen);
+      } else {
+        // If base is a Belief, continue walking its bases
+        seen.add(base);
+        bases.push(... base.bases);
       }
     }
   }
@@ -310,16 +310,32 @@ export class Belief {
       parts.push(this.label);
     }
 
-    const first_archetypes = [...this.archetypes];
-    if (first_archetypes.length === 0) {
-      for (const base of this.bases) {
-        first_archetypes.push(...base.archetypes);
-        if (first_archetypes.length > 0) break;
+    // Get edge archetypes (directly in bases, not full inheritance)
+    const edge_archetypes = [];
+    const seen = new Set();
+    /** @type {Belief[]} */
+    const bases_to_check = [this];
+
+    while (bases_to_check.length > 0) {
+      const base = bases_to_check.shift();
+      if (!base || seen.has(base)) continue;
+      seen.add(base);
+
+      for (const b of base.bases) {
+        if (b instanceof Archetype) {
+          edge_archetypes.push(b);
+        } else if (b instanceof Belief) {
+          // Walk up belief chain to find archetypes
+          bases_to_check.push(b);
+        }
       }
+
+      // Stop after finding archetypes
+      if (edge_archetypes.length > 0) break;
     }
 
-    if (first_archetypes.length > 0) {
-      parts.push(`[${first_archetypes.map(a => a.label).join(', ')}]`);
+    if (edge_archetypes.length > 0) {
+      parts.push(`[${edge_archetypes.map(a => a.label).join(', ')}]`);
     }
 
     parts.push(`#${this._id}`);
@@ -333,8 +349,8 @@ export class Belief {
       _id: this._id,
       label: this.label,
       about: this.about?._id ?? null,
-      archetypes: [...this.archetypes].map(a => a.label),
-      bases: [...this.bases].map(b => b._id),
+      archetypes: [...this.get_archetypes()].map(a => a.label),
+      bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
         [...this.traits].map(([k, v]) => [k, Traittype.serializeTraitValue(v)])
       )
@@ -347,8 +363,8 @@ export class Belief {
       _id: this._id,
       label: this.label,
       about: this.about ? {_ref: this.about._id, label: this.about.label} : null,
-      archetypes: [...this.archetypes].map(a => a.label),
-      bases: [...this.bases].map(b => b._id),
+      archetypes: [...this.get_archetypes()].map(a => a.label),
+      bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
         [...this.traits].map(([k, v]) => [k, Traittype.inspectTraitValue(v)])
       )
@@ -459,8 +475,11 @@ export class Traittype {
         throw "Belief not found";
       }
 
-      if (belief.archetypes.has(range)) {
-        return belief;
+      // Check if belief has the required archetype in its chain
+      for (const archetype of belief.get_archetypes()) {
+        if (archetype === range) {
+          return belief;
+        }
       }
 
       log('resolve traittype', this.label, data, range_label);

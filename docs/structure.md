@@ -130,6 +130,9 @@ This structure supports:
 
 * **Everything is beliefs in minds** - world_mind contains npc_minds which contain beliefs
 * **Hierarchical access** - Parent minds can access child minds (theory of mind), but minds cannot access their parent or sibling minds
+* **Prototype inheritance** - Shared belief prototypes live in a global set,
+  allowing multiple beliefs across different minds to inherit common structure without
+  violating mind isolation
 * **Immutable nodes** - Changes create new versions via `base` inheritance
 * **Branching on uncertainty** - Multiple states can exist at the same tick
 * **Time progression** - States are indexed by tick number
@@ -143,21 +146,19 @@ This structure supports:
 mind:
   states:
     state_[tick][branch]:
-      archetype: mind_state
-      base: [previous_state]  # inheritance chain
-      tick: [number]
-      added: [list of new beliefs]
-      updated: [list of replaced beliefs]
-      removed: [list of removed beliefs]
+      base: previous_state  # inheritance chain
+      timestamp: [number]
+      insert: [list of new beliefs]
+      remove: [list of replaced beliefs]
       certainty: certain|common|unusual|rare
 
   beliefs:
     [belief_id]:
-      archetype: [type]
-      base: [parent_belief]  # for inheritance
+      archetypes: [types]
+      bases: [parent_belief]  # for inheritance
       about: [belief_in_outer_mind]  # correspondence to outer mind's belief
       source: [belief]  # how this belief originated (observation, testimony, etc)
-      [properties based on archetype]
+      traits: [properties based on archetype]
 ```
 
 ### **Belief Archetypes**
@@ -169,6 +170,7 @@ mind:
 
 ### **Key Properties**
 
+* **bases** - Inherited beliefs, prototypes or archetypes
 * **about** - Links a belief to the corresponding belief in an outer mind. Used by system to track correspondence, not accessible to the mind itself.
 * **target** - Points to other beliefs within the same mind (used in observations, references).
 * **source** - Points to the belief that originated this belief (observation event, testimony, inference).

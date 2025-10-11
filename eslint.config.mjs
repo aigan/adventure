@@ -21,7 +21,6 @@ export default [
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: "module",
-      globals: globals.worker,
     },
     rules: {
       "no-unused-vars": ["warn", {
@@ -34,12 +33,21 @@ export default [
       "jsdoc/check-alignment": "warn",
       "jsdoc/check-param-names": "error",
       "jsdoc/check-tag-names": "error",
-      "jsdoc/check-types": "warn",
+      "jsdoc/check-types": "off",
+      "jsdoc/no-undefined-types": "off",
+      "jsdoc/reject-any-type": "off",
       "jsdoc/require-param": "warn",
-      "jsdoc/require-param-description": "warn",
-      "jsdoc/require-returns": "warn",
-      "jsdoc/require-returns-description": "warn",
+      "jsdoc/require-param-description": "off",
+      "jsdoc/require-returns": "off",
+      "jsdoc/require-returns-description": "off",
+      "jsdoc/require-yields": "off",
       "jsdoc/require-jsdoc": "off",
+    }
+  },
+  {
+    files: ["public/worker/**/*.mjs"],
+    languageOptions: {
+      globals: globals.worker,
     }
   },
   {
