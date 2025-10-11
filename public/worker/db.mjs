@@ -5,6 +5,11 @@ const db_traittypes = {};
 
 let id_sequence = 0;
 
+/**
+ * Register archetypes and trait types into the database
+ * @param {Object<string, object>} archetypes - Archetype definitions {label: definition}
+ * @param {Object<string, string>} traittypes - Trait type definitions {label: type}
+ */
 export function register( archetypes, traittypes ) {
   for (const [label, def] of Object.entries(traittypes)) {
     //traittypes[label] = def; // TODO: resolve trait datatypes
@@ -46,19 +51,31 @@ export class Mind {
       Mind.db_by_label.set(label, this);
     }
 
-    log(`Created mind ${this._id}`);
+    //log(`Created mind ${this._id}`);
   }
 
+  /**
+   * @param {number} id
+   * @returns {Mind|undefined}
+   */
   static get_by_id(id) {
-    log(`Get mind by id ${id}`);
+    //log(`Get mind by id ${id}`);
     return Mind.db_by_id.get(id);
   }
 
+  /**
+   * @param {string} label
+   * @returns {Mind|undefined}
+   */
   static get_by_label(label) {
-    log(`Get mind by label ${label}`);
+    //log(`Get mind by label ${label}`);
     return Mind.db_by_label.get(label);
   }
 
+  /**
+   * @param {object} belief_def
+   * @returns {Belief}
+   */
   add(belief_def) {
     const belief = new Belief(this, belief_def);
     this.belief.add(belief);
@@ -68,6 +85,11 @@ export class Mind {
     return belief;
   }
 
+  /**
+   * @param {number} timestamp
+   * @param {Iterable<Belief>} beliefs
+   * @returns {State}
+   */
   create_state(timestamp, beliefs) {
     const state = new State(this, timestamp, null, [...beliefs]);
     this.state.add(state);
@@ -189,6 +211,10 @@ export class Belief {
     // TODO: add default trait values
   }
 
+  /**
+   * @param {string} label
+   * @param {*} data - Raw data to be resolved by traittype
+   */
   resolve_and_add_trait(label, data) {
     const traittype = db_traittypes[label];
     //log('looking up traittype', label, traittype);
@@ -209,6 +235,10 @@ export class Belief {
     //log('belief', this.label, 'add trait', label, data, datatype, value);
   }
 
+  /**
+   * @param {string} label
+   * @returns {boolean}
+   */
   can_have_trait(label) {
     for (const archetype of this.get_archetypes()) {
       //log ("check traits of archetype", archetype.label, archetype);
@@ -241,6 +271,10 @@ export class Belief {
     }
   }
 
+  /**
+   * @param {object} traits
+   * @returns {Belief}
+   */
   with_traits(traits) {
     const belief = new Belief(this.in_mind, {bases: [this], traits});
     this.in_mind.belief.add(belief);
@@ -299,6 +333,12 @@ export class Belief {
 }
 
 export class Archetype {
+  /**
+   * @param {string} label
+   * @param {object} param1
+   * @param {string[]} [param1.bases]
+   * @param {object} [param1.traits]
+   */
   constructor(label, {bases=[], traits={}}) {
     this.label = label;
 
@@ -347,18 +387,23 @@ export class Traittype {
     'boolean': Boolean,
   }
 
+  /**
+   * @param {string} label
+   * @param {string} def
+   */
   constructor(label, def) {
     this.label = label;
     this.schema = {
       value: {range:def},
     }
     return;
-    
+
     //-----
 
     // Stub for multi-slot traits
     // eslint-disable-next-line no-unreachable
     if (typeof(def) !== 'object') {
+      // @ts-ignore - unreachable code for future multi-slot traits
       def = {value:def};
     }
 
@@ -368,6 +413,11 @@ export class Traittype {
     }
   }
 
+  /**
+   * @param {Mind} mind
+   * @param {*} data
+   * @returns {*}
+   */
   resolve(mind, data) {
     const range_label = this.schema.value.range;
 
@@ -416,6 +466,7 @@ export class Traittype {
     throw "Type not found";
   }
 
+  /** @param {*} value */
   static serializeTraitValue(value) {
     if (value instanceof Belief || value instanceof State) {
       //return {_ref: value._id};
@@ -424,6 +475,7 @@ export class Traittype {
     return value;
   }
 
+  /** @param {*} value */
   static inspectTraitValue(value) {
     if (value instanceof Belief || value instanceof State || value instanceof Mind) {
       const result = {_ref: value._id, _type: value.constructor.name};

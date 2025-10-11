@@ -150,6 +150,30 @@ The project currently has no test suite (`npm test` will fail).
 - Example: NPC uncertain if someone saw them → state branches into "saw me" (unusual) and "didn't see" (common)
 - Cleanup phases can merge objects/states when differences no longer matter
 
+## Code Style
+
+**Philosophy**: Write short, readable code using modern JavaScript features. Prefer clarity over cleverness.
+
+**Technical constraints**:
+- Modern ES2024+ features, no compilation/build step required
+- JSDoc types for parameter checking (no TypeScript)
+- Explicit module specifiers (`.mjs`/`.js` extensions, no bare imports like `from "module"`)
+
+**Readability guidelines**:
+- Use modern features when they improve clarity, not for their own sake
+  - Example: prefer `for` loops over `reduce()` when clearer and faster
+  - Use generators for potentially large collections (world items, beliefs, state iterations)
+- Assume familiarity with modern JS - don't avoid features just because they're new
+
+**Conventions**:
+- `snake_case` for methods/variables
+- `_prefix` for internal properties
+- 2-space indentation, no semicolons (per ESLint config)
+- JSDoc comments: types only, no redundant descriptions
+- Minimize comments - prefer clear code over explanatory comments
+  - Only comment when "why" isn't obvious from well-named code
+  - Fewer lines = more code visible on screen
+
 ## Alpha 1 Development Roadmap
 
 **Goal**: Build a text-based investigation game where player finds a missing hammer through questioning NPCs. System maintains consistency across all observations with multiple possible culprits until evidence narrows it down.

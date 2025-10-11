@@ -16,9 +16,10 @@ async function init(){
   //DB = await import("./db.mjs");
   await import("./channel.mjs");
 
-  const world = Adventure.world;
-  world.player_enter_location();
-  
+  //const world = Adventure.world;
+  //world.player_enter_location();
+  postMessage(['header_set', `Potence`]);
+  postMessage(['main_add', 'Whirling...' ]);
 }
 
 const dispatch = {

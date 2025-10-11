@@ -112,12 +112,12 @@ player = player.with_traits({mind:player_mind});
 state = state.tick({replace: [player]});
 
 
-log(JSON.stringify(world_mind));
+//log(JSON.stringify(world_mind));
 //log(JSON.stringify(state));
 
-for (const belief of  state.get_beliefs()) {
-  log("Belief", belief.sysdesig());
-}
+//for (const belief of  state.get_beliefs()) {
+//  log("Belief", belief.sysdesig());
+//}
 
 // Adventure would be its own module later...
 export const Adventure = {
@@ -134,14 +134,13 @@ export const Adventure = {
 //  log('👁️', world.sysdesig(obj), e.bake());
 //}
 
+//world_mind.player_enter_location = ()=>{
+//  //log('you', Adventure.player)
+//  //const loc = Adventure.player.get('InLocation').entity();
+//
+//  postMessage(['header_set', `Good morning`]);
+//  const lines = ['Dizzy...'];
+//
+//  postMessage(['main_add', ...lines ]);
+//}
 
-
-world_mind.player_enter_location = ()=>{
-  //log('you', Adventure.player)
-  //const loc = Adventure.player.get('InLocation').entity();
-
-  postMessage(['header_set', `Good morning`]);
-  const lines = ['Dizzy...'];
-  
-  postMessage(['main_add', ...lines ]);
-}

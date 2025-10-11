@@ -7,10 +7,18 @@
     "module": "ES2022",
     "moduleResolution": "node",
     "strict": false,
-    "skipLibCheck": true,
-    "noImplicitAny": false,
-    "strictNullChecks": true,
-    "strictFunctionTypes": false
+
+    // Catch common mistakes without requiring full type annotations
+    "alwaysStrict": true,              // Parse in strict mode
+    "noImplicitThis": true,            // Catches 'this' context issues
+    "strictBindCallApply": true,       // Type check .bind/.call/.apply
+    "strictFunctionTypes": true,       // Stricter function type checking
+    "noImplicitReturns": true,         // All code paths must return
+    "noFallthroughCasesInSwitch": true, // Prevent accidental fallthrough
+
+    // Uncomment for stricter unused variable checking:
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
   },
   "include": ["public/worker/**/*.mjs"],
   "exclude": ["node_modules"]
