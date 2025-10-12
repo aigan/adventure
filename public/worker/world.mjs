@@ -47,6 +47,15 @@ const archetypes = {
   },
 }
 
+// Define state prototypes
+//DB.State.by_label.player_mind = {
+//  learn: {
+//    workshop: ['location']
+//  }
+//}
+
+DB.register(archetypes, traittypes);
+
 const world_belief = {
   workshop: {
     bases: ['Location'],
@@ -63,12 +72,18 @@ const world_belief = {
     bases: ['Player'],
     traits: {
       location: 'workshop',
+      mind_states: {
+        _type: 'State',
+        learn: {
+          workshop: ['location']
+        },
+        // ground_state automatically inferred from state.add_beliefs context
+        // Note: Can't learn about 'player' here since it's not registered yet
+        // The prototype already learns about workshop
+      }
     },
   },
 }
-
-
-DB.register(archetypes, traittypes);
 
 // Create world mind and initial state
 const world_mind = new DB.Mind('world');
@@ -95,28 +110,7 @@ state = state.tick({
   replace: [ball],
 });
 
-
-let player = DB.Belief.by_label.get('player');
-
-
-// Create player mind and initial empty state grounded in current world state
-const player_mind = new DB.Mind('player_mind');
-const player_mind_state = player_mind.create_state(1, state);
-
-// Player learns about hammer on the state (automatically adds to insert list)
-const hammer_knowledge = player_mind_state.learn_about(
-  DB.Belief.by_label.get('hammer'),
-  ['location']
-);
-
-
-// Lock the state when done learning
-player_mind_state.lock();
-
-// Update player entity with the locked state
-player = player.with_traits({mind_states: [player_mind_state]});
-state = state.tick({replace: [player]});
-
+const player = DB.Belief.by_label.get('player');
 
 // Adventure would be its own module later...
 export const Adventure = {

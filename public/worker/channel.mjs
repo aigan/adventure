@@ -63,7 +63,7 @@ const dispatch = {
 		for (const belief of state.get_beliefs()) {
 			data.push({
 				id: belief._id,
-				label: belief.label,
+				label: belief.get_display_label(),
 				desig: belief.sysdesig(),
 			});
 		}
@@ -77,6 +77,7 @@ const dispatch = {
 				timestamp: state.timestamp,
 				mind_id: state.in_mind._id,
 				mind_label: state.in_mind.label,
+				self_label: state.in_mind.self?.get_display_label(),
 				base_id: state.base?._id ?? null,
 				beliefs: data,
 			},
@@ -107,7 +108,7 @@ const dispatch = {
 		for (const belief of state_obj.get_beliefs()) {
 			data.push({
 				id: belief._id,
-				label: belief.label,
+				label: belief.get_display_label(),
 				desig: belief.sysdesig(),
 			});
 		}
@@ -121,6 +122,7 @@ const dispatch = {
 				timestamp: state_obj.timestamp,
 				mind_id: state_obj.in_mind._id,
 				mind_label: state_obj.in_mind.label,
+				self_label: state_obj.in_mind.self?.get_display_label(),
 				base_id: state_obj.base?._id ?? null,
 				beliefs: data,
 			},
@@ -149,12 +151,12 @@ const dispatch = {
 			mind: {id: belief_obj.in_mind._id, label: belief_obj.in_mind.label},
 			about: belief_obj.about ? {
 				id: belief_obj.about._id,
-				label: belief_obj.about.label,
+				label: belief_obj.about.get_display_label(),
 				mind: {id: belief_obj.about.in_mind._id, label: belief_obj.about.in_mind.label}
 			} : null,
 			bases: [...belief_obj.bases].map(b => ({
 				id: b instanceof DB.Belief ? b._id : null,
-				label: b.label,
+				label: b instanceof DB.Belief ? b.get_display_label() : b.label,
 				type: b instanceof DB.Archetype ? 'Archetype' : 'Belief'
 			})),
 		});
@@ -189,12 +191,12 @@ const dispatch = {
 			mind: {id: belief.in_mind._id, label: belief.in_mind.label},
 			about: belief.about ? {
 				id: belief.about._id,
-				label: belief.about.label,
+				label: belief.about.get_display_label(),
 				mind: {id: belief.about.in_mind._id, label: belief.about.in_mind.label}
 			} : null,
 			bases: [...belief.bases].map(b => ({
 				id: b instanceof DB.Belief ? b._id : null,
-				label: b.label,
+				label: b instanceof DB.Belief ? b.get_display_label() : b.label,
 				type: b instanceof DB.Archetype ? 'Archetype' : 'Belief'
 			})),
 		});

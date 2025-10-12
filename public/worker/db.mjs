@@ -45,11 +45,13 @@ export class Mind {
   static by_label = new Map();
 
   /**
-   * @param {string} label - Mind identifier
+   * @param {string|null} label - Mind identifier (optional)
+   * @param {Belief|null} self - What this mind considers "self" (can be null, can change)
    */
-  constructor(label) {
+  constructor(label = null, self = null) {
     this._id = ++ id_sequence;
     this.label = label;
+    this.self = self;
     /** @type {Set<State>} */
     this.state = new Set([]);
 
@@ -120,6 +122,8 @@ export class Mind {
 }
 
 export class State {
+  static by_label = {};
+
   /**
    * @param {Mind} mind
    * @param {number} timestamp
@@ -157,7 +161,7 @@ export class State {
    */
   add_beliefs(beliefs) {
     for (const [label, def] of Object.entries(beliefs)) {
-      const belief = new Belief(this.in_mind, {...def, label});
+      const belief = new Belief(this.in_mind, {...def, label}, this);
       this.insert.push(belief);
     }
   }
@@ -334,6 +338,58 @@ export class State {
       remove: this.remove.map(b => b._id)
     };
   }
+
+  /**
+   * Construct State from declarative template
+   * @param {Mind} parent_mind - Mind creating this (context for belief resolution)
+   * @param {object} spec
+   * @param {string} spec._type - Must be 'State'
+   * @param {string} [spec.mind_label] - Optional label for the mind (for debugging)
+   * @param {string} [spec.base] - Prototype template name from State.by_label
+   * @param {Object<string, string[]>} [spec.learn] - {belief_label: [trait_names]}
+   * @param {State} [spec.ground_state] - Explicit ground state reference
+   * @param {Belief|null} owner_belief - Belief that this mind considers "self"
+   * @param {State|null} [creator_state] - State creating this (for inferring ground_state)
+   * @returns {State}
+   */
+  static resolve_template(parent_mind, spec, owner_belief = null, creator_state = null) {
+    // Create entity's mind with optional label and self
+    const entity_mind = new Mind(spec.mind_label || null, owner_belief)
+
+    // Ground state: explicit in spec, or inferred from creator, or null
+    const ground = spec.ground_state ?? creator_state ?? null
+
+    // Create initial state
+    const state = entity_mind.create_state(1, ground)
+
+    // Build combined learn spec (prototype + custom)
+    const learn_spec = {}
+
+    // Apply prototype template
+    if (spec.base && State.by_label[spec.base]) {
+      const prototype = State.by_label[spec.base]
+      Object.assign(learn_spec, prototype.learn || {})
+    }
+
+    // Merge custom learning (overrides prototype)
+    Object.assign(learn_spec, spec.learn || {})
+
+    // Execute learning
+    for (const [label, trait_names] of Object.entries(learn_spec)) {
+      const belief = Belief.by_label.get(label)
+      if (!belief) {
+        throw new Error(`Cannot learn about '${label}': belief not found`)
+      }
+
+      // Only learn explicitly listed traits (empty array = nothing)
+      if (trait_names.length > 0) {
+        state.learn_about(belief, trait_names)
+      }
+    }
+
+    state.lock()
+    return state
+  }
 }
 
 export class Belief {
@@ -347,8 +403,9 @@ export class Belief {
    * @param {Belief|null} [param1.about]
    * @param {(string|Archetype|Belief)[]} [param1.bases]
    * @param {object} [param1.traits]
+   * @param {State|null} [creator_state] - State that's creating this belief (for inferring ground_state)
    */
-  constructor(mind, {label=null, about=null, bases=[], traits={}}) {
+  constructor(mind, {label=null, about=null, bases=[], traits={}}, creator_state = null) {
     this._id = ++ id_sequence;
     this.in_mind = mind;
     this.label = label;
@@ -371,7 +428,7 @@ export class Belief {
     }
 
     for (const [trait_label, trait_data] of Object.entries(traits)) {
-      this.resolve_and_add_trait(trait_label, trait_data);
+      this.resolve_and_add_trait(trait_label, trait_data, creator_state);
     }
 
     // Register globally
@@ -393,8 +450,9 @@ export class Belief {
   /**
    * @param {string} label
    * @param {*} data - Raw data to be resolved by traittype
+   * @param {State|null} [creator_state] - State creating this belief (for inferring ground_state)
    */
-  resolve_and_add_trait(label, data) {
+  resolve_and_add_trait(label, data, creator_state = null) {
     const traittype = Traittype.by_label[label];
     //log('looking up traittype', label, traittype);
     if (traittype == null) {
@@ -402,7 +460,7 @@ export class Belief {
       throw `Trait ${label} do not exist `;
     }
 
-    const value = traittype.resolve(this.in_mind, data);
+    const value = traittype.resolve(this.in_mind, data, this, creator_state);
 
     if (!this.can_have_trait(label)) {
       log('belief', this.label, 'add trait', label, data, value);
@@ -463,11 +521,30 @@ export class Belief {
     this.locked = true;
   }
 
+  /**
+   * Get label for display by walking the belief chain
+   * @returns {string|null}
+   */
+  get_display_label() {
+    if (this.label) return this.label;
+
+    // Walk bases to find label (only Belief bases, not Archetypes)
+    for (const base of this.bases) {
+      if (base instanceof Belief) {
+        const label = base.get_display_label();
+        if (label) return label;
+      }
+    }
+
+    return null;
+  }
+
   sysdesig() {
     const parts = [];
 
-    if (this.label) {
-      parts.push(this.label);
+    const label = this.get_display_label();
+    if (label) {
+      parts.push(label);
     }
 
     // Get edge archetypes (directly in bases, not full inheritance)
@@ -522,7 +599,7 @@ export class Belief {
       _type: 'Belief',
       _id: this._id,
       label: this.label,
-      about: this.about ? {_ref: this.about._id, label: this.about.label} : null,
+      about: this.about ? {_ref: this.about._id, label: this.about.get_display_label()} : null,
       archetypes: [...this.get_archetypes()].map(a => a.label),
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
@@ -701,9 +778,25 @@ export class Traittype {
   /**
    * @param {Mind} mind
    * @param {*} data
+   * @param {Belief|null} owner_belief - Belief being constructed (for setting mind owner)
+   * @param {State|null} [creator_state] - State creating the belief (for inferring ground_state)
    * @returns {*}
    */
-  resolve(mind, data) {
+  resolve(mind, data, owner_belief = null, creator_state = null) {
+    // Check for template construction first (_type field)
+    if (data?._type) {
+      const type_class = Traittype.data_type_map[data._type]
+      if (type_class?.resolve_template) {
+        const result = type_class.resolve_template(mind, data, owner_belief, creator_state)
+
+        // Wrap in array if container expects it
+        if (this.container === Array && !Array.isArray(result)) {
+          return [result]
+        }
+        return result
+      }
+    }
+
     return this._resolver(mind, data);
   }
 

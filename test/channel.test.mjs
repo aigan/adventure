@@ -111,13 +111,60 @@ describe('Channel Message Handlers', () => {
       // Simulate data extraction from channel.mjs
       const data = {
         id: belief._id,
-        label: belief.label,
+        label: belief.get_display_label(),
         desig: belief.sysdesig(),
       };
 
       expect(data.id).to.be.a('number');
       expect(data.label).to.equal('data_hammer');
       expect(data.desig).to.be.a('string');
+    });
+
+    it('shows self_label for mind beliefs with versioned self', () => {
+      const world_mind = new DB.Mind('world');
+      const player_body = world_mind.add({
+        label: 'player',
+        bases: ['Player']
+      });
+      const world_state = world_mind.create_state(1);
+      world_state.insert.push(player_body);
+
+      // Create a new version of player_body (e.g., after adding color trait)
+      const player_body_v2 = player_body.with_traits({ color: 'blue' });
+
+      // Create player's mind with the versioned body as self
+      DB.State.by_label.player_mind = {
+        learn: {
+          player: ['location']
+        }
+      };
+
+      const player_with_mind = player_body_v2.with_traits({
+        mind_states: {
+          _type: 'State',
+          base: 'player_mind',
+          ground_state: world_state
+        }
+      });
+
+      const mind_states = player_with_mind.traits.get('mind_states');
+      const player_mind = mind_states[0].in_mind;
+      const player_state = mind_states[0];
+
+      // Simulate channel.mjs state data extraction
+      const state_data = {
+        id: player_state._id,
+        timestamp: player_state.timestamp,
+        mind_id: player_mind._id,
+        mind_label: player_mind.label,
+        self_label: player_mind.self?.get_display_label(),
+        base_id: player_state.base?._id ?? null,
+      };
+
+      // Verify self_label is shown even though player_mind.self has no direct label
+      expect(player_mind.self).to.equal(player_with_mind);
+      expect(player_mind.self.label).to.be.null; // versioned belief has no direct label
+      expect(state_data.self_label).to.equal('player'); // but display label walks the chain
     });
   });
 

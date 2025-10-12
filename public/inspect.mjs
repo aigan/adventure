@@ -53,8 +53,10 @@ const dispatch = {
       ? `<a href="?state=${dat.state.base_id}">← Previous State</a>`
       : '';
 
+    const mind_prefix = dat.state.mind_label || dat.state.self_label || `Mind #${dat.state.mind_id}`;
+
     render({
-      header: `${dat.state.mind_label} entities (State #${dat.state.id}, timestamp: ${dat.state.timestamp}) ${state_nav}`,
+      header: `${mind_prefix} beliefs (State #${dat.state.id}, timestamp: ${dat.state.timestamp}) ${state_nav}`,
       table: {
         columns: ["desig"],
         rows: dat.state.beliefs,
@@ -164,7 +166,7 @@ function render_entity(a, target = $main){
         const items = value.map(item => {
           if (typeof item === 'object' && item !== null) {
             if (item._ref && item._type) {
-              // Reference to another entity
+              // Reference to another belief or object
               const type_lower = item._type.toLowerCase();
               const label_text = item.label ? ` (${item.label})` : '';
               return `<a href="?${type_lower}=${item._ref}">#${item._ref}${label_text}</a>`;
@@ -177,7 +179,7 @@ function render_entity(a, target = $main){
         display_value = items.join(', ');
       } else if (typeof value === 'object' && value !== null) {
         if (value._ref && value._type) {
-          // Reference to another entity
+          // Reference to another belief or object
           const type_lower = value._type.toLowerCase();
           const label_text = value.label ? ` (${value.label})` : '';
           display_value = `<a href="?${type_lower}=${value._ref}">#${value._ref}${label_text}</a>`;
