@@ -45,7 +45,7 @@ const dispatch = {
 
 		if (!mind_obj) {
 			log("Mind not found", mind);
-			log(DB.Mind.db_by_id);
+			log(DB.Mind.by_id);
 			return;
 		}
 
@@ -88,7 +88,7 @@ const dispatch = {
 
 		// Find state by searching all minds
 		let state_obj = null;
-		for (const [_id, mind] of DB.Mind.db_by_id) {
+		for (const [_id, mind] of DB.Mind.by_id) {
 			for (const s of mind.state) {
 				if (s._id === state_id) {
 					state_obj = s;
@@ -132,7 +132,7 @@ const dispatch = {
 
 		// Find belief by searching all minds
 		let belief_obj = null;
-		for (const [_id, mind] of DB.Mind.db_by_id) {
+		for (const [_id, mind] of DB.Mind.by_id) {
 			for (const b of mind.belief) {
 				if (b._id === belief_id) {
 					belief_obj = b;

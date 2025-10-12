@@ -1,8 +1,5 @@
 const log = console.log.bind(console);
 
-const db_archetypes = {};
-const db_traittypes = {};
-
 let id_sequence = 0;
 
 /**
@@ -13,19 +10,19 @@ let id_sequence = 0;
 export function register( archetypes, traittypes ) {
   for (const [label, def] of Object.entries(traittypes)) {
     //traittypes[label] = def; // TODO: resolve trait datatypes
-    db_traittypes[label] = new Traittype(label, def);
+    Traittype.by_label[label] = new Traittype(label, def);
     //log("Registred tratittype", label);
   }
 
   for (const [label, def] of Object.entries(archetypes)) {
-    db_archetypes[label] = new Archetype(label, def);
+    Archetype.by_label[label] = new Archetype(label, def);
     //log("Registred archetype", label);
   }
 }
 
 export class Mind {
-  static db_by_id = new Map();
-  static db_by_label = new Map();
+  static by_id = new Map();
+  static by_label = new Map();
 
   /**
    * @param {string} label - Mind identifier
@@ -40,9 +37,9 @@ export class Mind {
     this.belief_by_label = {};
 
     // Register globally
-    Mind.db_by_id.set(this._id, this);
+    Mind.by_id.set(this._id, this);
     if (label) {
-      Mind.db_by_label.set(label, this);
+      Mind.by_label.set(label, this);
     }
 
     //log(`Created mind ${this._id}`);
@@ -54,7 +51,7 @@ export class Mind {
    */
   static get_by_id(id) {
     //log(`Get mind by id ${id}`);
-    return Mind.db_by_id.get(id);
+    return Mind.by_id.get(id);
   }
 
   /**
@@ -63,7 +60,7 @@ export class Mind {
    */
   static get_by_label(label) {
     //log(`Get mind by label ${label}`);
-    return Mind.db_by_label.get(label);
+    return Mind.by_label.get(label);
   }
 
   /**
@@ -322,7 +319,7 @@ export class Belief {
       if (typeof base === 'string') {
         const base_label = base;
         // Resolution order: own mind → archetype registry
-        base = mind.belief_by_label[base] ?? db_archetypes[base];
+        base = mind.belief_by_label[base] ?? Archetype.by_label[base];
         if (!base) {
           throw `Base '${base_label}' not found in mind '${mind.label}' or archetype registry`;
         }
@@ -341,7 +338,7 @@ export class Belief {
    * @param {*} data - Raw data to be resolved by traittype
    */
   resolve_and_add_trait(label, data) {
-    const traittype = db_traittypes[label];
+    const traittype = Traittype.by_label[label];
     //log('looking up traittype', label, traittype);
     if (traittype == null) {
       log('belief', this.label, 'add trait', label, data);
@@ -480,6 +477,8 @@ export class Belief {
 }
 
 export class Archetype {
+  static by_label = {};
+
   /**
    * @param {string} label
    * @param {object} param1
@@ -493,7 +492,7 @@ export class Archetype {
     /** @type {Set<Archetype>} */
     this.bases = new Set([]);
     for (const base_label of bases) {
-      this.bases.add(db_archetypes[base_label]);
+      this.bases.add(Archetype.by_label[base_label]);
     }
 
     //this.traits = new Map();
@@ -522,6 +521,8 @@ export class Archetype {
 }
 
 export class Traittype {
+  static by_label = {};
+
   static data_type_map = {
     Map: Map,
     Set: Set,
@@ -569,8 +570,8 @@ export class Traittype {
   resolve(mind, data) {
     const range_label = this.schema.value.range;
 
-    if (db_archetypes[range_label]) {
-      const range = db_archetypes[range_label];
+    if (Archetype.by_label[range_label]) {
+      const range = Archetype.by_label[range_label];
       let belief;
       if (typeof data === 'string') {
         belief = mind.belief_by_label[data];
