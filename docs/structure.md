@@ -128,45 +128,93 @@ This structure supports:
 
 ## **Core Principles**
 
-* **Everything is beliefs in minds** - world_mind contains npc_minds which contain beliefs
-* **Hierarchical access** - Parent minds can access child minds (theory of mind), but minds cannot access their parent or sibling minds
-* **Prototype inheritance** - Shared belief prototypes live in a global set,
-  allowing multiple beliefs across different minds to inherit common structure without
-  violating mind isolation
+* **Everything is beliefs in minds** - All game entities (objects, NPCs, locations) are represented as Beliefs
+* **Global registry with ownership** - Beliefs stored in global registry, each has `in_mind` reference for ownership
+* **Hierarchical access** - Parent minds can access child minds (theory of mind) through nested belief structures
+* **Prototype inheritance** - Beliefs inherit from Archetypes and other Beliefs via `bases`
 * **Immutable nodes** - Changes create new versions via `base` inheritance
 * **Branching on uncertainty** - Multiple states can exist at the same tick
 * **Time progression** - States are indexed by tick number
-* **Differential updates** - States track `added`, `updated`, `removed` rather than full lists
+* **Differential updates** - States track `insert`/`remove` rather than full belief lists
+* **Label uniqueness** - Labels are globally unique across beliefs and archetypes
+* **Cultural beliefs** - Beliefs with null ownership can be shared across all minds
 
 ## **Schema**
+
+### **Registry Structure**
+
+All entities are stored in global registries for efficient lookup:
+
+```yaml
+registries:
+  mind_by_id: [id → mind]
+  mind_by_label: [label → mind]
+  belief_by_id: [id → belief]
+  belief_by_label: [label → belief]
+  archetype_by_label: [label → archetype]
+```
+
+**Design constraint**: Labels are globally unique across both beliefs and archetypes to prevent naming conflicts.
 
 ### **Mind Structure**
 
 ```yaml
 mind:
-  states:
-    state_[tick][branch]:
-      base: previous_state  # inheritance chain
-      timestamp: [number]
-      insert: [list of new beliefs]
-      remove: [list of replaced beliefs]
-      certainty: certain|common|unusual|rare
-
-  beliefs:
-    [belief_id]:
-      archetypes: [types]
-      bases: [parent_belief]  # for inheritance
-      about: [belief_in_outer_mind]  # correspondence to outer mind's belief
-      source: [belief]  # how this belief originated (observation, testimony, etc)
-      traits: [properties based on archetype]
+  id: [unique identifier]
+  label: [optional string for lookup]
+  states: [collection of state snapshots]
 ```
 
-### **Belief Archetypes**
+**Key design decision**: Beliefs are NOT stored in minds. All beliefs live in the global registry, with each belief maintaining an `in_mind` reference for ownership. This enables:
+- Direct belief lookup without knowing which mind owns it
+- Efficient queries across all beliefs (e.g., "find all beliefs about entity X")
+- Consistent access patterns for all entity types
 
-* **Object** - Physical items with location, properties
-* **Event** - Things that happened (movement, perception, etc)
-* **Mind** - Model of another entity's beliefs
-* **Location** - Places in the world
+### **State Structure**
+
+```yaml
+state:
+  id: [unique identifier]
+  in_mind: [reference to owning mind]
+  base: [reference to previous state, or null]
+  timestamp: [tick number]
+  insert: [beliefs added in this state]
+  remove: [beliefs removed in this state]
+```
+
+**Validation**: States can only contain beliefs from their owning mind, except for "cultural beliefs" (beliefs with null ownership) which are shared.
+
+**Query pattern**: To get all beliefs in a state, walk the `base` chain accumulating `insert` lists while tracking `remove` lists.
+
+### **Belief Structure**
+
+```yaml
+belief:
+  id: [unique identifier]
+  in_mind: [owning mind reference, or null for cultural beliefs]
+  label: [optional globally-unique string]
+  about: [reference to belief in outer mind]
+  bases: [inheritance from archetypes or other beliefs]
+  traits: [properties based on archetype templates]
+```
+
+**Ownership semantics**:
+- Normal beliefs: `in_mind` points to owning mind
+- Cultural beliefs: `in_mind` is null, can be referenced by any mind
+- Beliefs auto-register in global registry on creation
+
+**Versioning**: Creating modified versions uses immutable pattern - new belief with `base` reference to previous version.
+
+### **Archetype Structure**
+
+```yaml
+archetype:
+  label: [unique identifier]
+  bases: [parent archetypes for inheritance]
+  traits_template: [available trait definitions]
+```
+
+Archetypes define the "types" of beliefs (Object, Event, Location, etc.) and what traits they can have.
 
 ### **Key Properties**
 
@@ -176,6 +224,8 @@ mind:
 * **source** - Points to the belief that originated this belief (observation event, testimony, inference).
 
 ## **Example: The Missing Hammer Mystery**
+
+*Note: The following examples show beliefs grouped under minds for readability, but in the actual design, beliefs are stored in a global registry with `in_mind` references.*
 
 ### **Initial Setup (Tick 1)**
 
@@ -388,9 +438,10 @@ belief_x:
 
 ### **Mind Nesting**
 
-* `world_mind` contains `npc1_mind`, `npc2_mind`
-* `npc1_mind` contains `npc1_model_npc2`, `facade_for_player`
+* `world_mind` has references to `npc1_mind`, `npc2_mind` (stored as beliefs with Mind trait)
+* `npc1_mind` has references to `npc1_model_npc2`, `facade_for_player` (nested mind beliefs)
 * Each mind is isolated from siblings and parent, but can introspect children
+* All beliefs (including those "belonging to" a mind) exist in the global registry with `in_mind` references
 
 ### **Template Matching**
 
