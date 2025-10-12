@@ -6,7 +6,7 @@ describe('Channel Message Handlers', () => {
     DB.reset_registries();
     const traittypes = {
       location: 'Location',
-      mind: 'Mind',
+      mind_states: 'State',
       color: 'string',
     }
 
@@ -19,7 +19,7 @@ describe('Channel Message Handlers', () => {
       },
       Mental: {
         traits: {
-          mind: null,
+          mind_states: null,
         },
       },
       Location: {
