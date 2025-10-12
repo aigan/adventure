@@ -214,15 +214,7 @@ export class State {
    */
   learn_about(belief, trait_names = []) {
     // Follow about chain to original entity
-    let original = belief;
-    const seen_in_chain = new Set();
-    while (original.about != null) {
-      if (seen_in_chain.has(original)) {
-        throw new Error(`Cycle detected in about chain for belief ${belief._id}`);
-      }
-      seen_in_chain.add(original);
-      original = original.about;
-    }
+    const original = this._follow_about_chain_to_original(belief);
 
     // Walk belief chain to collect all archetype bases
     const archetype_bases = [];
@@ -250,56 +242,7 @@ export class State {
     for (const name of trait_names) {
       if (belief.traits.has(name)) {
         const value = belief.traits.get(name);
-
-        if (value instanceof Belief) {
-          // Find or create belief in this state about the referenced entity
-
-          // Follow about chain for the referenced belief
-          let ref_original = value;
-          const ref_seen = new Set();
-          while (ref_original.about != null) {
-            if (ref_seen.has(ref_original)) {
-              throw new Error(`Cycle detected in about chain for belief ${value._id}`);
-            }
-            ref_seen.add(ref_original);
-            ref_original = ref_original.about;
-          }
-
-          // Search for existing belief about this entity in current state
-          const existing_beliefs = [];
-          for (const b of this.get_beliefs()) {
-            // Follow about chain for candidate
-            let candidate_original = b;
-            const candidate_seen = new Set();
-            while (candidate_original.about != null) {
-              if (candidate_seen.has(candidate_original)) {
-                // Skip beliefs with cycles
-                break;
-              }
-              candidate_seen.add(candidate_original);
-              candidate_original = candidate_original.about;
-            }
-
-            if (candidate_original === ref_original) {
-              existing_beliefs.push(b);
-            }
-          }
-
-          if (existing_beliefs.length > 1) {
-            throw new Error(`Multiple beliefs about entity ${ref_original._id} exist in mind ${this.in_mind.label}`);
-          }
-
-          if (existing_beliefs.length === 1) {
-            copied_traits[name] = existing_beliefs[0];
-          } else {
-            // Create new belief about the referenced entity
-            const new_belief = this.learn_about(value);
-            copied_traits[name] = new_belief;
-          }
-        } else {
-          // Copy non-Belief values as-is
-          copied_traits[name] = value;
-        }
+        copied_traits[name] = this._dereference_trait_value(value);
       }
     }
 
@@ -313,6 +256,72 @@ export class State {
     this.insert.push(new_belief);
 
     return new_belief;
+  }
+
+  /**
+   * @param {Belief} belief
+   * @param {boolean} throw_on_cycle - If false, returns null on cycle instead of throwing
+   * @returns {Belief|null}
+   */
+  _follow_about_chain_to_original(belief, throw_on_cycle = true) {
+    let original = belief;
+    const seen = new Set();
+    while (original.about != null) {
+      if (seen.has(original)) {
+        if (throw_on_cycle) {
+          throw new Error(`Cycle detected in about chain for belief ${belief._id}`);
+        }
+        return null;
+      }
+      seen.add(original);
+      original = original.about;
+    }
+    return original;
+  }
+
+  /**
+   * Handles primitives, Beliefs, and arrays recursively
+   * @param {*} value
+   * @returns {*}
+   */
+  _dereference_trait_value(value) {
+    if (Array.isArray(value)) {
+      return value.map(item => this._dereference_trait_value(item));
+    } else if (value instanceof Belief) {
+      return this._find_or_learn_belief_about(value);
+    } else {
+      return value;
+    }
+  }
+
+  /**
+   * Calls learn_about() recursively if belief doesn't exist in this state
+   * @param {Belief} belief_reference
+   * @returns {Belief}
+   */
+  _find_or_learn_belief_about(belief_reference) {
+    // Find the original entity this belief is about
+    const original = this._follow_about_chain_to_original(belief_reference);
+
+    // Search for existing belief about this entity in current state
+    const existing_beliefs = [];
+    for (const b of this.get_beliefs()) {
+      const candidate_original = this._follow_about_chain_to_original(b, false);
+      if (candidate_original && candidate_original === original) {
+        existing_beliefs.push(b);
+      }
+    }
+
+    if (existing_beliefs.length > 1) {
+      throw new Error(`Multiple beliefs about entity ${original._id} exist in mind ${this.in_mind.label}`);
+    }
+
+    if (existing_beliefs.length === 1) {
+      return existing_beliefs[0];
+    } else {
+      // Create new belief about the referenced entity
+      return this.learn_about(belief_reference);
+    }
   }
 
   toJSON() {

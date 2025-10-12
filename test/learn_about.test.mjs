@@ -274,5 +274,81 @@ describe('learn_about', () => {
       // String trait should be copied as-is
       expect(hammer_knowledge.traits.get('color')).to.equal('red');
     });
+
+    it('learn_about should dereference arrays of beliefs', () => {
+      // Setup: Create a container belief with an array trait
+      DB.reset_registries();
+
+      const traittypes = {
+        location: 'Location',
+        items: {
+          type: 'PortableObject',
+          container: Array,
+          min: 0
+        }
+      };
+
+      const archetypes = {
+        ObjectPhysical: {
+          traits: {
+            location: null,
+          },
+        },
+        Location: {
+          bases: ['ObjectPhysical'],
+        },
+        PortableObject: {
+          bases: ['ObjectPhysical'],
+        },
+        Container: {
+          bases: ['ObjectPhysical'],
+          traits: {
+            items: null,
+          },
+        },
+      };
+
+      DB.register(archetypes, traittypes);
+
+      const world_mind = new DB.Mind('world');
+
+      // Create items
+      const sword = world_mind.add({
+        label: 'sword',
+        bases: ['PortableObject']
+      });
+
+      const shield = world_mind.add({
+        label: 'shield',
+        bases: ['PortableObject']
+      });
+
+      // Create container with array of items
+      const chest = world_mind.add({
+        label: 'chest',
+        bases: ['Container'],
+        traits: {
+          items: [sword, shield]
+        }
+      });
+
+      const npc_mind = new DB.Mind('npc');
+      const npc_mind_state = npc_mind.create_state(1);
+
+      const chest_knowledge = npc_mind_state.learn_about(chest, ['items']);
+
+      // Array should be dereferenced - each item copied to npc_mind
+      const items = chest_knowledge.traits.get('items');
+      expect(Array.isArray(items)).to.be.true;
+      expect(items).to.have.lengthOf(2);
+
+      // Each dereferenced belief should be in npc_mind
+      expect(items[0].in_mind).to.equal(npc_mind);
+      expect(items[1].in_mind).to.equal(npc_mind);
+
+      // Should preserve the about links to original beliefs
+      expect(items[0].about).to.equal(sword);
+      expect(items[1].about).to.equal(shield);
+    });
   });
 });
