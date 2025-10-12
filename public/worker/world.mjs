@@ -8,7 +8,7 @@ const log = console.log.bind(console);
 
 const traittypes = {
   location: 'Location',
-  mind: 'State',
+  mind_states: 'State',
   color: 'string',
 }
 
@@ -22,7 +22,7 @@ const archetypes = {
 
   Mental: {
     traits: {
-      mind: null,
+      mind_states: null,
     },
   },
 
@@ -110,7 +110,7 @@ const hammer_knowledge = player_mind_state.learn_about(
 player_mind_state.lock();
 
 // Update player entity with the locked state
-player = player.with_traits({mind: player_mind_state});
+player = player.with_traits({mind_states: player_mind_state});
 state = state.tick({replace: [player]});
 
 

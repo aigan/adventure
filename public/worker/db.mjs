@@ -562,8 +562,6 @@ export class Traittype {
   static by_label = {};
 
   static data_type_map = {
-    Map: Map,
-    Set: Set,
     Mind: Mind,
     State: State,
   }
@@ -576,40 +574,71 @@ export class Traittype {
 
   /**
    * @param {string} label
-   * @param {string} def
+   * @param {string|object} def
    */
   constructor(label, def) {
     this.label = label;
-    this.schema = {
-      value: {range:def},
+
+    // Parse definition
+    if (typeof def === 'string') {
+      // Simple type: 'State', 'Location', 'string', etc
+      this.data_type = def;
+      this.container = null;
+      this.constraints = null;
+    } else {
+      // Object schema: {type: 'State', container: Array, min: 1}
+      this.data_type = def.type;
+      this.container = def.container ?? null;
+      this.constraints = {
+        min: def.min ?? null,
+        max: def.max ?? null
+      };
     }
-    return;
 
-    //-----
+    // Build resolver function once during construction
+    this._resolver = this._build_resolver();
+  }
 
-    // Stub for multi-slot traits
-    // eslint-disable-next-line no-unreachable
-    if (typeof(def) !== 'object') {
-      // @ts-ignore - unreachable code for future multi-slot traits
-      def = {value:def};
-    }
+  /**
+   * Build the resolver function based on container type
+   * @returns {Function}
+   */
+  _build_resolver() {
+    if (this.container === Array) {
+      return (mind, data) => {
+        if (!Array.isArray(data)) {
+          throw new Error(`Expected array for trait '${this.label}', got ${typeof data}`);
+        }
 
-    this.schema = {};
-    for (const [pred, pred_def] of Object.entries(def)) {
-      this.schema[pred] = {range:pred_def};
+        if (this.constraints?.min != null && data.length < this.constraints.min) {
+          throw new Error(`Array for trait '${this.label}' has length ${data.length}, min is ${this.constraints.min}`);
+        }
+
+        if (this.constraints?.max != null && data.length > this.constraints.max) {
+          throw new Error(`Array for trait '${this.label}' has length ${data.length}, max is ${this.constraints.max}`);
+        }
+
+        // Resolve each item
+        return data.map(item => this._resolve_item(mind, item));
+      };
+    } else {
+      // No container - single value
+      return (mind, data) => this._resolve_item(mind, data);
     }
   }
 
   /**
+   * Resolve a single item (not an array)
    * @param {Mind} mind
    * @param {*} data
    * @returns {*}
    */
-  resolve(mind, data) {
-    const range_label = this.schema.value.range;
+  _resolve_item(mind, data) {
+    const type_label = this.data_type;
 
-    if (Archetype.by_label[range_label]) {
-      const range = Archetype.by_label[range_label];
+    // Check if it's an Archetype reference
+    if (Archetype.by_label[type_label]) {
+      const archetype = Archetype.by_label[type_label];
       let belief;
       if (typeof data === 'string') {
         belief = Belief.by_label.get(data);
@@ -618,46 +647,53 @@ export class Traittype {
       }
 
       if (belief == null) {
-        log('resolve traittype', this.label, data, range_label);
-        throw "Belief not found";
+        throw new Error(`Belief not found for trait '${this.label}': ${data}`);
       }
 
       // Check if belief has the required archetype in its chain
-      for (const archetype of belief.get_archetypes()) {
-        if (archetype === range) {
+      for (const a of belief.get_archetypes()) {
+        if (a === archetype) {
           return belief;
         }
       }
 
-      log('resolve traittype', this.label, data, range_label);
-      throw "Archetype mismatch";
+      throw new Error(`Belief does not have required archetype '${type_label}' for trait '${this.label}'`);
     }
 
-    if (Traittype.literal_type_map[range_label]) {
-      if (typeof data === range_label) {
+    // Check if it's a literal type (string, number, boolean)
+    if (Traittype.literal_type_map[type_label]) {
+      if (typeof data === type_label) {
         return data;
       }
-
-      log('resolve traittype', this.label, data, range_label);
-      throw "type mismatch";
+      throw new Error(`Expected ${type_label} for trait '${this.label}', got ${typeof data}`);
     }
 
-    if (Traittype.data_type_map[range_label]) {
-      const range =  Traittype.data_type_map[range_label];
-      if (data instanceof range) {
+    // Check if it's a data type (Mind, State)
+    if (Traittype.data_type_map[type_label]) {
+      const type_constructor = Traittype.data_type_map[type_label];
+      if (data instanceof type_constructor) {
         return data;
       }
-
-      log('resolve traittype', this.label, data, range);
-      throw "type mismatch";
+      throw new Error(`Expected ${type_label} instance for trait '${this.label}'`);
     }
 
-    log('resolve traittype', this.label, data, range_label);
-    throw "Type not found";
+    throw new Error(`Unknown type '${type_label}' for trait '${this.label}'`);
+  }
+
+  /**
+   * @param {Mind} mind
+   * @param {*} data
+   * @returns {*}
+   */
+  resolve(mind, data) {
+    return this._resolver(mind, data);
   }
 
   /** @param {*} value */
   static serializeTraitValue(value) {
+    if (Array.isArray(value)) {
+      return value.map(item => Traittype.serializeTraitValue(item));
+    }
     if (value instanceof Belief || value instanceof State) {
       //return {_ref: value._id};
     }
@@ -667,6 +703,9 @@ export class Traittype {
 
   /** @param {*} value */
   static inspectTraitValue(value) {
+    if (Array.isArray(value)) {
+      return value.map(item => Traittype.inspectTraitValue(item));
+    }
     if (value instanceof Belief || value instanceof State || value instanceof Mind) {
       const result = {_ref: value._id, _type: value.constructor.name};
       if (value instanceof Belief || value instanceof Mind) {
