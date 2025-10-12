@@ -157,4 +157,68 @@ describe('State', () => {
       expect(labels).to.deep.equal(['item1', 'item2', 'item3']);
     });
   });
+
+  describe('Ground State and Branches', () => {
+    it('creates root state with null ground_state', () => {
+      const mind = new DB.Mind('test');
+      const state = mind.create_state(1);
+
+      expect(state.ground_state).to.be.null;
+    });
+
+    it('creates nested mind state with ground_state', () => {
+      const world_mind = new DB.Mind('world');
+      const world_state = world_mind.create_state(1);
+
+      const npc_mind = new DB.Mind('npc');
+      const npc_state = npc_mind.create_state(1, world_state);
+
+      expect(npc_state.ground_state).to.equal(world_state);
+    });
+
+    it('tick() inherits ground_state from parent', () => {
+      const world_mind = new DB.Mind('world');
+      const world_state = world_mind.create_state(1);
+
+      const npc_mind = new DB.Mind('npc');
+      const npc_state1 = npc_mind.create_state(1, world_state);
+      const npc_state2 = npc_state1.tick({insert: []});
+
+      expect(npc_state2.ground_state).to.equal(world_state);
+    });
+
+    it('tick() can override ground_state', () => {
+      const world_mind = new DB.Mind('world');
+      const world_state1 = world_mind.create_state(1);
+      const world_state2 = world_state1.tick({insert: []});
+
+      const npc_mind = new DB.Mind('npc');
+      const npc_state1 = npc_mind.create_state(1, world_state1);
+      const npc_state2 = npc_state1.tick({insert: [], ground_state: world_state2});
+
+      expect(npc_state2.ground_state).to.equal(world_state2);
+    });
+
+    it('tracks branches forward from parent state', () => {
+      const mind = new DB.Mind('test');
+      const state1 = mind.create_state(1);
+      const state2 = state1.tick({insert: []});
+      const state3 = state1.tick({insert: []});
+
+      expect(state1.branches).to.have.lengthOf(2);
+      expect(state1.branches).to.include(state2);
+      expect(state1.branches).to.include(state3);
+    });
+
+    it('serializes ground_state in toJSON', () => {
+      const world_mind = new DB.Mind('world');
+      const world_state = world_mind.create_state(1);
+
+      const npc_mind = new DB.Mind('npc');
+      const npc_state = npc_mind.create_state(1, world_state);
+
+      const json = npc_state.toJSON();
+      expect(json.ground_state).to.equal(world_state._id);
+    });
+  });
 });

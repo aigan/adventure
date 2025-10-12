@@ -91,10 +91,11 @@ export class Mind {
 
   /**
    * @param {number} timestamp
+   * @param {State|null} ground_state
    * @returns {State}
    */
-  create_state(timestamp) {
-    const state = new State(this, timestamp, null, []);
+  create_state(timestamp, ground_state = null) {
+    const state = new State(this, timestamp, null, [], [], ground_state);
     this.state.add(state);
     return state;
   }
@@ -125,8 +126,9 @@ export class State {
    * @param {State|null} base
    * @param {Belief[]} insert
    * @param {Belief[]} remove
+   * @param {State|null} ground_state
    */
-  constructor(mind, timestamp, base=null, insert=[], remove=[]) {
+  constructor(mind, timestamp, base=null, insert=[], remove=[], ground_state=null) {
     this._id = ++ id_sequence;
     this.in_mind = mind;
     /** @type {State|null} */
@@ -136,6 +138,10 @@ export class State {
     this.insert = insert;
     /** @type {Belief[]} */
     this.remove = remove;
+    /** @type {State|null} */
+    this.ground_state = ground_state;
+    /** @type {State[]} */
+    this.branches = [];
     this.locked = false;
   }
 
@@ -161,9 +167,10 @@ export class State {
    * @param {Belief[]} [param0.insert]
    * @param {Belief[]} [param0.remove]
    * @param {Belief[]} [param0.replace]
+   * @param {State|null} [param0.ground_state]
    * @returns {State}
    */
-  tick({insert=[], remove=[], replace=[]}) {
+  tick({insert=[], remove=[], replace=[], ground_state}) {
     for (const belief of replace) {
       // Only remove Belief bases (version chains), not Archetypes
       const belief_bases = [...belief.bases].filter(b => b instanceof Belief);
@@ -178,7 +185,8 @@ export class State {
       }
     }
 
-    const state = new State(this.in_mind, this.timestamp + 1, this, insert, remove);
+    const state = new State(this.in_mind, this.timestamp + 1, this, insert, remove, ground_state ?? this.ground_state);
+    this.branches.push(state);
     this.in_mind.state.add(state);
     return state;
   }
@@ -312,6 +320,7 @@ export class State {
       _type: 'State',
       _id: this._id,
       base: this.base?._id ?? null,
+      ground_state: this.ground_state?._id ?? null,
       insert: this.insert.map(b => b._id),
       remove: this.remove.map(b => b._id)
     };

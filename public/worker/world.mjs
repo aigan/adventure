@@ -99,9 +99,9 @@ state = state.tick({
 let player = DB.Belief.by_label.get('player');
 
 
-// Create player mind and initial empty state
+// Create player mind and initial empty state grounded in current world state
 const player_mind = new DB.Mind('player_mind');
-const player_mind_state = player_mind.create_state(1);
+const player_mind_state = player_mind.create_state(1, state);
 
 // Player learns about hammer on the state (automatically adds to insert list)
 const hammer_knowledge = player_mind_state.learn_about(

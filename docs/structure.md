@@ -96,6 +96,8 @@ The core insight: optimize for working sets during story generation rather than 
 - Multiple states can exist at same tick (superposition)
 - States inherit via `base` from any previous state
 - Each mind has its own state sequence
+- States track forward links via `branches` for navigation
+- Nested mind states can ground to parent mind states via `ground_state`
 
 ### Object Versioning
 
@@ -177,14 +179,20 @@ state:
   id: [unique identifier]
   in_mind: [reference to owning mind]
   base: [reference to previous state, or null]
+  ground_state: [reference to state in outer mind, or null]
   timestamp: [tick number]
   insert: [beliefs added in this state]
   remove: [beliefs removed in this state]
+  branches: [collection of states created from this state]
 ```
 
 **Validation**: States can only contain beliefs from their owning mind, except for "cultural beliefs" (beliefs with null ownership) which are shared.
 
 **Query pattern**: To get all beliefs in a state, walk the `base` chain accumulating `insert` lists while tracking `remove` lists.
+
+**Grounding**: When a nested mind creates states (e.g., NPC's model of another NPC's mind), the `ground_state` links back to the parent mind's state that created it. This tracks which version of reality the nested reasoning is based on.
+
+**Branching**: The `branches` collection tracks forward links to all states created from this state, enabling navigation of possibility trees and planning scenarios.
 
 ### **Belief Structure**
 
@@ -311,6 +319,7 @@ npc1_mind:
       states:
         state_3:
           tick: 3
+          ground_state: npc1_mind.state_3a  # Grounded in NPC1's branch where they assume they were seen
           added: [obs_saw_take, npc2_belief_event, npc2_belief_hammer]
       beliefs:
         obs_saw_take:
@@ -337,6 +346,7 @@ npc1_mind:
       states:
         state_3:
           tick: 3
+          ground_state: npc1_mind.state_3b  # Grounded in NPC1's branch where they assume they weren't seen
           added: []  # No observation
       beliefs: {}
 ```
@@ -425,6 +435,51 @@ hammer_1 → hammer_1_v2 → hammer_1_v3
 The `about` property links beliefs across mind boundaries:
 
 world.hammer_1 ← player.hammer_belief ← player.obs_hammer (source)
+
+### **State Branching**
+
+States track forward navigation via `branches`:
+
+```yaml
+state_2:
+  branches: [state_3a, state_3b]  # Multiple possible futures
+
+state_3a:
+  base: state_2
+  certainty: unusual
+  branches: [state_4]
+
+state_3b:
+  base: state_2
+  certainty: common
+  branches: []  # No further exploration yet
+```
+
+**Use cases**:
+- **Uncertainty**: Multiple possible current states (superposition)
+- **Planning**: NPC considers alternative future actions
+- **Theory of mind**: Reasoning about what others might believe
+- **Cleanup**: Merge branches when differences no longer matter
+
+### **Ground State Linking**
+
+Nested mind states link back to outer mind via `ground_state`:
+
+```yaml
+# NPC's mind state grounded in world state
+npc_mind.state_5:
+  ground_state: world_mind.state_10  # Created when world was at tick 10
+
+# NPC's model of another NPC grounded in their own state
+npc1_model_of_npc2.state_3:
+  ground_state: npc1_mind.state_7  # NPC1's reasoning at tick 7
+```
+
+**Properties**:
+- Tracks which version of outer reality a nested mind is reasoning about
+- Inherited automatically by child states via `tick()` unless explicitly overridden
+- Root states (world_mind) have `ground_state: null`
+- Enables temporal coordination between nested minds
 
 ### **Conflict Tracking**
 
