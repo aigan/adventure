@@ -130,17 +130,8 @@ const dispatch = {
 	query_belief({belief, client_id}){
 		const belief_id = Number(belief);
 
-		// Find belief by searching all minds
-		let belief_obj = null;
-		for (const [_id, mind] of DB.Mind.by_id) {
-			for (const b of mind.belief) {
-				if (b._id === belief_id) {
-					belief_obj = b;
-					break;
-				}
-			}
-			if (belief_obj) break;
-		}
+		// Find belief by id in global registry
+		const belief_obj = DB.Belief.by_id.get(belief_id);
 
 		if (!belief_obj) {
 			log("Belief not found", belief_id);

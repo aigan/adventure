@@ -92,7 +92,7 @@ state = state.tick({
 });
 
 
-let player = world_mind.belief_by_label.player;
+let player = DB.Belief.by_label.get('player');
 
 
 // Create player mind and initial empty state
@@ -101,7 +101,7 @@ const player_mind_state = player_mind.create_state(1);
 
 // Player learns about hammer on the state (automatically adds to insert list)
 const hammer_knowledge = player_mind_state.learn_about(
-  world_mind.belief_by_label.hammer,
+  DB.Belief.by_label.get('hammer'),
   ['location']
 );
 

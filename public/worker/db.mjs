@@ -3,6 +3,19 @@ const log = console.log.bind(console);
 let id_sequence = 0;
 
 /**
+ * Reset all registries (for testing)
+ */
+export function reset_registries() {
+  Mind.by_id.clear();
+  Mind.by_label.clear();
+  Belief.by_id.clear();
+  Belief.by_label.clear();
+  Archetype.by_label = {};
+  Traittype.by_label = {};
+  id_sequence = 0;
+}
+
+/**
  * Register archetypes and trait types into the database
  * @param {Object<string, object>} archetypes - Archetype definitions {label: definition}
  * @param {Object<string, string>} traittypes - Trait type definitions {label: type}
@@ -15,6 +28,13 @@ export function register( archetypes, traittypes ) {
   }
 
   for (const [label, def] of Object.entries(archetypes)) {
+    // Check label uniqueness across beliefs and archetypes
+    if (Archetype.by_label[label]) {
+      throw new Error(`Label '${label}' is already used by another archetype`);
+    }
+    if (Belief.by_label.has(label)) {
+      throw new Error(`Label '${label}' is already used by a belief`);
+    }
     Archetype.by_label[label] = new Archetype(label, def);
     //log("Registred archetype", label);
   }
@@ -32,9 +52,6 @@ export class Mind {
     this.label = label;
     /** @type {Set<State>} */
     this.state = new Set([]);
-    /** @type {Set<Belief>} */
-    this.belief = new Set([]);
-    this.belief_by_label = {};
 
     // Register globally
     Mind.by_id.set(this._id, this);
@@ -69,10 +86,6 @@ export class Mind {
    */
   add(belief_def) {
     const belief = new Belief(this, belief_def);
-    this.belief.add(belief);
-    if (belief_def.label != null) {
-      this.belief_by_label[belief_def.label] = belief;
-    }
     return belief;
   }
 
@@ -87,11 +100,19 @@ export class Mind {
   }
 
   toJSON() {
+    // Filter beliefs from global registry that belong to this mind
+    const mind_beliefs = [];
+    for (const belief of Belief.by_id.values()) {
+      if (belief.in_mind === this) {
+        mind_beliefs.push(belief.toJSON());
+      }
+    }
+
     return {
       _type: 'Mind',
       _id: this._id,
       label: this.label,
-      belief: [...this.belief].map(b => b.toJSON()),
+      belief: mind_beliefs,
       state: [...this.state].map(s => s.toJSON())
     };
   }
@@ -132,8 +153,6 @@ export class State {
     for (const [label, def] of Object.entries(beliefs)) {
       const belief = new Belief(this.in_mind, {...def, label});
       this.insert.push(belief);
-      this.in_mind.belief.add(belief);
-      this.in_mind.belief_by_label[label] = belief;
     }
   }
 
@@ -150,6 +169,13 @@ export class State {
       const belief_bases = [...belief.bases].filter(b => b instanceof Belief);
       remove.push(...belief_bases);
       insert.push(belief);
+    }
+
+    // Validate all beliefs belong to this mind or are cultural (null mind)
+    for (const belief of insert) {
+      if (belief.in_mind !== this.in_mind && belief.in_mind !== null) {
+        throw new Error(`Belief ${belief._id} (in_mind: ${belief.in_mind?.label}) cannot be inserted into state for mind ${this.in_mind.label}`);
+      }
     }
 
     const state = new State(this.in_mind, this.timestamp + 1, this, insert, remove);
@@ -277,10 +303,6 @@ export class State {
     });
 
     this.insert.push(new_belief);
-    this.in_mind.belief.add(new_belief);
-    if (new_belief.label) {
-      this.in_mind.belief_by_label[new_belief.label] = new_belief;
-    }
 
     return new_belief;
   }
@@ -297,6 +319,9 @@ export class State {
 }
 
 export class Belief {
+  static by_id = new Map();
+  static by_label = new Map();
+
   /**
    * @param {Mind} mind
    * @param {object} param1
@@ -318,10 +343,10 @@ export class Belief {
     for (let base of bases) {
       if (typeof base === 'string') {
         const base_label = base;
-        // Resolution order: own mind → archetype registry
-        base = mind.belief_by_label[base] ?? Archetype.by_label[base];
+        // Resolution order: belief registry → archetype registry
+        base = Belief.by_label.get(base) ?? Archetype.by_label[base];
         if (!base) {
-          throw `Base '${base_label}' not found in mind '${mind.label}' or archetype registry`;
+          throw `Base '${base_label}' not found in belief registry or archetype registry`;
         }
       }
       this.bases.add(/** @type {Belief|Archetype} */ (base));
@@ -330,6 +355,20 @@ export class Belief {
     for (const [trait_label, trait_data] of Object.entries(traits)) {
       this.resolve_and_add_trait(trait_label, trait_data);
     }
+
+    // Register globally
+    Belief.by_id.set(this._id, this);
+    if (label) {
+      // Check label uniqueness across beliefs and archetypes
+      if (Belief.by_label.has(label)) {
+        throw new Error(`Label '${label}' is already used by another belief`);
+      }
+      if (Archetype.by_label[label]) {
+        throw new Error(`Label '${label}' is already used by an archetype`);
+      }
+      Belief.by_label.set(label, this);
+    }
+
     // TODO: add default trait values
   }
 
@@ -399,7 +438,6 @@ export class Belief {
    */
   with_traits(traits) {
     const belief = new Belief(this.in_mind, {bases: [this], traits});
-    this.in_mind.belief.add(belief);
     return belief;
   }
 
@@ -574,7 +612,7 @@ export class Traittype {
       const range = Archetype.by_label[range_label];
       let belief;
       if (typeof data === 'string') {
-        belief = mind.belief_by_label[data];
+        belief = Belief.by_label.get(data);
       } else {
         belief = data;
       }

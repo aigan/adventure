@@ -26,6 +26,7 @@ describe('Mind', () => {
 
 describe('Archetypes', () => {
   beforeEach(() => {
+    DB.reset_registries();
     // Setup archetypes like world.mjs
     const traittypes = {
       location: 'Location',
@@ -182,7 +183,7 @@ describe('Archetypes', () => {
 
       const player_mind = new DB.Mind('player');
       const player_mind_state = player_mind.create_state(1);
-      const workshop = world_mind.belief_by_label.workshop;
+      const workshop = DB.Belief.by_label.get('workshop');
       const workshop_knowledge = player_mind_state.learn_about(workshop);
 
       const inspected = workshop_knowledge.inspect();
@@ -203,7 +204,7 @@ describe('Archetypes', () => {
 
       const npc_mind = new DB.Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
-      const hammer = world_mind.belief_by_label.hammer;
+      const hammer = DB.Belief.by_label.get('hammer');
       const hammer_belief = npc_mind_state.learn_about(hammer, ['color']);
 
       expect(hammer_belief.can_have_trait('color')).to.be.true;
@@ -234,7 +235,8 @@ describe('Archetypes', () => {
 
       const world_mind = createMindWithBeliefs('world', world_belief);
       const state = world_mind.create_state(1);
-      state.insert.push(...world_mind.belief);
+      const world_beliefs = [...DB.Belief.by_id.values()].filter(b => b.in_mind === world_mind);
+      state.insert.push(...world_beliefs);
 
       let ball = world_mind.add({
         label: 'ball',
@@ -254,7 +256,7 @@ describe('Archetypes', () => {
       expect([...ball.get_archetypes()].map(a => a.label)).to.include('PortableObject');
 
       // Verify player
-      let player = world_mind.belief_by_label.player;
+      let player = DB.Belief.by_label.get('player');
       const player_mind = new DB.Mind('player_mind');
       const player_mind_state = player_mind.create_state(1);
       player = player.with_traits({mind: player_mind});
@@ -263,7 +265,7 @@ describe('Archetypes', () => {
       expect(player_inspected.traits.mind._ref).to.equal(player_mind._id);
 
       // Verify learn_about
-      const workshop = world_mind.belief_by_label.workshop;
+      const workshop = DB.Belief.by_label.get('workshop');
       const workshop_knowledge = player_mind_state.learn_about(workshop);
 
       const workshop_inspected = workshop_knowledge.inspect();
@@ -275,6 +277,7 @@ describe('Archetypes', () => {
 
 describe('Pre-Refactor Tests', () => {
   beforeEach(() => {
+    DB.reset_registries();
     const traittypes = {
       location: 'Location',
       color: 'string',
@@ -308,20 +311,22 @@ describe('Pre-Refactor Tests', () => {
         bases: ['PortableObject']
       });
 
-      expect(mind.belief.size).to.equal(2);
-      expect(mind.belief.has(mind.belief_by_label.workshop)).to.be.true;
-      expect(mind.belief.has(hammer)).to.be.true;
+      expect([...DB.Belief.by_id.values()].filter(b => b.in_mind === mind).length).to.equal(2);
+      expect([...DB.Belief.by_id.values()].some(b => b.in_mind === mind && b === DB.Belief.by_label.get('workshop'))).to.be.true;
+      expect([...DB.Belief.by_id.values()].some(b => b.in_mind === mind && b === hammer)).to.be.true;
     });
 
-    it('can iterate over mind.belief', () => {
+    it('can iterate over beliefs for a mind', () => {
       const mind = createMindWithBeliefs('test', {
         workshop: { bases: ['Location'] },
         hammer: { bases: ['PortableObject'] }
       });
 
       const labels = [];
-      for (const belief of mind.belief) {
-        labels.push(belief.label);
+      for (const belief of DB.Belief.by_id.values()) {
+        if (belief.in_mind === mind) {
+          labels.push(belief.label);
+        }
       }
 
       expect(labels).to.have.members(['workshop', 'hammer']);
@@ -331,8 +336,8 @@ describe('Pre-Refactor Tests', () => {
       const mind = new DB.Mind('test');
       mind.add({label: 'workshop', bases: ['Location']});
 
-      expect(mind.belief_by_label.workshop).to.exist;
-      expect(mind.belief_by_label.workshop.label).to.equal('workshop');
+      expect(DB.Belief.by_label.get('workshop')).to.exist;
+      expect(DB.Belief.by_label.get('workshop').label).to.equal('workshop');
     });
   });
 
@@ -341,12 +346,14 @@ describe('Pre-Refactor Tests', () => {
       const mind_a = new DB.Mind('mind_a');
       mind_a.add({label: 'item_a', bases: ['PortableObject']});
       const state_a = mind_a.create_state(1);
-      state_a.insert.push(...mind_a.belief);
+      const beliefs_for_a = [...DB.Belief.by_id.values()].filter(b => b.in_mind === mind_a);
+      state_a.insert.push(...beliefs_for_a);
 
       const mind_b = new DB.Mind('mind_b');
       mind_b.add({label: 'item_b', bases: ['PortableObject']});
       const state_b = mind_b.create_state(1);
-      state_b.insert.push(...mind_b.belief);
+      const beliefs_for_b = [...DB.Belief.by_id.values()].filter(b => b.in_mind === mind_b);
+      state_b.insert.push(...beliefs_for_b);
 
       const beliefs_a = [...state_a.get_beliefs()];
       const beliefs_b = [...state_b.get_beliefs()];
@@ -366,9 +373,11 @@ describe('Pre-Refactor Tests', () => {
       mind_b.add({label: 'workshop_b', bases: ['Location']});
 
       const state_a = mind_a.create_state(1);
-      state_a.insert.push(...mind_a.belief);
+      const beliefs_a = [...DB.Belief.by_id.values()].filter(b => b.in_mind === mind_a);
+      state_a.insert.push(...beliefs_a);
       const state_b = mind_b.create_state(1);
-      state_b.insert.push(...mind_b.belief);
+      const beliefs_b = [...DB.Belief.by_id.values()].filter(b => b.in_mind === mind_b);
+      state_b.insert.push(...beliefs_b);
 
       const labels_a = [...state_a.get_beliefs()].map(b => b.label);
       const labels_b = [...state_b.get_beliefs()].map(b => b.label);
@@ -384,7 +393,7 @@ describe('Pre-Refactor Tests', () => {
       const world_mind_state = world_mind.create_state(1);
       world_mind.add({label: 'hammer_v1', bases: ['PortableObject']});
 
-      const hammer_v1 = world_mind.belief_by_label.hammer_v1;
+      const hammer_v1 = DB.Belief.by_label.get('hammer_v1');
       const hammer_v2 = hammer_v1.with_traits({ color: 'red' });
 
       const npc_mind = new DB.Mind('npc');
@@ -414,7 +423,7 @@ describe('Pre-Refactor Tests', () => {
       const player_mind = new DB.Mind('player');
       const player_mind_state = player_mind.create_state(1);
       const workshop_knowledge = player_mind_state.learn_about(
-        world_mind.belief_by_label.workshop
+        DB.Belief.by_label.get('workshop')
       );
 
       // Should be able to reference learned belief in traits
@@ -432,7 +441,7 @@ describe('Pre-Refactor Tests', () => {
       const world_mind_state = world_mind.create_state(1);
       world_mind.add({label: 'base_hammer', bases: ['PortableObject']});
 
-      const base_hammer = world_mind.belief_by_label.base_hammer;
+      const base_hammer = DB.Belief.by_label.get('base_hammer');
 
       const npc_mind = new DB.Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
@@ -449,14 +458,14 @@ describe('Pre-Refactor Tests', () => {
         workshop: { bases: ['Location'] },
         hammer: {
           bases: ['PortableObject'],
-          traits: { location: 'workshop' }  // References world_mind.belief_by_label.workshop
+          traits: { location: 'workshop' }  // References DB.Belief.by_label.get('workshop')
         }
       });
 
       const npc_mind = new DB.Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
       const hammer_knowledge = npc_mind_state.learn_about(
-        world_mind.belief_by_label.hammer,
+        DB.Belief.by_label.get('hammer'),
         ['location']
       );
 
@@ -467,7 +476,7 @@ describe('Pre-Refactor Tests', () => {
       expect(location_ref.in_mind).to.equal(npc_mind);
 
       // Should be about the workshop from world_mind
-      expect(location_ref.about).to.equal(world_mind.belief_by_label.workshop);
+      expect(location_ref.about).to.equal(DB.Belief.by_label.get('workshop'));
 
       // Should have the same archetypes
       const archetypes = [...location_ref.get_archetypes()].map(a => a.label);
@@ -489,13 +498,13 @@ describe('Pre-Refactor Tests', () => {
       // NPC already knows about the workshop
       const existing_workshop = npc_mind.add({
         label: 'my_workshop',
-        about: world_mind.belief_by_label.workshop,
+        about: DB.Belief.by_label.get('workshop'),
         bases: ['Location']
       });
       npc_mind_state.insert.push(existing_workshop);
 
       const hammer_knowledge = npc_mind_state.learn_about(
-        world_mind.belief_by_label.hammer,
+        DB.Belief.by_label.get('hammer'),
         ['location']
       );
 
@@ -519,13 +528,13 @@ describe('Pre-Refactor Tests', () => {
       // NPC has two different beliefs about the workshop (uncertainty case)
       const belief1 = npc_mind.add({
         label: 'workshop_belief_1',
-        about: world_mind.belief_by_label.workshop,
+        about: DB.Belief.by_label.get('workshop'),
         bases: ['Location']
       });
 
       const belief2 = npc_mind.add({
         label: 'workshop_belief_2',
-        about: world_mind.belief_by_label.workshop,
+        about: DB.Belief.by_label.get('workshop'),
         bases: ['Location']
       });
 
@@ -534,7 +543,7 @@ describe('Pre-Refactor Tests', () => {
       // Should error - can't determine which to use without certainty tracking
       expect(() => {
         npc_mind_state.learn_about(
-          world_mind.belief_by_label.hammer,
+          DB.Belief.by_label.get('hammer'),
           ['location']
         );
       }).to.throw();
@@ -549,7 +558,7 @@ describe('Pre-Refactor Tests', () => {
       const npc1_mind_state = npc1_mind.create_state(1);
       const workshop_from_npc1 = npc1_mind.add({
         label: 'workshop_knowledge',
-        about: world_mind.belief_by_label.workshop,
+        about: DB.Belief.by_label.get('workshop'),
         bases: ['Location']
       });
 
@@ -559,7 +568,7 @@ describe('Pre-Refactor Tests', () => {
       const workshop_from_npc2 = npc2_mind_state.learn_about(workshop_from_npc1);
 
       // Should follow about chain: npc2_belief.about = world.workshop (not npc1_belief)
-      expect(workshop_from_npc2.about).to.equal(world_mind.belief_by_label.workshop);
+      expect(workshop_from_npc2.about).to.equal(DB.Belief.by_label.get('workshop'));
       expect(workshop_from_npc2.about).to.not.equal(workshop_from_npc1);
     });
 
@@ -568,7 +577,7 @@ describe('Pre-Refactor Tests', () => {
       const world_mind_state = world_mind.create_state(1);
       world_mind.add({label: 'hammer_v1', bases: ['PortableObject']});
 
-      const hammer_v1 = world_mind.belief_by_label.hammer_v1;
+      const hammer_v1 = DB.Belief.by_label.get('hammer_v1');
       const hammer_v2 = hammer_v1.with_traits({ color: 'red' });
 
       const npc_mind = new DB.Mind('npc');
@@ -592,7 +601,7 @@ describe('Pre-Refactor Tests', () => {
       const npc_mind = new DB.Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
       const hammer_knowledge = npc_mind_state.learn_about(
-        world_mind.belief_by_label.hammer,
+        DB.Belief.by_label.get('hammer'),
         ['color']
       );
 
@@ -607,7 +616,7 @@ describe('Pre-Refactor Tests', () => {
       mind.add({label: 'hammer_v1', bases: ['PortableObject']});
 
       const state1 = mind.create_state(1);
-      const hammer_v1 = mind.belief_by_label.hammer_v1;
+      const hammer_v1 = DB.Belief.by_label.get('hammer_v1');
       const hammer_v2 = hammer_v1.with_traits({ color: 'red' });
 
       const state2 = state1.tick({ replace: [hammer_v2] });
@@ -620,18 +629,20 @@ describe('Pre-Refactor Tests', () => {
 
     it('multiple minds can have states without interference', () => {
       const mind_a = new DB.Mind('mind_a');
-      mind_a.add({label: 'item', bases: ['PortableObject']});
+      mind_a.add({label: 'item_in_a', bases: ['PortableObject']});
       const state_a1 = mind_a.create_state(1);
 
       const mind_b = new DB.Mind('mind_b');
-      mind_b.add({label: 'item', bases: ['PortableObject']});
+      mind_b.add({label: 'item_in_b', bases: ['PortableObject']});
       const state_b1 = mind_b.create_state(1);
 
       // Add different beliefs to each mind
-      const item_a2 = mind_a.belief_by_label.item.with_traits({ color: 'red' });
+      const item_a = DB.Belief.by_label.get('item_in_a');
+      const item_a2 = item_a.with_traits({ color: 'red' });
       const state_a2 = state_a1.tick({ replace: [item_a2] });
 
-      const item_b2 = mind_b.belief_by_label.item.with_traits({ color: 'blue' });
+      const item_b = DB.Belief.by_label.get('item_in_b');
+      const item_b2 = item_b.with_traits({ color: 'blue' });
       const state_b2 = state_b1.tick({ replace: [item_b2] });
 
       // Verify states are independent
@@ -649,7 +660,8 @@ describe('Pre-Refactor Tests', () => {
       });
 
       const state1 = mind.create_state(1);
-      state1.insert.push(...mind.belief);
+      const initial_beliefs = [...DB.Belief.by_id.values()].filter(b => b.in_mind === mind);
+      state1.insert.push(...initial_beliefs);
       const item3 = mind.add({ label: 'item3', bases: ['PortableObject'] });
       const state2 = state1.tick({ insert: [item3] });
 
@@ -665,31 +677,36 @@ describe('Pre-Refactor Tests', () => {
   describe('Label Uniqueness (Current Behavior)', () => {
     it('currently allows duplicate labels across minds', () => {
       const mind_a = new DB.Mind('mind_a');
-      mind_a.add({label: 'workshop', bases: ['Location']});
+      const workshop_a = mind_a.add({label: 'workshop_unique_a', bases: ['Location']});
 
       const mind_b = new DB.Mind('mind_b');
-      mind_b.add({label: 'workshop', bases: ['Location']});
+      const workshop_b = mind_b.add({label: 'workshop_unique_b', bases: ['Location']});
 
-      // Currently this works - both have 'workshop' label
-      expect(mind_a.belief_by_label.workshop).to.exist;
-      expect(mind_b.belief_by_label.workshop).to.exist;
-      expect(mind_a.belief_by_label.workshop).to.not.equal(
-        mind_b.belief_by_label.workshop
+      // Labels are globally unique now
+      expect(DB.Belief.by_label.get('workshop_unique_a')).to.exist;
+      expect(DB.Belief.by_label.get('workshop_unique_b')).to.exist;
+      expect(DB.Belief.by_label.get('workshop_unique_a')).to.not.equal(
+        DB.Belief.by_label.get('workshop_unique_b')
       );
     });
 
-    it('labels within same mind are unique', () => {
+    it('throws error on duplicate labels', () => {
       const mind = new DB.Mind('test');
       mind.add({label: 'item1', bases: ['PortableObject']});
 
-      // Adding another with same label overwrites
-      mind.add({ label: 'item1', bases: ['Location'] });
+      // Adding another with same label should throw
+      expect(() => {
+        mind.add({ label: 'item1', bases: ['Location'] });
+      }).to.throw(/Label 'item1' is already used/);
+    });
 
-      // Should have 2 beliefs in set, but label points to latest
-      expect(mind.belief.size).to.equal(2);
-      const item1 = mind.belief_by_label.item1;
-      const archetypes = [...item1.get_archetypes()].map(a => a.label);
-      expect(archetypes).to.include('Location');
+    it('throws error when belief label matches archetype label', () => {
+      const mind = new DB.Mind('test');
+
+      // Trying to create belief with same label as archetype should throw
+      expect(() => {
+        mind.add({ label: 'PortableObject', bases: ['Location'] });
+      }).to.throw(/Label 'PortableObject' is already used by an archetype/);
     });
   });
 
@@ -698,7 +715,7 @@ describe('Pre-Refactor Tests', () => {
       const mind = new DB.Mind('test');
       mind.add({label: 'workshop', bases: ['Location']});
 
-      const workshop = mind.belief_by_label.workshop;
+      const workshop = DB.Belief.by_label.get('workshop');
       expect(workshop.in_mind).to.equal(mind);
     });
 
@@ -706,15 +723,15 @@ describe('Pre-Refactor Tests', () => {
       const mind_a = new DB.Mind('mind_a');
       const mind_b = new DB.Mind('mind_b');
 
-      const item_a = mind_a.add({ label: 'item', bases: ['PortableObject'] });
-      const item_b = mind_b.add({ label: 'item', bases: ['PortableObject'] });
+      const item_a = mind_a.add({ label: 'item_unique_a', bases: ['PortableObject'] });
+      const item_b = mind_b.add({ label: 'item_unique_b', bases: ['PortableObject'] });
 
       // Stored in different minds
-      expect(mind_a.belief.has(item_a)).to.be.true;
-      expect(mind_a.belief.has(item_b)).to.be.false;
+      expect(item_a.in_mind).to.equal(mind_a);
+      expect(item_b.in_mind).to.equal(mind_b);
 
-      expect(mind_b.belief.has(item_b)).to.be.true;
-      expect(mind_b.belief.has(item_a)).to.be.false;
+      expect(item_a.in_mind).to.not.equal(mind_b);
+      expect(item_b.in_mind).to.not.equal(mind_a);
     });
 
     it('currently allows referencing other mind\'s beliefs in bases', () => {
@@ -724,7 +741,7 @@ describe('Pre-Refactor Tests', () => {
       const mind_b = new DB.Mind('mind_b');
 
       // Currently this works - mind_b can reference mind_a's belief
-      const workshop_a = mind_a.belief_by_label.workshop;
+      const workshop_a = DB.Belief.by_label.get('workshop');
       const item = mind_b.add({
         label: 'item',
         bases: [workshop_a]  // Using belief from another mind
