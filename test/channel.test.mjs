@@ -6,7 +6,11 @@ describe('Channel Message Handlers', () => {
     DB.reset_registries();
     const traittypes = {
       location: 'Location',
-      mind_states: 'State',
+      mind_states: {
+        type: 'State',
+        container: Array,
+        min: 1
+      },
       color: 'string',
     }
 

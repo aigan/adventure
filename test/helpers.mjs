@@ -17,7 +17,11 @@ export function createMindWithBeliefs(label, beliefs = {}) {
 export function setupStandardArchetypes() {
   const traittypes = {
     location: 'Location',
-    mind_states: 'State',
+    mind_states: {
+      type: 'State',
+      container: Array,
+      min: 1
+    },
     color: 'string',
   };
 

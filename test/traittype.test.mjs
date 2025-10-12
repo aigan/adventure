@@ -6,7 +6,11 @@ describe('Traittype', () => {
     DB.reset_registries();
     const traittypes = {
       location: 'Location',
-      mind_states: 'State',
+      mind_states: {
+        type: 'State',
+        container: Array,
+        min: 1
+      },
       color: 'string',
       count: 'number',
       active: 'boolean',
@@ -92,10 +96,10 @@ describe('Traittype', () => {
       const obj = mind.add({
         label: 'test_obj',
         bases: ['Mental'],
-        traits: { mind_states: state }
+        traits: { mind_states: [state] }
       });
 
-      expect(obj.traits.get('mind_states')).to.equal(state);
+      expect(obj.traits.get('mind_states')[0]).to.equal(state);
     });
   });
 

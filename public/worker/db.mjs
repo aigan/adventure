@@ -18,7 +18,7 @@ export function reset_registries() {
 /**
  * Register archetypes and trait types into the database
  * @param {Object<string, object>} archetypes - Archetype definitions {label: definition}
- * @param {Object<string, string>} traittypes - Trait type definitions {label: type}
+ * @param {Object<string, string|object>} traittypes - Trait type definitions {label: type or schema}
  */
 export function register( archetypes, traittypes ) {
   for (const [label, def] of Object.entries(traittypes)) {

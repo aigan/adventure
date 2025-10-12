@@ -54,10 +54,10 @@ describe('Integration', () => {
       let player = DB.Belief.by_label.get('player');
       const player_mind = new DB.Mind('player_mind');
       const player_mind_state = player_mind.create_state(1);
-      player = player.with_traits({mind_states: player_mind_state});
+      player = player.with_traits({mind_states: [player_mind_state]});
 
       const player_inspected = player.inspect();
-      expect(player_inspected.traits.mind_states._ref).to.equal(player_mind_state._id);
+      expect(player_inspected.traits.mind_states[0]._ref).to.equal(player_mind_state._id);
 
       // Verify learn_about
       const workshop = DB.Belief.by_label.get('workshop');

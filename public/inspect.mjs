@@ -1,28 +1,30 @@
 const log = console.log.bind(console);
-log('Loading');
 
-const channel = new BroadcastChannel('inspect');
+// Browser-specific initialization
+let channel, $header, $main, client_id, server_id, query;
 
-const $header = document.querySelector("header");
-const $main = document.querySelector("main");
-$header.innerHTML = "Inspecting";
-
-let client_id, server_id, query;
-
-parse_url();
-
-
-window.q = {
-  world(){
-    channel.postMessage({
-      msg:'query_mind',
-      mind: 'world',
-      client_id,
-      server_id,
-    });
-  }
+if (typeof BroadcastChannel !== 'undefined' && typeof document !== 'undefined') {
+  log('Loading');
+  channel = new BroadcastChannel('inspect');
+  $header = document.querySelector("header");
+  $main = document.querySelector("main");
+  $header.innerHTML = "Inspecting";
+  parse_url();
 }
 
+
+if (typeof window !== 'undefined') {
+  window.q = {
+    world(){
+      channel.postMessage({
+        msg:'query_mind',
+        mind: 'world',
+        client_id,
+        server_id,
+      });
+    }
+  }
+}
 
 const dispatch = {
   welcome(dat){
@@ -72,16 +74,17 @@ const dispatch = {
   },
 }
 
-
-channel.postMessage({msg:"connect"});
-channel.onmessage = ev => {
-  const dat = ev.data;
-  const msg = dat.msg;
-  if( !msg ) return console.error("Got confused message", dat);
-  if( !dispatch[msg] ) return console.error('Message confused:', dat );
-  log("message", dat);
-  dispatch[msg](dat);
-};
+if (typeof BroadcastChannel !== 'undefined' && channel) {
+  channel.postMessage({msg:"connect"});
+  channel.onmessage = ev => {
+    const dat = ev.data;
+    const msg = dat.msg;
+    if( !msg ) return console.error("Got confused message", dat);
+    if( !dispatch[msg] ) return console.error('Message confused:', dat );
+    log("message", dat);
+    dispatch[msg](dat);
+  };
+}
 
 function log_line(text){
   const $p = document.createElement('p');
@@ -95,7 +98,7 @@ function render(a){
   if( a.entity ) render_entity( a );
 }
 
-function render_table(a){
+function render_table(a, target = $main){
   const at = a.table;
   const h_th = at.columns.map( t=>`<th>${t}</th>`).join("");
 
@@ -111,10 +114,10 @@ function render_table(a){
   }
 
   const h_table = `<table><tr>${h_th}</tr>${h_body}</table>`;
-  $main.innerHTML = h_table;
+  target.innerHTML = h_table;
 }
 
-function render_entity(a){
+function render_entity(a, target = $main){
   const belief_data = a.entity.data.data;
 
   let hout = "<dl>";
@@ -155,7 +158,24 @@ function render_entity(a){
     hout += `<dt>Traits</dt><dd><dl>`;
     for (const [trait, value] of Object.entries(belief_data.traits)) {
       let display_value = value;
-      if (typeof value === 'object' && value !== null) {
+
+      // Handle arrays
+      if (Array.isArray(value)) {
+        const items = value.map(item => {
+          if (typeof item === 'object' && item !== null) {
+            if (item._ref && item._type) {
+              // Reference to another entity
+              const type_lower = item._type.toLowerCase();
+              const label_text = item.label ? ` (${item.label})` : '';
+              return `<a href="?${type_lower}=${item._ref}">#${item._ref}${label_text}</a>`;
+            } else {
+              return JSON.stringify(item);
+            }
+          }
+          return item;
+        });
+        display_value = items.join(', ');
+      } else if (typeof value === 'object' && value !== null) {
         if (value._ref && value._type) {
           // Reference to another entity
           const type_lower = value._type.toLowerCase();
@@ -175,10 +195,12 @@ function render_entity(a){
   // Display raw JSON for debugging
   hout += `<details><summary>Raw JSON</summary><pre>${JSON.stringify(belief_data, null, 2)}</pre></details>`;
 
-  $main.innerHTML = hout;
+  target.innerHTML = hout;
 }
 
 function parse_url(){
+  if (typeof location === 'undefined') return null;
+
   const params = new URLSearchParams(location.search);
 
   if (params.has('mind')) {
@@ -194,3 +216,6 @@ function parse_url(){
 
   return query;
 }
+
+// Export for testing
+export { render_entity, render_table };
