@@ -41,8 +41,9 @@ describe('Integration', () => {
         },
       });
 
-      ball = ball.with_traits({
-        color: 'blue',
+      ball = new DB.Belief(ball.in_mind, {
+        bases: [ball],
+        traits: { color: 'blue' }
       });
 
       // Verify ball structure
@@ -54,7 +55,10 @@ describe('Integration', () => {
       let player = DB.Belief.by_label.get('player');
       const player_mind = new DB.Mind('player_mind');
       const player_mind_state = player_mind.create_state(1);
-      player = player.with_traits({mind_states: [player_mind_state]});
+      player = new DB.Belief(player.in_mind, {
+        bases: [player],
+        traits: { mind_states: [player_mind_state] }
+      });
 
       const player_inspected = player.inspect();
       expect(player_inspected.traits.mind_states[0]._ref).to.equal(player_mind_state._id);

@@ -122,6 +122,9 @@ export class Mind {
 }
 
 export class State {
+  // TODO: Populate this registry for prototype state templates
+  // Will be used to share belief lists across many nodes
+  // See resolve_template() lines 364-367 for planned usage
   static by_label = {};
 
   /**
@@ -188,6 +191,17 @@ export class State {
     this.branches.push(state);
     this.in_mind.state.add(state);
     return state;
+  }
+
+  /**
+   * Create new belief version with updated traits and add to new state
+   * @param {Belief} belief - Belief to version
+   * @param {object} traits - New traits to add
+   * @returns {State}
+   */
+  tick_with_traits(belief, traits) {
+    const new_belief = new Belief(this.in_mind, {bases: [belief], traits}, this);
+    return this.tick({ replace: [new_belief] });
   }
 
   *get_beliefs() {
@@ -495,15 +509,6 @@ export class Belief {
     }
   }
 
-  /**
-   * @param {object} traits
-   * @returns {Belief}
-   */
-  with_traits(traits) {
-    const belief = new Belief(this.in_mind, {bases: [this], traits});
-    return belief;
-  }
-
   lock() {
     this.locked = true;
   }
@@ -789,19 +794,26 @@ export class Traittype {
     return this._resolver(mind, data);
   }
 
-  /** @param {*} value */
+  /**
+   * Serialize trait value for full data dump (deep serialization)
+   * Calls toJSON() on objects to get complete structure
+   * @param {*} value - Value to serialize
+   * @returns {*} Fully serialized value
+   */
   static serializeTraitValue(value) {
     if (Array.isArray(value)) {
       return value.map(item => Traittype.serializeTraitValue(item));
-    }
-    if (value instanceof Belief || value instanceof State) {
-      //return {_ref: value._id};
     }
     if (value?.toJSON) return value.toJSON();
     return value;
   }
 
-  /** @param {*} value */
+  /**
+   * Inspect trait value for shallow reference view (light serialization)
+   * Returns only {_ref, _type, label} for Beliefs/States/Minds
+   * @param {*} value - Value to inspect
+   * @returns {*} Shallow representation with references
+   */
   static inspectTraitValue(value) {
     if (Array.isArray(value)) {
       return value.map(item => Traittype.inspectTraitValue(item));

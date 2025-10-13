@@ -24,8 +24,9 @@ describe('Belief', () => {
         }
       });
 
-      const ball_v2 = ball.with_traits({
-        color: 'blue'
+      const ball_v2 = new DB.Belief(ball.in_mind, {
+        bases: [ball],
+        traits: { color: 'blue' }
       });
 
       const inspected = ball_v2.inspect();
@@ -43,8 +44,9 @@ describe('Belief', () => {
         bases: ['PortableObject']
       });
 
-      const hammer_v2 = hammer.with_traits({
-        color: 'black'
+      const hammer_v2 = new DB.Belief(hammer.in_mind, {
+        bases: [hammer],
+        traits: { color: 'black' }
       });
 
       const inspected = hammer_v2.inspect();

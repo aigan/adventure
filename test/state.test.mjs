@@ -101,7 +101,10 @@ describe('State', () => {
 
       const state1 = mind.create_state(1);
       const hammer_v1 = DB.Belief.by_label.get('hammer_v1');
-      const hammer_v2 = hammer_v1.with_traits({ color: 'red' });
+      const hammer_v2 = new DB.Belief(hammer_v1.in_mind, {
+        bases: [hammer_v1],
+        traits: { color: 'red' }
+      });
 
       const state2 = state1.tick({ replace: [hammer_v2] });
 
@@ -122,11 +125,17 @@ describe('State', () => {
 
       // Add different beliefs to each mind
       const item_a = DB.Belief.by_label.get('item_in_a');
-      const item_a2 = item_a.with_traits({ color: 'red' });
+      const item_a2 = new DB.Belief(item_a.in_mind, {
+        bases: [item_a],
+        traits: { color: 'red' }
+      });
       const state_a2 = state_a1.tick({ replace: [item_a2] });
 
       const item_b = DB.Belief.by_label.get('item_in_b');
-      const item_b2 = item_b.with_traits({ color: 'blue' });
+      const item_b2 = new DB.Belief(item_b.in_mind, {
+        bases: [item_b],
+        traits: { color: 'blue' }
+      });
       const state_b2 = state_b1.tick({ replace: [item_b2] });
 
       // Verify states are independent

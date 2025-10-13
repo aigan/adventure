@@ -76,14 +76,17 @@ describe('Declarative Mind State Construction', () => {
     };
 
     // Create player with declarative mind_states
-    const player = player_body.with_traits({
-      mind_states: {
-        _type: 'State',
-        base: 'player_mind',
-        learn: {
-          player_body: ['location']
-        },
-        ground_state: world_state
+    const player = new DB.Belief(player_body.in_mind, {
+      bases: [player_body],
+      traits: {
+        mind_states: {
+          _type: 'State',
+          base: 'player_mind',
+          learn: {
+            player_body: ['location']
+          },
+          ground_state: world_state
+        }
       }
     });
 

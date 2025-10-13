@@ -120,7 +120,7 @@ npm test                # Run mocha test suite
 
 The project has comprehensive tests in `test/db.test.mjs` covering:
 - Core archetype composition and inheritance
-- Belief versioning with `with_traits()`
+- State versioning with `tick_with_traits()`
 - `learn_about()` functionality (some tests currently failing - documenting correct behavior)
 - State operations and mind isolation
 - Cross-mind visibility

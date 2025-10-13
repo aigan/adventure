@@ -90,7 +90,7 @@ const world_mind = new DB.Mind('world');
 let state = world_mind.create_state(1);
 state.add_beliefs(world_belief);
 
-let ball = world_mind.add({
+const ball = world_mind.add({
   label: 'ball',
   bases: ['PortableObject'],
   traits: {
@@ -102,12 +102,8 @@ state = state.tick({
   insert: [ball],
 });
 
-ball = ball.with_traits({
+state = state.tick_with_traits(ball, {
   color: 'blue',
-});
-
-state = state.tick({
-  replace: [ball],
 });
 
 const player = DB.Belief.by_label.get('player');

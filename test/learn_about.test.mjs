@@ -60,7 +60,10 @@ describe('learn_about', () => {
       world_mind.add({label: 'hammer_v1', bases: ['PortableObject']});
 
       const hammer_v1 = DB.Belief.by_label.get('hammer_v1');
-      const hammer_v2 = hammer_v1.with_traits({ color: 'red' });
+      const hammer_v2 = new DB.Belief(hammer_v1.in_mind, {
+        bases: [hammer_v1],
+        traits: { color: 'red' }
+      });
 
       const npc_mind = new DB.Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
@@ -244,7 +247,10 @@ describe('learn_about', () => {
       world_mind.add({label: 'hammer_v1', bases: ['PortableObject']});
 
       const hammer_v1 = DB.Belief.by_label.get('hammer_v1');
-      const hammer_v2 = hammer_v1.with_traits({ color: 'red' });
+      const hammer_v2 = new DB.Belief(hammer_v1.in_mind, {
+        bases: [hammer_v1],
+        traits: { color: 'red' }
+      });
 
       const npc_mind = new DB.Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
