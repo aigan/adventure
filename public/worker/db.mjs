@@ -24,7 +24,7 @@ export function register( archetypes, traittypes ) {
   for (const [label, def] of Object.entries(traittypes)) {
     //traittypes[label] = def; // TODO: resolve trait datatypes
     Traittype.by_label[label] = new Traittype(label, def);
-    //log("Registred tratittype", label);
+    //log("Registered traittype", label);
   }
 
   for (const [label, def] of Object.entries(archetypes)) {
@@ -226,29 +226,10 @@ export class State {
    * @returns {Belief}
    */
   learn_about(belief, trait_names = []) {
-    // Follow about chain to original entity
+    assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label});
+
     const original = this._follow_about_chain_to_original(belief);
-
-    // Walk belief chain to collect all archetype bases
-    const archetype_bases = [];
-    const seen = new Set();
-    const to_check = [belief];
-
-    while (to_check.length > 0) {
-      const current = to_check.shift();
-      if (seen.has(current)) continue;
-      seen.add(current);
-
-      for (const base of current.bases) {
-        if (base instanceof Archetype) {
-          if (!archetype_bases.includes(base)) {
-            archetype_bases.push(base);
-          }
-        } else if (base instanceof Belief) {
-          to_check.push(base);
-        }
-      }
-    }
+    const archetype_bases = [...belief.get_archetypes()];
 
     // Copy traits, dereferencing belief references to this mind
     const copied_traits = {};
