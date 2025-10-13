@@ -1,4 +1,4 @@
-const log = console.log.bind(console);
+import { assert, log } from '../lib/debug.mjs';
 
 let id_sequence = 0;
 
@@ -133,20 +133,15 @@ export class State {
    * @param {State|null} ground_state
    */
   constructor(mind, timestamp, base=null, insert=[], remove=[], ground_state=null) {
-    this._id = ++ id_sequence;
-    this.in_mind = mind;
-    /** @type {State|null} */
-    this.base = base;
-    this.timestamp = timestamp;
-    /** @type {Belief[]} */
-    this.insert = insert;
-    /** @type {Belief[]} */
-    this.remove = remove;
-    /** @type {State|null} */
-    this.ground_state = ground_state;
-    /** @type {State[]} */
-    this.branches = [];
-    this.locked = false;
+                                this._id = ++ id_sequence;
+                                this.in_mind = mind;
+    /** @type {State|null} */   this.base = base;
+                                this.timestamp = timestamp;
+    /** @type {Belief[]} */     this.insert = insert;
+    /** @type {Belief[]} */     this.remove = remove;
+    /** @type {State|null} */   this.ground_state = ground_state;
+    /** @type {State[]} */      this.branches = [];
+                                this.locked = false;
   }
 
   lock() {
@@ -420,9 +415,7 @@ export class Belief {
         const base_label = base;
         // Resolution order: belief registry → archetype registry
         base = Belief.by_label.get(base) ?? Archetype.by_label[base];
-        if (!base) {
-          throw `Base '${base_label}' not found in belief registry or archetype registry`;
-        }
+        assert(base != null, `Base '${base_label}' not found in belief registry or archetype registry`, {base_label, Belief_by_label: Belief.by_label, Archetype_by_label: Archetype.by_label});
       }
       this.bases.add(/** @type {Belief|Archetype} */ (base));
     }
@@ -455,17 +448,11 @@ export class Belief {
   resolve_and_add_trait(label, data, creator_state = null) {
     const traittype = Traittype.by_label[label];
     //log('looking up traittype', label, traittype);
-    if (traittype == null) {
-      log('belief', this.label, 'add trait', label, data);
-      throw `Trait ${label} do not exist `;
-    }
+    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.label, data, Traittype_by_label: Traittype.by_label});
 
     const value = traittype.resolve(this.in_mind, data, this, creator_state);
 
-    if (!this.can_have_trait(label)) {
-      log('belief', this.label, 'add trait', label, data, value);
-      throw "belief cant have trait " + label;
-    }
+    assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.label, value, archetypes: [...this.get_archetypes()].map(a => a.label)});
 
     this.traits.set(label, value);
 
