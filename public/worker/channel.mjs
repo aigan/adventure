@@ -1,4 +1,4 @@
-import { log as debug_log } from "../lib/debug.mjs";
+import { log } from "../lib/debug.mjs";
 //log('Loading Channel');
 
 let channel = null;
@@ -6,7 +6,6 @@ let client_id_sequence = 0; // Client id
 let server_id = null;
 let Adventure = null;
 let DB = null;
-let log = debug_log;
 
 export const dispatch = {
 	connect(_dat){
@@ -198,12 +197,10 @@ export const dispatch = {
 /**
  * @param {object} adventure - Adventure singleton from world.mjs
  * @param {object} db - DB module
- * @param {(...args: any[]) => void} custom_log - Optional logger function (defaults to debug_log)
  */
-export async function init_channel(adventure, db, custom_log = debug_log) {
+export async function init_channel(adventure, db) {
 	Adventure = adventure;
 	DB = db;
-	log = custom_log;
 
 	channel = new BroadcastChannel('inspect');
 	server_id = await increment_sequence("server_id");

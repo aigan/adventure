@@ -4,7 +4,7 @@
   "description": "Adventure",
   "browser": "public/client.mjs",
   "scripts": {
-    "test": "mocha test/**/*.test.mjs",
+    "test": "NODE_ENV=test mocha test/**/*.test.mjs",
     "typecheck": "tsc",
     "postinstall": "gulp default"
   },

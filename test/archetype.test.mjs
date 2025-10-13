@@ -66,5 +66,18 @@ describe('Archetype', () => {
       expect(archetype_labels).to.include('Mental');
       expect(archetype_labels).to.include('ObjectPhysical');
     });
+
+    it('throws error when archetype base does not exist', () => {
+      DB.reset_registries();
+
+      expect(() => {
+        DB.register({
+          BadArchetype: {
+            bases: ['NonExistentBase'],
+            traits: {}
+          }
+        }, {});
+      }).to.throw('Assertion failed');
+    });
   });
 });

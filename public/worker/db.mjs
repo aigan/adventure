@@ -612,7 +612,9 @@ export class Archetype {
     /** @type {Set<Archetype>} */
     this.bases = new Set([]);
     for (const base_label of bases) {
-      this.bases.add(Archetype.by_label[base_label]);
+      const base = Archetype.by_label[base_label];
+      assert(base != null, `Archetype '${base_label}' not found in archetype registry`, {base_label, Archetype_by_label: Archetype.by_label});
+      this.bases.add(base);
     }
 
     //this.traits = new Map();

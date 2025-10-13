@@ -129,7 +129,7 @@ describe('Channel Message Handlers', () => {
         state: state
       };
 
-      await Channel.init_channel(mockAdventure, DB, () => {});
+      await Channel.init_channel(mockAdventure, DB);
     });
 
     it('can find mind by numeric id', () => {
@@ -212,7 +212,7 @@ describe('Channel Message Handlers', () => {
         state: state1
       };
 
-      await Channel.init_channel(mockAdventure, DB, () => {});
+      await Channel.init_channel(mockAdventure, DB);
     });
 
     it('can find state by searching all minds', () => {
@@ -268,7 +268,7 @@ describe('Channel Message Handlers', () => {
         state: world_mind.create_state(1)
       };
 
-      await Channel.init_channel(mockAdventure, DB, () => {});
+      await Channel.init_channel(mockAdventure, DB);
     });
 
     it('can find belief by id and returns correct data', () => {
@@ -380,7 +380,7 @@ describe('Channel Message Handlers', () => {
         player: ball
       };
 
-      await Channel.init_channel(mockAdventure, DB, () => {});
+      await Channel.init_channel(mockAdventure, DB);
       messages.length = 0;
 
       Channel.dispatch.query_entity({
@@ -403,7 +403,7 @@ describe('Channel Message Handlers', () => {
         state: state
       };
 
-      await Channel.init_channel(mockAdventure, DB, () => {});
+      await Channel.init_channel(mockAdventure, DB);
       messages.length = 0;
 
       Channel.dispatch.query_entity({
@@ -437,7 +437,7 @@ describe('Channel Message Handlers', () => {
         state: mind.create_state(1)
       };
 
-      await Channel.init_channel(mockAdventure, DB, () => {});
+      await Channel.init_channel(mockAdventure, DB);
       messages.length = 0;
 
       // First connect
