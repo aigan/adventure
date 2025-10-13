@@ -1,22 +1,14 @@
-const log = console.log.bind(console);
+import { log as debug_log } from "../lib/debug.mjs";
 //log('Loading Channel');
 
-import {Adventure} from "./world.mjs";
-import * as DB from "./db.mjs";
-
-const channel = new BroadcastChannel('inspect');
+let channel = null;
 let client_id_sequence = 0; // Client id
+let server_id = null;
+let Adventure = null;
+let DB = null;
+let log = debug_log;
 
-const server_id = await increment_sequence("server_id");
-
-log("Server id", server_id);
-channel.postMessage({
-	msg: "hello",
-	server_id,
-});
-
-
-const dispatch = {
+export const dispatch = {
 	connect(_dat){
 		const client_id = ++ client_id_sequence;
 		channel.postMessage({
@@ -164,7 +156,7 @@ const dispatch = {
 
 	query_entity({id, client_id}){
 		id = Number(id);
-		log("query_entity", id);
+		//log("query_entity", id);
 
 		// Find belief by id in current state
 		let belief = null;
@@ -203,19 +195,38 @@ const dispatch = {
 	},
 }
 
+/**
+ * @param {object} adventure - Adventure singleton from world.mjs
+ * @param {object} db - DB module
+ * @param {(...args: any[]) => void} custom_log - Optional logger function (defaults to debug_log)
+ */
+export async function init_channel(adventure, db, custom_log = debug_log) {
+	Adventure = adventure;
+	DB = db;
+	log = custom_log;
 
+	channel = new BroadcastChannel('inspect');
+	server_id = await increment_sequence("server_id");
 
+	//log("Server id", server_id);
+	channel.postMessage({
+		msg: "hello",
+		server_id,
+	});
 
-channel.onmessage = ev => {
-	const dat = ev.data;
-	const msg = dat.msg;
-	if( !msg ) return console.error("Got confused message", dat);
-	if( !dispatch[msg] ) return console.error('Message confused:', dat );
-	log("message", dat);
-	if( dat.server_id !== server_id && dat.msg !== "connect" )
-		return console.error('Server mismatch', dat);
-	dispatch[msg](dat);
-};
+	channel.onmessage = ev => {
+		const dat = ev.data;
+		const msg = dat.msg;
+		if( !msg ) return console.error("Got confused message", dat);
+		if( !dispatch[msg] ) return console.error('Message confused:', dat );
+		log("message", dat);
+		if( dat.server_id !== server_id && dat.msg !== "connect" )
+			return console.error('Server mismatch', dat);
+		dispatch[msg](dat);
+	};
+
+	return { channel, dispatch, server_id };
+}
 
 
 /**

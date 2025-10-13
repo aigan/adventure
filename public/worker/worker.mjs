@@ -13,8 +13,9 @@ async function init(){
   const World = await import("./world.mjs");
   const Adventure = World.Adventure;
 
-  //DB = await import("./db.mjs");
-  await import("./channel.mjs");
+  DB = await import("./db.mjs");
+  const Channel = await import("./channel.mjs");
+  await Channel.init_channel(Adventure, DB);
 
   //const world = Adventure.world;
   //world.player_enter_location();

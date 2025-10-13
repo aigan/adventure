@@ -1,8 +1,61 @@
 import { expect } from 'chai';
 import * as DB from '../public/worker/db.mjs';
 
+// Mock BroadcastChannel
+class MockBroadcastChannel {
+  constructor(name) {
+    this.name = name;
+    this.onmessage = null;
+    this.messages = [];
+  }
+  postMessage(data) {
+    this.messages.push(data);
+  }
+}
+global.BroadcastChannel = MockBroadcastChannel;
+
+// Mock indexedDB
+let mockCounter = 0;
+global.indexedDB = {
+  open: () => {
+    const request = {
+      onupgradeneeded: null,
+      onsuccess: null,
+      result: null
+    };
+
+    // Trigger onsuccess async
+    setTimeout(() => {
+      const mockDB = {
+        transaction: () => ({
+          objectStore: () => ({
+            get: (label) => {
+              const getRequest = {
+                onsuccess: null,
+                result: mockCounter
+              };
+              setTimeout(() => {
+                if (getRequest.onsuccess) getRequest.onsuccess();
+              }, 0);
+              return getRequest;
+            },
+            put: (value, label) => {
+              mockCounter = value;
+            }
+          })
+        })
+      };
+      request.result = mockDB;
+      if (request.onsuccess) request.onsuccess({ target: request });
+    }, 0);
+
+    return request;
+  }
+};
+
 describe('Channel Message Handlers', () => {
   beforeEach(() => {
+    mockCounter = 0; // Reset sequence counter
     DB.reset_registries();
     const traittypes = {
       location: 'Location',
@@ -44,194 +97,212 @@ describe('Channel Message Handlers', () => {
   });
 
   describe('query_mind handler', () => {
-    it('can find mind by numeric id', () => {
-      const mind = new DB.Mind('test_mind');
-      const hammer = mind.add({
+    let Channel;
+    let mockAdventure;
+    let messages;
+    let mockChannel;
+
+    before(async () => {
+      Channel = await import('../public/worker/channel.mjs');
+    });
+
+    beforeEach(async () => {
+      messages = [];
+      mockChannel = {
+        postMessage: (msg) => messages.push(msg),
+        onmessage: null
+      };
+      global.BroadcastChannel = function() { return mockChannel; };
+
+      const world_mind = new DB.Mind('test_mind');
+      const hammer = world_mind.add({
         label: 'test_hammer',
-        bases: ['PortableObject']
-      });
-      const state = mind.create_state(1);
-      state.insert.push(hammer);
-
-      // Simulate query_mind logic
-      const mind_id = String(mind._id);
-      const mind_obj = /^\d+$/.test(mind_id)
-        ? DB.Mind.get_by_id(Number(mind_id))
-        : DB.Mind.get_by_label(mind_id);
-
-      expect(mind_obj).to.equal(mind);
-
-      // Get latest state
-      const states = [...mind_obj.state];
-      const latest_state = states[states.length - 1];
-      expect(latest_state).to.equal(state);
-
-      // Verify beliefs can be extracted
-      const beliefs = [...latest_state.get_beliefs()];
-      expect(beliefs).to.have.lengthOf(1);
-      expect(beliefs[0]).to.equal(hammer);
-    });
-
-    it('can find mind by label', () => {
-      const mind = new DB.Mind('labeled_mind');
-
-      // Simulate query_mind logic with label
-      const mind_label = 'labeled_mind';
-      const mind_obj = /^\d+$/.test(mind_label)
-        ? DB.Mind.get_by_id(Number(mind_label))
-        : DB.Mind.get_by_label(mind_label);
-
-      expect(mind_obj).to.equal(mind);
-    });
-
-    it('returns undefined for non-existent mind', () => {
-      const mind_obj = DB.Mind.get_by_id(999999);
-      expect(mind_obj).to.be.undefined;
-    });
-
-    it('handles mind with no states', () => {
-      const mind = new DB.Mind('empty_mind');
-      const states = [...mind.state];
-      expect(states).to.have.lengthOf(0);
-    });
-
-    it('extracts belief data correctly', () => {
-      const mind = new DB.Mind('data_test_mind');
-      const hammer = mind.add({
-        label: 'data_hammer',
         bases: ['PortableObject'],
         traits: { color: 'red' }
       });
-      const state = mind.create_state(1);
+      const state = world_mind.create_state(1);
       state.insert.push(hammer);
 
-      const beliefs = [...state.get_beliefs()];
-      const belief = beliefs[0];
-
-      // Simulate data extraction from channel.mjs
-      const data = {
-        id: belief._id,
-        label: belief.get_display_label(),
-        desig: belief.sysdesig(),
+      mockAdventure = {
+        world: world_mind,
+        player: hammer,
+        state: state
       };
 
-      expect(data.id).to.be.a('number');
-      expect(data.label).to.equal('data_hammer');
-      expect(data.desig).to.be.a('string');
+      await Channel.init_channel(mockAdventure, DB, () => {});
     });
 
-    it('shows self_label for mind beliefs with versioned self', () => {
-      const world_mind = new DB.Mind('world');
-      const player_body = world_mind.add({
-        label: 'player',
-        bases: ['Player']
-      });
-      const world_state = world_mind.create_state(1);
-      world_state.insert.push(player_body);
+    it('can find mind by numeric id', () => {
+      const mind = mockAdventure.world;
 
-      // Create a new version of player_body (e.g., after adding color trait)
-      const player_body_v2 = player_body.with_traits({ color: 'blue' });
+      // Clear init messages
+      messages.length = 0;
 
-      // Create player's mind with the versioned body as self
-      DB.State.by_label.player_mind = {
-        learn: {
-          player: ['location']
-        }
-      };
-
-      const player_with_mind = player_body_v2.with_traits({
-        mind_states: {
-          _type: 'State',
-          base: 'player_mind',
-          ground_state: world_state
-        }
+      Channel.dispatch.query_mind({
+        mind: String(mind._id),
+        client_id: 1
       });
 
-      const mind_states = player_with_mind.traits.get('mind_states');
-      const player_mind = mind_states[0].in_mind;
-      const player_state = mind_states[0];
+      expect(messages).to.have.lengthOf(1);
+      expect(messages[0].msg).to.equal('world_entity_list');
+      expect(messages[0].state.mind_label).to.equal('test_mind');
+      expect(messages[0].state.beliefs).to.have.lengthOf(1);
+      expect(messages[0].state.beliefs[0].label).to.equal('test_hammer');
+    });
 
-      // Simulate channel.mjs state data extraction
-      const state_data = {
-        id: player_state._id,
-        timestamp: player_state.timestamp,
-        mind_id: player_mind._id,
-        mind_label: player_mind.label,
-        self_label: player_mind.self?.get_display_label(),
-        base_id: player_state.base?._id ?? null,
-      };
+    it('can find mind by label', () => {
+      messages.length = 0;
 
-      // Verify self_label is shown even though player_mind.self has no direct label
-      expect(player_mind.self).to.equal(player_with_mind);
-      expect(player_mind.self.label).to.be.null; // versioned belief has no direct label
-      expect(state_data.self_label).to.equal('player'); // but display label walks the chain
+      Channel.dispatch.query_mind({
+        mind: 'test_mind',
+        client_id: 1
+      });
+
+      expect(messages).to.have.lengthOf(1);
+      expect(messages[0].state.mind_label).to.equal('test_mind');
+    });
+
+    it('handles non-existent mind gracefully', () => {
+      messages.length = 0;
+
+      Channel.dispatch.query_mind({
+        mind: '999999',
+        client_id: 1
+      });
+
+      // Should not post message if mind not found
+      expect(messages).to.have.lengthOf(0);
+    });
+
+    it('handles mind with no states', () => {
+      const empty_mind = new DB.Mind('empty_mind');
+      messages.length = 0;
+
+      Channel.dispatch.query_mind({
+        mind: 'empty_mind',
+        client_id: 1
+      });
+
+      // Should not post message if no state
+      expect(messages).to.have.lengthOf(0);
     });
   });
 
   describe('query_state handler', () => {
-    it('can find state by searching all minds', () => {
+    let Channel;
+    let messages;
+
+    before(async () => {
+      Channel = await import('../public/worker/channel.mjs');
+    });
+
+    beforeEach(async () => {
+      messages = [];
+      const mockChannel = {
+        postMessage: (msg) => messages.push(msg),
+        onmessage: null
+      };
+      global.BroadcastChannel = function() { return mockChannel; };
+
       const mind1 = new DB.Mind('mind1');
       const state1 = mind1.create_state(1);
 
-      const mind2 = new DB.Mind('mind2');
-      const state2 = mind2.create_state(1);
+      const mockAdventure = {
+        world: mind1,
+        state: state1
+      };
 
-      // Simulate query_state logic
-      const state_id = state2._id;
-      let found_state = null;
-      for (const [_id, mind] of DB.Mind.by_id) {
-        for (const s of mind.state) {
-          if (s._id === state_id) {
-            found_state = s;
-            break;
-          }
-        }
-        if (found_state) break;
-      }
-
-      expect(found_state).to.equal(state2);
-      expect(found_state.in_mind).to.equal(mind2);
+      await Channel.init_channel(mockAdventure, DB, () => {});
     });
 
-    it('returns null for non-existent state', () => {
-      const state_id = 999999;
-      let found_state = null;
-      for (const [_id, mind] of DB.Mind.by_id) {
-        for (const s of mind.state) {
-          if (s._id === state_id) {
-            found_state = s;
-            break;
-          }
-        }
-        if (found_state) break;
-      }
+    it('can find state by searching all minds', () => {
+      const mind2 = new DB.Mind('mind2');
+      const hammer = mind2.add({ label: 'hammer', bases: ['PortableObject'] });
+      const state2 = mind2.create_state(1);
+      state2.insert.push(hammer);
 
-      expect(found_state).to.be.null;
+      messages.length = 0;
+
+      Channel.dispatch.query_state({
+        state: String(state2._id),
+        client_id: 1
+      });
+
+      expect(messages).to.have.lengthOf(1);
+      expect(messages[0].msg).to.equal('world_entity_list');
+      expect(messages[0].state.mind_label).to.equal('mind2');
+      expect(messages[0].state.beliefs).to.have.lengthOf(1);
+    });
+
+    it('handles non-existent state gracefully', () => {
+      messages.length = 0;
+
+      Channel.dispatch.query_state({
+        state: '999999',
+        client_id: 1
+      });
+
+      expect(messages).to.have.lengthOf(0);
     });
   });
 
   describe('query_belief handler', () => {
-    it('can find belief by id using global registry', () => {
+    let Channel;
+    let messages;
+
+    before(async () => {
+      Channel = await import('../public/worker/channel.mjs');
+    });
+
+    beforeEach(async () => {
+      messages = [];
+      const mockChannel = {
+        postMessage: (msg) => messages.push(msg),
+        onmessage: null
+      };
+      global.BroadcastChannel = function() { return mockChannel; };
+
+      const world_mind = new DB.Mind('world');
+      const mockAdventure = {
+        world: world_mind,
+        state: world_mind.create_state(1)
+      };
+
+      await Channel.init_channel(mockAdventure, DB, () => {});
+    });
+
+    it('can find belief by id and returns correct data', () => {
       const mind = new DB.Mind('belief_test_mind');
       const hammer = mind.add({
         label: 'query_hammer',
         bases: ['PortableObject']
       });
 
-      // Simulate query_belief logic (after fix)
-      const belief_id = hammer._id;
-      const belief_obj = DB.Belief.by_id.get(belief_id);
+      messages.length = 0;
 
-      expect(belief_obj).to.equal(hammer);
-      expect(belief_obj.in_mind).to.equal(mind);
+      Channel.dispatch.query_belief({
+        belief: String(hammer._id),
+        client_id: 1
+      });
+
+      expect(messages).to.have.lengthOf(1);
+      expect(messages[0].msg).to.equal('world_entity');
+      expect(messages[0].mind.label).to.equal('belief_test_mind');
+      expect(messages[0].data.data.label).to.equal('query_hammer');
     });
 
-    it('returns undefined for non-existent belief', () => {
-      const belief_obj = DB.Belief.by_id.get(999999);
-      expect(belief_obj).to.be.undefined;
+    it('handles non-existent belief gracefully', () => {
+      messages.length = 0;
+
+      Channel.dispatch.query_belief({
+        belief: '999999',
+        client_id: 1
+      });
+
+      expect(messages).to.have.lengthOf(0);
     });
 
-    it('extracts belief data with about chain', () => {
+    it('includes about chain in response', () => {
       const world_mind = new DB.Mind('world');
       const workshop = world_mind.add({
         label: 'query_workshop',
@@ -242,156 +313,143 @@ describe('Channel Message Handlers', () => {
       const npc_state = npc_mind.create_state(1);
       const workshop_belief = npc_state.learn_about(workshop);
 
-      // Simulate data extraction
-      const belief_obj = workshop_belief;
-      const data = {
-        data: belief_obj.inspect(),
-      };
-      const desig = belief_obj.sysdesig();
-      const mind_data = {
-        id: belief_obj.in_mind._id,
-        label: belief_obj.in_mind.label
-      };
-      const about_data = belief_obj.about ? {
-        id: belief_obj.about._id,
-        label: belief_obj.about.label,
-        mind: {
-          id: belief_obj.about.in_mind._id,
-          label: belief_obj.about.in_mind.label
-        }
-      } : null;
+      messages.length = 0;
 
-      expect(data.data).to.exist;
-      expect(desig).to.be.a('string');
-      expect(mind_data.label).to.equal('npc');
-      expect(about_data).to.not.be.null;
-      expect(about_data.label).to.equal('query_workshop');
-      expect(about_data.mind.label).to.equal('world');
+      Channel.dispatch.query_belief({
+        belief: String(workshop_belief._id),
+        client_id: 1
+      });
+
+      expect(messages).to.have.lengthOf(1);
+      expect(messages[0].about).to.not.be.null;
+      expect(messages[0].about.label).to.equal('query_workshop');
+      expect(messages[0].about.mind.label).to.equal('world');
     });
 
-    it('extracts bases correctly', () => {
+    it('includes bases information', () => {
       const mind = new DB.Mind('bases_test_mind');
       const hammer = mind.add({
         label: 'bases_hammer',
         bases: ['PortableObject']
       });
 
-      // Simulate bases extraction
-      const bases = [...hammer.bases].map(b => ({
-        id: b instanceof DB.Belief ? b._id : null,
-        label: b.label,
-        type: b instanceof DB.Archetype ? 'Archetype' : 'Belief'
-      }));
+      messages.length = 0;
 
-      expect(bases.length).to.be.greaterThan(0);
-      expect(bases.some(b => b.label === 'PortableObject')).to.be.true;
-      expect(bases.some(b => b.type === 'Archetype')).to.be.true;
+      Channel.dispatch.query_belief({
+        belief: String(hammer._id),
+        client_id: 1
+      });
+
+      expect(messages).to.have.lengthOf(1);
+      expect(messages[0].bases).to.be.an('array');
+      expect(messages[0].bases.some(b => b.label === 'PortableObject')).to.be.true;
+      expect(messages[0].bases.some(b => b.type === 'Archetype')).to.be.true;
     });
   });
 
   describe('query_entity handler', () => {
-    it('can find belief in Adventure.state', () => {
-      // This test validates the pattern used by query_entity
-      // Note: We can't directly test Adventure.state without importing world.mjs
+    let Channel;
+    let messages;
+
+    before(async () => {
+      Channel = await import('../public/worker/channel.mjs');
+    });
+
+    beforeEach(async () => {
+      messages = [];
+      const mockChannel = {
+        postMessage: (msg) => messages.push(msg),
+        onmessage: null
+      };
+      global.BroadcastChannel = function() { return mockChannel; };
+    });
+
+    it('can find belief in Adventure.state', async () => {
       const mind = new DB.Mind('entity_test_mind');
       const ball = mind.add({
         label: 'test_ball',
-        bases: ['PortableObject']
+        bases: ['PortableObject'],
+        traits: { color: 'red' }
       });
       const state = mind.create_state(1);
       state.insert.push(ball);
 
-      // Simulate query_entity logic
-      const id = ball._id;
-      let belief = null;
-      for (const b of state.get_beliefs()) {
-        if (b._id === id) {
-          belief = b;
-          break;
-        }
-      }
+      const mockAdventure = {
+        world: mind,
+        state: state,
+        player: ball
+      };
 
-      expect(belief).to.equal(ball);
+      await Channel.init_channel(mockAdventure, DB, () => {});
+      messages.length = 0;
+
+      Channel.dispatch.query_entity({
+        id: ball._id,
+        client_id: 1
+      });
+
+      expect(messages).to.have.lengthOf(1);
+      expect(messages[0].msg).to.equal('world_entity');
+      expect(messages[0].data.data.label).to.equal('test_ball');
+      expect(messages[0].data.data.traits.color).to.equal('red');
     });
 
-    it('returns null for non-existent entity in state', () => {
+    it('handles non-existent entity gracefully', async () => {
       const mind = new DB.Mind('empty_entity_mind');
       const state = mind.create_state(1);
 
-      const id = 999999;
-      let belief = null;
-      for (const b of state.get_beliefs()) {
-        if (b._id === id) {
-          belief = b;
-          break;
-        }
-      }
-
-      expect(belief).to.be.null;
-    });
-
-    it('extracts entity data using toJSON', () => {
-      const mind = new DB.Mind('json_test_mind');
-      const hammer = mind.add({
-        label: 'json_hammer',
-        bases: ['PortableObject'],
-        traits: { color: 'blue' }
-      });
-
-      // Simulate data extraction using toJSON
-      const data = {
-        data: hammer.toJSON(),
+      const mockAdventure = {
+        world: mind,
+        state: state
       };
 
-      expect(data.data).to.exist;
-      expect(data.data.label).to.equal('json_hammer');
-      expect(data.data.traits).to.exist;
+      await Channel.init_channel(mockAdventure, DB, () => {});
+      messages.length = 0;
+
+      Channel.dispatch.query_entity({
+        id: 999999,
+        client_id: 1
+      });
+
+      expect(messages).to.have.lengthOf(0);
     });
   });
 
-  describe('message routing logic', () => {
-    it('validates message structure', () => {
-      const message = {
-        msg: 'query_mind',
-        mind: 'test_mind',
-        client_id: 1,
-        server_id: 1
+  describe('connect handler', () => {
+    let Channel;
+    let messages;
+
+    before(async () => {
+      Channel = await import('../public/worker/channel.mjs');
+    });
+
+    it('increments client_id and sends welcome message', async () => {
+      messages = [];
+      const mockChannel = {
+        postMessage: (msg) => messages.push(msg),
+        onmessage: null
+      };
+      global.BroadcastChannel = function() { return mockChannel; };
+
+      const mind = new DB.Mind('world');
+      const mockAdventure = {
+        world: mind,
+        state: mind.create_state(1)
       };
 
-      // Simulate message validation
-      expect(message.msg).to.exist;
-      expect(message.msg).to.be.a('string');
-    });
+      await Channel.init_channel(mockAdventure, DB, () => {});
+      messages.length = 0;
 
-    it('validates dispatch handler exists', () => {
-      const valid_messages = [
-        'connect',
-        'hello',
-        'query_mind',
-        'query_state',
-        'query_belief',
-        'query_entity'
-      ];
+      // First connect
+      Channel.dispatch.connect({});
+      expect(messages).to.have.lengthOf(1);
+      expect(messages[0].msg).to.equal('welcome');
+      expect(messages[0].client_id).to.equal(1);
 
-      // These are the handlers that should exist in dispatch object
-      valid_messages.forEach(msg => {
-        expect(msg).to.be.a('string');
-      });
-    });
-  });
-
-  describe('client_id sequence', () => {
-    it('increments client id', () => {
-      // Simulate client_id_sequence increment
-      let client_id_sequence = 0;
-
-      const id1 = ++client_id_sequence;
-      const id2 = ++client_id_sequence;
-      const id3 = ++client_id_sequence;
-
-      expect(id1).to.equal(1);
-      expect(id2).to.equal(2);
-      expect(id3).to.equal(3);
+      // Second connect
+      Channel.dispatch.connect({});
+      expect(messages).to.have.lengthOf(2);
+      expect(messages[1].client_id).to.equal(2);
     });
   });
 });
