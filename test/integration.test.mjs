@@ -21,7 +21,7 @@ describe('Integration', () => {
           },
         },
         player: {
-          bases: ['Player'],
+          bases: ['Person'],
           traits: {
             location: 'workshop',
           },

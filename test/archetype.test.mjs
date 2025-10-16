@@ -36,18 +36,18 @@ describe('Archetype', () => {
       expect(hammer.can_have_trait('location')).to.be.true;
     });
 
-    it('Player archetype inherits from multiple bases', () => {
+    it('Person archetype inherits from multiple bases', () => {
       const mind = new DB.Mind('test');
       const player = mind.add({
         label: 'player',
-        bases: ['Player']
+        bases: ['Person']
       });
 
       const inspected = player.inspect();
-      expect(inspected.archetypes).to.deep.equal(['Player', 'Actor', 'Mental', 'ObjectPhysical']);
+      expect(inspected.archetypes).to.deep.equal(['Person', 'Actor', 'Mental', 'ObjectPhysical']);
 
-      // Player → Actor → ObjectPhysical (has location, color)
-      // Player → Mental (has mind_states)
+      // Person → Actor → ObjectPhysical (has location, color)
+      // Person → Mental (has mind_states)
       expect(player.can_have_trait('location')).to.be.true;
       expect(player.can_have_trait('mind_states')).to.be.true;
     });
@@ -56,12 +56,12 @@ describe('Archetype', () => {
       const mind = new DB.Mind('test');
       const player = mind.add({
         label: 'player',
-        bases: ['Player']
+        bases: ['Person']
       });
 
       const archetype_labels = [...player.get_archetypes()].map(a => a.label);
 
-      expect(archetype_labels).to.include('Player');
+      expect(archetype_labels).to.include('Person');
       expect(archetype_labels).to.include('Actor');
       expect(archetype_labels).to.include('Mental');
       expect(archetype_labels).to.include('ObjectPhysical');

@@ -25,7 +25,7 @@ describe('Declarative Mind State Construction', () => {
           mind_states: null,
         },
       },
-      Player: {
+      Person: {
         bases: ['Actor', 'Mental'],
       },
     };
@@ -60,7 +60,7 @@ describe('Declarative Mind State Construction', () => {
 
     const player_body = world_mind.add({
       label: 'player_body',
-      bases: ['Player'],
+      bases: ['Person'],
       traits: {
         location: workshop,
       },

@@ -88,7 +88,7 @@ describe('Channel Message Handlers', () => {
       Actor: {
         bases: ['ObjectPhysical'],
       },
-      Player: {
+      Person: {
         bases: ['Actor', 'Mental'],
       },
     }

@@ -46,7 +46,7 @@ export function setupStandardArchetypes() {
     Actor: {
       bases: ['ObjectPhysical'],
     },
-    Player: {
+    Person: {
       bases: ['Actor', 'Mental'],
     },
   };
@@ -55,7 +55,7 @@ export function setupStandardArchetypes() {
 }
 
 /**
- * Minimal archetype setup (without Mental/Player)
+ * Minimal archetype setup (without Mental/Person)
  */
 export function setupMinimalArchetypes() {
   const traittypes = {

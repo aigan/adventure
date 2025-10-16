@@ -6,109 +6,169 @@ import * as DB from "./db.mjs";
 const log = console.log.bind(console);
 
 
-const traittypes = {
-  location: 'Location',
-  mind_states: {
-    type: 'State',
-    container: Array,
-    min: 1
-  },
-  color: 'string',
+export function setupStandardArchetypes() {
+  const traittypes = {
+    location: 'Location',
+    mind_states: {
+      type: 'State',
+      container: Array,
+      min: 1
+    },
+    color: 'string',
+  };
+
+  const archetypes = {
+    ObjectPhysical: {
+      traits: {
+        location: null,
+        color: null,
+      },
+    },
+    Mental: {
+      traits: {
+        mind_states: null,
+      },
+    },
+    Location: {
+      bases: ['ObjectPhysical'],
+    },
+    PortableObject: {
+      bases: ['ObjectPhysical'],
+    },
+    Actor: {
+      bases: ['ObjectPhysical'],
+    },
+    Person: {
+      bases: ['Actor', 'Mental'],
+    },
+    Player: {
+      bases: ['Actor', 'Mental'],
+    },
+  };
+
+  DB.register(archetypes, traittypes);
 }
 
-const archetypes = {
-  ObjectPhysical: {
-    traits: {
-      location: null,
-      color: null,
-    },
-  },
+setupStandardArchetypes();
 
-  Mental: {
-    traits: {
-      mind_states: null,
-    },
-  },
 
-  Location: {
-    bases: ['ObjectPhysical'],
-  },
-
-  PortableObject: {
-    bases: ['ObjectPhysical'],
-  },
-
-  Actor: {
-    bases: ['ObjectPhysical'],
-  },
-
-  Player: {
-    bases: ['Actor', 'Mental'],
-  },
-}
-
-// Define state prototypes
-//DB.State.by_label.player_mind = {
-//  learn: {
-//    workshop: ['location']
-//  }
-//}
-
-DB.register(archetypes, traittypes);
-
-const world_belief = {
-  workshop: {
-    bases: ['Location'],
-  },
-
-  hammer: {
-    bases: ['PortableObject'],
-    traits: {
-      location: 'workshop',
-    },
-  },
-
-  player: {
-    bases: ['Player'],
-    traits: {
-      location: 'workshop',
-      mind_states: {
-        _type: 'State',
-        learn: {
-          workshop: ['location']
-        },
-        // ground_state automatically inferred from state.add_beliefs context
-        // Note: Can't learn about 'player' here since it's not registered yet
-        // The prototype already learns about workshop
-      }
-    },
-  },
-}
-
-// Create world mind and initial state
+// Create circular location refs
 const world_mind = new DB.Mind('world');
-let state = world_mind.create_state(1);
-state.add_beliefs(world_belief);
+const world_state = world_mind.create_state(1);
 
-const ball = world_mind.add({
-  label: 'ball',
-  bases: ['PortableObject'],
+const room1 = world_mind.add({
+  label: 'room1',
+  bases: ['Location'],
+});
+
+const room2 = world_mind.add({
+  label: 'room2',
+  bases: ['Location'],
   traits: {
-    location: 'workshop',
+    location: room1,
   },
 });
 
-state = state.tick({
-  insert: [ball],
+// Update room1 to point back to room2
+const room1_v2 = new DB.Belief(world_mind, {
+  bases: [room1],
+  traits: {
+    location: room2,
+  },
 });
 
-state = state.tick_with_traits(ball, {
-  color: 'blue',
-});
+world_state.insert.push(room1, room2);
+const state2 = world_state.tick({ replace: [room1_v2] });
 
-const player = DB.Belief.by_label.get('player');
+// Save and reload
+const json = DB.save_mind(world_mind);
+DB.reset_registries();
+setupStandardArchetypes();
+const loaded_mind = /** @type {DB.Mind} */ (DB.load(json));
 
-// Adventure would be its own module later...
+log(loaded_mind);
+
+// Verify circular refs work
+// Need to get the latest versions from the current state, not by label
+const loaded_state = [...loaded_mind.state].find(s => s.timestamp === 2);
+
+//log(loaded_state);
+
+
+const beliefs = [...loaded_state.get_beliefs()];
+const loaded_room1 = beliefs.find(b => b.get_display_label() === 'room1');
+const loaded_room2 = beliefs.find(b => b.get_display_label() === 'room2');
+
+const loc1 = loaded_room1.traits.get('location');
+const loc2 = loaded_room2.traits.get('location');
+
+log(loc1,loc2);
+
+const state = loaded_state;
+const player = loc1;
+
+
+
+
+
+
+
+
+
+
+//const world_belief = {
+//  workshop: {
+//    bases: ['Location'],
+//  },
+//
+//  hammer: {
+//    bases: ['PortableObject'],
+//    traits: {
+//      location: 'workshop',
+//    },
+//  },
+//
+//  player: {
+//    bases: ['Person'],
+//    traits: {
+//      location: 'workshop',
+//      mind_states: {
+//        _type: 'State',
+//        learn: {
+//          workshop: ['location']
+//        },
+//        // ground_state automatically inferred from state.add_beliefs context
+//        // Note: Can't learn about 'player' here since it's not registered yet
+//        // The prototype already learns about workshop
+//      }
+//    },
+//  },
+//}
+//
+//// Create world mind and initial state
+//const world_mind = new DB.Mind('world');
+//let state = world_mind.create_state(1);
+//state.add_beliefs(world_belief);
+//
+//const ball = world_mind.add({
+//  label: 'ball',
+//  bases: ['PortableObject'],
+//  traits: {
+//    location: 'workshop',
+//  },
+//});
+//
+//state = state.tick({
+//  insert: [ball],
+//});
+//
+//state = state.tick_with_traits(ball, {
+//  color: 'blue',
+//});
+//
+//const player = DB.Belief.by_label.get('player');
+//
+//// Adventure would be its own module later...
 export const Adventure = {
   world: world_mind,
   player,

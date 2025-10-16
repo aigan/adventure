@@ -42,7 +42,7 @@ The application uses a **Web Worker architecture** to separate game logic from U
 
 ### Core Systems
 
-**Mind/Belief Database** (`public/worker/db.mjs`, ~341 lines):
+**Mind/Belief Database** (`public/worker/db.mjs`, ~813 lines):
 - **Universal belief structure**: All entities (world, player, NPCs) use identical data structures for beliefs
 - **Immutable beliefs**: Changes create new versions via `base` inheritance (like prototype chains)
 - `Mind`: Container for beliefs with label-based lookup and nested mind support
@@ -51,8 +51,12 @@ The application uses a **Web Worker architecture** to separate game logic from U
   - States track `insert`, `remove`, `replace` operations (differential updates)
   - Multiple states can exist at same tick (superposition/branching)
   - States inherit via `base` from any previous state
+  - `State.resolve_template()` constructs states declaratively with learning specs
 - **Archetype composition**: Entities inherit traits from multiple archetypes via `bases` array (e.g., Player = Actor + Mental)
 - **Hierarchical minds**: world_mind contains npc_minds which contain beliefs; parent minds can access child minds but not vice versa
+- **Serialization modes**:
+  - `toJSON()`: Deep serialization for complete data dumps (nested Mind/State/Belief expansion)
+  - `inspect()`: Shallow serialization with references (returns `{_ref, _type, label}` for relationships)
 - **Conflict tracking**: Beliefs can track `conflicts_with` when observations contradict
 
 **Possibility Spaces**:
@@ -61,13 +65,27 @@ The application uses a **Web Worker architecture** to separate game logic from U
 - Multiple valid resolutions maintained until evidence forces collapse
 - Retroactive significance: mundane elements can become important based on player attention
 
-**Game World** (`public/worker/world.mjs`):
+**Game World** (`public/worker/world.mjs`, ~117 lines):
 - Defines archetypes: ObjectPhysical, Mental, Location, PortableObject, Actor, Player
+- Defines traittypes: location, mind_states, color
 - Sets up initial world state (workshop, hammer, player, ball)
 - State mutations via `state.tick()` with insert/replace operations
 - Exports `Adventure` singleton with world, player, and state
 
-**GUI System** (`public/lib/gui.mjs`, ~379 lines):
+**Channel Communication** (`public/worker/channel.mjs`, ~258 lines):
+- BroadcastChannel server for inspection UI communication
+- Message dispatch handlers: `query_mind`, `query_state`, `query_belief`, `query_entity`
+- Accepts numeric IDs or string labels for lookups
+- Uses IndexedDB for server_id sequence generation (race condition prevention)
+
+**Inspection UI** (`public/inspect.mjs`, ~224 lines):
+- Browser-based debugging interface for exploring game state
+- BroadcastChannel client that queries worker state
+- URL-based navigation: `?mind=world`, `?state=123`, `?belief=456`
+- Renders belief lists, entity details, trait relationships, state chains
+- `inspect.html`: Standalone interface (separate from main game UI)
+
+**GUI System** (`public/lib/gui.mjs`, ~379 lines) - *Less actively developed*:
 - Topic-based navigation with hierarchical menus
 - Dialog system for action menus
 - Keyboard shortcuts: Arrow keys for navigation, Enter to execute, Escape to go back
@@ -79,18 +97,36 @@ The application uses a **Web Worker architecture** to separate game logic from U
 ```
 public/
 ├── client.mjs              # Main entry point
-├── index.html              # Minimal HTML shell
+├── index.html              # Main game HTML shell
+├── inspect.html            # Inspection UI HTML
+├── inspect.mjs             # Debug/inspection client (~224 lines)
+├── styles.css              # Shared styles
 ├── lib/
-│   ├── gui.mjs            # UI and interaction logic
-│   └── message.mjs        # Worker communication layer
-├── worker/
+│   ├── gui.mjs            # UI and interaction logic (~379 lines, less active)
+│   ├── message.mjs        # Worker communication layer
+│   ├── debug.mjs          # Debug utilities (log, assert)
+│   └── load.mjs           # CSS loading utilities
+├── worker/                # ** Primary development focus **
 │   ├── worker.mjs         # Worker entry point & message dispatcher
-│   ├── world.mjs          # Game world definition & Adventure singleton
-│   ├── db.mjs             # Mind/belief database engine
-│   ├── channel.mjs        # Communication handlers
-│   └── time.mjs           # Time management
-├── vendor/                # Third-party libraries
+│   ├── db.mjs             # Mind/belief database engine (~813 lines)
+│   ├── world.mjs          # Game world schema & Adventure singleton (~117 lines)
+│   └── channel.mjs        # BroadcastChannel inspection server (~258 lines)
+├── vendor/                # Third-party libraries (indefinite.mjs)
 └── lab/                   # Experimental code (ecs.js, etc.)
+
+test/                      # ** Comprehensive test coverage **
+├── helpers.mjs            # Test utilities (setupStandardArchetypes, etc.)
+├── mind.test.mjs          # Mind class tests
+├── belief.test.mjs        # Belief class tests
+├── state.test.mjs         # State class tests
+├── archetype.test.mjs     # Archetype composition tests
+├── traittype.test.mjs     # Trait type resolution tests
+├── learn_about.test.mjs   # Cross-mind learning tests
+├── declarative_mind_state.test.mjs  # State.resolve_template() tests
+├── integration.test.mjs   # Full system integration tests
+├── inspect.test.mjs       # Inspection UI rendering tests
+└── channel.test.mjs       # Channel communication tests
+(~2,400 total lines across all test files)
 ```
 
 ## Development Commands
@@ -118,12 +154,25 @@ npx eslint public/worker/world.mjs        # Lint specific file
 npm test                # Run mocha test suite
 ```
 
-The project has comprehensive tests in `test/db.test.mjs` covering:
-- Core archetype composition and inheritance
-- State versioning with `tick_with_traits()`
-- `learn_about()` functionality (some tests currently failing - documenting correct behavior)
-- State operations and mind isolation
-- Cross-mind visibility
+The project has comprehensive test coverage (~2,400 lines across 13+ test files):
+
+**Test structure** (using `test/helpers.mjs` utilities):
+- `mind.test.mjs`: Mind creation, state management, label lookups
+- `belief.test.mjs`: Belief construction, archetype inheritance, trait validation
+- `state.test.mjs`: State immutability, tick operations, belief queries
+- `archetype.test.mjs`: Archetype composition, multi-inheritance
+- `traittype.test.mjs`: Trait type resolution (Belief refs, Mind/State refs, primitives)
+- `learn_about.test.mjs`: Cross-mind learning with automatic dereferencing
+- `declarative_mind_state.test.mjs`: `State.resolve_template()` construction patterns
+- `integration.test.mjs`: Full system scenarios matching world.mjs setup
+- `inspect.test.mjs`: Inspection UI rendering (tables, entities, references)
+- `channel.test.mjs`: BroadcastChannel message handling
+- `registry.test.mjs`: Global registries and label uniqueness
+
+**Test utilities** (`test/helpers.mjs`):
+- `setupStandardArchetypes()`: Matches world.mjs schema (ObjectPhysical, Location, Actor, Player, Mental)
+- `setupMinimalArchetypes()`: Lightweight setup for focused tests
+- `createMindWithBeliefs()`: Helper for quick mind creation
 
 ## Key Patterns & Implementation Details
 
@@ -146,7 +195,14 @@ The project has comprehensive tests in `test/db.test.mjs` covering:
 **Archetype Composition**:
 - Entities inherit traits from multiple archetypes via `bases` array
 - Example: Player has bases ['Actor', 'Mental'], which themselves inherit from ObjectPhysical
-- Traits are typed via `Traittype` registry (e.g., location: 'Location', mind: 'Mind', color: 'string')
+- Traits are typed via `Traittype` registry (e.g., location: 'Location', mind_states: {type: 'State', container: Array}, color: 'string')
+
+**Declarative Mind Construction** (via `State.resolve_template()`):
+- States can be created declaratively using `{_type: 'State', learn: {...}, ground_state: ...}` specs
+- Supports prototype templates via `State.by_label` registry
+- Learning spec format: `{belief_label: [trait_names]}` - empty array learns nothing
+- Automatically dereferences belief references in learned traits
+- Used for NPC and player mind initialization
 
 **Mind Nesting**:
 - `world_mind` contains all "ground truth" (what actually happened)
