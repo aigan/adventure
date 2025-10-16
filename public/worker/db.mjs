@@ -228,8 +228,7 @@ export class Mind {
    * @returns {State}
    */
   create_state(timestamp, ground_state = null) {
-    const state = new State(this, timestamp, null, [], [], ground_state);
-    this.state.add(state);
+    const state = new State(this, timestamp, null, ground_state);
     return state;
   }
 
@@ -293,20 +292,21 @@ export class State {
    * @param {Mind} mind
    * @param {number} timestamp
    * @param {State|null} base
-   * @param {Belief[]} insert
-   * @param {Belief[]} remove
    * @param {State|null} ground_state
    */
-  constructor(mind, timestamp, base=null, insert=[], remove=[], ground_state=null) {
+  constructor(mind, timestamp, base=null, ground_state=null) {
                                 this._id = ++ id_sequence;
                                 this.in_mind = mind;
     /** @type {State|null} */   this.base = base;
                                 this.timestamp = timestamp;
-    /** @type {Belief[]} */     this.insert = insert;
-    /** @type {Belief[]} */     this.remove = remove;
+    /** @type {Belief[]} */     this.insert = [];
+    /** @type {Belief[]} */     this.remove = [];
     /** @type {State|null} */   this.ground_state = ground_state;
     /** @type {State[]} */      this.branches = [];
                                 this.locked = false;
+
+    // Register this state with its mind
+    this.in_mind.state.add(this);
   }
 
   lock() {
@@ -320,6 +320,8 @@ export class State {
    * @param {Object<string, object>} beliefs - Object mapping labels to belief definitions
    */
   add_beliefs(beliefs) {
+    assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label});
+
     for (const [label, def] of Object.entries(beliefs)) {
       const belief = new Belief(this.in_mind, {...def, label}, this);
       this.insert.push(belief);
@@ -327,31 +329,79 @@ export class State {
   }
 
   /**
+   * Create a new branched state from this state (low-level)
+   * @param {State|null} [ground_state] - Optional ground_state override
+   * @returns {State} New unlocked state
+   */
+  branch_state(ground_state) {
+    const state = new State(this.in_mind, this.timestamp + 1, this, ground_state ?? this.ground_state);
+    this.branches.push(state);
+    return state;
+  }
+
+  /**
+   * Add beliefs to this state's insert list
+   * @param {...Belief} beliefs - Beliefs to insert
+   */
+  insert_beliefs(...beliefs) {
+    assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label});
+
+    // Validate all beliefs belong to this mind or are cultural (null mind)
+    for (const belief of beliefs) {
+      if (belief.in_mind !== this.in_mind && belief.in_mind !== null) {
+        throw new Error(`Belief ${belief._id} (in_mind: ${belief.in_mind?.label}) cannot be inserted into state for mind ${this.in_mind.label}`);
+      }
+    }
+    this.insert.push(...beliefs);
+  }
+
+  /**
+   * Add beliefs to this state's remove list
+   * @param {...Belief} beliefs - Beliefs to remove
+   */
+  remove_beliefs(...beliefs) {
+    assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label});
+
+    this.remove.push(...beliefs);
+  }
+
+  /**
+   * Replace beliefs (convenience for remove+insert)
+   * Removes the Belief bases of each belief and inserts the belief itself
+   * @param {...Belief} beliefs - Beliefs to replace
+   */
+  replace_beliefs(...beliefs) {
+    for (const belief of beliefs) {
+      // Only remove Belief bases (version chains), not Archetypes
+      const belief_bases = [...belief.bases].filter(b => b instanceof Belief);
+      this.remove_beliefs(...belief_bases);
+      this.insert_beliefs(belief);
+    }
+  }
+
+  /**
+   * High-level convenience method: branch state and apply operations
    * @param {object} param0
    * @param {Belief[]} [param0.insert]
    * @param {Belief[]} [param0.remove]
    * @param {Belief[]} [param0.replace]
    * @param {State|null} [param0.ground_state]
-   * @returns {State}
+   * @returns {State} New locked state with operations applied
    */
   tick({insert=[], remove=[], replace=[], ground_state}) {
-    for (const belief of replace) {
-      // Only remove Belief bases (version chains), not Archetypes
-      const belief_bases = [...belief.bases].filter(b => b instanceof Belief);
-      remove.push(...belief_bases);
-      insert.push(belief);
+    const state = this.branch_state(ground_state);
+
+    if (replace.length > 0) {
+      state.replace_beliefs(...replace);
+    }
+    if (insert.length > 0) {
+      state.insert_beliefs(...insert);
+    }
+    if (remove.length > 0) {
+      state.remove_beliefs(...remove);
     }
 
-    // Validate all beliefs belong to this mind or are cultural (null mind)
-    for (const belief of insert) {
-      if (belief.in_mind !== this.in_mind && belief.in_mind !== null) {
-        throw new Error(`Belief ${belief._id} (in_mind: ${belief.in_mind?.label}) cannot be inserted into state for mind ${this.in_mind.label}`);
-      }
-    }
-
-    const state = new State(this.in_mind, this.timestamp + 1, this, insert, remove, ground_state ?? this.ground_state);
-    this.branches.push(state);
-    this.in_mind.state.add(state);
+    state.lock();
     return state;
   }
 
@@ -727,6 +777,8 @@ export class Belief {
    * @param {State|null} [creator_state] - State creating this belief (for inferring ground_state)
    */
   resolve_and_add_trait(label, data, creator_state = null) {
+    assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.label});
+
     const traittype = Traittype.by_label[label];
     //log('looking up traittype', label, traittype);
     assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.label, data, Traittype_by_label: Traittype.by_label});
