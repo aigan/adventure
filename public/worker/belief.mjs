@@ -1,8 +1,8 @@
 import { assert } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
-import * as registry from './registry.mjs'
-import * as db from './db.mjs'
+import * as DB from './db.mjs'
+import * as Cosmos from './cosmos.mjs'
 
 /**
  * @typedef {object} BeliefJSON
@@ -59,7 +59,7 @@ export class Belief {
       let resolved_about = null
       if (about != null) {
         if (typeof about === 'number') {
-          resolved_about = registry.belief_by_id.get(about) ?? null
+          resolved_about = DB.belief_by_id.get(about) ?? null
           if (!resolved_about) {
             throw new Error(`Cannot resolve about reference ${about} for belief ${this._id}`)
           }
@@ -74,13 +74,13 @@ export class Belief {
       this._bases = new Set()
       for (const base_ref of bases) {
         if (typeof base_ref === 'string') {
-          const archetype = registry.archetype_by_label[base_ref]
+          const archetype = DB.archetype_by_label[base_ref]
           if (!archetype) {
             throw new Error(`Archetype '${base_ref}' not found for belief ${this._id}`)
           }
           this._bases.add(archetype)
         } else if (typeof base_ref === 'number') {
-          const base_belief = registry.belief_by_id.get(base_ref)
+          const base_belief = DB.belief_by_id.get(base_ref)
           if (!base_belief) {
             throw new Error(`Cannot resolve base belief ${base_ref} for belief ${this._id}`)
           }
@@ -99,27 +99,27 @@ export class Belief {
       }
 
       // Register globally
-      registry.belief_by_id.set(this._id, this)
+      DB.belief_by_id.set(this._id, this)
 
       // Register in by_sid (sid → Set<Belief>)
       const sid_val = /** @type {number} */ (this.sid)
-      if (!registry.belief_by_sid.has(sid_val)) {
-        registry.belief_by_sid.set(sid_val, new Set())
+      if (!DB.belief_by_sid.has(sid_val)) {
+        DB.belief_by_sid.set(sid_val, new Set())
       }
-      /** @type {Set<Belief>} */ (registry.belief_by_sid.get(sid_val)).add(this)
+      /** @type {Set<Belief>} */ (DB.belief_by_sid.get(sid_val)).add(this)
 
       if (label) {
         // Register label-sid mappings (for first belief with this label loaded)
-        if (!registry.sid_by_label.has(label)) {
-          if (registry.archetype_by_label[label]) {
+        if (!DB.sid_by_label.has(label)) {
+          if (DB.archetype_by_label[label]) {
             throw new Error(`Label '${label}' is already used by an archetype`)
           }
-          registry.sid_by_label.set(label, sid_val)
-          registry.label_by_sid.set(sid_val, label)
+          DB.sid_by_label.set(label, sid_val)
+          DB.label_by_sid.set(sid_val, label)
         }
 
         // Still maintain by_label for backward compatibility
-        registry.belief_by_label.set(label, this)
+        DB.belief_by_label.set(label, this)
       }
       return
     }
@@ -132,8 +132,8 @@ export class Belief {
       if (typeof base === 'string') {
         const base_label = base
         // Resolution order: belief registry → archetype registry
-        base = registry.belief_by_label.get(base) ?? registry.archetype_by_label[base]
-        assert(base != null, `Base '${base_label}' not found in belief registry or archetype registry`, {base_label, Belief_by_label: registry.belief_by_label, Archetype_by_label: registry.archetype_by_label})
+        base = DB.belief_by_label.get(base) ?? DB.archetype_by_label[base]
+        assert(base != null, `Base '${base_label}' not found in belief registry or archetype registry`, {base_label, Belief_by_label: DB.belief_by_label, Archetype_by_label: DB.archetype_by_label})
       }
       this._bases.add(/** @type {Belief|Archetype} */ (base))
     }
@@ -169,32 +169,32 @@ export class Belief {
     }
 
     // Register globally
-    registry.belief_by_id.set(this._id, this)
+    DB.belief_by_id.set(this._id, this)
 
     // Register in by_sid (sid → Set<Belief>)
-    if (!registry.belief_by_sid.has(this.sid)) {
-      registry.belief_by_sid.set(this.sid, new Set())
+    if (!DB.belief_by_sid.has(this.sid)) {
+      DB.belief_by_sid.set(this.sid, new Set())
     }
-    /** @type {Set<Belief>} */ (registry.belief_by_sid.get(this.sid)).add(this)
+    /** @type {Set<Belief>} */ (DB.belief_by_sid.get(this.sid)).add(this)
 
     if (label) {
       // For new subjects, register label-sid mappings
       if (!parent_belief) {
         // Check label uniqueness across beliefs and archetypes
-        if (registry.sid_by_label.has(label)) {
+        if (DB.sid_by_label.has(label)) {
           throw new Error(`Label '${label}' is already used by another belief`)
         }
-        if (registry.archetype_by_label[label]) {
+        if (DB.archetype_by_label[label]) {
           throw new Error(`Label '${label}' is already used by an archetype`)
         }
 
         // Register label-sid bidirectional mapping
-        registry.sid_by_label.set(label, this.sid)
-        registry.label_by_sid.set(this.sid, label)
+        DB.sid_by_label.set(label, this.sid)
+        DB.label_by_sid.set(this.sid, label)
       }
 
       // Still maintain by_label for backward compatibility (maps label → latest belief)
-      registry.belief_by_label.set(label, this)
+      DB.belief_by_label.set(label, this)
     }
 
     // TODO: add default trait values
@@ -208,9 +208,9 @@ export class Belief {
   resolve_and_add_trait(label, data, creator_state = null) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.label})
 
-    const traittype = db.get_traittype(label)
+    const traittype = Cosmos.get_traittype(label)
     //log('looking up traittype', label, traittype)
-    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.label, data, Traittype_by_label: registry.traittype_by_label})
+    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.label, data, Traittype_by_label: DB.traittype_by_label})
 
     // TypeScript: traittype is non-null after assert
     const value = /** @type {import('./traittype.mjs').Traittype} */ (traittype).resolve(this.in_mind, data, this, creator_state)
@@ -363,7 +363,7 @@ export class Belief {
       archetypes: [...this.get_archetypes()].map(a => a.label),
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
-        [...this.traits].map(([k, v]) => [k, db.Traittype.serializeTraitValue(v)])
+        [...this.traits].map(([k, v]) => [k, Cosmos.Traittype.serializeTraitValue(v)])
       )
     }
   }
@@ -377,7 +377,7 @@ export class Belief {
       archetypes: [...this.get_archetypes()].map(a => a.label),
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
-        [...this.traits].map(([k, v]) => [k, db.Traittype.inspectTraitValue(v)])
+        [...this.traits].map(([k, v]) => [k, Cosmos.Traittype.inspectTraitValue(v)])
       )
     }
   }
@@ -447,7 +447,7 @@ function deserialize_trait_value(value) {
     // Handle nested references
     if (value._type === 'Belief') {
       // Use ID lookup (exact version), fall back to label lookup if needed
-      const belief = registry.belief_by_id.get(value._id)
+      const belief = DB.belief_by_id.get(value._id)
       if (!belief) {
         throw new Error(`Cannot resolve belief reference ${value._id} in trait`)
       }
@@ -456,7 +456,7 @@ function deserialize_trait_value(value) {
 
     if (value._type === 'State') {
       // States are nested in minds, need to search
-      for (const mind of registry.mind_by_id.values()) {
+      for (const mind of DB.mind_by_id.values()) {
         for (const state of mind.state) {
           if (state._id === value._id) {
             return state
@@ -467,7 +467,7 @@ function deserialize_trait_value(value) {
     }
 
     if (value._type === 'Mind') {
-      const mind = registry.mind_by_id.get(value._id)
+      const mind = DB.mind_by_id.get(value._id)
       if (!mind) {
         throw new Error(`Cannot resolve mind reference ${value._id} in trait`)
       }

@@ -1,6 +1,6 @@
 import { Archetype } from './archetype.mjs'
-import * as registry from './registry.mjs'
-import * as db from './db.mjs'
+import * as DB from './db.mjs'
+import * as Cosmos from './cosmos.mjs'
 
 /**
  * @typedef {string|TraitTypeSchema} TraitTypeDefinition
@@ -98,11 +98,11 @@ export class Traittype {
     const type_label = this.data_type
 
     // Check if it's an Archetype reference
-    if (registry.archetype_by_label[type_label]) {
-      const archetype = registry.archetype_by_label[type_label]
+    if (DB.archetype_by_label[type_label]) {
+      const archetype = DB.archetype_by_label[type_label]
       let belief
       if (typeof data === 'string') {
-        belief = registry.belief_by_label.get(data)
+        belief = DB.belief_by_label.get(data)
       } else {
         belief = data
       }
@@ -132,13 +132,13 @@ export class Traittype {
 
     // Check if it's a data type (Mind, State)
     if (type_label === 'Mind') {
-      if (db.is_mind(data)) {
+      if (Cosmos.is_mind(data)) {
         return data
       }
       throw new Error(`Expected Mind instance for trait '${this.label}'`)
     }
     if (type_label === 'State') {
-      if (db.is_state(data)) {
+      if (Cosmos.is_state(data)) {
         return data
       }
       throw new Error(`Expected State instance for trait '${this.label}'`)
@@ -160,9 +160,9 @@ export class Traittype {
       let result
       if (data._type === 'Mind') {
         // TypeScript: Call resolve_template as any to avoid type check on static method
-        result = /** @type {any} */ (db.Mind).resolve_template(mind, data, owner_belief, creator_state)
+        result = /** @type {any} */ (Cosmos.Mind).resolve_template(mind, data, owner_belief, creator_state)
       } else if (data._type === 'State') {
-        result = /** @type {any} */ (db.State).resolve_template(mind, data, owner_belief, creator_state)
+        result = /** @type {any} */ (Cosmos.State).resolve_template(mind, data, owner_belief, creator_state)
       }
 
       if (result !== undefined) {

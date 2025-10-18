@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupStandardArchetypes, setupMinimalArchetypes } from './helpers.mjs';
 
@@ -16,9 +17,9 @@ describe('learn_about', () => {
         }
       });
 
-      const player_mind = new DB.Mind('player');
+      const player_mind = new Mind('player');
       const player_mind_state = player_mind.create_state(1);
-      const workshop = DB.registry.belief_by_label.get('workshop');
+      const workshop = DB.belief_by_label.get('workshop');
       const workshop_knowledge = player_mind_state.learn_about(world_state, workshop);
 
       const inspected = workshop_knowledge.inspect();
@@ -37,9 +38,9 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
-      const hammer = DB.registry.belief_by_label.get('hammer');
+      const hammer = DB.belief_by_label.get('hammer');
       const hammer_belief = npc_mind_state.learn_about(world_state, hammer, ['color']);
 
       expect(hammer_belief.can_have_trait('color')).to.be.true;
@@ -55,18 +56,18 @@ describe('learn_about', () => {
     });
 
     it('learn_about on versioned belief walks chain to find archetypes', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const world_mind_state = world_mind.create_state(1);
       const hammer_v1_belief = world_mind.add({label: 'hammer_v1', bases: ['PortableObject']});
       world_mind_state.insert.push(hammer_v1_belief);
 
-      const hammer_v1 = DB.registry.belief_by_label.get('hammer_v1');
-      const hammer_v2 = new DB.Belief(hammer_v1.in_mind, {
+      const hammer_v1 = DB.belief_by_label.get('hammer_v1');
+      const hammer_v2 = new Belief(hammer_v1.in_mind, {
         bases: [hammer_v1],
         traits: { color: 'red' }
       });
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
       const hammer_knowledge = npc_mind_state.learn_about(world_mind_state, hammer_v2);
 
@@ -90,11 +91,11 @@ describe('learn_about', () => {
         }
       });
 
-      const player_mind = new DB.Mind('player');
+      const player_mind = new Mind('player');
       const player_mind_state = player_mind.create_state(1);
       const workshop_knowledge = player_mind_state.learn_about(
         world_state,
-        DB.registry.belief_by_label.get('workshop')
+        DB.belief_by_label.get('workshop')
       );
 
       // Should be able to reference learned belief in traits
@@ -108,14 +109,14 @@ describe('learn_about', () => {
     });
 
     it('learn_about directly from base belief works', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const world_mind_state = world_mind.create_state(1);
       const base_hammer_belief = world_mind.add({label: 'base_hammer', bases: ['PortableObject']});
       world_mind_state.insert.push(base_hammer_belief);
 
-      const base_hammer = DB.registry.belief_by_label.get('base_hammer');
+      const base_hammer = DB.belief_by_label.get('base_hammer');
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
       const learned = npc_mind_state.learn_about(world_mind_state, base_hammer);
 
@@ -130,15 +131,15 @@ describe('learn_about', () => {
         workshop: { bases: ['Location'] },
         hammer: {
           bases: ['PortableObject'],
-          traits: { location: 'workshop' }  // References DB.registry.belief_by_label.get('workshop')
+          traits: { location: 'workshop' }  // References DB.belief_by_label.get('workshop')
         }
       });
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
       const hammer_knowledge = npc_mind_state.learn_about(
         world_state,
-        DB.registry.belief_by_label.get('hammer'),
+        DB.belief_by_label.get('hammer'),
         ['location']
       );
 
@@ -149,7 +150,7 @@ describe('learn_about', () => {
       expect(location_ref.in_mind).to.equal(npc_mind);
 
       // Should be about the workshop from world_mind
-      expect(location_ref.about).to.equal(DB.registry.belief_by_label.get('workshop'));
+      expect(location_ref.about).to.equal(DB.belief_by_label.get('workshop'));
 
       // Should have the same archetypes
       const archetypes = [...location_ref.get_archetypes()].map(a => a.label);
@@ -165,20 +166,20 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
 
       // NPC already knows about the workshop
       const existing_workshop = npc_mind.add({
         label: 'my_workshop',
-        about: DB.registry.belief_by_label.get('workshop'),
+        about: DB.belief_by_label.get('workshop'),
         bases: ['Location']
       });
       npc_mind_state.insert.push(existing_workshop);
 
       const hammer_knowledge = npc_mind_state.learn_about(
         world_state,
-        DB.registry.belief_by_label.get('hammer'),
+        DB.belief_by_label.get('hammer'),
         ['location']
       );
 
@@ -196,19 +197,19 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
 
       // NPC has two different beliefs about the workshop (uncertainty case)
       const belief1 = npc_mind.add({
         label: 'workshop_belief_1',
-        about: DB.registry.belief_by_label.get('workshop'),
+        about: DB.belief_by_label.get('workshop'),
         bases: ['Location']
       });
 
       const belief2 = npc_mind.add({
         label: 'workshop_belief_2',
-        about: DB.registry.belief_by_label.get('workshop'),
+        about: DB.belief_by_label.get('workshop'),
         bases: ['Location']
       });
 
@@ -218,47 +219,47 @@ describe('learn_about', () => {
       expect(() => {
         npc_mind_state.learn_about(
           world_state,
-          DB.registry.belief_by_label.get('hammer'),
+          DB.belief_by_label.get('hammer'),
           ['location']
         );
       }).to.throw();
     });
 
     it('learn_about should follow about chain to original entity', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const world_mind_state = world_mind.create_state(1);
       world_mind.add({label: 'workshop', bases: ['Location']});
 
-      const npc1_mind = new DB.Mind('npc1');
+      const npc1_mind = new Mind('npc1');
       const npc1_mind_state = npc1_mind.create_state(1);
       const workshop_from_npc1 = npc1_mind.add({
         label: 'workshop_knowledge',
-        about: DB.registry.belief_by_label.get('workshop'),
+        about: DB.belief_by_label.get('workshop'),
         bases: ['Location']
       });
 
-      const npc2_mind = new DB.Mind('npc2');
+      const npc2_mind = new Mind('npc2');
       const npc2_mind_state = npc2_mind.create_state(1);
       // NPC2 learns about NPC1's belief
       const workshop_from_npc2 = npc2_mind_state.learn_about(npc1_mind_state, workshop_from_npc1);
 
       // Should follow about chain: npc2_belief.about = world.workshop (not npc1_belief)
-      expect(workshop_from_npc2.about).to.equal(DB.registry.belief_by_label.get('workshop'));
+      expect(workshop_from_npc2.about).to.equal(DB.belief_by_label.get('workshop'));
       expect(workshop_from_npc2.about).to.not.equal(workshop_from_npc1);
     });
 
     it('learn_about should walk belief chain to find archetypes', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const world_mind_state = world_mind.create_state(1);
       world_mind.add({label: 'hammer_v1', bases: ['PortableObject']});
 
-      const hammer_v1 = DB.registry.belief_by_label.get('hammer_v1');
-      const hammer_v2 = new DB.Belief(hammer_v1.in_mind, {
+      const hammer_v1 = DB.belief_by_label.get('hammer_v1');
+      const hammer_v2 = new Belief(hammer_v1.in_mind, {
         bases: [hammer_v1],
         traits: { color: 'red' }
       });
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
       const hammer_knowledge = npc_mind_state.learn_about(world_mind_state, hammer_v2);
 
@@ -276,11 +277,11 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
       const hammer_knowledge = npc_mind_state.learn_about(
         world_state,
-        DB.registry.belief_by_label.get('hammer'),
+        DB.belief_by_label.get('hammer'),
         ['color']
       );
 
@@ -323,7 +324,7 @@ describe('learn_about', () => {
 
       DB.register(archetypes, traittypes);
 
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
 
       // Create items
       const sword = world_mind.add({
@@ -348,7 +349,7 @@ describe('learn_about', () => {
       const world_mind_state = world_mind.create_state(1);
       world_mind_state.insert.push(sword, shield, chest);
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
 
       const chest_knowledge = npc_mind_state.learn_about(world_mind_state, chest, ['items']);

@@ -1,4 +1,5 @@
 import { log } from "../lib/debug.mjs";
+import * as Cosmos from './cosmos.mjs';
 //log('Loading Channel');
 
 /** @type {BroadcastChannel|null} */
@@ -8,8 +9,6 @@ let client_id_sequence = 0; // Client id
 let server_id = null;
 /** @type {any} */
 let Adventure = null;
-/** @type {any} */
-let DB = null;
 
 /** @type {{[key: string]: Function}} */
 export const dispatch = {
@@ -40,12 +39,12 @@ export const dispatch = {
 		// Accept mind id (numeric string) or label (string)
 		const mind_str = String(mind);
 		const mind_obj = /^\d+$/.test(mind_str)
-			? DB.Mind.get_by_id(Number(mind_str))
-			: DB.Mind.get_by_label(mind_str);
+			? Cosmos.Mind.get_by_id(Number(mind_str))
+			: Cosmos.Mind.get_by_label(mind_str);
 
 		if (!mind_obj) {
 			log("Mind not found", mind);
-			log(DB.registry.mind_by_id);
+			log(Cosmos.DB.mind_by_id);
 			return;
 		}
 
@@ -90,7 +89,7 @@ export const dispatch = {
 
 		// Find state by searching all minds
 		let state_obj = null;
-		for (const [_id, mind] of DB.registry.mind_by_id) {
+		for (const [_id, mind] of Cosmos.DB.mind_by_id) {
 			for (const s of mind.state) {
 				if (s._id === state_id) {
 					state_obj = s;
@@ -135,7 +134,7 @@ export const dispatch = {
 		const belief_id = Number(belief);
 
 		// Find belief by id in global registry
-		const belief_obj = DB.registry.belief_by_id.get(belief_id);
+		const belief_obj = Cosmos.DB.belief_by_id.get(belief_id);
 
 		if (!belief_obj) {
 			log("Belief not found", belief_id);
@@ -157,9 +156,9 @@ export const dispatch = {
 				mind: {id: belief_obj.about.in_mind._id, label: belief_obj.about.in_mind.label}
 			} : null,
 			bases: [...belief_obj.bases].map(b => ({
-				id: b instanceof DB.Belief ? b._id : null,
-				label: b instanceof DB.Belief ? b.get_display_label() : b.label,
-				type: b instanceof DB.Archetype ? 'Archetype' : 'Belief'
+				id: b instanceof Cosmos.Belief ? b._id : null,
+				label: b instanceof Cosmos.Belief ? b.get_display_label() : b.label,
+				type: b instanceof Cosmos.Archetype ? 'Archetype' : 'Belief'
 			})),
 		});
 	},
@@ -198,9 +197,9 @@ export const dispatch = {
 				mind: {id: belief.about.in_mind._id, label: belief.about.in_mind.label}
 			} : null,
 			bases: [...belief.bases].map(b => ({
-				id: b instanceof DB.Belief ? b._id : null,
-				label: b instanceof DB.Belief ? b.get_display_label() : b.label,
-				type: b instanceof DB.Archetype ? 'Archetype' : 'Belief'
+				id: b instanceof Cosmos.Belief ? b._id : null,
+				label: b instanceof Cosmos.Belief ? b.get_display_label() : b.label,
+				type: b instanceof Cosmos.Archetype ? 'Archetype' : 'Belief'
 			})),
 		});
 	},
@@ -208,11 +207,9 @@ export const dispatch = {
 
 /**
  * @param {object} adventure - Adventure singleton from world.mjs
- * @param {object} db - DB module
  */
-export async function init_channel(adventure, db) {
+export async function init_channel(adventure) {
 	Adventure = adventure;
-	DB = db;
 
 	channel = new BroadcastChannel('inspect');
 	server_id = await increment_sequence("server_id");

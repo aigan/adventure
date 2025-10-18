@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupMinimalArchetypes, setupStandardArchetypes } from './helpers.mjs';
 
@@ -10,7 +11,7 @@ describe('State', () => {
 
   describe('Iteration Patterns', () => {
     it('mind.belief Set contains all beliefs for that mind', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
       mind.add({label: 'workshop', bases: ['Location']});
 
       const hammer = mind.add({
@@ -18,9 +19,9 @@ describe('State', () => {
         bases: ['PortableObject']
       });
 
-      expect([...DB.registry.belief_by_id.values()].filter(b => b.in_mind === mind).length).to.equal(2);
-      expect([...DB.registry.belief_by_id.values()].some(b => b.in_mind === mind && b === DB.registry.belief_by_label.get('workshop'))).to.be.true;
-      expect([...DB.registry.belief_by_id.values()].some(b => b.in_mind === mind && b === hammer)).to.be.true;
+      expect([...DB.belief_by_id.values()].filter(b => b.in_mind === mind).length).to.equal(2);
+      expect([...DB.belief_by_id.values()].some(b => b.in_mind === mind && b === DB.belief_by_label.get('workshop'))).to.be.true;
+      expect([...DB.belief_by_id.values()].some(b => b.in_mind === mind && b === hammer)).to.be.true;
     });
 
     it('can iterate over beliefs for a mind', () => {
@@ -31,7 +32,7 @@ describe('State', () => {
       const mind = state.in_mind;
 
       const labels = [];
-      for (const belief of DB.registry.belief_by_id.values()) {
+      for (const belief of DB.belief_by_id.values()) {
         if (belief.in_mind === mind) {
           labels.push(belief.label);
         }
@@ -41,26 +42,26 @@ describe('State', () => {
     });
 
     it('mind.belief_by_label provides fast label lookup', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
       mind.add({label: 'workshop', bases: ['Location']});
 
-      expect(DB.registry.belief_by_label.get('workshop')).to.exist;
-      expect(DB.registry.belief_by_label.get('workshop').label).to.equal('workshop');
+      expect(DB.belief_by_label.get('workshop')).to.exist;
+      expect(DB.belief_by_label.get('workshop').label).to.equal('workshop');
     });
   });
 
   describe('Cross-Mind Visibility', () => {
     it('state.get_beliefs only returns beliefs from that state\'s mind', () => {
-      const mind_a = new DB.Mind('mind_a');
+      const mind_a = new Mind('mind_a');
       mind_a.add({label: 'item_a', bases: ['PortableObject']});
       const state_a = mind_a.create_state(1);
-      const beliefs_for_a = [...DB.registry.belief_by_id.values()].filter(b => b.in_mind === mind_a);
+      const beliefs_for_a = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_a);
       state_a.insert.push(...beliefs_for_a);
 
-      const mind_b = new DB.Mind('mind_b');
+      const mind_b = new Mind('mind_b');
       mind_b.add({label: 'item_b', bases: ['PortableObject']});
       const state_b = mind_b.create_state(1);
-      const beliefs_for_b = [...DB.registry.belief_by_id.values()].filter(b => b.in_mind === mind_b);
+      const beliefs_for_b = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_b);
       state_b.insert.push(...beliefs_for_b);
 
       const beliefs_a = [...state_a.get_beliefs()];
@@ -74,17 +75,17 @@ describe('State', () => {
     });
 
     it('beliefs from different minds don\'t mix in states', () => {
-      const mind_a = new DB.Mind('mind_a');
+      const mind_a = new Mind('mind_a');
       mind_a.add({label: 'workshop_a', bases: ['Location']});
 
-      const mind_b = new DB.Mind('mind_b');
+      const mind_b = new Mind('mind_b');
       mind_b.add({label: 'workshop_b', bases: ['Location']});
 
       const state_a = mind_a.create_state(1);
-      const beliefs_a = [...DB.registry.belief_by_id.values()].filter(b => b.in_mind === mind_a);
+      const beliefs_a = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_a);
       state_a.insert.push(...beliefs_a);
       const state_b = mind_b.create_state(1);
-      const beliefs_b = [...DB.registry.belief_by_id.values()].filter(b => b.in_mind === mind_b);
+      const beliefs_b = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_b);
       state_b.insert.push(...beliefs_b);
 
       const labels_a = [...state_a.get_beliefs()].map(b => b.label);
@@ -97,12 +98,12 @@ describe('State', () => {
 
   describe('State Operations', () => {
     it('state.tick with replace removes correct belief', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
       mind.add({label: 'hammer_v1', bases: ['PortableObject']});
 
       const state1 = mind.create_state(1);
-      const hammer_v1 = DB.registry.belief_by_label.get('hammer_v1');
-      const hammer_v2 = new DB.Belief(hammer_v1.in_mind, {
+      const hammer_v1 = DB.belief_by_label.get('hammer_v1');
+      const hammer_v2 = new Belief(hammer_v1.in_mind, {
         bases: [hammer_v1],
         traits: { color: 'red' }
       });
@@ -116,24 +117,24 @@ describe('State', () => {
     });
 
     it('multiple minds can have states without interference', () => {
-      const mind_a = new DB.Mind('mind_a');
+      const mind_a = new Mind('mind_a');
       mind_a.add({label: 'item_in_a', bases: ['PortableObject']});
       const state_a1 = mind_a.create_state(1);
 
-      const mind_b = new DB.Mind('mind_b');
+      const mind_b = new Mind('mind_b');
       mind_b.add({label: 'item_in_b', bases: ['PortableObject']});
       const state_b1 = mind_b.create_state(1);
 
       // Add different beliefs to each mind
-      const item_a = DB.registry.belief_by_label.get('item_in_a');
-      const item_a2 = new DB.Belief(item_a.in_mind, {
+      const item_a = DB.belief_by_label.get('item_in_a');
+      const item_a2 = new Belief(item_a.in_mind, {
         bases: [item_a],
         traits: { color: 'red' }
       });
       const state_a2 = state_a1.tick({ replace: [item_a2] });
 
-      const item_b = DB.registry.belief_by_label.get('item_in_b');
-      const item_b2 = new DB.Belief(item_b.in_mind, {
+      const item_b = DB.belief_by_label.get('item_in_b');
+      const item_b2 = new Belief(item_b.in_mind, {
         bases: [item_b],
         traits: { color: 'blue' }
       });
@@ -168,27 +169,27 @@ describe('State', () => {
 
   describe('Ground State and Branches', () => {
     it('creates root state with null ground_state', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
       const state = mind.create_state(1);
 
       expect(state.ground_state).to.be.null;
     });
 
     it('creates nested mind state with ground_state', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const world_state = world_mind.create_state(1);
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_state = npc_mind.create_state(1, world_state);
 
       expect(npc_state.ground_state).to.equal(world_state);
     });
 
     it('tick() inherits ground_state from parent', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const world_state = world_mind.create_state(1);
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_state1 = npc_mind.create_state(1, world_state);
       const npc_state2 = npc_state1.tick({insert: []});
 
@@ -196,11 +197,11 @@ describe('State', () => {
     });
 
     it('tick() can override ground_state', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const world_state1 = world_mind.create_state(1);
       const world_state2 = world_state1.tick({insert: []});
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_state1 = npc_mind.create_state(1, world_state1);
       const npc_state2 = npc_state1.tick({insert: [], ground_state: world_state2});
 
@@ -208,7 +209,7 @@ describe('State', () => {
     });
 
     it('tracks branches forward from parent state', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
       const state1 = mind.create_state(1);
       const state2 = state1.tick({insert: []});
       const state3 = state1.tick({insert: []});
@@ -219,10 +220,10 @@ describe('State', () => {
     });
 
     it('serializes ground_state in toJSON', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const world_state = world_mind.create_state(1);
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_state = npc_mind.create_state(1, world_state);
 
       const json = npc_state.toJSON();
@@ -237,7 +238,7 @@ describe('State', () => {
     });
 
     it('resolves sid to appropriate belief version in state', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const state1 = world_mind.create_state(1);
 
       const room = world_mind.add({
@@ -253,7 +254,7 @@ describe('State', () => {
     });
 
     it('resolves to latest version visible in state', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const state1 = world_mind.create_state(1);
 
       const room_v1 = world_mind.add({
@@ -264,7 +265,7 @@ describe('State', () => {
       state1.insert.push(room_v1);
 
       // Create v2 and add to state2
-      const room_v2 = new DB.Belief(world_mind, {
+      const room_v2 = new Belief(world_mind, {
         bases: [room_v1],
         traits: { color: 'red' },
       });
@@ -278,7 +279,7 @@ describe('State', () => {
     });
 
     it('builds sid index on-demand for efficient lookups', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const state = world_mind.create_state(1);
 
       const room1 = world_mind.add({ label: 'room1', bases: ['Location'] });
@@ -306,7 +307,7 @@ describe('State', () => {
     });
 
     it('fixes circular reference problem - traits point to subject, not version', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const state1 = world_mind.create_state(1);
 
       // Create two rooms with circular reference
@@ -326,7 +327,7 @@ describe('State', () => {
       state1.insert.push(room1, room2);
 
       // Now update room1 to be inside room2
-      const room1_v2 = new DB.Belief(world_mind, {
+      const room1_v2 = new Belief(world_mind, {
         bases: [room1],
         traits: {
           location: room2,  // room1 now inside room2

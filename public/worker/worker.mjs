@@ -8,14 +8,14 @@ const log = console.log.bind(console);
 /*
 	All imports async here in top worker for catching errors
 */
-let world,DB;
+let world,Cosmos;
 async function init(){
   const World = await import("./world.mjs");
   const Adventure = World.Adventure;
 
-  DB = await import("./db.mjs");
+  Cosmos = await import("./cosmos.mjs");
   const Channel = await import("./channel.mjs");
-  await Channel.init_channel(Adventure, DB);
+  await Channel.init_channel(Adventure);
 
   //const world = Adventure.world;
   //world.player_enter_location();

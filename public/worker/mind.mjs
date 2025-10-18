@@ -1,6 +1,6 @@
 import { next_id } from './id_sequence.mjs'
-import * as registry from './registry.mjs'
-import * as db from './db.mjs'
+import * as DB from './db.mjs'
+import * as Cosmos from './cosmos.mjs'
 
 /**
  * @typedef {object} MindJSON
@@ -35,9 +35,9 @@ export class Mind {
       this.state = new Set()
 
       // Register globally
-      registry.mind_by_id.set(this._id, this)
+      DB.mind_by_id.set(this._id, this)
       if (this.label) {
-        registry.mind_by_label.set(this.label, this)
+        DB.mind_by_label.set(this.label, this)
       }
       return
     }
@@ -50,9 +50,9 @@ export class Mind {
     this.state = new Set([])
 
     // Register globally
-    registry.mind_by_id.set(this._id, this)
+    DB.mind_by_id.set(this._id, this)
     if (this.label) {
-      registry.mind_by_label.set(this.label, this)
+      DB.mind_by_label.set(this.label, this)
     }
 
     //log(`Created mind ${this._id}`)
@@ -64,7 +64,7 @@ export class Mind {
    */
   static get_by_id(id) {
     //log(`Get mind by id ${id}`)
-    return registry.mind_by_id.get(id)
+    return DB.mind_by_id.get(id)
   }
 
   /**
@@ -73,7 +73,7 @@ export class Mind {
    */
   static get_by_label(label) {
     //log(`Get mind by label ${label}`)
-    return registry.mind_by_label.get(label)
+    return DB.mind_by_label.get(label)
   }
 
   /**
@@ -81,7 +81,7 @@ export class Mind {
    * @returns {import('./belief.mjs').Belief}
    */
   add(belief_def) {
-    const belief = db.create_belief(this, belief_def)
+    const belief = Cosmos.create_belief(this, belief_def)
     return belief
   }
 
@@ -91,7 +91,7 @@ export class Mind {
    * @returns {import('./state.mjs').State}
    */
   create_state(timestamp, ground_state = null) {
-    const state = db.create_state(this, timestamp, null, ground_state)
+    const state = Cosmos.create_state(this, timestamp, null, ground_state)
     return state
   }
 
@@ -101,7 +101,7 @@ export class Mind {
   toJSON() {
     // Filter beliefs from global registry that belong to this mind
     const mind_beliefs = []
-    for (const belief of registry.belief_by_id.values()) {
+    for (const belief of DB.belief_by_id.values()) {
       if (belief.in_mind === this) {
         mind_beliefs.push(belief.toJSON())
       }
@@ -127,12 +127,12 @@ export class Mind {
 
     // Create belief shells
     for (const belief_data of data.belief) {
-      db.Belief.from_json(mind, belief_data)
+      Cosmos.Belief.from_json(mind, belief_data)
     }
 
     // Create state shells and add to their respective minds
     for (const state_data of data.state) {
-      const state = db.State.from_json(mind, state_data)
+      const state = Cosmos.State.from_json(mind, state_data)
       // Add to the state's in_mind (which might be different from mind if nested)
       state.in_mind.state.add(state)
     }
@@ -147,7 +147,7 @@ export class Mind {
     // Finalize beliefs for THIS mind (resolve State/Mind references in traits)
     // Do this AFTER loading nested minds so all State/Mind references can be resolved
     for (const belief_data of data.belief) {
-      const belief = registry.belief_by_id.get(belief_data._id)
+      const belief = DB.belief_by_id.get(belief_data._id)
       if (belief) {
         belief._finalize_traits()
       }

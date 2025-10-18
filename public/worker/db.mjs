@@ -1,182 +1,129 @@
-import { reset_id_sequence } from './id_sequence.mjs'
-import * as registry from './registry.mjs'
+/**
+ * Centralized registry for all database entities
+ * This is the data storage layer - classes use these registries to store/lookup instances
+ */
 
-// Import all classes
+import { reset_id_sequence } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import { Traittype } from './traittype.mjs'
-import { Mind } from './mind.mjs'
-import { State } from './state.mjs'
-import { Belief } from './belief.mjs'
-import { Serialize, save_mind, load } from './serialize.mjs'
-
-// No more init function calls needed! Classes use factory functions from this module.
 
 // ============================================================================
-// Factory Functions (to eliminate circular dependencies in class files)
+// Mind Registries
+// ============================================================================
+
+/** @type {Map<number, import('./mind.mjs').Mind>} */
+export const mind_by_id = new Map()
+
+/** @type {Map<string, import('./mind.mjs').Mind>} */
+export const mind_by_label = new Map()
+
+// ============================================================================
+// State Registries
+// ============================================================================
+
+/** @type {Record<string, object>} */
+export const state_by_label = {}
+
+// ============================================================================
+// Belief Registries
+// ============================================================================
+
+/** @type {Map<number, import('./belief.mjs').Belief>} */
+export const belief_by_id = new Map()
+
+/** @type {Map<string, import('./belief.mjs').Belief>} */
+export const belief_by_label = new Map()
+
+/** @type {Map<number, Set<import('./belief.mjs').Belief>>} */
+export const belief_by_sid = new Map()
+
+/** @type {Map<string, number>} */
+export const sid_by_label = new Map()
+
+/** @type {Map<number, string>} */
+export const label_by_sid = new Map()
+
+// ============================================================================
+// Archetype Registries
+// ============================================================================
+
+/** @type {Record<string, import('./archetype.mjs').Archetype>} */
+export const archetype_by_label = {}
+
+// ============================================================================
+// Traittype Registries
+// ============================================================================
+
+/** @type {Record<string, import('./traittype.mjs').Traittype>} */
+export const traittype_by_label = {}
+
+// ============================================================================
+// Convenience Functions
 // ============================================================================
 
 /**
- * Create a new Mind instance
- * @param {string|null} label - Mind identifier
- * @param {import('./belief.mjs').Belief|null} self - What this mind considers "self"
- * @returns {Mind}
+ * Get Mind by ID
+ * @param {number} id
+ * @returns {import('./mind.mjs').Mind|undefined}
  */
-export function create_mind(label = null, self = null) {
-  return new Mind(label, self)
+export function get_mind(id) {
+  return mind_by_id.get(id)
 }
 
 /**
- * Create a new Belief instance
- * @param {Mind} mind - Mind this belief belongs to
- * @param {object} def - Belief definition
- * @param {import('./state.mjs').State|null} [creator_state] - State creating this belief
- * @returns {import('./belief.mjs').Belief}
+ * Get Mind by label
+ * @param {string} label
+ * @returns {import('./mind.mjs').Mind|undefined}
  */
-export function create_belief(mind, def, creator_state = null) {
-  return new Belief(mind, def, creator_state)
+export function get_mind_by_label(label) {
+  return mind_by_label.get(label)
 }
 
 /**
- * Create a new State instance
- * @param {Mind} mind - Mind this state belongs to
- * @param {number} timestamp - State timestamp/tick
- * @param {import('./state.mjs').State|null} base - Base state
- * @param {import('./state.mjs').State|null} ground_state - Ground state reference
- * @returns {import('./state.mjs').State}
+ * Get Belief by ID
+ * @param {number} id
+ * @returns {import('./belief.mjs').Belief|undefined}
  */
-export function create_state(mind, timestamp, base = null, ground_state = null) {
-  return new State(mind, timestamp, base, ground_state)
-}
-
-// ============================================================================
-// Type Checking Functions (to replace instanceof checks)
-// ============================================================================
-
-/**
- * @param {*} obj
- * @returns {boolean}
- */
-export function is_mind(obj) {
-  return obj instanceof Mind
+export function get_belief(id) {
+  return belief_by_id.get(id)
 }
 
 /**
- * @param {*} obj
- * @returns {boolean}
+ * Get Belief by label
+ * @param {string} label
+ * @returns {import('./belief.mjs').Belief|undefined}
  */
-export function is_state(obj) {
-  return obj instanceof State
+export function get_belief_by_label(label) {
+  return belief_by_label.get(label)
 }
 
 /**
- * @param {*} obj
- * @returns {boolean}
+ * Reset all registries (for testing)
  */
-export function is_belief(obj) {
-  return obj instanceof Belief
-}
+export function reset_all_registries() {
+  mind_by_id.clear()
+  mind_by_label.clear()
+  belief_by_id.clear()
+  belief_by_label.clear()
+  belief_by_sid.clear()
+  sid_by_label.clear()
+  label_by_sid.clear()
 
-// ============================================================================
-// Serialization State Management
-// ============================================================================
-
-let _serializing = false
-
-/**
- * @returns {boolean}
- */
-export function is_serializing() {
-  return _serializing
-}
-
-/**
- * @param {boolean} val
- */
-export function set_serializing(val) {
-  _serializing = val
-}
-
-/**
- * @param {Mind} mind
- */
-export function add_serialization_dependency(mind) {
-  if (Serialize.dependency_queue !== null) {
-    Serialize.dependency_queue.push(mind)
+  // Clear object registries by deleting all keys
+  for (const key in state_by_label) {
+    delete state_by_label[key]
+  }
+  for (const key in archetype_by_label) {
+    delete archetype_by_label[key]
+  }
+  for (const key in traittype_by_label) {
+    delete traittype_by_label[key]
   }
 }
 
 // ============================================================================
-// Registry Access Functions
+// Database Operations
 // ============================================================================
-
-/**
- * Get Traittype by label
- * @param {string} label
- * @returns {import('./traittype.mjs').Traittype|undefined}
- */
-export function get_traittype(label) {
-  return registry.traittype_by_label[label]
-}
-
-// ============================================================================
-// Type Definitions
-// ============================================================================
-
-/**
- * @typedef {object} MindJSON
- * @property {string} _type - Always "Mind"
- * @property {number} _id - Mind identifier
- * @property {string|null} label - Optional label for lookup
- * @property {BeliefJSON[]} belief - All beliefs in this mind
- * @property {StateJSON[]} state - All states in this mind
- * @property {MindJSON[]} [nested_minds] - Nested minds discovered during serialization
- */
-
-/**
- * @typedef {object} StateJSON
- * @property {string} _type - Always "State"
- * @property {number} _id - State identifier
- * @property {number} timestamp - State timestamp/tick
- * @property {number|null} base - Base state _id (null for root states)
- * @property {number|null} ground_state - Ground state _id (null if no external reference)
- * @property {number[]} insert - Belief _ids present in this state
- * @property {number[]} remove - Belief _ids removed in this state
- * @property {number} in_mind - Mind _id this state belongs to
- */
-
-/**
- * @typedef {object} BeliefJSON
- * @property {string} _type - Always "Belief"
- * @property {number} _id - Unique version identifier
- * @property {number} sid - Subject identifier (stable across versions)
- * @property {string|null} label - Optional label for lookup
- * @property {number|null} about - Parent belief _id (null if not about another belief)
- * @property {string[]} archetypes - Archetype labels for this belief
- * @property {(string|number)[]} bases - Base archetype labels or belief _ids
- * @property {Object<string, SerializedTraitValue>} traits - Trait values (sids, primitives, or references)
- */
-
-/**
- * @typedef {number|string|boolean|null|StateReference|MindReference|Array<number|string|boolean|null|StateReference|MindReference>} SerializedTraitValue
- * Trait values in JSON can be:
- * - number (sid or primitive)
- * - string/boolean/null (primitives)
- * - StateReference/MindReference (for State/Mind traits)
- * - Array of any of the above
- */
-
-/**
- * @typedef {object} StateReference
- * @property {string} _type - Always "State"
- * @property {number} _id - State identifier
- */
-
-/**
- * @typedef {object} MindReference
- * @property {string} _type - Always "Mind"
- * @property {number} _id - Mind identifier
- * @property {string|null} label - Mind label
- */
 
 /**
  * @typedef {object} ArchetypeDefinition
@@ -203,7 +150,7 @@ export function get_traittype(label) {
  * Reset all registries (for testing)
  */
 export function reset_registries() {
-  registry.reset_all_registries()
+  reset_all_registries()
   reset_id_sequence()
 }
 
@@ -215,32 +162,19 @@ export function reset_registries() {
 export function register( archetypes, traittypes ) {
   for (const [label, def] of Object.entries(traittypes)) {
     //traittypes[label] = def; // TODO: resolve trait datatypes
-    registry.traittype_by_label[label] = new Traittype(label, def)
+    traittype_by_label[label] = new Traittype(label, def)
     //log("Registered traittype", label)
   }
 
   for (const [label, def] of Object.entries(archetypes)) {
     // Check label uniqueness across beliefs and archetypes
-    if (registry.archetype_by_label[label]) {
+    if (archetype_by_label[label]) {
       throw new Error(`Label '${label}' is already used by another archetype`)
     }
-    if (registry.belief_by_label.has(label)) {
+    if (belief_by_label.has(label)) {
       throw new Error(`Label '${label}' is already used by a belief`)
     }
-    registry.archetype_by_label[label] = new Archetype(label, def)
+    archetype_by_label[label] = new Archetype(label, def)
     //log("Registred archetype", label)
   }
-}
-
-// Re-export all classes and functions
-export {
-  Archetype,
-  Traittype,
-  Mind,
-  State,
-  Belief,
-  Serialize,
-  save_mind,
-  load,
-  registry
 }

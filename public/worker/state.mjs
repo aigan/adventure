@@ -1,7 +1,7 @@
 import { assert } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
-import * as registry from './registry.mjs'
-import * as db from './db.mjs'
+import * as DB from './db.mjs'
+import * as Cosmos from './cosmos.mjs'
 
 /**
  * @typedef {object} StateJSON
@@ -32,7 +32,7 @@ export class State {
   // TODO: Populate this registry for prototype state templates
   // Will be used to share belief lists across many nodes
   // See resolve_template() lines 364-367 for planned usage
-  // Now stored in registry.state_by_label
+  // Now stored in DB.state_by_label
 
   /**
    * @param {import('./mind.mjs').Mind} mind
@@ -69,7 +69,7 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     for (const [label, def] of Object.entries(beliefs)) {
-      const belief = db.create_belief(this.in_mind, {...def, label}, this)
+      const belief = Cosmos.create_belief(this.in_mind, {...def, label}, this)
       this.insert.push(belief)
     }
   }
@@ -80,7 +80,7 @@ export class State {
    * @returns {State} New unlocked state
    */
   branch_state(ground_state) {
-    const state = db.create_state(this.in_mind, this.timestamp + 1, this, ground_state ?? this.ground_state)
+    const state = Cosmos.create_state(this.in_mind, this.timestamp + 1, this, ground_state ?? this.ground_state)
     this.branches.push(state)
     return state
   }
@@ -158,7 +158,7 @@ export class State {
    * @returns {State}
    */
   tick_with_traits(belief, traits) {
-    const new_belief = db.create_belief(this.in_mind, {bases: [belief], traits}, this)
+    const new_belief = Cosmos.create_belief(this.in_mind, {bases: [belief], traits}, this)
     return this.tick({ replace: [new_belief] })
   }
 
@@ -245,7 +245,7 @@ export class State {
     }
 
     // Create the belief and add to state's insert list
-    const new_belief = db.create_belief(this.in_mind, {
+    const new_belief = Cosmos.create_belief(this.in_mind, {
       about: original,
       bases: archetype_bases,
       traits: copied_traits
@@ -340,8 +340,8 @@ export class State {
 
   toJSON() {
     // Register in_mind as dependency if we're in a serialization context
-    if (db.is_serializing() && this.in_mind) {
-      db.add_serialization_dependency(this.in_mind)
+    if (Cosmos.is_serializing() && this.in_mind) {
+      Cosmos.add_serialization_dependency(this.in_mind)
     }
 
     return {
@@ -371,7 +371,7 @@ export class State {
    */
   static resolve_template(parent_mind, spec, owner_belief = null, creator_state = null) {
     // Create entity's mind with optional label and self
-    const entity_mind = db.create_mind(spec.mind_label || null, owner_belief)
+    const entity_mind = Cosmos.create_mind(spec.mind_label || null, owner_belief)
 
     // Ground state: explicit in spec, or inferred from creator, or null
     const ground = spec.ground_state ?? creator_state ?? null
@@ -384,8 +384,8 @@ export class State {
     const learn_spec = {}
 
     // Apply prototype template
-    if (spec.base && registry.state_by_label[spec.base]) {
-      const prototype = /** @type {any} */ (registry.state_by_label[spec.base])
+    if (spec.base && DB.state_by_label[spec.base]) {
+      const prototype = /** @type {any} */ (DB.state_by_label[spec.base])
       Object.assign(learn_spec, prototype.learn || {})
     }
 
@@ -394,7 +394,7 @@ export class State {
 
     // Execute learning
     for (const [label, trait_names] of Object.entries(learn_spec)) {
-      const belief = registry.belief_by_label.get(label)
+      const belief = DB.belief_by_label.get(label)
       if (!belief) {
         throw new Error(`Cannot learn about '${label}': belief not found`)
       }
@@ -421,7 +421,7 @@ export class State {
     // Resolve in_mind reference (if present in data, otherwise use parameter)
     let resolved_mind = mind
     if (data.in_mind != null) {
-      const found_mind = registry.mind_by_id.get(data.in_mind)
+      const found_mind = DB.mind_by_id.get(data.in_mind)
       if (!found_mind) {
         throw new Error(`Cannot resolve in_mind ${data.in_mind} for state ${data._id}`)
       }
@@ -446,7 +446,7 @@ export class State {
     let ground_state = null
     if (data.ground_state != null) {
       // Search all minds for the ground state
-      for (const m of registry.mind_by_id.values()) {
+      for (const m of DB.mind_by_id.values()) {
         for (const state of m.state) {
           if (state._id === data.ground_state) {
             ground_state = state
@@ -463,7 +463,7 @@ export class State {
     // Resolve insert/remove belief references
     const insert = []
     for (const belief_id of data.insert) {
-      const belief = registry.belief_by_id.get(belief_id)
+      const belief = DB.belief_by_id.get(belief_id)
       if (!belief) {
         throw new Error(`Cannot resolve insert belief ${belief_id} for state ${data._id}`)
       }
@@ -472,7 +472,7 @@ export class State {
 
     const remove = []
     for (const belief_id of data.remove) {
-      const belief = registry.belief_by_id.get(belief_id)
+      const belief = DB.belief_by_id.get(belief_id)
       if (!belief) {
         throw new Error(`Cannot resolve remove belief ${belief_id} for state ${data._id}`)
       }

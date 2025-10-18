@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { setupStandardArchetypes } from './helpers.mjs';
 
@@ -11,7 +12,7 @@ describe('Save/Load functionality', () => {
   describe('save_mind() and load()', () => {
     it('saves and loads a simple mind', () => {
       // Create simple world
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const world_state = world_mind.create_state(1);
 
       const workshop = world_mind.add({
@@ -22,30 +23,30 @@ describe('Save/Load functionality', () => {
       world_state.insert.push(workshop);
 
       // Save
-      const json = DB.save_mind(world_mind);
+      const json = save_mind(world_mind);
       expect(json).to.be.a('string');
 
       // Clear and reload
       DB.reset_registries();
       setupStandardArchetypes();
 
-      const loaded_mind = DB.load(json);
+      const loaded_mind = load(json);
 
       // Verify structure
-      expect(loaded_mind).to.be.instanceOf(DB.Mind);
+      expect(loaded_mind).to.be.instanceOf(Mind);
       expect(loaded_mind.label).to.equal('world');
       expect(loaded_mind._id).to.equal(world_mind._id);
       expect(loaded_mind.state.size).to.equal(1);
 
       // Verify belief exists (lazy)
-      const loaded_workshop = DB.registry.belief_by_label.get('workshop');
+      const loaded_workshop = DB.belief_by_label.get('workshop');
       expect(loaded_workshop).to.exist;
       expect(loaded_workshop._id).to.equal(workshop._id);
     });
 
     it('handles belief trait references after save/load', () => {
       // Create world with location relationship
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const world_state = world_mind.create_state(1);
 
       const workshop = world_mind.add({
@@ -64,14 +65,14 @@ describe('Save/Load functionality', () => {
       world_state.insert.push(workshop, hammer);
 
       // Save and reload
-      const json = DB.save_mind(world_mind);
+      const json = save_mind(world_mind);
       DB.reset_registries();
       setupStandardArchetypes();
-      const loaded_mind = DB.load(json);
+      const loaded_mind = load(json);
 
       // Get loaded beliefs
-      const loaded_hammer = DB.registry.belief_by_label.get('hammer');
-      const loaded_workshop = DB.registry.belief_by_label.get('workshop');
+      const loaded_hammer = DB.belief_by_label.get('hammer');
+      const loaded_workshop = DB.belief_by_label.get('workshop');
       const loaded_state = [...loaded_mind.state][0];
 
       // Trait reference should be resolved correctly after load
@@ -83,7 +84,7 @@ describe('Save/Load functionality', () => {
       // This test verifies the SID system fixes the "time-travel" bug where
       // circular trait references would point to old versions from previous states
 
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const state1 = world_mind.create_state(1);
 
       const room1 = world_mind.add({
@@ -102,7 +103,7 @@ describe('Save/Load functionality', () => {
       state1.insert.push(room1, room2);
 
       // State 2: Update room1 to point back to room2 (creates circular reference)
-      const room1_v2 = new DB.Belief(world_mind, {
+      const room1_v2 = new Belief(world_mind, {
         bases: [room1],
         traits: {
           location: room2,  // room1_v2 → room2 in state2
@@ -112,19 +113,19 @@ describe('Save/Load functionality', () => {
       const state2 = state1.tick({ replace: [room1_v2] });
 
       // Save and reload
-      const json = DB.save_mind(world_mind);
+      const json = save_mind(world_mind);
       DB.reset_registries();
       setupStandardArchetypes();
-      const loaded_mind = DB.load(json);
+      const loaded_mind = load(json);
 
       // Get state2 (the one with the circular reference)
       const loaded_state2 = [...loaded_mind.state].find(s => s.timestamp === 2);
       expect(loaded_state2).to.exist;
 
       // Get the beliefs - room1 has label, room1_v2 doesn't
-      const loaded_room1 = DB.registry.belief_by_label.get('room1');
-      const loaded_room2 = DB.registry.belief_by_label.get('room2');
-      const loaded_room1_v2 = [...DB.registry.belief_by_id.values()].find(b =>
+      const loaded_room1 = DB.belief_by_label.get('room1');
+      const loaded_room2 = DB.belief_by_label.get('room2');
+      const loaded_room1_v2 = [...DB.belief_by_id.values()].find(b =>
         b.label === null && b.bases.size === 1 && [...b.bases][0] === loaded_room1
       );
 
@@ -149,7 +150,7 @@ describe('Save/Load functionality', () => {
     });
 
     it('loads state chains with base references', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const state1 = world_mind.create_state(1);
       const ball = world_mind.add({
         label: 'ball',
@@ -161,10 +162,10 @@ describe('Save/Load functionality', () => {
       const state3 = state2.tick({ insert: [] });
 
       // Save and reload
-      const json = DB.save_mind(world_mind);
+      const json = save_mind(world_mind);
       DB.reset_registries();
       setupStandardArchetypes();
-      const loaded_mind = DB.load(json);
+      const loaded_mind = load(json);
 
       // Get states
       const states = [...loaded_mind.state];
@@ -206,7 +207,7 @@ describe('Save/Load functionality', () => {
         },
       };
 
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       let state = world_mind.create_state(1);
       state.add_beliefs(world_belief);
 
@@ -226,31 +227,31 @@ describe('Save/Load functionality', () => {
       const ball_v2_id = ball_v2._id;
 
       // Save and reload
-      const json = DB.save_mind(world_mind);
+      const json = save_mind(world_mind);
       DB.reset_registries();
       setupStandardArchetypes();
-      const loaded_mind = DB.load(json);
+      const loaded_mind = load(json);
 
       // Verify all beliefs loaded
-      expect(DB.registry.belief_by_label.get('workshop')).to.exist;
-      expect(DB.registry.belief_by_label.get('hammer')).to.exist;
-      expect(DB.registry.belief_by_label.get('player')).to.exist;
-      expect(DB.registry.belief_by_label.get('ball')).to.exist;
+      expect(DB.belief_by_label.get('workshop')).to.exist;
+      expect(DB.belief_by_label.get('hammer')).to.exist;
+      expect(DB.belief_by_label.get('player')).to.exist;
+      expect(DB.belief_by_label.get('ball')).to.exist;
 
       // Verify player has mind_states
-      const loaded_player = DB.registry.belief_by_label.get('player');
+      const loaded_player = DB.belief_by_label.get('player');
       const mind_states = loaded_player.traits.get('mind_states');
       expect(mind_states).to.be.an('array');
-      expect(mind_states[0]).to.be.instanceOf(DB.State);
+      expect(mind_states[0]).to.be.instanceOf(State);
 
       // Verify ball has color (use ID to find exact versioned belief)
-      const loaded_ball = DB.registry.belief_by_id.get(ball_v2_id);
+      const loaded_ball = DB.belief_by_id.get(ball_v2_id);
       expect(loaded_ball).to.exist;
       expect(loaded_ball.traits.get('color')).to.equal('blue');
     });
 
     it('preserves and continues id_sequence', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const state = world_mind.create_state(1);
       const workshop = world_mind.add({
         label: 'workshop',
@@ -261,18 +262,18 @@ describe('Save/Load functionality', () => {
       const max_id = Math.max(world_mind._id, state._id, workshop._id);
 
       // Save and reload
-      const json = DB.save_mind(world_mind);
+      const json = save_mind(world_mind);
       DB.reset_registries();
       setupStandardArchetypes();
-      DB.load(json);
+      load(json);
 
       // Create new object - should have higher ID
-      const new_mind = new DB.Mind('test');
+      const new_mind = new Mind('test');
       expect(new_mind._id).to.be.greaterThan(max_id);
     });
 
     it('handles state ground_state references', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const world_state = world_mind.create_state(1);
 
       const workshop = world_mind.add({
@@ -282,18 +283,18 @@ describe('Save/Load functionality', () => {
       world_state.insert.push(workshop);
 
       // Create player mind with ground_state
-      const player_mind = new DB.Mind('player_mind');
+      const player_mind = new Mind('player_mind');
       const player_state = player_mind.create_state(1, world_state);
 
       // Save and reload both minds
-      const world_json = DB.save_mind(world_mind);
-      const player_json = DB.save_mind(player_mind);
+      const world_json = save_mind(world_mind);
+      const player_json = save_mind(player_mind);
 
       DB.reset_registries();
       setupStandardArchetypes();
 
-      const loaded_world = DB.load(world_json);
-      const loaded_player = DB.load(player_json);
+      const loaded_world = load(world_json);
+      const loaded_player = load(player_json);
 
       // Verify ground_state reference
       const loaded_world_state = [...loaded_world.state][0];
@@ -332,7 +333,7 @@ describe('Save/Load functionality', () => {
         },
       };
 
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       let state = world_mind.create_state(1);
       state.add_beliefs(world_belief);
 
@@ -362,7 +363,7 @@ describe('Save/Load functionality', () => {
         },
       });
 
-      const room1_v2 = new DB.Belief(world_mind, {
+      const room1_v2 = new Belief(world_mind, {
         bases: [room1],
         traits: {
           location: room2,
@@ -373,15 +374,15 @@ describe('Save/Load functionality', () => {
       state = state.tick({ replace: [room1_v2] });
 
       // First save
-      const json1 = DB.save_mind(world_mind);
+      const json1 = save_mind(world_mind);
 
       // Load
       DB.reset_registries();
       setupStandardArchetypes();
-      const loaded_mind = DB.load(json1);
+      const loaded_mind = load(json1);
 
       // Second save
-      const json2 = DB.save_mind(loaded_mind);
+      const json2 = save_mind(loaded_mind);
 
       // Compare JSON strings - should be identical
       expect(json2).to.equal(json1);

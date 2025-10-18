@@ -1,3 +1,4 @@
+import * as Cosmos from "./cosmos.mjs";
 import * as DB from "./db.mjs";
 //import {observation,observation_text} from "./observation.mjs";
 //import Time from "./time.mjs";
@@ -60,7 +61,7 @@ setupStandardArchetypes();
 
 
 // Create circular location refs
-const world_mind = new DB.Mind('world');
+const world_mind = new Cosmos.Mind('world');
 const world_state = world_mind.create_state(1);
 
 const room1 = world_mind.add({
@@ -77,7 +78,7 @@ const room2 = world_mind.add({
 });
 
 // Update room1 to point back to room2
-const room1_v2 = new DB.Belief(world_mind, {
+const room1_v2 = new Cosmos.Belief(world_mind, {
   bases: [room1],
   traits: {
     location: room2,
@@ -88,10 +89,10 @@ world_state.insert.push(room1, room2);
 const state2 = world_state.tick({ replace: [room1_v2] });
 
 // Save and reload
-const json = DB.save_mind(world_mind);
+const json = Cosmos.save_mind(world_mind);
 DB.reset_registries();
 setupStandardArchetypes();
-const loaded_mind = /** @type {DB.Mind} */ (DB.load(json));
+const loaded_mind = /** @type {Cosmos.Mind} */ (Cosmos.load(json));
 
 log(loaded_mind);
 
@@ -102,12 +103,12 @@ const loaded_state = [...loaded_mind.state].find(s => s.timestamp === 2);
 //log(loaded_state);
 
 
-const beliefs = [.../** @type {import('./db.mjs').State} */ (loaded_state).get_beliefs()];
+const beliefs = [.../** @type {import('./cosmos.mjs').State} */ (loaded_state).get_beliefs()];
 const loaded_room1 = beliefs.find(b => b.get_display_label() === 'room1');
 const loaded_room2 = beliefs.find(b => b.get_display_label() === 'room2');
 
-const loc1 = /** @type {import('./db.mjs').Belief} */ (loaded_room1).traits.get('location');
-const loc2 = /** @type {import('./db.mjs').Belief} */ (loaded_room2).traits.get('location');
+const loc1 = /** @type {import('./cosmos.mjs').Belief} */ (loaded_room1).traits.get('location');
+const loc2 = /** @type {import('./cosmos.mjs').Belief} */ (loaded_room2).traits.get('location');
 
 log(loc1,loc2);
 
@@ -153,7 +154,7 @@ const player = loc1;
 //}
 //
 //// Create world mind and initial state
-//const world_mind = new DB.Mind('world');
+//const world_mind = new Cosmos.Mind('world');
 //let state = world_mind.create_state(1);
 //state.add_beliefs(world_belief);
 //
@@ -173,7 +174,7 @@ const player = loc1;
 //  color: 'blue',
 //});
 //
-//const player = DB.Belief.by_label.get('player');
+//const player = Cosmos.Belief.by_label.get('player');
 //
 //// Adventure would be its own module later...
 export const Adventure = {

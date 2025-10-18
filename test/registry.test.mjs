@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { setupMinimalArchetypes } from './helpers.mjs';
 
@@ -10,22 +11,22 @@ describe('Registry', () => {
 
   describe('Label Uniqueness', () => {
     it('currently allows duplicate labels across minds', () => {
-      const mind_a = new DB.Mind('mind_a');
+      const mind_a = new Mind('mind_a');
       const workshop_a = mind_a.add({label: 'workshop_unique_a', bases: ['Location']});
 
-      const mind_b = new DB.Mind('mind_b');
+      const mind_b = new Mind('mind_b');
       const workshop_b = mind_b.add({label: 'workshop_unique_b', bases: ['Location']});
 
       // Labels are globally unique now
-      expect(DB.registry.belief_by_label.get('workshop_unique_a')).to.exist;
-      expect(DB.registry.belief_by_label.get('workshop_unique_b')).to.exist;
-      expect(DB.registry.belief_by_label.get('workshop_unique_a')).to.not.equal(
-        DB.registry.belief_by_label.get('workshop_unique_b')
+      expect(DB.belief_by_label.get('workshop_unique_a')).to.exist;
+      expect(DB.belief_by_label.get('workshop_unique_b')).to.exist;
+      expect(DB.belief_by_label.get('workshop_unique_a')).to.not.equal(
+        DB.belief_by_label.get('workshop_unique_b')
       );
     });
 
     it('throws error on duplicate labels', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
       mind.add({label: 'item1', bases: ['PortableObject']});
 
       // Adding another with same label should throw
@@ -35,7 +36,7 @@ describe('Registry', () => {
     });
 
     it('throws error when belief label matches archetype label', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
 
       // Trying to create belief with same label as archetype should throw
       expect(() => {

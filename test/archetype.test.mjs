@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { setupStandardArchetypes } from './helpers.mjs';
 
@@ -10,7 +11,7 @@ describe('Archetype', () => {
 
   describe('Archetype Composition', () => {
     it('single archetype has correct structure', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
       const workshop = mind.add({
         label: 'workshop',
         bases: ['Location']
@@ -22,7 +23,7 @@ describe('Archetype', () => {
     });
 
     it('archetype with base inherits traits from parent', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
       const hammer = mind.add({
         label: 'hammer',
         bases: ['PortableObject'],
@@ -37,7 +38,7 @@ describe('Archetype', () => {
     });
 
     it('Person archetype inherits from multiple bases', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
       const player = mind.add({
         label: 'player',
         bases: ['Person']
@@ -53,7 +54,7 @@ describe('Archetype', () => {
     });
 
     it('get_archetypes walks full inheritance chain', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
       const player = mind.add({
         label: 'player',
         bases: ['Person']

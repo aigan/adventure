@@ -1,13 +1,14 @@
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 
 /**
  * Helper to create a mind with initial beliefs and return a state containing them
  * @param {string} label - Mind label
  * @param {Object} beliefs - Belief definitions
- * @returns {DB.State} State containing the beliefs (access mind via state.in_mind)
+ * @returns {State} State containing the beliefs (access mind via state.in_mind)
  */
 export function createMindWithBeliefs(label, beliefs = {}) {
-  const mind = new DB.Mind(label);
+  const mind = new Mind(label);
   const state = mind.create_state(1);
 
   for (const [belief_label, def] of Object.entries(beliefs)) {

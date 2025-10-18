@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 
 // Mock BroadcastChannel
@@ -114,7 +115,7 @@ describe('Channel Message Handlers', () => {
       };
       global.BroadcastChannel = function() { return mockChannel; };
 
-      const world_mind = new DB.Mind('test_mind');
+      const world_mind = new Mind('test_mind');
       const hammer = world_mind.add({
         label: 'test_hammer',
         bases: ['PortableObject'],
@@ -175,7 +176,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('handles mind with no states', () => {
-      const empty_mind = new DB.Mind('empty_mind');
+      const empty_mind = new Mind('empty_mind');
       messages.length = 0;
 
       Channel.dispatch.query_mind({
@@ -204,7 +205,7 @@ describe('Channel Message Handlers', () => {
       };
       global.BroadcastChannel = function() { return mockChannel; };
 
-      const mind1 = new DB.Mind('mind1');
+      const mind1 = new Mind('mind1');
       const state1 = mind1.create_state(1);
 
       const mockAdventure = {
@@ -216,7 +217,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('can find state by searching all minds', () => {
-      const mind2 = new DB.Mind('mind2');
+      const mind2 = new Mind('mind2');
       const hammer = mind2.add({ label: 'hammer', bases: ['PortableObject'] });
       const state2 = mind2.create_state(1);
       state2.insert.push(hammer);
@@ -262,7 +263,7 @@ describe('Channel Message Handlers', () => {
       };
       global.BroadcastChannel = function() { return mockChannel; };
 
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const mockAdventure = {
         world: world_mind,
         state: world_mind.create_state(1)
@@ -272,7 +273,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('can find belief by id and returns correct data', () => {
-      const mind = new DB.Mind('belief_test_mind');
+      const mind = new Mind('belief_test_mind');
       const hammer = mind.add({
         label: 'query_hammer',
         bases: ['PortableObject']
@@ -303,7 +304,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('includes about chain in response', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const workshop = world_mind.add({
         label: 'query_workshop',
         bases: ['Location']
@@ -311,7 +312,7 @@ describe('Channel Message Handlers', () => {
       const world_state = world_mind.create_state(1);
       world_state.insert.push(workshop);
 
-      const npc_mind = new DB.Mind('npc');
+      const npc_mind = new Mind('npc');
       const npc_state = npc_mind.create_state(1);
       const workshop_belief = npc_state.learn_about(world_state, workshop);
 
@@ -329,7 +330,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('includes bases information', () => {
-      const mind = new DB.Mind('bases_test_mind');
+      const mind = new Mind('bases_test_mind');
       const hammer = mind.add({
         label: 'bases_hammer',
         bases: ['PortableObject']
@@ -367,7 +368,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('can find belief in Adventure.state', async () => {
-      const mind = new DB.Mind('entity_test_mind');
+      const mind = new Mind('entity_test_mind');
       const ball = mind.add({
         label: 'test_ball',
         bases: ['PortableObject'],
@@ -397,7 +398,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('handles non-existent entity gracefully', async () => {
-      const mind = new DB.Mind('empty_entity_mind');
+      const mind = new Mind('empty_entity_mind');
       const state = mind.create_state(1);
 
       const mockAdventure = {
@@ -433,7 +434,7 @@ describe('Channel Message Handlers', () => {
       };
       global.BroadcastChannel = function() { return mockChannel; };
 
-      const mind = new DB.Mind('world');
+      const mind = new Mind('world');
       const mockAdventure = {
         world: mind,
         state: mind.create_state(1)

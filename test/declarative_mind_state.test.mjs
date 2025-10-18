@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 
 describe('Declarative Mind State Construction', () => {
@@ -42,7 +43,7 @@ describe('Declarative Mind State Construction', () => {
     DB.register(archetypes, traittypes);
 
     // Create world beliefs
-    const world_mind = new DB.Mind('world');
+    const world_mind = new Mind('world');
     const world_state = world_mind.create_state(1);
 
     const main_area = world_mind.add({
@@ -69,14 +70,14 @@ describe('Declarative Mind State Construction', () => {
     world_state.insert.push(main_area, workshop, player_body);
 
     // Define state prototype
-    DB.registry.state_by_label.player_mind = {
+    DB.state_by_label.player_mind = {
       learn: {
         workshop: ['location']
       }
     };
 
     // Create player with declarative mind_states
-    const player = new DB.Belief(player_body.in_mind, {
+    const player = new Belief(player_body.in_mind, {
       bases: [player_body],
       traits: {
         mind_states: {
@@ -96,7 +97,7 @@ describe('Declarative Mind State Construction', () => {
     expect(mind_states).to.have.lengthOf(1);
 
     const state = mind_states[0];
-    expect(state).to.be.instanceOf(DB.State);
+    expect(state).to.be.instanceOf(State);
     expect(state.locked).to.be.true;
     expect(state.ground_state).to.equal(world_state);
 
@@ -150,7 +151,7 @@ describe('Declarative Mind State Construction', () => {
 
     DB.register(archetypes, traittypes);
 
-    const world_mind = new DB.Mind('world');
+    const world_mind = new Mind('world');
     const world_state = world_mind.create_state(1);
 
     const base_location = world_mind.add({ label: 'base_location', bases: ['Location'] });
@@ -167,7 +168,7 @@ describe('Declarative Mind State Construction', () => {
     world_state.insert.push(base_location, location1, location2);
 
     // Define prototype
-    DB.registry.state_by_label.test_prototype = {
+    DB.state_by_label.test_prototype = {
       learn: {
         location1: ['location']
       }
@@ -219,7 +220,7 @@ describe('Declarative Mind State Construction', () => {
 
     DB.register(archetypes, traittypes);
 
-    const world_mind = new DB.Mind('world');
+    const world_mind = new Mind('world');
     const world_state = world_mind.create_state(1);
 
     const base_location = world_mind.add({ label: 'base_location', bases: ['Location'] });
@@ -236,7 +237,7 @@ describe('Declarative Mind State Construction', () => {
     world_state.insert.push(base_location, location1, location2);
 
     // Prototype learns location1
-    DB.registry.state_by_label.test_prototype = {
+    DB.state_by_label.test_prototype = {
       learn: {
         location1: ['location']
       }
@@ -300,7 +301,7 @@ describe('Declarative Mind State Construction', () => {
 
     DB.register(archetypes, traittypes);
 
-    const world_mind = new DB.Mind('world');
+    const world_mind = new Mind('world');
     const world_state = world_mind.create_state(1);
 
     const location1 = world_mind.add({ label: 'location1', bases: ['Location'] });
@@ -345,7 +346,7 @@ describe('Declarative Mind State Construction', () => {
 
     DB.register(archetypes, traittypes);
 
-    const world_mind = new DB.Mind('world');
+    const world_mind = new Mind('world');
     const world_state = world_mind.create_state(1);
 
     expect(() => {

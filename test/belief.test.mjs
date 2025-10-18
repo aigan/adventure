@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupStandardArchetypes } from './helpers.mjs';
 
@@ -24,7 +25,7 @@ describe('Belief', () => {
         }
       });
 
-      const ball_v2 = new DB.Belief(ball.in_mind, {
+      const ball_v2 = new Belief(ball.in_mind, {
         bases: [ball],
         traits: { color: 'blue' }
       });
@@ -38,13 +39,13 @@ describe('Belief', () => {
     });
 
     it('versioned belief inherits archetypes from base', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
       const hammer = mind.add({
         label: 'hammer',
         bases: ['PortableObject']
       });
 
-      const hammer_v2 = new DB.Belief(hammer.in_mind, {
+      const hammer_v2 = new Belief(hammer.in_mind, {
         bases: [hammer],
         traits: { color: 'black' }
       });
@@ -62,16 +63,16 @@ describe('Belief', () => {
 
   describe('Mind Isolation', () => {
     it('beliefs store in_mind reference', () => {
-      const mind = new DB.Mind('test');
+      const mind = new Mind('test');
       mind.add({label: 'workshop', bases: ['Location']});
 
-      const workshop = DB.registry.belief_by_label.get('workshop');
+      const workshop = DB.belief_by_label.get('workshop');
       expect(workshop.in_mind).to.equal(mind);
     });
 
     it('each mind has independent belief storage', () => {
-      const mind_a = new DB.Mind('mind_a');
-      const mind_b = new DB.Mind('mind_b');
+      const mind_a = new Mind('mind_a');
+      const mind_b = new Mind('mind_b');
 
       const item_a = mind_a.add({ label: 'item_unique_a', bases: ['PortableObject'] });
       const item_b = mind_b.add({ label: 'item_unique_b', bases: ['PortableObject'] });
@@ -85,13 +86,13 @@ describe('Belief', () => {
     });
 
     it('currently allows referencing other mind\'s beliefs in bases', () => {
-      const mind_a = new DB.Mind('mind_a');
+      const mind_a = new Mind('mind_a');
       mind_a.add({label: 'workshop', bases: ['Location']});
 
-      const mind_b = new DB.Mind('mind_b');
+      const mind_b = new Mind('mind_b');
 
       // Currently this works - mind_b can reference mind_a's belief
-      const workshop_a = DB.registry.belief_by_label.get('workshop');
+      const workshop_a = DB.belief_by_label.get('workshop');
       const item = mind_b.add({
         label: 'item',
         bases: [workshop_a]  // Using belief from another mind
@@ -103,7 +104,7 @@ describe('Belief', () => {
 
   describe('SID System', () => {
     it('creates belief with both sid and _id from same sequence', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
 
       const workshop = world_mind.add({
         label: 'workshop',
@@ -123,7 +124,7 @@ describe('Belief', () => {
     });
 
     it('creates versioned belief with same sid but new _id', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
 
       const room1 = world_mind.add({
         label: 'room1',
@@ -134,7 +135,7 @@ describe('Belief', () => {
       const original_id = room1._id;
 
       // Create new version
-      const room1_v2 = new DB.Belief(world_mind, {
+      const room1_v2 = new Belief(world_mind, {
         bases: [room1],
         traits: {
           color: 'blue',
@@ -148,7 +149,7 @@ describe('Belief', () => {
     });
 
     it('registers beliefs in belief_by_sid registry', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
 
       const room = world_mind.add({
         label: 'room',
@@ -156,29 +157,29 @@ describe('Belief', () => {
       });
 
       // Should be in belief_by_sid registry
-      expect(DB.registry.belief_by_sid).to.exist;
-      expect(DB.registry.belief_by_sid.get(room.sid)).to.exist;
+      expect(DB.belief_by_sid).to.exist;
+      expect(DB.belief_by_sid.get(room.sid)).to.exist;
 
       // Registry should contain a Set of beliefs with this sid
-      const beliefs_with_sid = DB.registry.belief_by_sid.get(room.sid);
+      const beliefs_with_sid = DB.belief_by_sid.get(room.sid);
       expect(beliefs_with_sid).to.be.instanceof(Set);
       expect(beliefs_with_sid.has(room)).to.be.true;
     });
 
     it('registers multiple versions under same sid', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
 
       const room_v1 = world_mind.add({
         label: 'room',
         bases: ['Location'],
       });
 
-      const room_v2 = new DB.Belief(world_mind, {
+      const room_v2 = new Belief(world_mind, {
         bases: [room_v1],
         traits: { color: 'red' },
       });
 
-      const room_v3 = new DB.Belief(world_mind, {
+      const room_v3 = new Belief(world_mind, {
         bases: [room_v2],
         traits: { color: 'blue' },
       });
@@ -188,7 +189,7 @@ describe('Belief', () => {
       expect(room_v3.sid).to.equal(room_v1.sid);
 
       // All should be in belief_by_sid registry
-      const beliefs_with_sid = DB.registry.belief_by_sid.get(room_v1.sid);
+      const beliefs_with_sid = DB.belief_by_sid.get(room_v1.sid);
       expect(beliefs_with_sid.size).to.equal(3);
       expect(beliefs_with_sid.has(room_v1)).to.be.true;
       expect(beliefs_with_sid.has(room_v2)).to.be.true;
@@ -196,7 +197,7 @@ describe('Belief', () => {
     });
 
     it('stores trait value as sid integer when value is a Belief', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
 
       const workshop = world_mind.add({
         label: 'workshop',
@@ -218,7 +219,7 @@ describe('Belief', () => {
     });
 
     it('stores primitive values directly (not as sid)', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
 
       const ball = world_mind.add({
         label: 'ball',
@@ -233,28 +234,28 @@ describe('Belief', () => {
     });
 
     it('associates label with sid, not _id', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
 
       const room_v1 = world_mind.add({
         label: 'room',
         bases: ['Location'],
       });
 
-      const room_v2 = new DB.Belief(world_mind, {
+      const room_v2 = new Belief(world_mind, {
         bases: [room_v1],
         traits: { color: 'red' },
       });
 
       // Both versions should share the same label
-      expect(DB.registry.label_by_sid.get(room_v1.sid)).to.equal('room');
-      expect(DB.registry.sid_by_label.get('room')).to.equal(room_v1.sid);
+      expect(DB.label_by_sid.get(room_v1.sid)).to.equal('room');
+      expect(DB.sid_by_label.get('room')).to.equal(room_v1.sid);
 
       // v2 should have same sid, so same label association
       expect(room_v2.sid).to.equal(room_v1.sid);
     });
 
     it('lookup by label returns sid, then resolve in state', () => {
-      const world_mind = new DB.Mind('world');
+      const world_mind = new Mind('world');
       const state = world_mind.create_state(1);
 
       const room = world_mind.add({
@@ -265,7 +266,7 @@ describe('Belief', () => {
       state.insert.push(room);
 
       // Look up by label to get sid
-      const sid = DB.registry.sid_by_label.get('workshop');
+      const sid = DB.sid_by_label.get('workshop');
       expect(sid).to.equal(room.sid);
 
       // Then resolve in state context

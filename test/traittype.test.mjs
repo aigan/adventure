@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 
 describe('Traittype', () => {
@@ -58,7 +59,7 @@ describe('Traittype', () => {
 
   describe('Simple types (backward compatibility)', () => {
     it('resolves string type', () => {
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
       const obj = mind.add({
         label: 'test_obj',
         bases: ['ObjectPhysical'],
@@ -69,7 +70,7 @@ describe('Traittype', () => {
     });
 
     it('resolves number type', () => {
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
       const obj = mind.add({
         label: 'test_obj',
         bases: ['TestObject'],
@@ -80,7 +81,7 @@ describe('Traittype', () => {
     });
 
     it('resolves boolean type', () => {
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
       const obj = mind.add({
         label: 'test_obj',
         bases: ['TestObject'],
@@ -91,7 +92,7 @@ describe('Traittype', () => {
     });
 
     it('resolves State type', () => {
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
       const state = mind.create_state(1);
       const obj = mind.add({
         label: 'test_obj',
@@ -105,7 +106,7 @@ describe('Traittype', () => {
 
   describe('Array container', () => {
     it('resolves array of States with valid min constraint', () => {
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
       const state1 = mind.create_state(1);
       const state2 = mind.create_state(2);
 
@@ -123,7 +124,7 @@ describe('Traittype', () => {
     });
 
     it('resolves array of strings with valid min/max constraints', () => {
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
       const obj = mind.add({
         label: 'test_obj',
         bases: ['TestObject'],
@@ -137,7 +138,7 @@ describe('Traittype', () => {
     });
 
     it('throws error when array length is below min constraint', () => {
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
 
       expect(() => {
         mind.add({
@@ -149,7 +150,7 @@ describe('Traittype', () => {
     });
 
     it('throws error when array length is above max constraint', () => {
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
 
       expect(() => {
         mind.add({
@@ -161,7 +162,7 @@ describe('Traittype', () => {
     });
 
     it('throws error when non-array data is passed to array type', () => {
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
       const state = mind.create_state(1);
 
       expect(() => {
@@ -174,7 +175,7 @@ describe('Traittype', () => {
     });
 
     it('throws error when array contains wrong type', () => {
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
 
       expect(() => {
         mind.add({
@@ -205,7 +206,7 @@ describe('Traittype', () => {
 
       DB.register(archetypes, traittypes);
 
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
       const obj = mind.add({
         label: 'test_obj',
         bases: ['Tagged'],
@@ -220,7 +221,7 @@ describe('Traittype', () => {
 
   describe('Serialization with arrays', () => {
     it('serializes arrays in toJSON', () => {
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
       const state1 = mind.create_state(1);
       const state2 = mind.create_state(2);
 
@@ -236,7 +237,7 @@ describe('Traittype', () => {
     });
 
     it('serializes arrays in inspect', () => {
-      const mind = new DB.Mind('test_mind');
+      const mind = new Mind('test_mind');
       const state1 = mind.create_state(1);
       const state2 = mind.create_state(2);
 
@@ -256,8 +257,8 @@ describe('Traittype', () => {
 
   describe('Resolver pattern efficiency', () => {
     it('uses pre-built resolver function', () => {
-      const mind = new DB.Mind('test_mind');
-      const traittype = DB.registry.traittype_by_label['states_array'];
+      const mind = new Mind('test_mind');
+      const traittype = DB.traittype_by_label['states_array'];
 
       // Verify resolver function exists and is callable
       expect(traittype._resolver).to.be.a('function');
@@ -270,7 +271,7 @@ describe('Traittype', () => {
     });
 
     it('resolver is created during construction', () => {
-      const traittype = DB.registry.traittype_by_label['colors_array'];
+      const traittype = DB.traittype_by_label['colors_array'];
 
       // Verify properties set during construction
       expect(traittype.data_type).to.equal('string');

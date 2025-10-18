@@ -1,5 +1,5 @@
 import { set_id_sequence } from './id_sequence.mjs'
-import * as db from './db.mjs'
+import * as Cosmos from './cosmos.mjs'
 
 /**
  * Serialization coordinator with dependency tracking
@@ -17,7 +17,7 @@ export class Serialize {
    */
   static save_mind(mind) {
     // Set up tracking
-    db.set_serializing(true)
+    Cosmos.set_serializing(true)
     Serialize.dependency_queue = []
     Serialize.seen = new Set([mind._id]) // Mark root as seen
 
@@ -36,7 +36,7 @@ export class Serialize {
     }
 
     // Clean up
-    db.set_serializing(false)
+    Cosmos.set_serializing(false)
     Serialize.dependency_queue = null
     Serialize.seen = null
 
@@ -74,7 +74,7 @@ export function load(json_string) {
   let result
   switch (data._type) {
     case 'Mind':
-      result = db.Mind.from_json(/** @type {import('./mind.mjs').MindJSON} */ (data))
+      result = Cosmos.Mind.from_json(/** @type {import('./mind.mjs').MindJSON} */ (data))
       break
     case 'Belief':
       throw new Error('Loading individual Belief not yet implemented')
