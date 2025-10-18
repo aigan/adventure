@@ -1,4 +1,4 @@
-import { log } from "../lib/debug.mjs";
+import { log, assert } from "../lib/debug.mjs";
 import * as Cosmos from './cosmos.mjs';
 //log('Loading Channel');
 
@@ -7,8 +7,8 @@ let channel = null;
 let client_id_sequence = 0; // Client id
 /** @type {number|null} */
 let server_id = null;
-/** @type {any} */
-let Adventure = null;
+/** @type {import('./session.mjs').Session|null} */
+let Session = null;
 
 /** @type {{[key: string]: Function}} */
 export const dispatch = {
@@ -27,6 +27,20 @@ export const dispatch = {
 		throw Error("Multiple servers");
 	},
 
+	/** @param {{client_id: number}} param0 */
+	query_adventure({client_id}){
+		assert(Session != null, 'Session not initialized');
+		// Return current Session state info
+		(/** @type {BroadcastChannel} */ (channel)).postMessage({
+			msg: "adventure_info",
+			server_id,
+			client_id,
+			world_mind_id: Session.world._id,
+			world_mind_label: Session.world.label,
+			state_id: Session.state._id,
+		});
+	},
+
 //	query(dat){
 //		const label = dat.label;
 //		log(`Asking for ${label}`);
@@ -42,24 +56,13 @@ export const dispatch = {
 			? Cosmos.Mind.get_by_id(Number(mind_str))
 			: Cosmos.Mind.get_by_label(mind_str);
 
-		if (!mind_obj) {
-			log("Mind not found", mind);
-			log(Cosmos.DB.mind_by_id);
-			return;
-		}
+		assert(mind_obj != null, `Mind not found: ${mind}`);
 
 		// Get specified state
 		const state = Cosmos.DB.get_state(Number(state_id));
 
-		if (!state) {
-			log("State not found", state_id);
-			return;
-		}
-
-		if (state.in_mind !== mind_obj) {
-			log("State does not belong to specified mind", {state_id, mind});
-			return;
-		}
+		assert(state != null, `State not found: ${state_id}`);
+		assert(state.in_mind === mind_obj, `State ${state_id} does not belong to mind ${mind}`);
 
 		const data = [];
 		for (const belief of state.get_beliefs()) {
@@ -93,10 +96,7 @@ export const dispatch = {
 		// Get state from registry
 		const state_obj = Cosmos.DB.get_state(state_id);
 
-		if (!state_obj) {
-			log("State not found", state_id);
-			return;
-		}
+		assert(state_obj != null, `State not found: ${state_id}`);
 
 		const data = [];
 		for (const belief of state_obj.get_beliefs()) {
@@ -130,19 +130,13 @@ export const dispatch = {
 		// Find belief by id in global registry
 		const belief_obj = Cosmos.DB.belief_by_id.get(belief_id);
 
-		if (!belief_obj) {
-			log("Belief not found", belief_id);
-			return;
-		}
+		assert(belief_obj != null, `Belief not found: ${belief_id}`);
 
 		// Get specified state for resolving sids
 		const state_id_num = Number(state_id);
 		const state = Cosmos.DB.get_state(state_id_num);
 
-		if (!state) {
-			log("State not found", state_id);
-			return;
-		}
+		assert(state != null, `State not found: ${state_id}`);
 
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity",
@@ -169,22 +163,20 @@ export const dispatch = {
 
 	/** @param {{id: string|number, client_id: number}} param0 */
 	query_entity({id, client_id}){
+		assert(Session != null, 'Session not initialized');
 		id = Number(id);
 		//log("query_entity", id);
 
 		// Find belief by id in current state
 		let belief = null;
-		for (const b of Adventure.state.get_beliefs()) {
+		for (const b of Session.state.get_beliefs()) {
 			if (b._id === id) {
 				belief = b;
 				break;
 			}
 		}
 
-		if (!belief) {
-			log("Belief not found", id);
-			return;
-		}
+		assert(belief != null, `Belief ${id} not found in Session.state`);
 
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity",
@@ -210,13 +202,16 @@ export const dispatch = {
 }
 
 /**
- * @param {object} adventure - Adventure singleton from world.mjs
+ * @param {import('./session.mjs').Session} session - Session instance from world.mjs
  */
-export async function init_channel(adventure) {
-	Adventure = adventure;
+export async function init_channel(session) {
+	Session = session;
 
 	channel = new BroadcastChannel('inspect');
 	server_id = await increment_sequence("server_id");
+
+	// Wire up session to channel for state change notifications
+	Session.set_channel(channel);
 
 	//log("Server id", server_id);
 	channel.postMessage({

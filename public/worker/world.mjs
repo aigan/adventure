@@ -1,5 +1,6 @@
 import * as Cosmos from "./cosmos.mjs";
 import * as DB from "./db.mjs";
+import { Session as SessionClass } from "./session.mjs";
 //import {observation,observation_text} from "./observation.mjs";
 //import Time from "./time.mjs";
 //import * as Ponder from "./ponder.mjs";
@@ -100,10 +101,12 @@ log(loaded_mind);
 // Need to get the latest versions from the current state, not by label
 const loaded_state = [...loaded_mind.state].find(s => s.timestamp === 2);
 
+if (!loaded_state) throw new Error('State with timestamp 2 not found');
+
 //log(loaded_state);
 
 
-const beliefs = [.../** @type {import('./cosmos.mjs').State} */ (loaded_state).get_beliefs()];
+const beliefs = [...loaded_state.get_beliefs()];
 const loaded_room1 = beliefs.find(b => b.get_display_label() === 'room1');
 const loaded_room2 = beliefs.find(b => b.get_display_label() === 'room2');
 
@@ -176,12 +179,8 @@ const player = loc1;
 //
 //const player = Cosmos.Belief.by_label.get('player');
 //
-//// Adventure would be its own module later...
-export const Adventure = {
-  world: world_mind,
-  player,
-  state,
-}
+// Create game session
+export const Session = new SessionClass(loaded_mind, loaded_state, loc1);
 
 // log(Adventure);
 

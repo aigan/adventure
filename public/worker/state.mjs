@@ -494,6 +494,9 @@ export class State {
     state.branches = []
     state.locked = false
 
+    // Register in global registry
+    DB.state_by_id.set(state._id, state)
+
     // Update branches
     if (base) {
       base.branches.push(state)

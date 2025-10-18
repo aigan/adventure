@@ -15,10 +15,10 @@ if (typeof BroadcastChannel !== 'undefined' && typeof document !== 'undefined') 
 
 if (typeof window !== 'undefined') {
   window.q = {
+    // Query current Adventure state (world mind at current state)
     world(){
       channel.postMessage({
-        msg:'query_mind',
-        mind: 'world',
+        msg:'query_adventure',
         client_id,
         server_id,
       });
@@ -47,6 +47,16 @@ const dispatch = {
     client_id = null;
     server_id = dat.server_id;
     channel.postMessage({msg:"connect"});
+  },
+  adventure_info(dat){
+    // Got Adventure info - now query the world mind at the current state
+    channel.postMessage({
+      msg: 'query_mind',
+      mind: dat.world_mind_id,
+      state_id: dat.state_id,
+      client_id,
+      server_id,
+    });
   },
   world_entity_list(dat){
     const state_nav = dat.state.base_id
@@ -219,19 +229,15 @@ function parse_url(){
 
   const params = new URLSearchParams(location.search);
 
-  if (params.has('mind')) {
-    query = {msg: 'query_mind', mind: params.get('mind')};
-  } else if (params.has('belief')) {
-    // Check if state is also specified
-    query = {msg: 'query_belief', belief: params.get('belief')};
-    if (params.has('state')) {
-      query.state_id = params.get('state');
-    }
+  if (params.has('mind') && params.has('state')) {
+    query = {msg: 'query_mind', mind: params.get('mind'), state_id: params.get('state')};
+  } else if (params.has('belief') && params.has('state')) {
+    query = {msg: 'query_belief', belief: params.get('belief'), state_id: params.get('state')};
   } else if (params.has('state')) {
     query = {msg: 'query_state', state: params.get('state')};
   } else {
-    // Default to world
-    query = {msg: 'query_mind', mind: 'world'};
+    // Default to current Adventure state
+    query = {msg: 'query_adventure'};
   }
 
   return query;

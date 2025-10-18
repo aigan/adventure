@@ -6,6 +6,7 @@ import { Traittype } from './traittype.mjs'
 import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
+import { Session } from './session.mjs'
 import { Serialize, save_mind, load } from './serialize.mjs'
 
 // No more init function calls needed! Classes use factory functions from this module.
@@ -184,6 +185,7 @@ export {
   Mind,
   State,
   Belief,
+  Session,
   Serialize,
   save_mind,
   load,

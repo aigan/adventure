@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { Mind, State, Belief, Archetype, Traittype, Session, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 
 // Mock BroadcastChannel
@@ -99,7 +99,7 @@ describe('Channel Message Handlers', () => {
 
   describe('query_mind handler', () => {
     let Channel;
-    let mockAdventure;
+    let mockSession;
     let messages;
     let mockChannel;
 
@@ -124,18 +124,14 @@ describe('Channel Message Handlers', () => {
       const state = world_mind.create_state(1);
       state.insert.push(hammer);
 
-      mockAdventure = {
-        world: world_mind,
-        player: hammer,
-        state: state
-      };
+      mockSession = new Session(world_mind, state, hammer);
 
-      await Channel.init_channel(mockAdventure, DB);
+      await Channel.init_channel(mockSession);
     });
 
     it('can find mind by numeric id', () => {
-      const mind = mockAdventure.world;
-      const state = mockAdventure.state;
+      const mind = mockSession.world;
+      const state = mockSession.state;
 
       // Clear init messages
       messages.length = 0;
@@ -154,7 +150,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('can find mind by label', () => {
-      const state = mockAdventure.state;
+      const state = mockSession.state;
       messages.length = 0;
 
       Channel.dispatch.query_mind({
@@ -167,31 +163,29 @@ describe('Channel Message Handlers', () => {
       expect(messages[0].state.mind_label).to.equal('test_mind');
     });
 
-    it('handles non-existent mind gracefully', () => {
-      const state = mockAdventure.state;
+    it('throws assertion for non-existent mind', () => {
+      const state = mockSession.state;
       messages.length = 0;
 
-      Channel.dispatch.query_mind({
-        mind: '999999',
-        state_id: String(state._id),
-        client_id: 1
-      });
-
-      // Should not post message if mind not found
-      expect(messages).to.have.lengthOf(0);
+      expect(() => {
+        Channel.dispatch.query_mind({
+          mind: '999999',
+          state_id: String(state._id),
+          client_id: 1
+        });
+      }).to.throw('Mind not found');
     });
 
-    it('handles non-existent state gracefully', () => {
+    it('throws assertion for non-existent state', () => {
       messages.length = 0;
 
-      Channel.dispatch.query_mind({
-        mind: 'test_mind',
-        state_id: '999999',
-        client_id: 1
-      });
-
-      // Should not post message if state not found
-      expect(messages).to.have.lengthOf(0);
+      expect(() => {
+        Channel.dispatch.query_mind({
+          mind: 'test_mind',
+          state_id: '999999',
+          client_id: 1
+        });
+      }).to.throw('State not found');
     });
   });
 
@@ -214,12 +208,9 @@ describe('Channel Message Handlers', () => {
       const mind1 = new Mind('mind1');
       const state1 = mind1.create_state(1);
 
-      const mockAdventure = {
-        world: mind1,
-        state: state1
-      };
+      const mockSession = new Session(mind1, state1);
 
-      await Channel.init_channel(mockAdventure, DB);
+      await Channel.init_channel(mockSession);
     });
 
     it('can find state by searching all minds', () => {
@@ -241,15 +232,15 @@ describe('Channel Message Handlers', () => {
       expect(messages[0].state.beliefs).to.have.lengthOf(1);
     });
 
-    it('handles non-existent state gracefully', () => {
+    it('throws assertion for non-existent state', () => {
       messages.length = 0;
 
-      Channel.dispatch.query_state({
-        state: '999999',
-        client_id: 1
-      });
-
-      expect(messages).to.have.lengthOf(0);
+      expect(() => {
+        Channel.dispatch.query_state({
+          state: '999999',
+          client_id: 1
+        });
+      }).to.throw('State not found');
     });
   });
 
@@ -270,12 +261,9 @@ describe('Channel Message Handlers', () => {
       global.BroadcastChannel = function() { return mockChannel; };
 
       const world_mind = new Mind('world');
-      const mockAdventure = {
-        world: world_mind,
-        state: world_mind.create_state(1)
-      };
+      const mockSession = new Session(world_mind, world_mind.create_state(1));
 
-      await Channel.init_channel(mockAdventure, DB);
+      await Channel.init_channel(mockSession);
     });
 
     it('can find belief by id and returns correct data', () => {
@@ -301,18 +289,18 @@ describe('Channel Message Handlers', () => {
       expect(messages[0].data.data.label).to.equal('query_hammer');
     });
 
-    it('handles non-existent belief gracefully', () => {
+    it('throws assertion for non-existent belief', () => {
       const mind = new Mind('test_mind');
       const state = mind.create_state(1);
       messages.length = 0;
 
-      Channel.dispatch.query_belief({
-        belief: '999999',
-        state_id: String(state._id),
-        client_id: 1
-      });
-
-      expect(messages).to.have.lengthOf(0);
+      expect(() => {
+        Channel.dispatch.query_belief({
+          belief: '999999',
+          state_id: String(state._id),
+          client_id: 1
+        });
+      }).to.throw('Belief not found');
     });
 
     it('includes about chain in response', () => {
@@ -383,7 +371,7 @@ describe('Channel Message Handlers', () => {
       global.BroadcastChannel = function() { return mockChannel; };
     });
 
-    it('can find belief in Adventure.state', async () => {
+    it('can find belief in Session.state', async () => {
       const mind = new Mind('entity_test_mind');
       const ball = mind.add({
         label: 'test_ball',
@@ -393,13 +381,9 @@ describe('Channel Message Handlers', () => {
       const state = mind.create_state(1);
       state.insert.push(ball);
 
-      const mockAdventure = {
-        world: mind,
-        state: state,
-        player: ball
-      };
+      const mockSession = new Session(mind, state, ball);
 
-      await Channel.init_channel(mockAdventure, DB);
+      await Channel.init_channel(mockSession);
       messages.length = 0;
 
       Channel.dispatch.query_entity({
@@ -413,24 +397,21 @@ describe('Channel Message Handlers', () => {
       expect(messages[0].data.data.traits.color).to.equal('red');
     });
 
-    it('handles non-existent entity gracefully', async () => {
+    it('throws assertion for non-existent entity', async () => {
       const mind = new Mind('empty_entity_mind');
       const state = mind.create_state(1);
 
-      const mockAdventure = {
-        world: mind,
-        state: state
-      };
+      const mockSession = new Session(mind, state);
 
-      await Channel.init_channel(mockAdventure, DB);
+      await Channel.init_channel(mockSession);
       messages.length = 0;
 
-      Channel.dispatch.query_entity({
-        id: 999999,
-        client_id: 1
-      });
-
-      expect(messages).to.have.lengthOf(0);
+      expect(() => {
+        Channel.dispatch.query_entity({
+          id: 999999,
+          client_id: 1
+        });
+      }).to.throw('Belief 999999 not found in Session.state');
     });
   });
 
@@ -451,12 +432,9 @@ describe('Channel Message Handlers', () => {
       global.BroadcastChannel = function() { return mockChannel; };
 
       const mind = new Mind('world');
-      const mockAdventure = {
-        world: mind,
-        state: mind.create_state(1)
-      };
+      const mockSession = new Session(mind, mind.create_state(1));
 
-      await Channel.init_channel(mockAdventure, DB);
+      await Channel.init_channel(mockSession);
       messages.length = 0;
 
       // First connect

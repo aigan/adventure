@@ -80,7 +80,7 @@ describe('Archetype', () => {
             traits: {}
           }
         }, {});
-      }).to.throw('Assertion failed');
+      }).to.throw('NonExistentBase');
     });
   });
 });
