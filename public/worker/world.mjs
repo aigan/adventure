@@ -3,10 +3,16 @@ import * as DB from "./db.mjs";
 //import Time from "./time.mjs";
 //import * as Ponder from "./ponder.mjs";
 
+/**
+ * @typedef {import('./db.mjs').ArchetypeDefinition} ArchetypeDefinition
+ * @typedef {import('./db.mjs').TraitTypeSchema} TraitTypeSchema
+ */
+
 const log = console.log.bind(console);
 
 
 export function setupStandardArchetypes() {
+  /** @type {Record<string, string|TraitTypeSchema>} */
   const traittypes = {
     location: 'Location',
     mind_states: {
@@ -17,6 +23,7 @@ export function setupStandardArchetypes() {
     color: 'string',
   };
 
+  /** @type {Record<string, ArchetypeDefinition>} */
   const archetypes = {
     ObjectPhysical: {
       traits: {
@@ -95,12 +102,12 @@ const loaded_state = [...loaded_mind.state].find(s => s.timestamp === 2);
 //log(loaded_state);
 
 
-const beliefs = [...loaded_state.get_beliefs()];
+const beliefs = [.../** @type {import('./db.mjs').State} */ (loaded_state).get_beliefs()];
 const loaded_room1 = beliefs.find(b => b.get_display_label() === 'room1');
 const loaded_room2 = beliefs.find(b => b.get_display_label() === 'room2');
 
-const loc1 = loaded_room1.traits.get('location');
-const loc2 = loaded_room2.traits.get('location');
+const loc1 = /** @type {import('./db.mjs').Belief} */ (loaded_room1).traits.get('location');
+const loc2 = /** @type {import('./db.mjs').Belief} */ (loaded_room2).traits.get('location');
 
 log(loc1,loc2);
 

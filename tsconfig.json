@@ -6,13 +6,9 @@
     "target": "ES2024",
     "module": "ES2022",
     "moduleResolution": "node",
-    "strict": false,
+    "strict": true,
 
-    // Catch common mistakes without requiring full type annotations
-    "alwaysStrict": true,              // Parse in strict mode
-    "noImplicitThis": true,            // Catches 'this' context issues
-    "strictBindCallApply": true,       // Type check .bind/.call/.apply
-    "strictFunctionTypes": true,       // Stricter function type checking
+    // Additional checks beyond strict mode
     "noImplicitReturns": true,         // All code paths must return
     "noFallthroughCasesInSwitch": true, // Prevent accidental fallthrough
 

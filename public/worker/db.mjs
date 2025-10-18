@@ -2,6 +2,87 @@ import { assert, log } from '../lib/debug.mjs';
 
 let id_sequence = 0;
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+/**
+ * @typedef {object} MindJSON
+ * @property {string} _type - Always "Mind"
+ * @property {number} _id - Mind identifier
+ * @property {string|null} label - Optional label for lookup
+ * @property {BeliefJSON[]} belief - All beliefs in this mind
+ * @property {StateJSON[]} state - All states in this mind
+ * @property {MindJSON[]} [nested_minds] - Nested minds discovered during serialization
+ */
+
+/**
+ * @typedef {object} StateJSON
+ * @property {string} _type - Always "State"
+ * @property {number} _id - State identifier
+ * @property {number} timestamp - State timestamp/tick
+ * @property {number|null} base - Base state _id (null for root states)
+ * @property {number|null} ground_state - Ground state _id (null if no external reference)
+ * @property {number[]} insert - Belief _ids present in this state
+ * @property {number[]} remove - Belief _ids removed in this state
+ * @property {number} in_mind - Mind _id this state belongs to
+ */
+
+/**
+ * @typedef {object} BeliefJSON
+ * @property {string} _type - Always "Belief"
+ * @property {number} _id - Unique version identifier
+ * @property {number} sid - Subject identifier (stable across versions)
+ * @property {string|null} label - Optional label for lookup
+ * @property {number|null} about - Parent belief _id (null if not about another belief)
+ * @property {string[]} archetypes - Archetype labels for this belief
+ * @property {(string|number)[]} bases - Base archetype labels or belief _ids
+ * @property {Object<string, SerializedTraitValue>} traits - Trait values (sids, primitives, or references)
+ */
+
+/**
+ * @typedef {number|string|boolean|null|StateReference|MindReference|Array<number|string|boolean|null|StateReference|MindReference>} SerializedTraitValue
+ * Trait values in JSON can be:
+ * - number (sid or primitive)
+ * - string/boolean/null (primitives)
+ * - StateReference/MindReference (for State/Mind traits)
+ * - Array of any of the above
+ */
+
+/**
+ * @typedef {object} StateReference
+ * @property {string} _type - Always "State"
+ * @property {number} _id - State identifier
+ */
+
+/**
+ * @typedef {object} MindReference
+ * @property {string} _type - Always "Mind"
+ * @property {number} _id - Mind identifier
+ * @property {string|null} label - Mind label
+ */
+
+/**
+ * @typedef {object} ArchetypeDefinition
+ * @property {string[]} [bases] - Base archetype labels
+ * @property {Object<string, *>} [traits] - Default trait values
+ */
+
+/**
+ * @typedef {string|TraitTypeSchema} TraitTypeDefinition
+ * Can be either:
+ * - Simple string: "Location", "string", "number", "boolean", "State", "Mind"
+ * - Complex schema object for arrays/validation
+ */
+
+/**
+ * @typedef {object} TraitTypeSchema
+ * @property {string} type - Base type (e.g., "State", "Location", "string")
+ * @property {Function} [container] - Container constructor (e.g., Array)
+ * @property {number} [min] - Minimum array length
+ * @property {number} [max] - Maximum array length
+ */
+
 /**
  * Reset all registries (for testing)
  */
@@ -22,7 +103,9 @@ export function reset_registries() {
  * Serialization coordinator with dependency tracking
  */
 export class Serialize {
+  /** @type {Mind[]|null} */
   static dependency_queue = null;
+  /** @type {Set<number>|null} */
   static seen = null;
 
   /**
@@ -36,13 +119,14 @@ export class Serialize {
     Serialize.seen = new Set([mind._id]); // Mark root as seen
 
     // Serialize root mind
-    const root = mind.toJSON();
+    /** @type {MindJSON} */
+    const root = /** @type {any} */ (mind.toJSON());
 
     // Process dependencies discovered during serialization
     const nested_minds = [];
     while (Serialize.dependency_queue.length > 0) {
       const dep_mind = Serialize.dependency_queue.shift();
-      if (!Serialize.seen.has(dep_mind._id)) {
+      if (dep_mind && !Serialize.seen.has(dep_mind._id)) {
         Serialize.seen.add(dep_mind._id);
         nested_minds.push(dep_mind.toJSON());
       }
@@ -77,7 +161,7 @@ export function save_mind(mind) {
  * @returns {Mind|Belief|State} Loaded object
  */
 export function load(json_string) {
-  const data = JSON.parse(json_string);
+  const data = /** @type {MindJSON|BeliefJSON|StateJSON} */ (JSON.parse(json_string));
 
   if (!data._type) {
     throw new Error('JSON data missing _type field');
@@ -86,7 +170,7 @@ export function load(json_string) {
   let result;
   switch (data._type) {
     case 'Mind':
-      result = Mind.from_json(data);
+      result = Mind.from_json(/** @type {MindJSON} */ (data));
       break;
     case 'Belief':
       throw new Error('Loading individual Belief not yet implemented');
@@ -104,9 +188,14 @@ export function load(json_string) {
 
 /**
  * Update id_sequence from loaded data
- * @param {object} data - Loaded JSON data
+ * @param {MindJSON|BeliefJSON|StateJSON} data - Loaded JSON data
  */
 function update_id_sequence_from_data(data) {
+  /**
+   * @param {any} obj
+   * @param {number} [max]
+   * @returns {number}
+   */
   const find_max_id = (obj, max = 0) => {
     if (!obj || typeof obj !== 'object') return max;
 
@@ -132,8 +221,8 @@ function update_id_sequence_from_data(data) {
 
 /**
  * Register archetypes and trait types into the database
- * @param {Object<string, object>} archetypes - Archetype definitions {label: definition}
- * @param {Object<string, string|object>} traittypes - Trait type definitions {label: type or schema}
+ * @param {Object<string, ArchetypeDefinition>} archetypes - Archetype definitions {label: definition}
+ * @param {Object<string, string|TraitTypeSchema>} traittypes - Trait type definitions {label: type or schema}
  */
 export function register( archetypes, traittypes ) {
   for (const [label, def] of Object.entries(traittypes)) {
@@ -163,17 +252,19 @@ export function register( archetypes, traittypes ) {
  * @property {Set<State>} state - All states belonging to this mind
  */
 export class Mind {
+  /** @type {Map<number, Mind>} */
   static by_id = new Map();
+  /** @type {Map<string, Mind>} */
   static by_label = new Map();
 
   /**
-   * @param {string|null|object} label - Mind identifier or JSON data
+   * @param {string|null|MindJSON} label - Mind identifier or JSON data
    * @param {Belief|null} self - What this mind considers "self" (can be null, can change)
    */
   constructor(label = null, self = null) {
     // Check if loading from JSON
     if (label && typeof label === 'object' && label._type === 'Mind') {
-      const data = label;
+      const data = /** @type {MindJSON} */ (label);
       this._id = data._id;
       this.label = data.label;
       this.self = null; // Will be resolved later if needed
@@ -189,15 +280,15 @@ export class Mind {
 
     // Normal construction
     this._id = ++ id_sequence;
-    this.label = label;
+    this.label = /** @type {string|null} */ (label);
     this.self = self;
     /** @type {Set<State>} */
     this.state = new Set([]);
 
     // Register globally
     Mind.by_id.set(this._id, this);
-    if (label) {
-      Mind.by_label.set(label, this);
+    if (this.label) {
+      Mind.by_label.set(this.label, this);
     }
 
     //log(`Created mind ${this._id}`);
@@ -240,6 +331,9 @@ export class Mind {
     return state;
   }
 
+  /**
+   * @returns {Omit<MindJSON, 'nested_minds'>}
+   */
   toJSON() {
     // Filter beliefs from global registry that belong to this mind
     const mind_beliefs = [];
@@ -260,7 +354,7 @@ export class Mind {
 
   /**
    * Create Mind from JSON data with lazy loading
-   * @param {object} data - JSON data with _type: 'Mind'
+   * @param {MindJSON} data - JSON data with _type: 'Mind'
    * @returns {Mind}
    */
   static from_json(data) {
@@ -316,6 +410,7 @@ export class State {
   // TODO: Populate this registry for prototype state templates
   // Will be used to share belief lists across many nodes
   // See resolve_template() lines 364-367 for planned usage
+  /** @type {Record<string, object>} */
   static by_label = {};
 
   /**
@@ -519,6 +614,7 @@ export class State {
     const archetype_bases = [...belief.get_archetypes()];
 
     // Copy traits, dereferencing belief references to this mind
+    /** @type {Record<string, any>} */
     const copied_traits = {};
     for (const name of trait_names) {
       if (belief.traits.has(name)) {
@@ -604,7 +700,7 @@ export class State {
     }
 
     if (existing_beliefs.length > 1) {
-      throw new Error(`Multiple beliefs about entity ${original._id} exist in mind ${this.in_mind.label}`);
+      throw new Error(`Multiple beliefs about entity ${/** @type {Belief} */ (original)._id} exist in mind ${this.in_mind.label}`);
     }
 
     if (existing_beliefs.length === 1) {
@@ -617,7 +713,7 @@ export class State {
         const states = [...belief_reference.in_mind.state];
         source_state = states[states.length - 1];
       }
-      return this.learn_about(source_state, belief_reference);
+      return this.learn_about(/** @type {State} */ (source_state), belief_reference);
     }
   }
 
@@ -663,11 +759,12 @@ export class State {
     const state = entity_mind.create_state(1, ground)
 
     // Build combined learn spec (prototype + custom)
+    /** @type {Record<string, any>} */
     const learn_spec = {}
 
     // Apply prototype template
     if (spec.base && State.by_label[spec.base]) {
-      const prototype = State.by_label[spec.base]
+      const prototype = /** @type {any} */ (State.by_label[spec.base])
       Object.assign(learn_spec, prototype.learn || {})
     }
 
@@ -685,7 +782,7 @@ export class State {
       if (trait_names.length > 0) {
         // Use ground state as source context (the parent mind's state we're observing from)
         assert(ground != null, `Cannot learn about beliefs without ground_state context`)
-        state.learn_about(ground, belief, trait_names)
+        state.learn_about(/** @type {State} */ (ground), belief, trait_names)
       }
     }
 
@@ -696,17 +793,18 @@ export class State {
   /**
    * Create State from JSON data (fully materialized)
    * @param {Mind} mind - Mind this state belongs to (or context for resolution)
-   * @param {object} data - JSON data with _type: 'State'
+   * @param {StateJSON} data - JSON data with _type: 'State'
    * @returns {State}
    */
   static from_json(mind, data) {
     // Resolve in_mind reference (if present in data, otherwise use parameter)
     let resolved_mind = mind;
     if (data.in_mind != null) {
-      resolved_mind = Mind.by_id.get(data.in_mind);
-      if (!resolved_mind) {
+      const found_mind = Mind.by_id.get(data.in_mind);
+      if (!found_mind) {
         throw new Error(`Cannot resolve in_mind ${data.in_mind} for state ${data._id}`);
       }
+      resolved_mind = found_mind;
     }
 
     // Resolve base reference
@@ -793,18 +891,23 @@ export class State {
  * @property {boolean} locked - Whether belief can be modified
  */
 export class Belief {
+  /** @type {Map<number, Belief>} */
   static by_id = new Map();
+  /** @type {Map<string, Belief>} */
   static by_label = new Map();
-  static by_sid = new Map(); // sid → Set<Belief> (all versions of a subject)
-  static sid_by_label = new Map(); // label → sid
-  static label_by_sid = new Map(); // sid → label
+  /** @type {Map<number, Set<Belief>>} */ // sid → Set<Belief> (all versions of a subject)
+  static by_sid = new Map();
+  /** @type {Map<string, number>} */ // label → sid
+  static sid_by_label = new Map();
+  /** @type {Map<number, string>} */ // sid → label
+  static label_by_sid = new Map();
 
   /**
    * @param {Mind} mind
    * @param {object} param1
    * @param {string|null} [param1.label]
-   * @param {Belief|null} [param1.about]
-   * @param {(string|Archetype|Belief)[]} [param1.bases]
+   * @param {Belief|number|null} [param1.about] - Belief object or _id (when loading from JSON)
+   * @param {(string|Archetype|Belief|number)[]} [param1.bases] - Archetype labels, Belief objects, or _ids (when loading from JSON)
    * @param {object} [param1.traits]
    * @param {string|null} [param1._type]
    * @param {number|null} [param1._id]
@@ -815,20 +918,30 @@ export class Belief {
     // Check if loading from JSON
     if (_type === 'Belief' && _id != null) {
       this._id = _id;
-      this.sid = sid;
+      /** @type {number} */
+      this.sid = 0;  // Temporary, will be set immediately
+      this.sid = /** @type {number} */ (sid);  // sid must be present when loading from JSON
       this.in_mind = mind;
       this.label = label;
       this.locked = false;
 
       // Resolve 'about' reference (ID to Belief object)
+      /** @type {Belief|null} */
+      this._about = null;
+      /** @type {Belief|null} */
+      let resolved_about = null;
       if (about != null) {
-        this._about = Belief.by_id.get(about);
-        if (!this._about) {
-          throw new Error(`Cannot resolve about reference ${about} for belief ${this._id}`);
+        if (typeof about === 'number') {
+          resolved_about = Belief.by_id.get(about) ?? null;
+          if (!resolved_about) {
+            throw new Error(`Cannot resolve about reference ${about} for belief ${this._id}`);
+          }
+        } else {
+          // Should not happen when loading from JSON, but handle for safety
+          resolved_about = about;
         }
-      } else {
-        this._about = null;
       }
+      this._about = resolved_about;
 
       // Resolve 'bases' (archetype labels or belief IDs)
       this._bases = new Set();
@@ -839,12 +952,15 @@ export class Belief {
             throw new Error(`Archetype '${base_ref}' not found for belief ${this._id}`);
           }
           this._bases.add(archetype);
-        } else {
+        } else if (typeof base_ref === 'number') {
           const base_belief = Belief.by_id.get(base_ref);
           if (!base_belief) {
             throw new Error(`Cannot resolve base belief ${base_ref} for belief ${this._id}`);
           }
           this._bases.add(base_belief);
+        } else {
+          // Direct Belief or Archetype object (not from JSON)
+          this._bases.add(base_ref);
         }
       }
 
@@ -859,10 +975,11 @@ export class Belief {
       Belief.by_id.set(this._id, this);
 
       // Register in by_sid (sid → Set<Belief>)
-      if (!Belief.by_sid.has(this.sid)) {
-        Belief.by_sid.set(this.sid, new Set());
+      const sid_val = /** @type {number} */ (this.sid);
+      if (!Belief.by_sid.has(sid_val)) {
+        Belief.by_sid.set(sid_val, new Set());
       }
-      Belief.by_sid.get(this.sid).add(this);
+      /** @type {Set<Belief>} */ (Belief.by_sid.get(sid_val)).add(this);
 
       if (label) {
         // Register label-sid mappings (for first belief with this label loaded)
@@ -870,8 +987,8 @@ export class Belief {
           if (Archetype.by_label[label]) {
             throw new Error(`Label '${label}' is already used by an archetype`);
           }
-          Belief.sid_by_label.set(label, this.sid);
-          Belief.label_by_sid.set(this.sid, label);
+          Belief.sid_by_label.set(label, sid_val);
+          Belief.label_by_sid.set(sid_val, label);
         }
 
         // Still maintain by_label for backward compatibility
@@ -916,7 +1033,7 @@ export class Belief {
 
     this.in_mind = mind;
     this.label = label;
-    this._about = about;
+    this._about = /** @type {Belief|null} */ (about);
     this._traits = new Map();
     this.locked = false;
 
@@ -931,7 +1048,7 @@ export class Belief {
     if (!Belief.by_sid.has(this.sid)) {
       Belief.by_sid.set(this.sid, new Set());
     }
-    Belief.by_sid.get(this.sid).add(this);
+    /** @type {Set<Belief>} */ (Belief.by_sid.get(this.sid)).add(this);
 
     if (label) {
       // For new subjects, register label-sid mappings
@@ -1167,7 +1284,7 @@ export class Belief {
   /**
    * Create Belief from JSON data with lazy loading
    * @param {Mind} mind - Mind this belief belongs to
-   * @param {object} data - JSON data with _type: 'Belief'
+   * @param {BeliefJSON} data - JSON data with _type: 'Belief'
    * @returns {Belief}
    */
   static from_json(mind, data) {
@@ -1234,6 +1351,7 @@ function deserialize_trait_value(value) {
 }
 
 export class Archetype {
+  /** @type {Record<string, Archetype>} */
   static by_label = {};
 
   /**
@@ -1280,13 +1398,16 @@ export class Archetype {
 }
 
 export class Traittype {
+  /** @type {Record<string, Traittype>} */
   static by_label = {};
 
+  /** @type {Record<string, typeof Mind|typeof State>} */
   static data_type_map = {
     Mind: Mind,
     State: State,
   }
 
+  /** @type {Record<string, NumberConstructor|StringConstructor|BooleanConstructor>} */
   static literal_type_map = {
     'number': Number,
     'string': String,
@@ -1295,7 +1416,7 @@ export class Traittype {
 
   /**
    * @param {string} label
-   * @param {string|object} def
+   * @param {string|TraitTypeSchema} def
    */
   constructor(label, def) {
     this.label = label;
@@ -1326,7 +1447,7 @@ export class Traittype {
    */
   _build_resolver() {
     if (this.container === Array) {
-      return (mind, data) => {
+      return (/** @type {Mind} */ mind, /** @type {any} */ data) => {
         if (!Array.isArray(data)) {
           throw new Error(`Expected array for trait '${this.label}', got ${typeof data}`);
         }
@@ -1344,7 +1465,7 @@ export class Traittype {
       };
     } else {
       // No container - single value
-      return (mind, data) => this._resolve_item(mind, data);
+      return (/** @type {Mind} */ mind, /** @type {any} */ data) => this._resolve_item(mind, data);
     }
   }
 
@@ -1412,7 +1533,8 @@ export class Traittype {
   resolve(mind, data, owner_belief = null, creator_state = null) {
     // Check for template construction first (_type field)
     if (data?._type) {
-      const type_class = Traittype.data_type_map[data._type]
+      // Type assertion: we know Mind and State both have resolve_template
+      const type_class = /** @type {any} */ (Traittype.data_type_map[data._type])
       if (type_class?.resolve_template) {
         const result = type_class.resolve_template(mind, data, owner_belief, creator_state)
 
@@ -1452,6 +1574,7 @@ export class Traittype {
       return value.map(item => Traittype.inspectTraitValue(item));
     }
     if (value instanceof Belief || value instanceof State || value instanceof Mind) {
+      /** @type {{_ref: number, _type: string, label?: string|null}} */
       const result = {_ref: value._id, _type: value.constructor.name};
       if (value instanceof Belief || value instanceof Mind) {
         result.label = value.label;

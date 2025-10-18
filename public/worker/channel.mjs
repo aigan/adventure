@@ -1,22 +1,29 @@
 import { log } from "../lib/debug.mjs";
 //log('Loading Channel');
 
+/** @type {BroadcastChannel|null} */
 let channel = null;
 let client_id_sequence = 0; // Client id
+/** @type {number|null} */
 let server_id = null;
+/** @type {any} */
 let Adventure = null;
+/** @type {any} */
 let DB = null;
 
+/** @type {{[key: string]: Function}} */
 export const dispatch = {
+	/** @param {any} _dat */
 	connect(_dat){
 		const client_id = ++ client_id_sequence;
-		channel.postMessage({
+		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "welcome",
 			client_id,
 			server_id,
 		});
 	},
 
+	/** @param {any} _dat */
 	hello(_dat){
 		throw Error("Multiple servers");
 	},
@@ -28,11 +35,13 @@ export const dispatch = {
 //		log(et);
 //	},
 
+	/** @param {{mind: string|number, client_id: number}} param0 */
 	query_mind({mind, client_id}){
 		// Accept mind id (numeric string) or label (string)
-		const mind_obj = /^\d+$/.test(mind)
-			? DB.Mind.get_by_id(Number(mind))
-			: DB.Mind.get_by_label(mind);
+		const mind_str = String(mind);
+		const mind_obj = /^\d+$/.test(mind_str)
+			? DB.Mind.get_by_id(Number(mind_str))
+			: DB.Mind.get_by_label(mind_str);
 
 		if (!mind_obj) {
 			log("Mind not found", mind);
@@ -59,7 +68,7 @@ export const dispatch = {
 			});
 		}
 
-		channel.postMessage({
+		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity_list",
 			server_id,
 			client_id,
@@ -75,6 +84,7 @@ export const dispatch = {
 		});
 	},
 
+	/** @param {{state: string|number, client_id: number}} param0 */
 	query_state({state, client_id}){
 		const state_id = Number(state);
 
@@ -104,7 +114,7 @@ export const dispatch = {
 			});
 		}
 
-		channel.postMessage({
+		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity_list",
 			server_id,
 			client_id,
@@ -120,6 +130,7 @@ export const dispatch = {
 		});
 	},
 
+	/** @param {{belief: string|number, client_id: number}} param0 */
 	query_belief({belief, client_id}){
 		const belief_id = Number(belief);
 
@@ -131,7 +142,7 @@ export const dispatch = {
 			return;
 		}
 
-		channel.postMessage({
+		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity",
 			server_id,
 			client_id,
@@ -153,6 +164,7 @@ export const dispatch = {
 		});
 	},
 
+	/** @param {{id: string|number, client_id: number}} param0 */
 	query_entity({id, client_id}){
 		id = Number(id);
 		//log("query_entity", id);
@@ -171,7 +183,7 @@ export const dispatch = {
 			return;
 		}
 
-		channel.postMessage({
+		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity",
 			server_id,
 			client_id,
