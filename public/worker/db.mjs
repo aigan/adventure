@@ -21,6 +21,9 @@ export const mind_by_label = new Map()
 // State Registries
 // ============================================================================
 
+/** @type {Map<number, import('./state.mjs').State>} */
+export const state_by_id = new Map()
+
 /** @type {Record<string, object>} */
 export const state_by_label = {}
 
@@ -30,9 +33,6 @@ export const state_by_label = {}
 
 /** @type {Map<number, import('./belief.mjs').Belief>} */
 export const belief_by_id = new Map()
-
-/** @type {Map<string, import('./belief.mjs').Belief>} */
-export const belief_by_label = new Map()
 
 /** @type {Map<number, Set<import('./belief.mjs').Belief>>} */
 export const belief_by_sid = new Map()
@@ -89,12 +89,29 @@ export function get_belief(id) {
 }
 
 /**
- * Get Belief by label
+ * Get Belief by label (resolves via sid)
+ * Returns the first belief registered with this label's sid
  * @param {string} label
  * @returns {import('./belief.mjs').Belief|undefined}
  */
 export function get_belief_by_label(label) {
-  return belief_by_label.get(label)
+  const sid = sid_by_label.get(label)
+  if (sid === undefined) return undefined
+
+  const beliefs = belief_by_sid.get(sid)
+  if (!beliefs || beliefs.size === 0) return undefined
+
+  // Return first belief with this sid
+  return [...beliefs][0]
+}
+
+/**
+ * Get State by ID
+ * @param {number} id
+ * @returns {import('./state.mjs').State|undefined}
+ */
+export function get_state(id) {
+  return state_by_id.get(id)
 }
 
 /**
@@ -103,8 +120,8 @@ export function get_belief_by_label(label) {
 export function reset_all_registries() {
   mind_by_id.clear()
   mind_by_label.clear()
+  state_by_id.clear()
   belief_by_id.clear()
-  belief_by_label.clear()
   belief_by_sid.clear()
   sid_by_label.clear()
   label_by_sid.clear()
@@ -171,7 +188,7 @@ export function register( archetypes, traittypes ) {
     if (archetype_by_label[label]) {
       throw new Error(`Label '${label}' is already used by another archetype`)
     }
-    if (belief_by_label.has(label)) {
+    if (sid_by_label.has(label)) {
       throw new Error(`Label '${label}' is already used by a belief`)
     }
     archetype_by_label[label] = new Archetype(label, def)

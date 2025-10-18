@@ -20,7 +20,7 @@ describe('State', () => {
       });
 
       expect([...DB.belief_by_id.values()].filter(b => b.in_mind === mind).length).to.equal(2);
-      expect([...DB.belief_by_id.values()].some(b => b.in_mind === mind && b === DB.belief_by_label.get('workshop'))).to.be.true;
+      expect([...DB.belief_by_id.values()].some(b => b.in_mind === mind && b === DB.get_belief_by_label('workshop'))).to.be.true;
       expect([...DB.belief_by_id.values()].some(b => b.in_mind === mind && b === hammer)).to.be.true;
     });
 
@@ -34,7 +34,7 @@ describe('State', () => {
       const labels = [];
       for (const belief of DB.belief_by_id.values()) {
         if (belief.in_mind === mind) {
-          labels.push(belief.label);
+          labels.push(belief.get_label());
         }
       }
 
@@ -45,8 +45,8 @@ describe('State', () => {
       const mind = new Mind('test');
       mind.add({label: 'workshop', bases: ['Location']});
 
-      expect(DB.belief_by_label.get('workshop')).to.exist;
-      expect(DB.belief_by_label.get('workshop').label).to.equal('workshop');
+      expect(DB.get_belief_by_label('workshop')).to.exist;
+      expect(DB.get_belief_by_label('workshop').get_label()).to.equal('workshop');
     });
   });
 
@@ -68,10 +68,10 @@ describe('State', () => {
       const beliefs_b = [...state_b.get_beliefs()];
 
       expect(beliefs_a).to.have.lengthOf(1);
-      expect(beliefs_a[0].label).to.equal('item_a');
+      expect(beliefs_a[0].get_label()).to.equal('item_a');
 
       expect(beliefs_b).to.have.lengthOf(1);
-      expect(beliefs_b[0].label).to.equal('item_b');
+      expect(beliefs_b[0].get_label()).to.equal('item_b');
     });
 
     it('beliefs from different minds don\'t mix in states', () => {
@@ -88,8 +88,8 @@ describe('State', () => {
       const beliefs_b = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_b);
       state_b.insert.push(...beliefs_b);
 
-      const labels_a = [...state_a.get_beliefs()].map(b => b.label);
-      const labels_b = [...state_b.get_beliefs()].map(b => b.label);
+      const labels_a = [...state_a.get_beliefs()].map(b => b.get_label());
+      const labels_b = [...state_b.get_beliefs()].map(b => b.get_label());
 
       expect(labels_a).to.deep.equal(['workshop_a']);
       expect(labels_b).to.deep.equal(['workshop_b']);
@@ -102,7 +102,7 @@ describe('State', () => {
       mind.add({label: 'hammer_v1', bases: ['PortableObject']});
 
       const state1 = mind.create_state(1);
-      const hammer_v1 = DB.belief_by_label.get('hammer_v1');
+      const hammer_v1 = DB.get_belief_by_label('hammer_v1');
       const hammer_v2 = new Belief(hammer_v1.in_mind, {
         bases: [hammer_v1],
         traits: { color: 'red' }
@@ -126,14 +126,14 @@ describe('State', () => {
       const state_b1 = mind_b.create_state(1);
 
       // Add different beliefs to each mind
-      const item_a = DB.belief_by_label.get('item_in_a');
+      const item_a = DB.get_belief_by_label('item_in_a');
       const item_a2 = new Belief(item_a.in_mind, {
         bases: [item_a],
         traits: { color: 'red' }
       });
       const state_a2 = state_a1.tick({ replace: [item_a2] });
 
-      const item_b = DB.belief_by_label.get('item_in_b');
+      const item_b = DB.get_belief_by_label('item_in_b');
       const item_b2 = new Belief(item_b.in_mind, {
         bases: [item_b],
         traits: { color: 'blue' }
@@ -162,7 +162,7 @@ describe('State', () => {
       const beliefs = [...state2.get_beliefs()];
       expect(beliefs).to.have.lengthOf(3);
 
-      const labels = beliefs.map(b => b.label).sort();
+      const labels = beliefs.map(b => b.get_label()).sort();
       expect(labels).to.deep.equal(['item1', 'item2', 'item3']);
     });
   });

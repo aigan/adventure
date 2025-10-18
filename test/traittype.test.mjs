@@ -247,7 +247,7 @@ describe('Traittype', () => {
         traits: { states_array: [state1, state2] }
       });
 
-      const inspected = obj.inspect();
+      const inspected = obj.inspect(state1);
       expect(inspected.traits.states_array).to.be.an('array');
       expect(inspected.traits.states_array).to.have.lengthOf(2);
       expect(inspected.traits.states_array[0]).to.have.property('_ref', state1._id);

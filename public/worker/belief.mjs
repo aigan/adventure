@@ -49,7 +49,6 @@ export class Belief {
       this.sid = 0  // Temporary, will be set immediately
       this.sid = /** @type {number} */ (sid)  // sid must be present when loading from JSON
       this.in_mind = mind
-      this.label = label
       this.locked = false
 
       // Resolve 'about' reference (ID to Belief object)
@@ -117,9 +116,6 @@ export class Belief {
           DB.sid_by_label.set(label, sid_val)
           DB.label_by_sid.set(sid_val, label)
         }
-
-        // Still maintain by_label for backward compatibility
-        DB.belief_by_label.set(label, this)
       }
       return
     }
@@ -131,9 +127,9 @@ export class Belief {
     for (let base of bases) {
       if (typeof base === 'string') {
         const base_label = base
-        // Resolution order: belief registry → archetype registry
-        base = DB.belief_by_label.get(base) ?? DB.archetype_by_label[base]
-        assert(base != null, `Base '${base_label}' not found in belief registry or archetype registry`, {base_label, Belief_by_label: DB.belief_by_label, Archetype_by_label: DB.archetype_by_label})
+        // Resolution order: belief label (via helper) → archetype
+        base = DB.get_belief_by_label(base_label) ?? DB.archetype_by_label[base_label]
+        assert(base != null, `Base '${base_label}' not found as belief label or archetype`, {base_label})
       }
       this._bases.add(/** @type {Belief|Archetype} */ (base))
     }
@@ -159,7 +155,6 @@ export class Belief {
     }
 
     this.in_mind = mind
-    this.label = label
     this._about = /** @type {Belief|null} */ (about)
     this._traits = new Map()
     this.locked = false
@@ -192,9 +187,6 @@ export class Belief {
         DB.sid_by_label.set(label, this.sid)
         DB.label_by_sid.set(this.sid, label)
       }
-
-      // Still maintain by_label for backward compatibility (maps label → latest belief)
-      DB.belief_by_label.set(label, this)
     }
 
     // TODO: add default trait values
@@ -206,20 +198,20 @@ export class Belief {
    * @param {import('./state.mjs').State|null} [creator_state] - State creating this belief (for inferring ground_state)
    */
   resolve_and_add_trait(label, data, creator_state = null) {
-    assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.label})
+    assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
     const traittype = Cosmos.get_traittype(label)
     //log('looking up traittype', label, traittype)
-    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.label, data, Traittype_by_label: DB.traittype_by_label})
+    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.get_label(), data, Traittype_by_label: DB.traittype_by_label})
 
     // TypeScript: traittype is non-null after assert
     const value = /** @type {import('./traittype.mjs').Traittype} */ (traittype).resolve(this.in_mind, data, this, creator_state)
 
-    assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.label, value, archetypes: [...this.get_archetypes()].map(a => a.label)})
+    assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.get_label(), value, archetypes: [...this.get_archetypes()].map(a => a.label)})
 
     this._traits.set(label, value)
 
-    //log('belief', this.label, 'add trait', label, data, datatype, value)
+    //log('belief', this.get_label(), 'add trait', label, data, datatype, value)
   }
 
   /**
@@ -295,11 +287,21 @@ export class Belief {
   }
 
   /**
+   * Get label for this belief's subject (sid)
+   * @returns {string|null}
+   */
+  get_label() {
+    return DB.label_by_sid.get(this.sid) ?? null
+  }
+
+  /**
    * Get label for display by walking the belief chain
    * @returns {string|null}
    */
   get_display_label() {
-    if (this.label) return this.label
+    // First check sid-based label
+    const label = this.get_label()
+    if (label) return label
 
     // Walk bases to find label (only Belief bases, not Archetypes)
     for (const base of this.bases) {
@@ -358,7 +360,7 @@ export class Belief {
       _type: 'Belief',
       _id: this._id,
       sid: this.sid,
-      label: this.label,
+      label: this.get_label(),
       about: this.about?._id ?? null,
       archetypes: [...this.get_archetypes()].map(a => a.label),
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
@@ -368,16 +370,21 @@ export class Belief {
     }
   }
 
-  inspect() {
+  /**
+   * Create shallow inspection view of this belief
+   * @param {import('./state.mjs').State} state - State context for resolving trait sids
+   * @returns {object} Shallow representation with references
+   */
+  inspect(state) {
     return {
       _type: 'Belief',
       _id: this._id,
-      label: this.label,
+      label: this.get_label(),
       about: this.about ? {_ref: this.about._id, label: this.about.get_display_label()} : null,
       archetypes: [...this.get_archetypes()].map(a => a.label),
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
-        [...this.traits].map(([k, v]) => [k, Cosmos.Traittype.inspectTraitValue(v)])
+        [...this.traits].map(([k, v]) => [k, Cosmos.Traittype.inspectTraitValue(state, v)])
       )
     }
   }

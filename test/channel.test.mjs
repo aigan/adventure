@@ -135,12 +135,14 @@ describe('Channel Message Handlers', () => {
 
     it('can find mind by numeric id', () => {
       const mind = mockAdventure.world;
+      const state = mockAdventure.state;
 
       // Clear init messages
       messages.length = 0;
 
       Channel.dispatch.query_mind({
         mind: String(mind._id),
+        state_id: String(state._id),
         client_id: 1
       });
 
@@ -152,10 +154,12 @@ describe('Channel Message Handlers', () => {
     });
 
     it('can find mind by label', () => {
+      const state = mockAdventure.state;
       messages.length = 0;
 
       Channel.dispatch.query_mind({
         mind: 'test_mind',
+        state_id: String(state._id),
         client_id: 1
       });
 
@@ -164,10 +168,12 @@ describe('Channel Message Handlers', () => {
     });
 
     it('handles non-existent mind gracefully', () => {
+      const state = mockAdventure.state;
       messages.length = 0;
 
       Channel.dispatch.query_mind({
         mind: '999999',
+        state_id: String(state._id),
         client_id: 1
       });
 
@@ -175,16 +181,16 @@ describe('Channel Message Handlers', () => {
       expect(messages).to.have.lengthOf(0);
     });
 
-    it('handles mind with no states', () => {
-      const empty_mind = new Mind('empty_mind');
+    it('handles non-existent state gracefully', () => {
       messages.length = 0;
 
       Channel.dispatch.query_mind({
-        mind: 'empty_mind',
+        mind: 'test_mind',
+        state_id: '999999',
         client_id: 1
       });
 
-      // Should not post message if no state
+      // Should not post message if state not found
       expect(messages).to.have.lengthOf(0);
     });
   });
@@ -278,11 +284,14 @@ describe('Channel Message Handlers', () => {
         label: 'query_hammer',
         bases: ['PortableObject']
       });
+      const state = mind.create_state(1);
+      state.insert.push(hammer);
 
       messages.length = 0;
 
       Channel.dispatch.query_belief({
         belief: String(hammer._id),
+        state_id: String(state._id),
         client_id: 1
       });
 
@@ -293,10 +302,13 @@ describe('Channel Message Handlers', () => {
     });
 
     it('handles non-existent belief gracefully', () => {
+      const mind = new Mind('test_mind');
+      const state = mind.create_state(1);
       messages.length = 0;
 
       Channel.dispatch.query_belief({
         belief: '999999',
+        state_id: String(state._id),
         client_id: 1
       });
 
@@ -320,6 +332,7 @@ describe('Channel Message Handlers', () => {
 
       Channel.dispatch.query_belief({
         belief: String(workshop_belief._id),
+        state_id: String(npc_state._id),
         client_id: 1
       });
 
@@ -335,11 +348,14 @@ describe('Channel Message Handlers', () => {
         label: 'bases_hammer',
         bases: ['PortableObject']
       });
+      const state = mind.create_state(1);
+      state.insert.push(hammer);
 
       messages.length = 0;
 
       Channel.dispatch.query_belief({
         belief: String(hammer._id),
+        state_id: String(state._id),
         client_id: 1
       });
 

@@ -34,8 +34,8 @@ export const dispatch = {
 //		log(et);
 //	},
 
-	/** @param {{mind: string|number, client_id: number}} param0 */
-	query_mind({mind, client_id}){
+	/** @param {{mind: string|number, state_id: string|number, client_id: number}} param0 */
+	query_mind({mind, state_id, client_id}){
 		// Accept mind id (numeric string) or label (string)
 		const mind_str = String(mind);
 		const mind_obj = /^\d+$/.test(mind_str)
@@ -48,13 +48,16 @@ export const dispatch = {
 			return;
 		}
 
-		// Get the latest state from this mind
-		const states = [...mind_obj.state];
-		const state = states[states.length - 1];
+		// Get specified state
+		const state = Cosmos.DB.get_state(Number(state_id));
 
 		if (!state) {
-			log("No state found for mind", mind);
-      log(mind_obj.state);
+			log("State not found", state_id);
+			return;
+		}
+
+		if (state.in_mind !== mind_obj) {
+			log("State does not belong to specified mind", {state_id, mind});
 			return;
 		}
 
@@ -87,17 +90,8 @@ export const dispatch = {
 	query_state({state, client_id}){
 		const state_id = Number(state);
 
-		// Find state by searching all minds
-		let state_obj = null;
-		for (const [_id, mind] of Cosmos.DB.mind_by_id) {
-			for (const s of mind.state) {
-				if (s._id === state_id) {
-					state_obj = s;
-					break;
-				}
-			}
-			if (state_obj) break;
-		}
+		// Get state from registry
+		const state_obj = Cosmos.DB.get_state(state_id);
 
 		if (!state_obj) {
 			log("State not found", state_id);
@@ -129,8 +123,8 @@ export const dispatch = {
 		});
 	},
 
-	/** @param {{belief: string|number, client_id: number}} param0 */
-	query_belief({belief, client_id}){
+	/** @param {{belief: string|number, state_id: string|number, client_id: number}} param0 */
+	query_belief({belief, state_id, client_id}){
 		const belief_id = Number(belief);
 
 		// Find belief by id in global registry
@@ -141,12 +135,22 @@ export const dispatch = {
 			return;
 		}
 
+		// Get specified state for resolving sids
+		const state_id_num = Number(state_id);
+		const state = Cosmos.DB.get_state(state_id_num);
+
+		if (!state) {
+			log("State not found", state_id);
+			return;
+		}
+
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity",
 			server_id,
 			client_id,
+			state_id: state._id,
 			data: {
-				data: belief_obj.inspect(),
+				data: belief_obj.inspect(state),
 			},
 			desig: belief_obj.sysdesig(),
 			mind: {id: belief_obj.in_mind._id, label: belief_obj.in_mind.label},

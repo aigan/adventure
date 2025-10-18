@@ -12,12 +12,13 @@ describe('Archetype', () => {
   describe('Archetype Composition', () => {
     it('single archetype has correct structure', () => {
       const mind = new Mind('test');
+      const state = mind.create_state(1);
       const workshop = mind.add({
         label: 'workshop',
         bases: ['Location']
       });
 
-      const inspected = workshop.inspect();
+      const inspected = workshop.inspect(state);
       // Location inherits from ObjectPhysical, so we get both
       expect(inspected.archetypes).to.deep.equal(['Location', 'ObjectPhysical']);
     });
@@ -39,12 +40,13 @@ describe('Archetype', () => {
 
     it('Person archetype inherits from multiple bases', () => {
       const mind = new Mind('test');
+      const state = mind.create_state(1);
       const player = mind.add({
         label: 'player',
         bases: ['Person']
       });
 
-      const inspected = player.inspect();
+      const inspected = player.inspect(state);
       expect(inspected.archetypes).to.deep.equal(['Person', 'Actor', 'Mental', 'ObjectPhysical']);
 
       // Person → Actor → ObjectPhysical (has location, color)

@@ -58,11 +58,12 @@ const dispatch = {
     render({
       header: `${mind_prefix} beliefs (State #${dat.state.id}, timestamp: ${dat.state.timestamp}) ${state_nav}`,
       table: {
-        columns: ["desig"],
+        columns: ["label", "desig"],
         rows: dat.state.beliefs,
         row_link: {
           query: "belief",
           pass_column: ["id"],
+          state_id: dat.state.id,
         }
       },
     });
@@ -72,6 +73,7 @@ const dispatch = {
     render({
       header: `${mind_prefix}: ${dat.desig}`,
       entity: dat,
+      state_id: dat.state_id,  // Use state_id from server response
     });
   },
 }
@@ -107,6 +109,10 @@ function render_table(a, target = $main){
   let h_body = "";
   for( const row of at.rows ){
     let link = `?${at.row_link.query}=${row[at.row_link.pass_column[0]]}`;
+    // Add state_id to link if available
+    if (at.row_link.state_id) {
+      link += `&state=${at.row_link.state_id}`;
+    }
 
     let h_row = "";
     for( const col of at.columns ){
@@ -121,6 +127,7 @@ function render_table(a, target = $main){
 
 function render_entity(a, target = $main){
   const belief_data = a.entity.data.data;
+  const state_id = a.state_id;
 
   let hout = "<dl>";
 
@@ -142,7 +149,8 @@ function render_entity(a, target = $main){
     const about = a.entity.about;
     const mind_prefix = about.mind?.label || `Mind #${about.mind?.id}`;
     hout += `<dt>About</dt><dd>`;
-    hout += `<a href="?belief=${about.id}">${mind_prefix}: #${about.id}${about.label ? ' (' + about.label + ')' : ''}</a>`;
+    const about_link = state_id ? `?belief=${about.id}&state=${state_id}` : `?belief=${about.id}`;
+    hout += `<a href="${about_link}">${mind_prefix}: #${about.id}${about.label ? ' (' + about.label + ')' : ''}</a>`;
     hout += `</dd>`;
   }
 
@@ -169,7 +177,10 @@ function render_entity(a, target = $main){
               // Reference to another belief or object
               const type_lower = item._type.toLowerCase();
               const label_text = item.label ? ` (${item.label})` : '';
-              return `<a href="?${type_lower}=${item._ref}">#${item._ref}${label_text}</a>`;
+              const link = (type_lower === 'belief' && state_id)
+                ? `?${type_lower}=${item._ref}&state=${state_id}`
+                : `?${type_lower}=${item._ref}`;
+              return `<a href="${link}">#${item._ref}${label_text}</a>`;
             } else {
               return JSON.stringify(item);
             }
@@ -182,7 +193,10 @@ function render_entity(a, target = $main){
           // Reference to another belief or object
           const type_lower = value._type.toLowerCase();
           const label_text = value.label ? ` (${value.label})` : '';
-          display_value = `<a href="?${type_lower}=${value._ref}">#${value._ref}${label_text}</a>`;
+          const link = (type_lower === 'belief' && state_id)
+            ? `?${type_lower}=${value._ref}&state=${state_id}`
+            : `?${type_lower}=${value._ref}`;
+          display_value = `<a href="${link}">#${value._ref}${label_text}</a>`;
         } else {
           display_value = JSON.stringify(value, null, 2);
         }
@@ -207,10 +221,14 @@ function parse_url(){
 
   if (params.has('mind')) {
     query = {msg: 'query_mind', mind: params.get('mind')};
+  } else if (params.has('belief')) {
+    // Check if state is also specified
+    query = {msg: 'query_belief', belief: params.get('belief')};
+    if (params.has('state')) {
+      query.state_id = params.get('state');
+    }
   } else if (params.has('state')) {
     query = {msg: 'query_state', state: params.get('state')};
-  } else if (params.has('belief')) {
-    query = {msg: 'query_belief', belief: params.get('belief')};
   } else {
     // Default to world
     query = {msg: 'query_mind', mind: 'world'};

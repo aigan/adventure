@@ -53,6 +53,9 @@ export class State {
 
     // Register this state with its mind
     this.in_mind.state.add(this)
+
+    // Register in global registry
+    DB.state_by_id.set(this._id, this)
   }
 
   lock() {
@@ -394,7 +397,7 @@ export class State {
 
     // Execute learning
     for (const [label, trait_names] of Object.entries(learn_spec)) {
-      const belief = DB.belief_by_label.get(label)
+      const belief = DB.get_belief_by_label(label)
       if (!belief) {
         throw new Error(`Cannot learn about '${label}': belief not found`)
       }

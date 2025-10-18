@@ -30,7 +30,7 @@ describe('Belief', () => {
         traits: { color: 'blue' }
       });
 
-      const inspected = ball_v2.inspect();
+      const inspected = ball_v2.inspect(state);
       expect(inspected.bases).to.include(ball._id);
       expect(inspected.traits.color).to.equal('blue');
 
@@ -40,6 +40,7 @@ describe('Belief', () => {
 
     it('versioned belief inherits archetypes from base', () => {
       const mind = new Mind('test');
+      const state = mind.create_state(1);
       const hammer = mind.add({
         label: 'hammer',
         bases: ['PortableObject']
@@ -50,7 +51,7 @@ describe('Belief', () => {
         traits: { color: 'black' }
       });
 
-      const inspected = hammer_v2.inspect();
+      const inspected = hammer_v2.inspect(state);
       // hammer_v2 doesn't directly have archetypes in bases, inherits from base belief
       expect(inspected.bases).to.include(hammer._id);
 
@@ -66,7 +67,7 @@ describe('Belief', () => {
       const mind = new Mind('test');
       mind.add({label: 'workshop', bases: ['Location']});
 
-      const workshop = DB.belief_by_label.get('workshop');
+      const workshop = DB.get_belief_by_label('workshop');
       expect(workshop.in_mind).to.equal(mind);
     });
 
@@ -92,7 +93,7 @@ describe('Belief', () => {
       const mind_b = new Mind('mind_b');
 
       // Currently this works - mind_b can reference mind_a's belief
-      const workshop_a = DB.belief_by_label.get('workshop');
+      const workshop_a = DB.get_belief_by_label('workshop');
       const item = mind_b.add({
         label: 'item',
         bases: [workshop_a]  // Using belief from another mind

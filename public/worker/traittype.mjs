@@ -102,7 +102,7 @@ export class Traittype {
       const archetype = DB.archetype_by_label[type_label]
       let belief
       if (typeof data === 'string') {
-        belief = DB.belief_by_label.get(data)
+        belief = DB.get_belief_by_label(data)
       } else {
         belief = data
       }
@@ -194,12 +194,23 @@ export class Traittype {
   /**
    * Inspect trait value for shallow reference view (light serialization)
    * Returns only {_ref, _type, label} for Beliefs/States/Minds
+   * @param {import('./state.mjs').State} state - State context for resolving sids
    * @param {*} value - Value to inspect
    * @returns {*} Shallow representation with references
    */
-  static inspectTraitValue(value) {
+  static inspectTraitValue(state, value) {
     if (Array.isArray(value)) {
-      return value.map(item => Traittype.inspectTraitValue(item))
+      return value.map(item => Traittype.inspectTraitValue(state, item))
+    }
+    // Check if it's a number (potential sid)
+    if (typeof value === 'number') {
+      const resolved = state.resolve_subject(value)
+      if (resolved) {
+        // It's a sid - convert resolved Belief to reference format
+        return {_ref: resolved._id, _type: 'Belief', label: resolved.get_label()}
+      }
+      // Not a sid, just a number
+      return value
     }
     if (value && (value.constructor.name === 'Belief' || value.constructor.name === 'State' || value.constructor.name === 'Mind')) {
       /** @type {{_ref: number, _type: string, label?: string|null}} */

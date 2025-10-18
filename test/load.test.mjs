@@ -39,7 +39,7 @@ describe('Save/Load functionality', () => {
       expect(loaded_mind.state.size).to.equal(1);
 
       // Verify belief exists (lazy)
-      const loaded_workshop = DB.belief_by_label.get('workshop');
+      const loaded_workshop = DB.get_belief_by_label('workshop');
       expect(loaded_workshop).to.exist;
       expect(loaded_workshop._id).to.equal(workshop._id);
     });
@@ -71,8 +71,8 @@ describe('Save/Load functionality', () => {
       const loaded_mind = load(json);
 
       // Get loaded beliefs
-      const loaded_hammer = DB.belief_by_label.get('hammer');
-      const loaded_workshop = DB.belief_by_label.get('workshop');
+      const loaded_hammer = DB.get_belief_by_label('hammer');
+      const loaded_workshop = DB.get_belief_by_label('workshop');
       const loaded_state = [...loaded_mind.state][0];
 
       // Trait reference should be resolved correctly after load
@@ -122,11 +122,12 @@ describe('Save/Load functionality', () => {
       const loaded_state2 = [...loaded_mind.state].find(s => s.timestamp === 2);
       expect(loaded_state2).to.exist;
 
-      // Get the beliefs - room1 has label, room1_v2 doesn't
-      const loaded_room1 = DB.belief_by_label.get('room1');
-      const loaded_room2 = DB.belief_by_label.get('room2');
+      // Get the beliefs
+      const loaded_room1 = DB.get_belief_by_label('room1');
+      const loaded_room2 = DB.get_belief_by_label('room2');
+      // room1_v2 is a version of room1 (has room1 as base)
       const loaded_room1_v2 = [...DB.belief_by_id.values()].find(b =>
-        b.label === null && b.bases.size === 1 && [...b.bases][0] === loaded_room1
+        b !== loaded_room1 && b.bases.size === 1 && [...b.bases][0] === loaded_room1
       );
 
       expect(loaded_room1).to.exist;
@@ -233,13 +234,13 @@ describe('Save/Load functionality', () => {
       const loaded_mind = load(json);
 
       // Verify all beliefs loaded
-      expect(DB.belief_by_label.get('workshop')).to.exist;
-      expect(DB.belief_by_label.get('hammer')).to.exist;
-      expect(DB.belief_by_label.get('player')).to.exist;
-      expect(DB.belief_by_label.get('ball')).to.exist;
+      expect(DB.get_belief_by_label('workshop')).to.exist;
+      expect(DB.get_belief_by_label('hammer')).to.exist;
+      expect(DB.get_belief_by_label('player')).to.exist;
+      expect(DB.get_belief_by_label('ball')).to.exist;
 
       // Verify player has mind_states
-      const loaded_player = DB.belief_by_label.get('player');
+      const loaded_player = DB.get_belief_by_label('player');
       const mind_states = loaded_player.traits.get('mind_states');
       expect(mind_states).to.be.an('array');
       expect(mind_states[0]).to.be.instanceOf(State);
