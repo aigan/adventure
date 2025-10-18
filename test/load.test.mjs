@@ -38,7 +38,7 @@ describe('Save/Load functionality', () => {
       expect(loaded_mind.state.size).to.equal(1);
 
       // Verify belief exists (lazy)
-      const loaded_workshop = DB.Belief.by_label.get('workshop');
+      const loaded_workshop = DB.registry.belief_by_label.get('workshop');
       expect(loaded_workshop).to.exist;
       expect(loaded_workshop._id).to.equal(workshop._id);
     });
@@ -70,8 +70,8 @@ describe('Save/Load functionality', () => {
       const loaded_mind = DB.load(json);
 
       // Get loaded beliefs
-      const loaded_hammer = DB.Belief.by_label.get('hammer');
-      const loaded_workshop = DB.Belief.by_label.get('workshop');
+      const loaded_hammer = DB.registry.belief_by_label.get('hammer');
+      const loaded_workshop = DB.registry.belief_by_label.get('workshop');
       const loaded_state = [...loaded_mind.state][0];
 
       // Trait reference should be resolved correctly after load
@@ -122,9 +122,9 @@ describe('Save/Load functionality', () => {
       expect(loaded_state2).to.exist;
 
       // Get the beliefs - room1 has label, room1_v2 doesn't
-      const loaded_room1 = DB.Belief.by_label.get('room1');
-      const loaded_room2 = DB.Belief.by_label.get('room2');
-      const loaded_room1_v2 = [...DB.Belief.by_id.values()].find(b =>
+      const loaded_room1 = DB.registry.belief_by_label.get('room1');
+      const loaded_room2 = DB.registry.belief_by_label.get('room2');
+      const loaded_room1_v2 = [...DB.registry.belief_by_id.values()].find(b =>
         b.label === null && b.bases.size === 1 && [...b.bases][0] === loaded_room1
       );
 
@@ -232,19 +232,19 @@ describe('Save/Load functionality', () => {
       const loaded_mind = DB.load(json);
 
       // Verify all beliefs loaded
-      expect(DB.Belief.by_label.get('workshop')).to.exist;
-      expect(DB.Belief.by_label.get('hammer')).to.exist;
-      expect(DB.Belief.by_label.get('player')).to.exist;
-      expect(DB.Belief.by_label.get('ball')).to.exist;
+      expect(DB.registry.belief_by_label.get('workshop')).to.exist;
+      expect(DB.registry.belief_by_label.get('hammer')).to.exist;
+      expect(DB.registry.belief_by_label.get('player')).to.exist;
+      expect(DB.registry.belief_by_label.get('ball')).to.exist;
 
       // Verify player has mind_states
-      const loaded_player = DB.Belief.by_label.get('player');
+      const loaded_player = DB.registry.belief_by_label.get('player');
       const mind_states = loaded_player.traits.get('mind_states');
       expect(mind_states).to.be.an('array');
       expect(mind_states[0]).to.be.instanceOf(DB.State);
 
       // Verify ball has color (use ID to find exact versioned belief)
-      const loaded_ball = DB.Belief.by_id.get(ball_v2_id);
+      const loaded_ball = DB.registry.belief_by_id.get(ball_v2_id);
       expect(loaded_ball).to.exist;
       expect(loaded_ball.traits.get('color')).to.equal('blue');
     });

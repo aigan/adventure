@@ -1,4 +1,5 @@
 import { assert } from '../lib/debug.mjs'
+import * as registry from './registry.mjs'
 
 /**
  * Archetype definition for beliefs
@@ -7,9 +8,6 @@ import { assert } from '../lib/debug.mjs'
  * @property {object} traits_template - Trait definitions
  */
 export class Archetype {
-  /** @type {Record<string, Archetype>} */
-  static by_label = {}
-
   /**
    * @param {string} label
    * @param {object} param1
@@ -23,8 +21,8 @@ export class Archetype {
     /** @type {Set<Archetype>} */
     this.bases = new Set([])
     for (const base_label of bases) {
-      const base = Archetype.by_label[base_label]
-      assert(base != null, `Archetype '${base_label}' not found in archetype registry`, {base_label, Archetype_by_label: Archetype.by_label})
+      const base = registry.archetype_by_label[base_label]
+      assert(base != null, `Archetype '${base_label}' not found in archetype registry`, {base_label, Archetype_by_label: registry.archetype_by_label})
       this.bases.add(base)
     }
 

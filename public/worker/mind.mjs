@@ -1,23 +1,6 @@
 import { next_id } from './id_sequence.mjs'
-
-/**
- * Forward declarations to avoid circular dependencies
- * @type {any}
- */
-let Belief = null
-/** @type {any} */
-let State = null
-
-/**
- * Initialize references after all modules are loaded
- * @param {object} refs
- * @param {typeof import('./belief.mjs').Belief} refs.Belief
- * @param {typeof import('./state.mjs').State} refs.State
- */
-export function init_mind_refs(refs) {
-  Belief = refs.Belief
-  State = refs.State
-}
+import * as registry from './registry.mjs'
+import * as db from './db.mjs'
 
 /**
  * @typedef {object} MindJSON
@@ -37,10 +20,6 @@ export function init_mind_refs(refs) {
  * @property {Set<import('./state.mjs').State>} state - All states belonging to this mind
  */
 export class Mind {
-  /** @type {Map<number, Mind>} */
-  static by_id = new Map()
-  /** @type {Map<string, Mind>} */
-  static by_label = new Map()
 
   /**
    * @param {string|null|MindJSON} label - Mind identifier or JSON data
@@ -56,9 +35,9 @@ export class Mind {
       this.state = new Set()
 
       // Register globally
-      Mind.by_id.set(this._id, this)
+      registry.mind_by_id.set(this._id, this)
       if (this.label) {
-        Mind.by_label.set(this.label, this)
+        registry.mind_by_label.set(this.label, this)
       }
       return
     }
@@ -71,9 +50,9 @@ export class Mind {
     this.state = new Set([])
 
     // Register globally
-    Mind.by_id.set(this._id, this)
+    registry.mind_by_id.set(this._id, this)
     if (this.label) {
-      Mind.by_label.set(this.label, this)
+      registry.mind_by_label.set(this.label, this)
     }
 
     //log(`Created mind ${this._id}`)
@@ -85,7 +64,7 @@ export class Mind {
    */
   static get_by_id(id) {
     //log(`Get mind by id ${id}`)
-    return Mind.by_id.get(id)
+    return registry.mind_by_id.get(id)
   }
 
   /**
@@ -94,7 +73,7 @@ export class Mind {
    */
   static get_by_label(label) {
     //log(`Get mind by label ${label}`)
-    return Mind.by_label.get(label)
+    return registry.mind_by_label.get(label)
   }
 
   /**
@@ -102,7 +81,7 @@ export class Mind {
    * @returns {import('./belief.mjs').Belief}
    */
   add(belief_def) {
-    const belief = new Belief(this, belief_def)
+    const belief = db.create_belief(this, belief_def)
     return belief
   }
 
@@ -112,7 +91,7 @@ export class Mind {
    * @returns {import('./state.mjs').State}
    */
   create_state(timestamp, ground_state = null) {
-    const state = new State(this, timestamp, null, ground_state)
+    const state = db.create_state(this, timestamp, null, ground_state)
     return state
   }
 
@@ -122,7 +101,7 @@ export class Mind {
   toJSON() {
     // Filter beliefs from global registry that belong to this mind
     const mind_beliefs = []
-    for (const belief of Belief.by_id.values()) {
+    for (const belief of registry.belief_by_id.values()) {
       if (belief.in_mind === this) {
         mind_beliefs.push(belief.toJSON())
       }
@@ -148,12 +127,12 @@ export class Mind {
 
     // Create belief shells
     for (const belief_data of data.belief) {
-      Belief.from_json(mind, belief_data)
+      db.Belief.from_json(mind, belief_data)
     }
 
     // Create state shells and add to their respective minds
     for (const state_data of data.state) {
-      const state = State.from_json(mind, state_data)
+      const state = db.State.from_json(mind, state_data)
       // Add to the state's in_mind (which might be different from mind if nested)
       state.in_mind.state.add(state)
     }
@@ -168,7 +147,7 @@ export class Mind {
     // Finalize beliefs for THIS mind (resolve State/Mind references in traits)
     // Do this AFTER loading nested minds so all State/Mind references can be resolved
     for (const belief_data of data.belief) {
-      const belief = Belief.by_id.get(belief_data._id)
+      const belief = registry.belief_by_id.get(belief_data._id)
       if (belief) {
         belief._finalize_traits()
       }

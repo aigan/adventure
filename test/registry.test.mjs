@@ -17,10 +17,10 @@ describe('Registry', () => {
       const workshop_b = mind_b.add({label: 'workshop_unique_b', bases: ['Location']});
 
       // Labels are globally unique now
-      expect(DB.Belief.by_label.get('workshop_unique_a')).to.exist;
-      expect(DB.Belief.by_label.get('workshop_unique_b')).to.exist;
-      expect(DB.Belief.by_label.get('workshop_unique_a')).to.not.equal(
-        DB.Belief.by_label.get('workshop_unique_b')
+      expect(DB.registry.belief_by_label.get('workshop_unique_a')).to.exist;
+      expect(DB.registry.belief_by_label.get('workshop_unique_b')).to.exist;
+      expect(DB.registry.belief_by_label.get('workshop_unique_a')).to.not.equal(
+        DB.registry.belief_by_label.get('workshop_unique_b')
       );
     });
 

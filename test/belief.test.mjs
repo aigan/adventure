@@ -65,7 +65,7 @@ describe('Belief', () => {
       const mind = new DB.Mind('test');
       mind.add({label: 'workshop', bases: ['Location']});
 
-      const workshop = DB.Belief.by_label.get('workshop');
+      const workshop = DB.registry.belief_by_label.get('workshop');
       expect(workshop.in_mind).to.equal(mind);
     });
 
@@ -91,7 +91,7 @@ describe('Belief', () => {
       const mind_b = new DB.Mind('mind_b');
 
       // Currently this works - mind_b can reference mind_a's belief
-      const workshop_a = DB.Belief.by_label.get('workshop');
+      const workshop_a = DB.registry.belief_by_label.get('workshop');
       const item = mind_b.add({
         label: 'item',
         bases: [workshop_a]  // Using belief from another mind
@@ -156,11 +156,11 @@ describe('Belief', () => {
       });
 
       // Should be in belief_by_sid registry
-      expect(DB.Belief.by_sid).to.exist;
-      expect(DB.Belief.by_sid.get(room.sid)).to.exist;
+      expect(DB.registry.belief_by_sid).to.exist;
+      expect(DB.registry.belief_by_sid.get(room.sid)).to.exist;
 
       // Registry should contain a Set of beliefs with this sid
-      const beliefs_with_sid = DB.Belief.by_sid.get(room.sid);
+      const beliefs_with_sid = DB.registry.belief_by_sid.get(room.sid);
       expect(beliefs_with_sid).to.be.instanceof(Set);
       expect(beliefs_with_sid.has(room)).to.be.true;
     });
@@ -188,7 +188,7 @@ describe('Belief', () => {
       expect(room_v3.sid).to.equal(room_v1.sid);
 
       // All should be in belief_by_sid registry
-      const beliefs_with_sid = DB.Belief.by_sid.get(room_v1.sid);
+      const beliefs_with_sid = DB.registry.belief_by_sid.get(room_v1.sid);
       expect(beliefs_with_sid.size).to.equal(3);
       expect(beliefs_with_sid.has(room_v1)).to.be.true;
       expect(beliefs_with_sid.has(room_v2)).to.be.true;
@@ -246,8 +246,8 @@ describe('Belief', () => {
       });
 
       // Both versions should share the same label
-      expect(DB.Belief.label_by_sid.get(room_v1.sid)).to.equal('room');
-      expect(DB.Belief.sid_by_label.get('room')).to.equal(room_v1.sid);
+      expect(DB.registry.label_by_sid.get(room_v1.sid)).to.equal('room');
+      expect(DB.registry.sid_by_label.get('room')).to.equal(room_v1.sid);
 
       // v2 should have same sid, so same label association
       expect(room_v2.sid).to.equal(room_v1.sid);
@@ -265,7 +265,7 @@ describe('Belief', () => {
       state.insert.push(room);
 
       // Look up by label to get sid
-      const sid = DB.Belief.sid_by_label.get('workshop');
+      const sid = DB.registry.sid_by_label.get('workshop');
       expect(sid).to.equal(room.sid);
 
       // Then resolve in state context

@@ -1,29 +1,8 @@
 import { assert } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
-
-/**
- * Forward declarations to avoid circular dependencies
- * @type {any}
- */
-let Traittype = null
-/** @type {any} */
-let Mind = null
-/** @type {any} */
-let State = null
-
-/**
- * Initialize references after all modules are loaded
- * @param {object} refs
- * @param {typeof import('./traittype.mjs').Traittype} refs.Traittype
- * @param {typeof import('./mind.mjs').Mind} refs.Mind
- * @param {typeof import('./state.mjs').State} refs.State
- */
-export function init_belief_refs(refs) {
-  Traittype = refs.Traittype
-  Mind = refs.Mind
-  State = refs.State
-}
+import * as registry from './registry.mjs'
+import * as db from './db.mjs'
 
 /**
  * @typedef {object} BeliefJSON
@@ -49,16 +28,6 @@ export function init_belief_refs(refs) {
  * @property {boolean} locked - Whether belief can be modified
  */
 export class Belief {
-  /** @type {Map<number, Belief>} */
-  static by_id = new Map()
-  /** @type {Map<string, Belief>} */
-  static by_label = new Map()
-  /** @type {Map<number, Set<Belief>>} */ // sid → Set<Belief> (all versions of a subject)
-  static by_sid = new Map()
-  /** @type {Map<string, number>} */ // label → sid
-  static sid_by_label = new Map()
-  /** @type {Map<number, string>} */ // sid → label
-  static label_by_sid = new Map()
 
   /**
    * @param {import('./mind.mjs').Mind} mind
@@ -90,7 +59,7 @@ export class Belief {
       let resolved_about = null
       if (about != null) {
         if (typeof about === 'number') {
-          resolved_about = Belief.by_id.get(about) ?? null
+          resolved_about = registry.belief_by_id.get(about) ?? null
           if (!resolved_about) {
             throw new Error(`Cannot resolve about reference ${about} for belief ${this._id}`)
           }
@@ -105,13 +74,13 @@ export class Belief {
       this._bases = new Set()
       for (const base_ref of bases) {
         if (typeof base_ref === 'string') {
-          const archetype = Archetype.by_label[base_ref]
+          const archetype = registry.archetype_by_label[base_ref]
           if (!archetype) {
             throw new Error(`Archetype '${base_ref}' not found for belief ${this._id}`)
           }
           this._bases.add(archetype)
         } else if (typeof base_ref === 'number') {
-          const base_belief = Belief.by_id.get(base_ref)
+          const base_belief = registry.belief_by_id.get(base_ref)
           if (!base_belief) {
             throw new Error(`Cannot resolve base belief ${base_ref} for belief ${this._id}`)
           }
@@ -130,27 +99,27 @@ export class Belief {
       }
 
       // Register globally
-      Belief.by_id.set(this._id, this)
+      registry.belief_by_id.set(this._id, this)
 
       // Register in by_sid (sid → Set<Belief>)
       const sid_val = /** @type {number} */ (this.sid)
-      if (!Belief.by_sid.has(sid_val)) {
-        Belief.by_sid.set(sid_val, new Set())
+      if (!registry.belief_by_sid.has(sid_val)) {
+        registry.belief_by_sid.set(sid_val, new Set())
       }
-      /** @type {Set<Belief>} */ (Belief.by_sid.get(sid_val)).add(this)
+      /** @type {Set<Belief>} */ (registry.belief_by_sid.get(sid_val)).add(this)
 
       if (label) {
         // Register label-sid mappings (for first belief with this label loaded)
-        if (!Belief.sid_by_label.has(label)) {
-          if (Archetype.by_label[label]) {
+        if (!registry.sid_by_label.has(label)) {
+          if (registry.archetype_by_label[label]) {
             throw new Error(`Label '${label}' is already used by an archetype`)
           }
-          Belief.sid_by_label.set(label, sid_val)
-          Belief.label_by_sid.set(sid_val, label)
+          registry.sid_by_label.set(label, sid_val)
+          registry.label_by_sid.set(sid_val, label)
         }
 
         // Still maintain by_label for backward compatibility
-        Belief.by_label.set(label, this)
+        registry.belief_by_label.set(label, this)
       }
       return
     }
@@ -163,8 +132,8 @@ export class Belief {
       if (typeof base === 'string') {
         const base_label = base
         // Resolution order: belief registry → archetype registry
-        base = Belief.by_label.get(base) ?? Archetype.by_label[base]
-        assert(base != null, `Base '${base_label}' not found in belief registry or archetype registry`, {base_label, Belief_by_label: Belief.by_label, Archetype_by_label: Archetype.by_label})
+        base = registry.belief_by_label.get(base) ?? registry.archetype_by_label[base]
+        assert(base != null, `Base '${base_label}' not found in belief registry or archetype registry`, {base_label, Belief_by_label: registry.belief_by_label, Archetype_by_label: registry.archetype_by_label})
       }
       this._bases.add(/** @type {Belief|Archetype} */ (base))
     }
@@ -200,32 +169,32 @@ export class Belief {
     }
 
     // Register globally
-    Belief.by_id.set(this._id, this)
+    registry.belief_by_id.set(this._id, this)
 
     // Register in by_sid (sid → Set<Belief>)
-    if (!Belief.by_sid.has(this.sid)) {
-      Belief.by_sid.set(this.sid, new Set())
+    if (!registry.belief_by_sid.has(this.sid)) {
+      registry.belief_by_sid.set(this.sid, new Set())
     }
-    /** @type {Set<Belief>} */ (Belief.by_sid.get(this.sid)).add(this)
+    /** @type {Set<Belief>} */ (registry.belief_by_sid.get(this.sid)).add(this)
 
     if (label) {
       // For new subjects, register label-sid mappings
       if (!parent_belief) {
         // Check label uniqueness across beliefs and archetypes
-        if (Belief.sid_by_label.has(label)) {
+        if (registry.sid_by_label.has(label)) {
           throw new Error(`Label '${label}' is already used by another belief`)
         }
-        if (Archetype.by_label[label]) {
+        if (registry.archetype_by_label[label]) {
           throw new Error(`Label '${label}' is already used by an archetype`)
         }
 
         // Register label-sid bidirectional mapping
-        Belief.sid_by_label.set(label, this.sid)
-        Belief.label_by_sid.set(this.sid, label)
+        registry.sid_by_label.set(label, this.sid)
+        registry.label_by_sid.set(this.sid, label)
       }
 
       // Still maintain by_label for backward compatibility (maps label → latest belief)
-      Belief.by_label.set(label, this)
+      registry.belief_by_label.set(label, this)
     }
 
     // TODO: add default trait values
@@ -239,11 +208,12 @@ export class Belief {
   resolve_and_add_trait(label, data, creator_state = null) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.label})
 
-    const traittype = Traittype.by_label[label]
+    const traittype = db.get_traittype(label)
     //log('looking up traittype', label, traittype)
-    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.label, data, Traittype_by_label: Traittype.by_label})
+    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.label, data, Traittype_by_label: registry.traittype_by_label})
 
-    const value = traittype.resolve(this.in_mind, data, this, creator_state)
+    // TypeScript: traittype is non-null after assert
+    const value = /** @type {import('./traittype.mjs').Traittype} */ (traittype).resolve(this.in_mind, data, this, creator_state)
 
     assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.label, value, archetypes: [...this.get_archetypes()].map(a => a.label)})
 
@@ -393,7 +363,7 @@ export class Belief {
       archetypes: [...this.get_archetypes()].map(a => a.label),
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
-        [...this.traits].map(([k, v]) => [k, Traittype.serializeTraitValue(v)])
+        [...this.traits].map(([k, v]) => [k, db.Traittype.serializeTraitValue(v)])
       )
     }
   }
@@ -407,7 +377,7 @@ export class Belief {
       archetypes: [...this.get_archetypes()].map(a => a.label),
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
-        [...this.traits].map(([k, v]) => [k, Traittype.inspectTraitValue(v)])
+        [...this.traits].map(([k, v]) => [k, db.Traittype.inspectTraitValue(v)])
       )
     }
   }
@@ -477,7 +447,7 @@ function deserialize_trait_value(value) {
     // Handle nested references
     if (value._type === 'Belief') {
       // Use ID lookup (exact version), fall back to label lookup if needed
-      const belief = Belief.by_id.get(value._id)
+      const belief = registry.belief_by_id.get(value._id)
       if (!belief) {
         throw new Error(`Cannot resolve belief reference ${value._id} in trait`)
       }
@@ -486,7 +456,7 @@ function deserialize_trait_value(value) {
 
     if (value._type === 'State') {
       // States are nested in minds, need to search
-      for (const mind of Mind.by_id.values()) {
+      for (const mind of registry.mind_by_id.values()) {
         for (const state of mind.state) {
           if (state._id === value._id) {
             return state
@@ -497,7 +467,7 @@ function deserialize_trait_value(value) {
     }
 
     if (value._type === 'Mind') {
-      const mind = Mind.by_id.get(value._id)
+      const mind = registry.mind_by_id.get(value._id)
       if (!mind) {
         throw new Error(`Cannot resolve mind reference ${value._id} in trait`)
       }

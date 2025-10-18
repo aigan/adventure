@@ -18,9 +18,9 @@ describe('State', () => {
         bases: ['PortableObject']
       });
 
-      expect([...DB.Belief.by_id.values()].filter(b => b.in_mind === mind).length).to.equal(2);
-      expect([...DB.Belief.by_id.values()].some(b => b.in_mind === mind && b === DB.Belief.by_label.get('workshop'))).to.be.true;
-      expect([...DB.Belief.by_id.values()].some(b => b.in_mind === mind && b === hammer)).to.be.true;
+      expect([...DB.registry.belief_by_id.values()].filter(b => b.in_mind === mind).length).to.equal(2);
+      expect([...DB.registry.belief_by_id.values()].some(b => b.in_mind === mind && b === DB.registry.belief_by_label.get('workshop'))).to.be.true;
+      expect([...DB.registry.belief_by_id.values()].some(b => b.in_mind === mind && b === hammer)).to.be.true;
     });
 
     it('can iterate over beliefs for a mind', () => {
@@ -31,7 +31,7 @@ describe('State', () => {
       const mind = state.in_mind;
 
       const labels = [];
-      for (const belief of DB.Belief.by_id.values()) {
+      for (const belief of DB.registry.belief_by_id.values()) {
         if (belief.in_mind === mind) {
           labels.push(belief.label);
         }
@@ -44,8 +44,8 @@ describe('State', () => {
       const mind = new DB.Mind('test');
       mind.add({label: 'workshop', bases: ['Location']});
 
-      expect(DB.Belief.by_label.get('workshop')).to.exist;
-      expect(DB.Belief.by_label.get('workshop').label).to.equal('workshop');
+      expect(DB.registry.belief_by_label.get('workshop')).to.exist;
+      expect(DB.registry.belief_by_label.get('workshop').label).to.equal('workshop');
     });
   });
 
@@ -54,13 +54,13 @@ describe('State', () => {
       const mind_a = new DB.Mind('mind_a');
       mind_a.add({label: 'item_a', bases: ['PortableObject']});
       const state_a = mind_a.create_state(1);
-      const beliefs_for_a = [...DB.Belief.by_id.values()].filter(b => b.in_mind === mind_a);
+      const beliefs_for_a = [...DB.registry.belief_by_id.values()].filter(b => b.in_mind === mind_a);
       state_a.insert.push(...beliefs_for_a);
 
       const mind_b = new DB.Mind('mind_b');
       mind_b.add({label: 'item_b', bases: ['PortableObject']});
       const state_b = mind_b.create_state(1);
-      const beliefs_for_b = [...DB.Belief.by_id.values()].filter(b => b.in_mind === mind_b);
+      const beliefs_for_b = [...DB.registry.belief_by_id.values()].filter(b => b.in_mind === mind_b);
       state_b.insert.push(...beliefs_for_b);
 
       const beliefs_a = [...state_a.get_beliefs()];
@@ -81,10 +81,10 @@ describe('State', () => {
       mind_b.add({label: 'workshop_b', bases: ['Location']});
 
       const state_a = mind_a.create_state(1);
-      const beliefs_a = [...DB.Belief.by_id.values()].filter(b => b.in_mind === mind_a);
+      const beliefs_a = [...DB.registry.belief_by_id.values()].filter(b => b.in_mind === mind_a);
       state_a.insert.push(...beliefs_a);
       const state_b = mind_b.create_state(1);
-      const beliefs_b = [...DB.Belief.by_id.values()].filter(b => b.in_mind === mind_b);
+      const beliefs_b = [...DB.registry.belief_by_id.values()].filter(b => b.in_mind === mind_b);
       state_b.insert.push(...beliefs_b);
 
       const labels_a = [...state_a.get_beliefs()].map(b => b.label);
@@ -101,7 +101,7 @@ describe('State', () => {
       mind.add({label: 'hammer_v1', bases: ['PortableObject']});
 
       const state1 = mind.create_state(1);
-      const hammer_v1 = DB.Belief.by_label.get('hammer_v1');
+      const hammer_v1 = DB.registry.belief_by_label.get('hammer_v1');
       const hammer_v2 = new DB.Belief(hammer_v1.in_mind, {
         bases: [hammer_v1],
         traits: { color: 'red' }
@@ -125,14 +125,14 @@ describe('State', () => {
       const state_b1 = mind_b.create_state(1);
 
       // Add different beliefs to each mind
-      const item_a = DB.Belief.by_label.get('item_in_a');
+      const item_a = DB.registry.belief_by_label.get('item_in_a');
       const item_a2 = new DB.Belief(item_a.in_mind, {
         bases: [item_a],
         traits: { color: 'red' }
       });
       const state_a2 = state_a1.tick({ replace: [item_a2] });
 
-      const item_b = DB.Belief.by_label.get('item_in_b');
+      const item_b = DB.registry.belief_by_label.get('item_in_b');
       const item_b2 = new DB.Belief(item_b.in_mind, {
         bases: [item_b],
         traits: { color: 'blue' }

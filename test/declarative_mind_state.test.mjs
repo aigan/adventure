@@ -69,7 +69,7 @@ describe('Declarative Mind State Construction', () => {
     world_state.insert.push(main_area, workshop, player_body);
 
     // Define state prototype
-    DB.State.by_label.player_mind = {
+    DB.registry.state_by_label.player_mind = {
       learn: {
         workshop: ['location']
       }
@@ -167,7 +167,7 @@ describe('Declarative Mind State Construction', () => {
     world_state.insert.push(base_location, location1, location2);
 
     // Define prototype
-    DB.State.by_label.test_prototype = {
+    DB.registry.state_by_label.test_prototype = {
       learn: {
         location1: ['location']
       }
@@ -236,7 +236,7 @@ describe('Declarative Mind State Construction', () => {
     world_state.insert.push(base_location, location1, location2);
 
     // Prototype learns location1
-    DB.State.by_label.test_prototype = {
+    DB.registry.state_by_label.test_prototype = {
       learn: {
         location1: ['location']
       }

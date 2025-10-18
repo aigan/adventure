@@ -1,35 +1,6 @@
 import { Archetype } from './archetype.mjs'
-
-/**
- * Forward declarations - these will be set after imports
- * Needed to avoid circular dependencies
- * @type {any}
- */
-let Mind = null
-/** @type {any} */
-let State = null
-/** @type {any} */
-let Belief = null
-
-/**
- * Initialize references to avoid circular dependencies
- * Called from db.mjs after all classes are loaded
- * @param {object} refs
- * @param {typeof import('./mind.mjs').Mind} refs.Mind
- * @param {typeof import('./state.mjs').State} refs.State
- * @param {typeof import('./belief.mjs').Belief} refs.Belief
- */
-export function init_traittype_refs(refs) {
-  Mind = refs.Mind
-  State = refs.State
-  Belief = refs.Belief
-
-  // Update data_type_map with actual classes
-  Traittype.data_type_map = {
-    Mind: Mind,
-    State: State,
-  }
-}
+import * as registry from './registry.mjs'
+import * as db from './db.mjs'
 
 /**
  * @typedef {string|TraitTypeSchema} TraitTypeDefinition
@@ -53,16 +24,8 @@ export function init_traittype_refs(refs) {
  * @property {Function|null} container - Container constructor (e.g., Array) or null
  * @property {object|null} constraints - Validation constraints (min, max)
  */
+
 export class Traittype {
-  /** @type {Record<string, Traittype>} */
-  static by_label = {}
-
-  /** @type {Record<string, any>} */
-  static data_type_map = {
-    Mind: null,
-    State: null,
-  }
-
   /** @type {Record<string, NumberConstructor|StringConstructor|BooleanConstructor>} */
   static literal_type_map = {
     'number': Number,
@@ -135,11 +98,11 @@ export class Traittype {
     const type_label = this.data_type
 
     // Check if it's an Archetype reference
-    if (Archetype.by_label[type_label]) {
-      const archetype = Archetype.by_label[type_label]
+    if (registry.archetype_by_label[type_label]) {
+      const archetype = registry.archetype_by_label[type_label]
       let belief
       if (typeof data === 'string') {
-        belief = Belief.by_label.get(data)
+        belief = registry.belief_by_label.get(data)
       } else {
         belief = data
       }
@@ -168,12 +131,17 @@ export class Traittype {
     }
 
     // Check if it's a data type (Mind, State)
-    if (Traittype.data_type_map[type_label]) {
-      const type_constructor = Traittype.data_type_map[type_label]
-      if (data instanceof type_constructor) {
+    if (type_label === 'Mind') {
+      if (db.is_mind(data)) {
         return data
       }
-      throw new Error(`Expected ${type_label} instance for trait '${this.label}'`)
+      throw new Error(`Expected Mind instance for trait '${this.label}'`)
+    }
+    if (type_label === 'State') {
+      if (db.is_state(data)) {
+        return data
+      }
+      throw new Error(`Expected State instance for trait '${this.label}'`)
     }
 
     throw new Error(`Unknown type '${type_label}' for trait '${this.label}'`)
@@ -189,11 +157,15 @@ export class Traittype {
   resolve(mind, data, owner_belief = null, creator_state = null) {
     // Check for template construction first (_type field)
     if (data?._type) {
-      // Type assertion: we know Mind and State both have resolve_template
-      const type_class = /** @type {any} */ (Traittype.data_type_map[data._type])
-      if (type_class?.resolve_template) {
-        const result = type_class.resolve_template(mind, data, owner_belief, creator_state)
+      let result
+      if (data._type === 'Mind') {
+        // TypeScript: Call resolve_template as any to avoid type check on static method
+        result = /** @type {any} */ (db.Mind).resolve_template(mind, data, owner_belief, creator_state)
+      } else if (data._type === 'State') {
+        result = /** @type {any} */ (db.State).resolve_template(mind, data, owner_belief, creator_state)
+      }
 
+      if (result !== undefined) {
         // Wrap in array if container expects it
         if (this.container === Array && !Array.isArray(result)) {
           return [result]

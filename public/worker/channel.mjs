@@ -45,7 +45,7 @@ export const dispatch = {
 
 		if (!mind_obj) {
 			log("Mind not found", mind);
-			log(DB.Mind.by_id);
+			log(DB.registry.mind_by_id);
 			return;
 		}
 
@@ -90,7 +90,7 @@ export const dispatch = {
 
 		// Find state by searching all minds
 		let state_obj = null;
-		for (const [_id, mind] of DB.Mind.by_id) {
+		for (const [_id, mind] of DB.registry.mind_by_id) {
 			for (const s of mind.state) {
 				if (s._id === state_id) {
 					state_obj = s;
@@ -135,7 +135,7 @@ export const dispatch = {
 		const belief_id = Number(belief);
 
 		// Find belief by id in global registry
-		const belief_obj = DB.Belief.by_id.get(belief_id);
+		const belief_obj = DB.registry.belief_by_id.get(belief_id);
 
 		if (!belief_obj) {
 			log("Belief not found", belief_id);

@@ -1,27 +1,5 @@
 import { set_id_sequence } from './id_sequence.mjs'
-
-/**
- * Forward declarations to avoid circular dependencies
- * @type {any}
- */
-let Mind = null
-/** @type {any} */
-let Belief = null
-/** @type {any} */
-let State = null
-
-/**
- * Initialize references after all modules are loaded
- * @param {object} refs
- * @param {typeof import('./mind.mjs').Mind} refs.Mind
- * @param {typeof import('./belief.mjs').Belief} refs.Belief
- * @param {typeof import('./state.mjs').State} refs.State
- */
-export function init_serialize_refs(refs) {
-  Mind = refs.Mind
-  Belief = refs.Belief
-  State = refs.State
-}
+import * as db from './db.mjs'
 
 /**
  * Serialization coordinator with dependency tracking
@@ -39,6 +17,7 @@ export class Serialize {
    */
   static save_mind(mind) {
     // Set up tracking
+    db.set_serializing(true)
     Serialize.dependency_queue = []
     Serialize.seen = new Set([mind._id]) // Mark root as seen
 
@@ -57,6 +36,7 @@ export class Serialize {
     }
 
     // Clean up
+    db.set_serializing(false)
     Serialize.dependency_queue = null
     Serialize.seen = null
 
@@ -94,7 +74,7 @@ export function load(json_string) {
   let result
   switch (data._type) {
     case 'Mind':
-      result = Mind.from_json(/** @type {import('./mind.mjs').MindJSON} */ (data))
+      result = db.Mind.from_json(/** @type {import('./mind.mjs').MindJSON} */ (data))
       break
     case 'Belief':
       throw new Error('Loading individual Belief not yet implemented')

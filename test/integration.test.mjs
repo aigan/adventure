@@ -50,7 +50,7 @@ describe('Integration', () => {
       expect([...ball.get_archetypes()].map(a => a.label)).to.include('PortableObject');
 
       // Verify player
-      let player = DB.Belief.by_label.get('player');
+      let player = DB.registry.belief_by_label.get('player');
       const player_mind = new DB.Mind('player_mind');
       const player_mind_state = player_mind.create_state(1);
       player = new DB.Belief(player.in_mind, {
@@ -62,7 +62,7 @@ describe('Integration', () => {
       expect(player_inspected.traits.mind_states[0]._ref).to.equal(player_mind_state._id);
 
       // Verify learn_about
-      const workshop = DB.Belief.by_label.get('workshop');
+      const workshop = DB.registry.belief_by_label.get('workshop');
       const workshop_knowledge = player_mind_state.learn_about(world_state, workshop);
 
       const workshop_inspected = workshop_knowledge.inspect();
