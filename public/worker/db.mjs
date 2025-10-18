@@ -10,6 +10,9 @@ export function reset_registries() {
   Mind.by_label.clear();
   Belief.by_id.clear();
   Belief.by_label.clear();
+  Belief.by_sid.clear();
+  Belief.sid_by_label.clear();
+  Belief.label_by_sid.clear();
   Archetype.by_label = {};
   Traittype.by_label = {};
   id_sequence = 0;
@@ -152,6 +155,13 @@ export function register( archetypes, traittypes ) {
   }
 }
 
+/**
+ * Container for beliefs with state tracking
+ * @property {number} _id - Unique identifier
+ * @property {string|null} label - Optional label for lookup
+ * @property {Belief|null} self - What this mind considers "self"
+ * @property {Set<State>} state - All states belonging to this mind
+ */
 export class Mind {
   static by_id = new Map();
   static by_label = new Map();
@@ -166,9 +176,8 @@ export class Mind {
       const data = label;
       this._id = data._id;
       this.label = data.label;
-      this.self = null; // Will be resolved in _materialize
+      this.self = null; // Will be resolved later if needed
       this.state = new Set();
-      this._lazy = data;
 
       // Register globally
       Mind.by_id.set(this._id, this);
@@ -184,7 +193,6 @@ export class Mind {
     this.self = self;
     /** @type {Set<State>} */
     this.state = new Set([]);
-    this._lazy = null;
 
     // Register globally
     Mind.by_id.set(this._id, this);
@@ -278,10 +286,32 @@ export class Mind {
       }
     }
 
+    // Finalize beliefs for THIS mind (resolve State/Mind references in traits)
+    // Do this AFTER loading nested minds so all State/Mind references can be resolved
+    for (const belief_data of data.belief) {
+      const belief = Belief.by_id.get(belief_data._id);
+      if (belief) {
+        belief._finalize_traits();
+      }
+    }
+
     return mind;
   }
 }
 
+/**
+ * Immutable state snapshot with differential updates
+ * @property {number} _id - Unique identifier
+ * @property {Mind} in_mind - Mind this state belongs to
+ * @property {number} timestamp - State timestamp/tick
+ * @property {State|null} base - Parent state (inheritance chain)
+ * @property {State|null} ground_state - External world state this references
+ * @property {Belief[]} insert - Beliefs added/present in this state
+ * @property {Belief[]} remove - Beliefs removed in this state
+ * @property {State[]} branches - Child states branching from this one
+ * @property {boolean} locked - Whether state can be modified
+ * @property {Map<number, Belief>|null} _sid_index - Cached sid→belief lookup (lazy, only on locked states)
+ */
 export class State {
   // TODO: Populate this registry for prototype state templates
   // Will be used to share belief lists across many nodes
@@ -433,12 +463,57 @@ export class State {
   }
 
   /**
-   * @param {Belief} belief - Belief from another mind/state
-   * @param {string[]} trait_names - Traits to copy
+   * Resolve a subject ID to the appropriate belief version visible in this state
+   * Progressively builds cache as beliefs are accessed (locked states only)
+   * @param {number} sid - Subject ID to resolve
+   * @returns {Belief|null} The belief with this sid visible in this state, or null if not found
+   */
+  resolve_subject(sid) {
+    // Check cache first (only on locked states)
+    if (this.locked && this._sid_index?.has(sid)) {
+      return this._sid_index.get(sid);
+    }
+
+    // If unlocked, don't cache - just search with early termination
+    if (!this.locked) {
+      for (const belief of this.get_beliefs()) {
+        if (belief.sid === sid) return belief;
+      }
+      return null;
+    }
+
+    // Locked state - search and cache as we go (progressive indexing)
+    if (!this._sid_index) {
+      this._sid_index = new Map();
+    }
+
+    for (const belief of this.get_beliefs()) {
+      // Cache each belief we encounter
+      if (!this._sid_index.has(belief.sid)) {
+        this._sid_index.set(belief.sid, belief);
+      }
+
+      // Found it? Return immediately (early termination)
+      if (belief.sid === sid) {
+        return belief;
+      }
+    }
+
+    // Not found - cache the null result to avoid re-scanning
+    this._sid_index.set(sid, null);
+    return null;
+  }
+
+  /**
+   * Learn about a belief from another mind, copying it into this state's mind
+   * @param {State} source_state - State context to resolve trait sids in (REQUIRED)
+   * @param {Belief} belief - Belief from another mind/state to learn about
+   * @param {string[]} [trait_names] - Traits to copy (empty = copy no traits, just archetypes)
    * @returns {Belief}
    */
-  learn_about(belief, trait_names = []) {
+  learn_about(source_state, belief, trait_names = []) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label});
+    assert(source_state != null, 'source_state is required for resolving trait references');
 
     const original = this._follow_about_chain_to_original(belief);
     const archetype_bases = [...belief.get_archetypes()];
@@ -448,7 +523,7 @@ export class State {
     for (const name of trait_names) {
       if (belief.traits.has(name)) {
         const value = belief.traits.get(name);
-        copied_traits[name] = this._dereference_trait_value(value);
+        copied_traits[name] = this._dereference_trait_value(source_state, value);
       }
     }
 
@@ -486,15 +561,24 @@ export class State {
   }
 
   /**
-   * Handles primitives, Beliefs, and arrays recursively
+   * Handles primitives, Beliefs, sids, and arrays recursively
+   * @param {State} source_state - State to resolve sids in
    * @param {*} value
    * @returns {*}
    */
-  _dereference_trait_value(value) {
+  _dereference_trait_value(source_state, value) {
     if (Array.isArray(value)) {
-      return value.map(item => this._dereference_trait_value(item));
+      return value.map(item => this._dereference_trait_value(source_state, item));
+    } else if (typeof value === 'number' && source_state) {
+      // Value is a sid - resolve it to a belief in source_state
+      const resolved_belief = source_state.resolve_subject(value);
+      if (resolved_belief) {
+        return this._find_or_learn_belief_about(source_state, resolved_belief);
+      }
+      // If can't resolve, return the sid as-is (might be a primitive number)
+      return value;
     } else if (value instanceof Belief) {
-      return this._find_or_learn_belief_about(value);
+      return this._find_or_learn_belief_about(source_state, value);
     } else {
       return value;
     }
@@ -502,10 +586,11 @@ export class State {
 
   /**
    * Calls learn_about() recursively if belief doesn't exist in this state
+   * @param {State|null} source_state - State context for resolving trait references
    * @param {Belief} belief_reference
    * @returns {Belief}
    */
-  _find_or_learn_belief_about(belief_reference) {
+  _find_or_learn_belief_about(source_state, belief_reference) {
     // Find the original entity this belief is about
     const original = this._follow_about_chain_to_original(belief_reference);
 
@@ -526,7 +611,13 @@ export class State {
       return existing_beliefs[0];
     } else {
       // Create new belief about the referenced entity
-      return this.learn_about(belief_reference);
+      // Use source_state from belief's mind if not provided
+      if (!source_state && belief_reference.in_mind) {
+        // Get the latest state from the source mind
+        const states = [...belief_reference.in_mind.state];
+        source_state = states[states.length - 1];
+      }
+      return this.learn_about(source_state, belief_reference);
     }
   }
 
@@ -592,7 +683,9 @@ export class State {
 
       // Only learn explicitly listed traits (empty array = nothing)
       if (trait_names.length > 0) {
-        state.learn_about(belief, trait_names)
+        // Use ground state as source context (the parent mind's state we're observing from)
+        assert(ground != null, `Cannot learn about beliefs without ground_state context`)
+        state.learn_about(ground, belief, trait_names)
       }
     }
 
@@ -688,9 +781,23 @@ export class State {
   }
 }
 
+/**
+ * Represents a belief about an entity with versioning support
+ * @property {number} _id - Unique version identifier
+ * @property {number} sid - Subject identifier (stable across versions)
+ * @property {string|null} label - Optional label for lookup
+ * @property {Mind} in_mind - Mind this belief belongs to
+ * @property {Belief|null} _about - Parent belief this is about (identity chain)
+ * @property {Set<Belief|Archetype>} _bases - Base archetypes/beliefs for inheritance
+ * @property {Map<string, *>} _traits - Trait values (sids, primitives, State/Mind refs)
+ * @property {boolean} locked - Whether belief can be modified
+ */
 export class Belief {
   static by_id = new Map();
   static by_label = new Map();
+  static by_sid = new Map(); // sid → Set<Belief> (all versions of a subject)
+  static sid_by_label = new Map(); // label → sid
+  static label_by_sid = new Map(); // sid → label
 
   /**
    * @param {Mind} mind
@@ -701,45 +808,81 @@ export class Belief {
    * @param {object} [param1.traits]
    * @param {string|null} [param1._type]
    * @param {number|null} [param1._id]
+   * @param {number|null} [param1.sid]
    * @param {State|null} [creator_state] - State that's creating this belief (for inferring ground_state)
    */
-  constructor(mind, {label=null, about=null, bases=[], traits={}, _type=null, _id=null}, creator_state = null) {
+  constructor(mind, {label=null, about=null, bases=[], traits={}, _type=null, _id=null, sid=null}, creator_state = null) {
     // Check if loading from JSON
     if (_type === 'Belief' && _id != null) {
       this._id = _id;
+      this.sid = sid;
       this.in_mind = mind;
       this.label = label;
-      this._about = null;
-      this._bases = new Set();
-      this._traits = new Map();
       this.locked = false;
-      this._lazy = {label, about, bases, traits};
+
+      // Resolve 'about' reference (ID to Belief object)
+      if (about != null) {
+        this._about = Belief.by_id.get(about);
+        if (!this._about) {
+          throw new Error(`Cannot resolve about reference ${about} for belief ${this._id}`);
+        }
+      } else {
+        this._about = null;
+      }
+
+      // Resolve 'bases' (archetype labels or belief IDs)
+      this._bases = new Set();
+      for (const base_ref of bases) {
+        if (typeof base_ref === 'string') {
+          const archetype = Archetype.by_label[base_ref];
+          if (!archetype) {
+            throw new Error(`Archetype '${base_ref}' not found for belief ${this._id}`);
+          }
+          this._bases.add(archetype);
+        } else {
+          const base_belief = Belief.by_id.get(base_ref);
+          if (!base_belief) {
+            throw new Error(`Cannot resolve base belief ${base_ref} for belief ${this._id}`);
+          }
+          this._bases.add(base_belief);
+        }
+      }
+
+      // Copy traits as-is - sids, primitives, and State/Mind reference objects
+      // Resolution happens lazily when accessed via get_trait()
+      this._traits = new Map();
+      for (const [trait_name, trait_value] of Object.entries(traits)) {
+        this._traits.set(trait_name, trait_value);
+      }
 
       // Register globally
       Belief.by_id.set(this._id, this);
+
+      // Register in by_sid (sid → Set<Belief>)
+      if (!Belief.by_sid.has(this.sid)) {
+        Belief.by_sid.set(this.sid, new Set());
+      }
+      Belief.by_sid.get(this.sid).add(this);
+
       if (label) {
-        // Check label uniqueness across beliefs and archetypes
-        if (Belief.by_label.has(label)) {
-          throw new Error(`Label '${label}' is already used by another belief`);
+        // Register label-sid mappings (for first belief with this label loaded)
+        if (!Belief.sid_by_label.has(label)) {
+          if (Archetype.by_label[label]) {
+            throw new Error(`Label '${label}' is already used by an archetype`);
+          }
+          Belief.sid_by_label.set(label, this.sid);
+          Belief.label_by_sid.set(this.sid, label);
         }
-        if (Archetype.by_label[label]) {
-          throw new Error(`Label '${label}' is already used by an archetype`);
-        }
+
+        // Still maintain by_label for backward compatibility
         Belief.by_label.set(label, this);
       }
       return;
     }
 
-    // Normal construction
-    this._id = ++ id_sequence;
-    this.in_mind = mind;
-    this.label = label;
-    this._about = about;
+    // Resolve bases early to determine if this is a new subject or version
     /** @type {Set<Belief|Archetype>} */
     this._bases = new Set([]);
-    this._traits = new Map();
-    this.locked = false;
-    this._lazy = null;
 
     for (let base of bases) {
       if (typeof base === 'string') {
@@ -751,20 +894,62 @@ export class Belief {
       this._bases.add(/** @type {Belief|Archetype} */ (base));
     }
 
+    // Determine sid: reuse from belief base, or assign new subject id
+    let parent_belief = null;
+    for (const base of this._bases) {
+      if (base instanceof Belief) {
+        parent_belief = base;
+        break;
+      }
+    }
+
+    // Normal construction
+    if (parent_belief) {
+      // This is a version of an existing subject
+      this.sid = parent_belief.sid;
+      this._id = ++id_sequence;
+    } else {
+      // This is a new subject
+      this.sid = ++id_sequence;
+      this._id = ++id_sequence;
+    }
+
+    this.in_mind = mind;
+    this.label = label;
+    this._about = about;
+    this._traits = new Map();
+    this.locked = false;
+
     for (const [trait_label, trait_data] of Object.entries(traits)) {
       this.resolve_and_add_trait(trait_label, trait_data, creator_state);
     }
 
     // Register globally
     Belief.by_id.set(this._id, this);
+
+    // Register in by_sid (sid → Set<Belief>)
+    if (!Belief.by_sid.has(this.sid)) {
+      Belief.by_sid.set(this.sid, new Set());
+    }
+    Belief.by_sid.get(this.sid).add(this);
+
     if (label) {
-      // Check label uniqueness across beliefs and archetypes
-      if (Belief.by_label.has(label)) {
-        throw new Error(`Label '${label}' is already used by another belief`);
+      // For new subjects, register label-sid mappings
+      if (!parent_belief) {
+        // Check label uniqueness across beliefs and archetypes
+        if (Belief.sid_by_label.has(label)) {
+          throw new Error(`Label '${label}' is already used by another belief`);
+        }
+        if (Archetype.by_label[label]) {
+          throw new Error(`Label '${label}' is already used by an archetype`);
+        }
+
+        // Register label-sid bidirectional mapping
+        Belief.sid_by_label.set(label, this.sid);
+        Belief.label_by_sid.set(this.sid, label);
       }
-      if (Archetype.by_label[label]) {
-        throw new Error(`Label '${label}' is already used by an archetype`);
-      }
+
+      // Still maintain by_label for backward compatibility (maps label → latest belief)
       Belief.by_label.set(label, this);
     }
 
@@ -803,6 +988,38 @@ export class Belief {
       if (label in archetype.traits_template) return true;
     }
     return false;
+  }
+
+  /**
+   * Get a trait value with sids resolved to Beliefs
+   * @param {State} state - State context for resolving sids
+   * @param {string} trait_name - Name of the trait to get
+   * @returns {*} Resolved trait value (Beliefs instead of sids)
+   */
+  get_trait(state, trait_name) {
+    const raw_value = this.traits.get(trait_name);
+    return this._resolve_trait_value(raw_value, state);
+  }
+
+  /**
+   * @private
+   * @param {*} value - Raw trait value (may contain sids or State/Mind refs)
+   * @param {State} state - State context for resolving sids
+   * @returns {*} Resolved value
+   */
+  _resolve_trait_value(value, state) {
+    if (Array.isArray(value)) {
+      return value.map(item => this._resolve_trait_value(item, state));
+    } else if (typeof value === 'number') {
+      // Might be a sid - try to resolve to Belief
+      const resolved = state.resolve_subject(value);
+      return resolved !== null ? resolved : value;
+    } else if (value && typeof value === 'object' && value._type) {
+      // State/Mind reference object from JSON - deserialize it
+      return deserialize_trait_value(value);
+    } else {
+      return value;
+    }
   }
 
   /**
@@ -895,6 +1112,7 @@ export class Belief {
     return {
       _type: 'Belief',
       _id: this._id,
+      sid: this.sid,
       label: this.label,
       about: this.about?._id ?? null,
       archetypes: [...this.get_archetypes()].map(a => a.label),
@@ -920,6 +1138,33 @@ export class Belief {
   }
 
   /**
+   * Finalize traits after loading - resolve State/Mind reference objects
+   * Called after all entities are loaded
+   */
+  _finalize_traits() {
+    for (const [trait_name, trait_value] of this._traits) {
+      this._traits.set(trait_name, this._resolve_final_trait_value(trait_value));
+    }
+  }
+
+  /**
+   * Resolve trait value completely (including nested State/Mind references)
+   * @param {*} value - Trait value (may contain {_type, _id} reference objects)
+   * @returns {*} Fully resolved value
+   */
+  _resolve_final_trait_value(value) {
+    if (Array.isArray(value)) {
+      return value.map(item => this._resolve_final_trait_value(item));
+    } else if (value && typeof value === 'object' && value._type) {
+      // State/Mind reference object from JSON - deserialize it
+      return deserialize_trait_value(value);
+    } else {
+      // Primitives and sids stay as-is
+      return value;
+    }
+  }
+
+  /**
    * Create Belief from JSON data with lazy loading
    * @param {Mind} mind - Mind this belief belongs to
    * @param {object} data - JSON data with _type: 'Belief'
@@ -929,59 +1174,16 @@ export class Belief {
     return new Belief(mind, data);
   }
 
-  /**
-   * Materialize lazy-loaded belief (resolve ID references)
-   */
-  _materialize() {
-    if (!this._lazy) return;
-
-    const data = this._lazy;
-    this._lazy = null;
-
-    // Resolve 'about' reference (ID to Belief object)
-    if (data.about != null) {
-      this._about = Belief.by_id.get(data.about);
-      if (!this._about) {
-        throw new Error(`Cannot resolve about reference ${data.about} for belief ${this._id}`);
-      }
-    }
-
-    // Resolve 'bases' (archetype labels or belief IDs)
-    for (const base_ref of data.bases) {
-      if (typeof base_ref === 'string') {
-        const archetype = Archetype.by_label[base_ref];
-        if (!archetype) {
-          throw new Error(`Archetype '${base_ref}' not found for belief ${this._id}`);
-        }
-        this._bases.add(archetype);
-      } else {
-        const base_belief = Belief.by_id.get(base_ref);
-        if (!base_belief) {
-          throw new Error(`Cannot resolve base belief ${base_ref} for belief ${this._id}`);
-        }
-        this._bases.add(base_belief);
-      }
-    }
-
-    // Resolve traits (deserialize trait values)
-    for (const [trait_name, trait_value] of Object.entries(data.traits)) {
-      this._traits.set(trait_name, deserialize_trait_value(trait_value));
-    }
-  }
-
-  // Lazy getters
+  // Simple property accessors (no lazy loading needed with SID system)
   get about() {
-    if (this._lazy) this._materialize();
     return this._about;
   }
 
   get bases() {
-    if (this._lazy) this._materialize();
     return this._bases;
   }
 
   get traits() {
-    if (this._lazy) this._materialize();
     return this._traits;
   }
 }
@@ -1172,7 +1374,8 @@ export class Traittype {
       // Check if belief has the required archetype in its chain
       for (const a of belief.get_archetypes()) {
         if (a === archetype) {
-          return belief;
+          // Store sid (subject ID) instead of object reference
+          return belief.sid;
         }
       }
 

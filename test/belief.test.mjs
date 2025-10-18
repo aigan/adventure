@@ -10,13 +10,13 @@ describe('Belief', () => {
 
   describe('Belief Versioning', () => {
     it('with_traits creates new belief with base reference', () => {
-      const mind = createMindWithBeliefs('test', {
+      const state = createMindWithBeliefs('test', {
         workshop: {
           bases: ['Location']
         }
       });
 
-      const ball = mind.add({
+      const ball = state.in_mind.add({
         label: 'ball',
         bases: ['PortableObject'],
         traits: {
@@ -98,6 +98,179 @@ describe('Belief', () => {
       });
 
       expect(item.bases.has(workshop_a)).to.be.true;
+    });
+  });
+
+  describe('SID System', () => {
+    it('creates belief with both sid and _id from same sequence', () => {
+      const world_mind = new DB.Mind('world');
+
+      const workshop = world_mind.add({
+        label: 'workshop',
+        bases: ['Location'],
+      });
+
+      // Should have both sid and _id
+      expect(workshop).to.have.property('sid');
+      expect(workshop).to.have.property('_id');
+
+      // Both should be positive integers
+      expect(workshop.sid).to.be.a('number');
+      expect(workshop._id).to.be.a('number');
+
+      // For a new subject, sid should be assigned first, then _id
+      expect(workshop._id).to.be.greaterThan(workshop.sid);
+    });
+
+    it('creates versioned belief with same sid but new _id', () => {
+      const world_mind = new DB.Mind('world');
+
+      const room1 = world_mind.add({
+        label: 'room1',
+        bases: ['Location'],
+      });
+
+      const original_sid = room1.sid;
+      const original_id = room1._id;
+
+      // Create new version
+      const room1_v2 = new DB.Belief(world_mind, {
+        bases: [room1],
+        traits: {
+          color: 'blue',
+        },
+      });
+
+      // Should have same sid but different _id
+      expect(room1_v2.sid).to.equal(original_sid);
+      expect(room1_v2._id).to.not.equal(original_id);
+      expect(room1_v2._id).to.be.greaterThan(original_id);
+    });
+
+    it('registers beliefs in belief_by_sid registry', () => {
+      const world_mind = new DB.Mind('world');
+
+      const room = world_mind.add({
+        label: 'room',
+        bases: ['Location'],
+      });
+
+      // Should be in belief_by_sid registry
+      expect(DB.Belief.by_sid).to.exist;
+      expect(DB.Belief.by_sid.get(room.sid)).to.exist;
+
+      // Registry should contain a Set of beliefs with this sid
+      const beliefs_with_sid = DB.Belief.by_sid.get(room.sid);
+      expect(beliefs_with_sid).to.be.instanceof(Set);
+      expect(beliefs_with_sid.has(room)).to.be.true;
+    });
+
+    it('registers multiple versions under same sid', () => {
+      const world_mind = new DB.Mind('world');
+
+      const room_v1 = world_mind.add({
+        label: 'room',
+        bases: ['Location'],
+      });
+
+      const room_v2 = new DB.Belief(world_mind, {
+        bases: [room_v1],
+        traits: { color: 'red' },
+      });
+
+      const room_v3 = new DB.Belief(world_mind, {
+        bases: [room_v2],
+        traits: { color: 'blue' },
+      });
+
+      // All three should share the same sid
+      expect(room_v2.sid).to.equal(room_v1.sid);
+      expect(room_v3.sid).to.equal(room_v1.sid);
+
+      // All should be in belief_by_sid registry
+      const beliefs_with_sid = DB.Belief.by_sid.get(room_v1.sid);
+      expect(beliefs_with_sid.size).to.equal(3);
+      expect(beliefs_with_sid.has(room_v1)).to.be.true;
+      expect(beliefs_with_sid.has(room_v2)).to.be.true;
+      expect(beliefs_with_sid.has(room_v3)).to.be.true;
+    });
+
+    it('stores trait value as sid integer when value is a Belief', () => {
+      const world_mind = new DB.Mind('world');
+
+      const workshop = world_mind.add({
+        label: 'workshop',
+        bases: ['Location'],
+      });
+
+      const hammer = world_mind.add({
+        label: 'hammer',
+        bases: ['PortableObject'],
+        traits: {
+          location: workshop,
+        },
+      });
+
+      // Trait should store the sid, not the object
+      const location_value = hammer.traits.get('location');
+      expect(location_value).to.be.a('number');
+      expect(location_value).to.equal(workshop.sid);
+    });
+
+    it('stores primitive values directly (not as sid)', () => {
+      const world_mind = new DB.Mind('world');
+
+      const ball = world_mind.add({
+        label: 'ball',
+        bases: ['PortableObject'],
+        traits: {
+          color: 'red',
+        },
+      });
+
+      // Primitives should be stored as-is
+      expect(ball.traits.get('color')).to.equal('red');
+    });
+
+    it('associates label with sid, not _id', () => {
+      const world_mind = new DB.Mind('world');
+
+      const room_v1 = world_mind.add({
+        label: 'room',
+        bases: ['Location'],
+      });
+
+      const room_v2 = new DB.Belief(world_mind, {
+        bases: [room_v1],
+        traits: { color: 'red' },
+      });
+
+      // Both versions should share the same label
+      expect(DB.Belief.label_by_sid.get(room_v1.sid)).to.equal('room');
+      expect(DB.Belief.sid_by_label.get('room')).to.equal(room_v1.sid);
+
+      // v2 should have same sid, so same label association
+      expect(room_v2.sid).to.equal(room_v1.sid);
+    });
+
+    it('lookup by label returns sid, then resolve in state', () => {
+      const world_mind = new DB.Mind('world');
+      const state = world_mind.create_state(1);
+
+      const room = world_mind.add({
+        label: 'workshop',
+        bases: ['Location'],
+      });
+
+      state.insert.push(room);
+
+      // Look up by label to get sid
+      const sid = DB.Belief.sid_by_label.get('workshop');
+      expect(sid).to.equal(room.sid);
+
+      // Then resolve in state context
+      const resolved = state.resolve_subject(sid);
+      expect(resolved).to.equal(room);
     });
   });
 });

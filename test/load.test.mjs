@@ -43,7 +43,7 @@ describe('Save/Load functionality', () => {
       expect(loaded_workshop._id).to.equal(workshop._id);
     });
 
-    it('handles lazy loading - beliefs materialize on access', () => {
+    it('handles belief trait references after save/load', () => {
       // Create world with location relationship
       const world_mind = new DB.Mind('world');
       const world_state = world_mind.create_state(1);
@@ -72,20 +72,19 @@ describe('Save/Load functionality', () => {
       // Get loaded beliefs
       const loaded_hammer = DB.Belief.by_label.get('hammer');
       const loaded_workshop = DB.Belief.by_label.get('workshop');
+      const loaded_state = [...loaded_mind.state][0];
 
-      // Initially lazy
-      expect(loaded_hammer._lazy).to.not.be.null;
-
-      // Access triggers materialization
-      const location_trait = loaded_hammer.traits.get('location');
-      expect(loaded_hammer._lazy).to.be.null;
+      // Trait reference should be resolved correctly after load
+      const location_trait = loaded_hammer.get_trait(loaded_state, 'location');
       expect(location_trait).to.equal(loaded_workshop);
     });
 
-    it('handles circular references', () => {
-      // Create circular location refs
+    it('handles circular references with temporal consistency', () => {
+      // This test verifies the SID system fixes the "time-travel" bug where
+      // circular trait references would point to old versions from previous states
+
       const world_mind = new DB.Mind('world');
-      const world_state = world_mind.create_state(1);
+      const state1 = world_mind.create_state(1);
 
       const room1 = world_mind.add({
         label: 'room1',
@@ -96,20 +95,21 @@ describe('Save/Load functionality', () => {
         label: 'room2',
         bases: ['Location'],
         traits: {
-          location: room1,
+          location: room1,  // room2 → room1 in state1
         },
       });
 
-      // Update room1 to point back to room2
+      state1.insert.push(room1, room2);
+
+      // State 2: Update room1 to point back to room2 (creates circular reference)
       const room1_v2 = new DB.Belief(world_mind, {
         bases: [room1],
         traits: {
-          location: room2,
+          location: room2,  // room1_v2 → room2 in state2
         },
       });
 
-      world_state.insert.push(room1, room2);
-      const state2 = world_state.tick({ replace: [room1_v2] });
+      const state2 = state1.tick({ replace: [room1_v2] });
 
       // Save and reload
       const json = DB.save_mind(world_mind);
@@ -117,19 +117,35 @@ describe('Save/Load functionality', () => {
       setupStandardArchetypes();
       const loaded_mind = DB.load(json);
 
-      // Verify circular refs work
-      // Find loaded beliefs by ID (traits store exact IDs, not labels)
-      const loaded_room1_original = DB.Belief.by_id.get(3); // Original room1
-      const loaded_room1_v2 = DB.Belief.by_id.get(5); // Versioned room1
-      const loaded_room2 = DB.Belief.by_id.get(4);
+      // Get state2 (the one with the circular reference)
+      const loaded_state2 = [...loaded_mind.state].find(s => s.timestamp === 2);
+      expect(loaded_state2).to.exist;
 
-      // room1_v2 location should point to room2
-      const loc1 = loaded_room1_v2.traits.get('location');
+      // Get the beliefs - room1 has label, room1_v2 doesn't
+      const loaded_room1 = DB.Belief.by_label.get('room1');
+      const loaded_room2 = DB.Belief.by_label.get('room2');
+      const loaded_room1_v2 = [...DB.Belief.by_id.values()].find(b =>
+        b.label === null && b.bases.size === 1 && [...b.bases][0] === loaded_room1
+      );
+
+      expect(loaded_room1).to.exist;
+      expect(loaded_room2).to.exist;
+      expect(loaded_room1_v2).to.exist;
+
+      // CRITICAL TEST: Verify temporal consistency in state2
+      // room1_v2.location should resolve to room2
+      const loc1 = loaded_room1_v2.get_trait(loaded_state2, 'location');
       expect(loc1).to.equal(loaded_room2);
 
-      // room2 location should point to original room1 (the reference it was created with)
-      const loc2 = loaded_room2.traits.get('location');
-      expect(loc2).to.equal(loaded_room1_original);
+      // room2.location should resolve to room1_v2 (NOT old room1!)
+      // This proves SIDs resolve to current version in state context (no time-travel)
+      const loc2 = loaded_room2.get_trait(loaded_state2, 'location');
+      expect(loc2).to.equal(loaded_room1_v2, 'room2 should point to room1_v2 in state2, not old room1');
+
+      // Following the circular reference should stay in state2's temporal context
+      const circular_check = loaded_room1_v2.get_trait(loaded_state2, 'location')
+        .get_trait(loaded_state2, 'location');
+      expect(circular_check).to.equal(loaded_room1_v2, 'circular reference should stay in current state');
     });
 
     it('loads state chains with base references', () => {

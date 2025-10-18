@@ -140,6 +140,94 @@ This structure supports:
 * **Differential updates** - States track `insert`/`remove` rather than full belief lists
 * **Label uniqueness** - Labels are globally unique across beliefs and archetypes
 * **Cultural beliefs** - Beliefs with null ownership can be shared across all minds
+* **Identity-based references** - Traits store subject IDs (integers) not object references, enabling temporal queries and state branching at scale
+
+## **Identity and Temporal Versioning**
+
+To support temporal queries, state branching, and scaling to billions of objects, the system uses **identity-based references** rather than direct object references.
+
+### **Subject ID (sid) and Version ID (id)**
+
+Every belief has two identifiers:
+
+* **sid** (subject ID) - Stable identity that persists across all versions of a belief about the same subject
+* **id** (version ID) - Unique identifier for each specific temporal version of a belief
+
+Both are integers from a single global sequence:
+
+```
+id_sequence = 0
+
+// Create new subject
+hammer.sid = ++id_sequence  // 1
+hammer.id = ++id_sequence   // 2
+
+// Create new version of same subject
+hammer_v2.sid = 1           // Reused - same subject
+hammer_v2.id = ++id_sequence  // 3 - new unique version
+```
+
+**Key properties:**
+- Every `id` is globally unique and never reused
+- `sid` values are reused across versions of the same subject
+- Same sequence eliminates lookup ambiguity
+- Version chains share the same `sid` but have different `id` values
+
+### **State-Contextual Resolution**
+
+Trait values store **subject IDs as integers**, not object references:
+
+```yaml
+hammer:
+  sid: 100
+  id: 101
+  traits:
+    location: 50  # Integer sid, not object reference
+    color: "red"  # Primitive values stored directly
+```
+
+To use a reference, you must **resolve it within a state context**:
+
+```
+// Stored value is just an integer
+hammer.traits.location = 50
+
+// Resolution finds the appropriate version
+state.resolve_subject(50) → workshop_v3  # Latest version visible in this state
+```
+
+**Benefits of ID-based references:**
+1. **Temporal queries** - Same `sid` can resolve to different versions at different times
+2. **State branching** - Same `sid` resolves differently in different branches
+3. **No stale references** - References never break when targets update
+4. **Trivial serialization** - Traits are just integers, no recursive object tracking
+5. **Scales to billions** - No cascade updates when objects change
+6. **DB-agnostic** - Resolution can be optimized with indexing, SQL, partitioning, etc.
+
+### **Cross-Mind References via about**
+
+The `about` field links beliefs across mind boundaries using subject IDs:
+
+```yaml
+# World mind (ground truth)
+world.hammer:
+  sid: 100
+  id: 101
+  about: null  # Root subject
+
+# NPC mind (belief about world's hammer)
+npc.hammer_belief:
+  sid: 200      # NPC's local subject ID
+  id: 201
+  about: 100    # Links to world's hammer via sid (integer, not reference)
+```
+
+**Semantic meaning:**
+- `sid = 100` identifies the "actual" hammer in world mind
+- `sid = 200` identifies the NPC's *concept* of the hammer
+- `about = 100` means "my concept is about that actual thing"
+
+Each mind maintains its own subject space, with `about` creating traceable links from belief → ground truth.
 
 ## **Schema**
 
@@ -151,12 +239,18 @@ All entities are stored in global registries for efficient lookup:
 registries:
   mind_by_id: [id → mind]
   mind_by_label: [label → mind]
-  belief_by_id: [id → belief]
-  belief_by_label: [label → belief]
+  belief_by_id: [id → belief]       # Version-based lookup (get specific version)
+  belief_by_sid: [sid → beliefs]     # Subject-based lookup (get all versions of subject)
+  label_by_sid: [sid → label]        # Labels belong to subjects, not versions
+  sid_by_label: [label → sid]        # Reverse lookup from label to subject
   archetype_by_label: [label → archetype]
 ```
 
-**Design constraint**: Labels are globally unique across both beliefs and archetypes to prevent naming conflicts.
+**Design constraint**: Labels are globally unique across subjects and archetypes to prevent naming conflicts.
+
+**Label semantics**: Labels identify subjects (stable identity), not versions (temporal variants). All versions of the same subject share the label. To lookup by label: `sid_by_label["hammer"]` → `sid = 100`, then `resolve_subject(state, 100)` → latest version.
+
+**Indexing strategy**: `belief_by_sid` enables efficient resolution queries like "find latest version of subject S in state T" without scanning all beliefs.
 
 ### **Mind Structure**
 
@@ -198,20 +292,31 @@ state:
 
 ```yaml
 belief:
-  id: [unique identifier]
+  sid: [subject identifier - stable across versions]
+  id: [version identifier - unique for this temporal instance]
   in_mind: [owning mind reference, or null for cultural beliefs]
-  label: [optional globally-unique string]
-  about: [reference to belief in outer mind]
+  about: [integer sid referencing subject in outer mind]
   bases: [inheritance from archetypes or other beliefs]
-  traits: [properties based on archetype templates]
+  traits: [properties - stores integer sids for references, primitives for values]
 ```
+
+**Identity semantics**:
+- `sid` identifies the subject (what entity this is)
+- `id` identifies the version (when/how this belief exists)
+- Labels are stored separately: `label_by_sid[sid] = "hammer"`
+- All versions of the same subject share the same `sid` and label
 
 **Ownership semantics**:
 - Normal beliefs: `in_mind` points to owning mind
 - Cultural beliefs: `in_mind` is null, can be referenced by any mind
 - Beliefs auto-register in global registry on creation
 
-**Versioning**: Creating modified versions uses immutable pattern - new belief with `base` reference to previous version.
+**Reference semantics**:
+- `about` stores integer `sid` (not object reference)
+- Trait values store integer `sid` for entity references (e.g., `location: 50`)
+- Resolution happens at query time: `state.resolve_subject(sid)` → latest belief
+
+**Versioning**: Creating modified versions uses immutable pattern - new belief with same `sid`, new `id`, and `base` reference to previous version.
 
 ### **Archetype Structure**
 
@@ -269,6 +374,8 @@ npc2_mind:
       added: []
   beliefs: {}
 ```
+
+**Note**: Beliefs are shown grouped under minds for readability, but are actually stored in global `belief_by_id` and `belief_by_sid` registries with `in_mind` references.
 
 ### **NPC1 Takes Hammer (Tick 2)**
 

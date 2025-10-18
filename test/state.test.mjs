@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import * as DB from '../public/worker/db.mjs';
-import { createMindWithBeliefs, setupMinimalArchetypes } from './helpers.mjs';
+import { createMindWithBeliefs, setupMinimalArchetypes, setupStandardArchetypes } from './helpers.mjs';
 
 describe('State', () => {
   beforeEach(() => {
@@ -24,10 +24,11 @@ describe('State', () => {
     });
 
     it('can iterate over beliefs for a mind', () => {
-      const mind = createMindWithBeliefs('test', {
+      const state = createMindWithBeliefs('test', {
         workshop: { bases: ['Location'] },
         hammer: { bases: ['PortableObject'] }
       });
+      const mind = state.in_mind;
 
       const labels = [];
       for (const belief of DB.Belief.by_id.values()) {
@@ -147,14 +148,12 @@ describe('State', () => {
     });
 
     it('state inheritance chain works correctly', () => {
-      const mind = createMindWithBeliefs('test', {
+      const state1 = createMindWithBeliefs('test', {
         item1: { bases: ['PortableObject'] },
         item2: { bases: ['PortableObject'] }
       });
+      const mind = state1.in_mind;
 
-      const state1 = mind.create_state(1);
-      const initial_beliefs = [...DB.Belief.by_id.values()].filter(b => b.in_mind === mind);
-      state1.insert.push(...initial_beliefs);
       const item3 = mind.add({ label: 'item3', bases: ['PortableObject'] });
       const state2 = state1.tick({ insert: [item3] });
 
@@ -228,6 +227,133 @@ describe('State', () => {
 
       const json = npc_state.toJSON();
       expect(json.ground_state).to.equal(world_state._id);
+    });
+  });
+
+  describe('SID Resolution', () => {
+    beforeEach(() => {
+      DB.reset_registries();
+      setupStandardArchetypes();
+    });
+
+    it('resolves sid to appropriate belief version in state', () => {
+      const world_mind = new DB.Mind('world');
+      const state1 = world_mind.create_state(1);
+
+      const room = world_mind.add({
+        label: 'room',
+        bases: ['Location'],
+      });
+
+      state1.insert.push(room);
+
+      // Should resolve to the belief
+      const resolved = state1.resolve_subject(room.sid);
+      expect(resolved).to.equal(room);
+    });
+
+    it('resolves to latest version visible in state', () => {
+      const world_mind = new DB.Mind('world');
+      const state1 = world_mind.create_state(1);
+
+      const room_v1 = world_mind.add({
+        label: 'room',
+        bases: ['Location'],
+      });
+
+      state1.insert.push(room_v1);
+
+      // Create v2 and add to state2
+      const room_v2 = new DB.Belief(world_mind, {
+        bases: [room_v1],
+        traits: { color: 'red' },
+      });
+      const state2 = state1.tick({ replace: [room_v2] });
+
+      // state1 should resolve to v1
+      expect(state1.resolve_subject(room_v1.sid)).to.equal(room_v1);
+
+      // state2 should resolve to v2
+      expect(state2.resolve_subject(room_v1.sid)).to.equal(room_v2);
+    });
+
+    it('builds sid index on-demand for efficient lookups', () => {
+      const world_mind = new DB.Mind('world');
+      const state = world_mind.create_state(1);
+
+      const room1 = world_mind.add({ label: 'room1', bases: ['Location'] });
+      const room2 = world_mind.add({ label: 'room2', bases: ['Location'] });
+
+      state.insert.push(room1, room2);
+
+      // Lock state to enable caching
+      state.lock();
+
+      // First resolution should progressively build cache
+      const resolved1 = state.resolve_subject(room1.sid);
+      expect(resolved1).to.equal(room1);
+
+      // Check that index was created (implementation detail)
+      expect(state._sid_index).to.exist;
+      expect(state._sid_index.has(room1.sid)).to.be.true;
+
+      // Second resolution should use cached index
+      const resolved2 = state.resolve_subject(room2.sid);
+      expect(resolved2).to.equal(room2);
+
+      // Cache should now have both rooms
+      expect(state._sid_index.has(room2.sid)).to.be.true;
+    });
+
+    it('fixes circular reference problem - traits point to subject, not version', () => {
+      const world_mind = new DB.Mind('world');
+      const state1 = world_mind.create_state(1);
+
+      // Create two rooms with circular reference
+      const room1 = world_mind.add({
+        label: 'room1',
+        bases: ['Location'],
+      });
+
+      const room2 = world_mind.add({
+        label: 'room2',
+        bases: ['Location'],
+        traits: {
+          location: room1,  // room2 inside room1
+        },
+      });
+
+      state1.insert.push(room1, room2);
+
+      // Now update room1 to be inside room2
+      const room1_v2 = new DB.Belief(world_mind, {
+        bases: [room1],
+        traits: {
+          location: room2,  // room1 now inside room2
+        },
+      });
+      const state2 = state1.tick({ replace: [room1_v2] });
+
+      // THE KEY TEST: room2's location trait stores room1's SID
+      const room2_location_sid = room2.traits.get('location');
+      expect(room2_location_sid).to.equal(room1.sid);
+
+      // In state1: room2.location resolves to room1 (no location trait)
+      const room2_location_in_state1 = state1.resolve_subject(room2_location_sid);
+      expect(room2_location_in_state1).to.equal(room1);
+      expect(room2_location_in_state1.traits.get('location')).to.be.undefined;
+
+      // In state2: room2.location resolves to room1_v2 (has location trait)
+      const room2_location_in_state2 = state2.resolve_subject(room2_location_sid);
+      expect(room2_location_in_state2).to.equal(room1_v2);
+
+      // And room1_v2's location points back to room2
+      const room1_v2_location_sid = room2_location_in_state2.traits.get('location');
+      expect(room1_v2_location_sid).to.equal(room2.sid);
+
+      // This creates a proper circular reference in state2
+      const room1_v2_location = state2.resolve_subject(room1_v2_location_sid);
+      expect(room1_v2_location).to.equal(room2);
     });
   });
 });

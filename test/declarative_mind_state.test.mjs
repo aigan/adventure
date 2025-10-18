@@ -118,7 +118,7 @@ describe('Declarative Mind State Construction', () => {
     expect(player_belief.traits.has('location')).to.be.true;
 
     // Verify location dereferencing
-    const player_location = player_belief.traits.get('location');
+    const player_location = player_belief.get_trait(state, 'location');
     expect(player_location).to.equal(workshop_belief);
 
     // Verify main_area was also dereferenced from workshop's location

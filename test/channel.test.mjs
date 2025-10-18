@@ -308,10 +308,12 @@ describe('Channel Message Handlers', () => {
         label: 'query_workshop',
         bases: ['Location']
       });
+      const world_state = world_mind.create_state(1);
+      world_state.insert.push(workshop);
 
       const npc_mind = new DB.Mind('npc');
       const npc_state = npc_mind.create_state(1);
-      const workshop_belief = npc_state.learn_about(workshop);
+      const workshop_belief = npc_state.learn_about(world_state, workshop);
 
       messages.length = 0;
 

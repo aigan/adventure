@@ -1,14 +1,21 @@
 import * as DB from '../public/worker/db.mjs';
 
 /**
- * Helper to create a mind with initial beliefs (for test compatibility)
+ * Helper to create a mind with initial beliefs and return a state containing them
+ * @param {string} label - Mind label
+ * @param {Object} beliefs - Belief definitions
+ * @returns {DB.State} State containing the beliefs (access mind via state.in_mind)
  */
 export function createMindWithBeliefs(label, beliefs = {}) {
   const mind = new DB.Mind(label);
-  for (const [label, def] of Object.entries(beliefs)) {
-    mind.add({...def, label});
+  const state = mind.create_state(1);
+
+  for (const [belief_label, def] of Object.entries(beliefs)) {
+    const belief = mind.add({...def, label: belief_label});
+    state.insert.push(belief);
   }
-  return mind;
+
+  return state;
 }
 
 /**

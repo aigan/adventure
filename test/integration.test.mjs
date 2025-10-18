@@ -28,10 +28,8 @@ describe('Integration', () => {
         },
       }
 
-      const world_mind = createMindWithBeliefs('world', world_belief);
-      const state = world_mind.create_state(1);
-      const world_beliefs = [...DB.Belief.by_id.values()].filter(b => b.in_mind === world_mind);
-      state.insert.push(...world_beliefs);
+      const world_state = createMindWithBeliefs('world', world_belief);
+      const world_mind = world_state.in_mind;
 
       let ball = world_mind.add({
         label: 'ball',
@@ -65,7 +63,7 @@ describe('Integration', () => {
 
       // Verify learn_about
       const workshop = DB.Belief.by_label.get('workshop');
-      const workshop_knowledge = player_mind_state.learn_about(workshop);
+      const workshop_knowledge = player_mind_state.learn_about(world_state, workshop);
 
       const workshop_inspected = workshop_knowledge.inspect();
       expect(workshop_inspected.about._ref).to.equal(workshop._id);
