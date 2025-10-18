@@ -42,20 +42,17 @@ export class State {
    */
   constructor(mind, timestamp, base=null, ground_state=null) {
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
-                              this._id = next_id()
-                              this.in_mind = mind
-    /** @type {State|null} */   this.base = base
-                              this.timestamp = timestamp
-    /** @type {import('./belief.mjs').Belief[]} */     this.insert = []
-    /** @type {import('./belief.mjs').Belief[]} */     this.remove = []
-    /** @type {State|null} */   this.ground_state = ground_state
-    /** @type {State[]} */      this.branches = []
-                              this.locked = false
+    this._id = next_id()
+    this.in_mind = mind
+    /** @type {State|null} */ this.base = base
+    this.timestamp = timestamp
+    /** @type {import('./belief.mjs').Belief[]} */ this.insert = []
+    /** @type {import('./belief.mjs').Belief[]} */ this.remove = []
+    /** @type {State|null} */ this.ground_state = ground_state
+    /** @type {State[]} */ this.branches = []
+    this.locked = false
 
-    // Register this state with its mind
     this.in_mind.state.add(this)
-
-    // Register in global registry
     DB.state_by_id.set(this._id, this)
   }
 
@@ -174,7 +171,7 @@ export class State {
    * @returns {State}
    */
   tick_with_traits(belief, traits) {
-    const new_belief = Cosmos.create_belief(this.in_mind, {bases: [belief], traits}, this)
+    const new_belief = Cosmos.create_belief(this.in_mind, {sid: belief.sid, bases: [belief], traits}, this)
     return this.tick({ replace: [new_belief] })
   }
 

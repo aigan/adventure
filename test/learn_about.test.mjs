@@ -61,7 +61,7 @@ describe('learn_about', () => {
       const hammer_v1_belief = world_mind_state.add_belief({label: 'hammer_v1', bases: ['PortableObject']});
 
       const hammer_v1 = DB.get_belief_by_label('hammer_v1');
-      const hammer_v2 = new Belief(hammer_v1.in_mind, {
+      const hammer_v2 = Belief.from_template(hammer_v1.in_mind, {
         bases: [hammer_v1],
         traits: { color: 'red' }
       });
@@ -249,7 +249,7 @@ describe('learn_about', () => {
       world_mind_state.add_belief({label: 'hammer_v1', bases: ['PortableObject']});
 
       const hammer_v1 = DB.get_belief_by_label('hammer_v1');
-      const hammer_v2 = new Belief(hammer_v1.in_mind, {
+      const hammer_v2 = Belief.from_template(hammer_v1.in_mind, {
         bases: [hammer_v1],
         traits: { color: 'red' }
       });

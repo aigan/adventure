@@ -12,10 +12,10 @@ describe('Registry', () => {
   describe('Label Uniqueness', () => {
     it('currently allows duplicate labels across minds', () => {
       const mind_a = new Mind('mind_a');
-      const workshop_a = new Belief(mind_a, {label: 'workshop_unique_a', bases: ['Location']});
+      const workshop_a = Belief.from_template(mind_a, {label: 'workshop_unique_a', bases: ['Location']});
 
       const mind_b = new Mind('mind_b');
-      const workshop_b = new Belief(mind_b, {label: 'workshop_unique_b', bases: ['Location']});
+      const workshop_b = Belief.from_template(mind_b, {label: 'workshop_unique_b', bases: ['Location']});
 
       // Labels are globally unique now
       expect(DB.get_belief_by_label('workshop_unique_a')).to.exist;
@@ -27,11 +27,11 @@ describe('Registry', () => {
 
     it('throws error on duplicate labels', () => {
       const mind = new Mind('test');
-      new Belief(mind, {label: 'item1', bases: ['PortableObject']});
+      Belief.from_template(mind, {label: 'item1', bases: ['PortableObject']});
 
       // Adding another with same label should throw
       expect(() => {
-        new Belief(mind, { label: 'item1', bases: ['Location'] });
+        Belief.from_template(mind, { label: 'item1', bases: ['Location'] });
       }).to.throw(/Label 'item1' is already used/);
     });
 
@@ -40,7 +40,7 @@ describe('Registry', () => {
 
       // Trying to create belief with same label as archetype should throw
       expect(() => {
-        new Belief(mind, { label: 'PortableObject', bases: ['Location'] });
+        Belief.from_template(mind, { label: 'PortableObject', bases: ['Location'] });
       }).to.throw(/Label 'PortableObject' is already used by an archetype/);
     });
   });

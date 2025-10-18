@@ -97,7 +97,8 @@ describe('Save/Load functionality', () => {
       });
 
       // State 2: Update room1 to point back to room2 (creates circular reference)
-      const room1_v2 = new Belief(world_mind, {
+      const room1_v2 = Belief.from_template(world_mind, {
+        sid: room1.sid,
         bases: [room1],
         traits: {
           location: room2,  // room1_v2 → room2 in state2
@@ -217,7 +218,7 @@ describe('Save/Load functionality', () => {
       state = state.tick_with_traits(ball, { color: 'blue' });
 
       // Get versioned ball's ID before saving
-      const ball_v2 = [...state.get_beliefs()].find(b => b.get_display_label() === 'ball');
+      const ball_v2 = [...state.get_beliefs()].find(b => b.get_label() === 'ball');
       const ball_v2_id = ball_v2._id;
 
       // Save and reload
@@ -354,7 +355,7 @@ describe('Save/Load functionality', () => {
 
       state = state.tick_with_traits(ball, { color: 'blue' });
 
-      const room1_v2 = new Belief(world_mind, {
+      const room1_v2 = Belief.from_template(world_mind, {
         bases: [room1],
         traits: {
           location: room2,

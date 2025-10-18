@@ -68,7 +68,7 @@ export const dispatch = {
 		for (const belief of state.get_beliefs()) {
 			data.push({
 				id: belief._id,
-				label: belief.get_display_label(),
+				label: belief.get_label(),
 				desig: belief.sysdesig(),
 			});
 		}
@@ -82,7 +82,7 @@ export const dispatch = {
 				timestamp: state.timestamp,
 				mind_id: state.in_mind._id,
 				mind_label: state.in_mind.label,
-				self_label: state.in_mind.self?.get_display_label(),
+				self_label: state.in_mind.self?.get_label(),
 				base_id: state.base?._id ?? null,
 				beliefs: data,
 			},
@@ -102,7 +102,7 @@ export const dispatch = {
 		for (const belief of state_obj.get_beliefs()) {
 			data.push({
 				id: belief._id,
-				label: belief.get_display_label(),
+				label: belief.get_label(),
 				desig: belief.sysdesig(),
 			});
 		}
@@ -116,7 +116,7 @@ export const dispatch = {
 				timestamp: state_obj.timestamp,
 				mind_id: state_obj.in_mind._id,
 				mind_label: state_obj.in_mind.label,
-				self_label: state_obj.in_mind.self?.get_display_label(),
+				self_label: state_obj.in_mind.self?.get_label(),
 				base_id: state_obj.base?._id ?? null,
 				beliefs: data,
 			},
@@ -150,12 +150,12 @@ export const dispatch = {
 			mind: {id: belief_obj.in_mind._id, label: belief_obj.in_mind.label},
 			about: belief_obj.about ? {
 				id: belief_obj.about._id,
-				label: belief_obj.about.get_display_label(),
+				label: belief_obj.about.get_label(),
 				mind: {id: belief_obj.about.in_mind._id, label: belief_obj.about.in_mind.label}
 			} : null,
 			bases: [...belief_obj.bases].map(b => ({
 				id: b instanceof Cosmos.Belief ? b._id : null,
-				label: b instanceof Cosmos.Belief ? b.get_display_label() : b.label,
+				label: b instanceof Cosmos.Belief ? b.get_label() : b.label,
 				type: b instanceof Cosmos.Archetype ? 'Archetype' : 'Belief'
 			})),
 		});
@@ -189,12 +189,12 @@ export const dispatch = {
 			mind: {id: belief.in_mind._id, label: belief.in_mind.label},
 			about: belief.about ? {
 				id: belief.about._id,
-				label: belief.about.get_display_label(),
+				label: belief.about.get_label(),
 				mind: {id: belief.about.in_mind._id, label: belief.about.in_mind.label}
 			} : null,
 			bases: [...belief.bases].map(b => ({
 				id: b instanceof Cosmos.Belief ? b._id : null,
-				label: b instanceof Cosmos.Belief ? b.get_display_label() : b.label,
+				label: b instanceof Cosmos.Belief ? b.get_label() : b.label,
 				type: b instanceof Cosmos.Archetype ? 'Archetype' : 'Belief'
 			})),
 		});

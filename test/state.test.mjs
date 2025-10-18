@@ -12,9 +12,9 @@ describe('State', () => {
   describe('Iteration Patterns', () => {
     it('mind.belief Set contains all beliefs for that mind', () => {
       const mind = new Mind('test');
-      new Belief(mind, {label: 'workshop', bases: ['Location']});
+      Belief.from_template(mind, {label: 'workshop', bases: ['Location']});
 
-      const hammer = new Belief(mind, {
+      const hammer = Belief.from_template(mind, {
         label: 'hammer',
         bases: ['PortableObject']
       });
@@ -43,7 +43,7 @@ describe('State', () => {
 
     it('mind.belief_by_label provides fast label lookup', () => {
       const mind = new Mind('test');
-      new Belief(mind, {label: 'workshop', bases: ['Location']});
+      Belief.from_template(mind, {label: 'workshop', bases: ['Location']});
 
       expect(DB.get_belief_by_label('workshop')).to.exist;
       expect(DB.get_belief_by_label('workshop').get_label()).to.equal('workshop');
@@ -53,13 +53,13 @@ describe('State', () => {
   describe('Cross-Mind Visibility', () => {
     it('state.get_beliefs only returns beliefs from that state\'s mind', () => {
       const mind_a = new Mind('mind_a');
-      new Belief(mind_a, {label: 'item_a', bases: ['PortableObject']});
+      Belief.from_template(mind_a, {label: 'item_a', bases: ['PortableObject']});
       const state_a = mind_a.create_state(1);
       const beliefs_for_a = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_a);
       state_a.insert.push(...beliefs_for_a);
 
       const mind_b = new Mind('mind_b');
-      new Belief(mind_b, {label: 'item_b', bases: ['PortableObject']});
+      Belief.from_template(mind_b, {label: 'item_b', bases: ['PortableObject']});
       const state_b = mind_b.create_state(1);
       const beliefs_for_b = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_b);
       state_b.insert.push(...beliefs_for_b);
@@ -76,10 +76,10 @@ describe('State', () => {
 
     it('beliefs from different minds don\'t mix in states', () => {
       const mind_a = new Mind('mind_a');
-      new Belief(mind_a, {label: 'workshop_a', bases: ['Location']});
+      Belief.from_template(mind_a, {label: 'workshop_a', bases: ['Location']});
 
       const mind_b = new Mind('mind_b');
-      new Belief(mind_b, {label: 'workshop_b', bases: ['Location']});
+      Belief.from_template(mind_b, {label: 'workshop_b', bases: ['Location']});
 
       const state_a = mind_a.create_state(1);
       const beliefs_a = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_a);
@@ -99,11 +99,11 @@ describe('State', () => {
   describe('State Operations', () => {
     it('state.tick with replace removes correct belief', () => {
       const mind = new Mind('test');
-      new Belief(mind, {label: 'hammer_v1', bases: ['PortableObject']});
+      Belief.from_template(mind, {label: 'hammer_v1', bases: ['PortableObject']});
 
       const state1 = mind.create_state(1);
       const hammer_v1 = DB.get_belief_by_label('hammer_v1');
-      const hammer_v2 = new Belief(hammer_v1.in_mind, {
+      const hammer_v2 = Belief.from_template(hammer_v1.in_mind, {
         bases: [hammer_v1],
         traits: { color: 'red' }
       });
@@ -118,23 +118,23 @@ describe('State', () => {
 
     it('multiple minds can have states without interference', () => {
       const mind_a = new Mind('mind_a');
-      new Belief(mind_a, {label: 'item_in_a', bases: ['PortableObject']});
+      Belief.from_template(mind_a, {label: 'item_in_a', bases: ['PortableObject']});
       const state_a1 = mind_a.create_state(1);
 
       const mind_b = new Mind('mind_b');
-      new Belief(mind_b, {label: 'item_in_b', bases: ['PortableObject']});
+      Belief.from_template(mind_b, {label: 'item_in_b', bases: ['PortableObject']});
       const state_b1 = mind_b.create_state(1);
 
       // Add different beliefs to each mind
       const item_a = DB.get_belief_by_label('item_in_a');
-      const item_a2 = new Belief(item_a.in_mind, {
+      const item_a2 = Belief.from_template(item_a.in_mind, {
         bases: [item_a],
         traits: { color: 'red' }
       });
       const state_a2 = state_a1.tick({ replace: [item_a2] });
 
       const item_b = DB.get_belief_by_label('item_in_b');
-      const item_b2 = new Belief(item_b.in_mind, {
+      const item_b2 = Belief.from_template(item_b.in_mind, {
         bases: [item_b],
         traits: { color: 'blue' }
       });
@@ -155,7 +155,7 @@ describe('State', () => {
       });
       const mind = state1.in_mind;
 
-      const item3 = new Belief(mind, { label: 'item3', bases: ['PortableObject'] });
+      const item3 = Belief.from_template(mind, { label: 'item3', bases: ['PortableObject'] });
       const state2 = state1.tick({ insert: [item3] });
 
       // state2 should have all three items
@@ -261,7 +261,8 @@ describe('State', () => {
       });
 
       // Create v2 and add to state2
-      const room_v2 = new Belief(world_mind, {
+      const room_v2 = Belief.from_template(world_mind, {
+        sid: room_v1.sid,
         bases: [room_v1],
         traits: { color: 'red' },
       });
@@ -319,7 +320,8 @@ describe('State', () => {
       });
 
       // Now update room1 to be inside room2
-      const room1_v2 = new Belief(world_mind, {
+      const room1_v2 = Belief.from_template(world_mind, {
+        sid: room1.sid,
         bases: [room1],
         traits: {
           location: room2,  // room1 now inside room2

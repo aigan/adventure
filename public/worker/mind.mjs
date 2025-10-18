@@ -26,15 +26,13 @@ export class Mind {
    * @param {import('./belief.mjs').Belief|null} self - What this mind considers "self" (can be null, can change)
    */
   constructor(label = null, self = null) {
-    // Check if loading from JSON
     if (label && typeof label === 'object' && label._type === 'Mind') {
       const data = /** @type {MindJSON} */ (label)
       this._id = data._id
       this.label = data.label
-      this.self = null // Will be resolved later if needed
+      this.self = null
       this.state = new Set()
 
-      // Register globally
       DB.mind_by_id.set(this._id, this)
       if (this.label) {
         DB.mind_by_label.set(this.label, this)
@@ -42,20 +40,15 @@ export class Mind {
       return
     }
 
-    // Normal construction
     this._id = next_id()
     this.label = /** @type {string|null} */ (label)
     this.self = self
-    /** @type {Set<import('./state.mjs').State>} */
-    this.state = new Set([])
+    /** @type {Set<import('./state.mjs').State>} */ this.state = new Set()
 
-    // Register globally
     DB.mind_by_id.set(this._id, this)
     if (this.label) {
       DB.mind_by_label.set(this.label, this)
     }
-
-    //log(`Created mind ${this._id}`)
   }
 
   /**
@@ -63,7 +56,6 @@ export class Mind {
    * @returns {Mind|undefined}
    */
   static get_by_id(id) {
-    //log(`Get mind by id ${id}`)
     return DB.mind_by_id.get(id)
   }
 
@@ -72,7 +64,6 @@ export class Mind {
    * @returns {Mind|undefined}
    */
   static get_by_label(label) {
-    //log(`Get mind by label ${label}`)
     return DB.mind_by_label.get(label)
   }
 

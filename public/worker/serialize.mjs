@@ -16,16 +16,12 @@ export class Serialize {
    * @returns {string} JSON string
    */
   static save_mind(mind) {
-    // Set up tracking
     Cosmos.set_serializing(true)
     Serialize.dependency_queue = []
-    Serialize.seen = new Set([mind._id]) // Mark root as seen
+    Serialize.seen = new Set([mind._id])
 
-    // Serialize root mind
-    /** @type {import('./mind.mjs').MindJSON} */
-    const root = /** @type {any} */ (mind.toJSON())
+    /** @type {import('./mind.mjs').MindJSON} */ const root = /** @type {any} */ (mind.toJSON())
 
-    // Process dependencies discovered during serialization
     const nested_minds = []
     while (Serialize.dependency_queue.length > 0) {
       const dep_mind = Serialize.dependency_queue.shift()
@@ -35,12 +31,10 @@ export class Serialize {
       }
     }
 
-    // Clean up
     Cosmos.set_serializing(false)
     Serialize.dependency_queue = null
     Serialize.seen = null
 
-    // Add nested minds to root
     if (nested_minds.length > 0) {
       root.nested_minds = nested_minds
     }
@@ -91,15 +85,10 @@ export function load(json_string) {
 }
 
 /**
- * Update id_sequence from loaded data
- * @param {import('./mind.mjs').MindJSON|import('./belief.mjs').BeliefJSON|import('./state.mjs').StateJSON} data - Loaded JSON data
+ * @param {import('./mind.mjs').MindJSON|import('./belief.mjs').BeliefJSON|import('./state.mjs').StateJSON} data
  */
 function update_id_sequence_from_data(data) {
-  /**
-   * @param {any} obj
-   * @param {number} [max]
-   * @returns {number}
-   */
+  /** @param {any} obj @param {number} [max] @returns {number} */
   const find_max_id = (obj, max = 0) => {
     if (!obj || typeof obj !== 'object') return max
 

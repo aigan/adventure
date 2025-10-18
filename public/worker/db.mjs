@@ -90,7 +90,6 @@ export function get_belief(id) {
 
 /**
  * Get Belief by label (resolves via sid)
- * Returns the first belief registered with this label's sid
  * @param {string} label
  * @returns {import('./belief.mjs').Belief|undefined}
  */
@@ -101,7 +100,6 @@ export function get_belief_by_label(label) {
   const beliefs = belief_by_sid.get(sid)
   if (!beliefs || beliefs.size === 0) return undefined
 
-  // Return first belief with this sid
   return [...beliefs][0]
 }
 
@@ -126,16 +124,9 @@ export function reset_all_registries() {
   sid_by_label.clear()
   label_by_sid.clear()
 
-  // Clear object registries by deleting all keys
-  for (const key in state_by_label) {
-    delete state_by_label[key]
-  }
-  for (const key in archetype_by_label) {
-    delete archetype_by_label[key]
-  }
-  for (const key in traittype_by_label) {
-    delete traittype_by_label[key]
-  }
+  for (const key in state_by_label) delete state_by_label[key]
+  for (const key in archetype_by_label) delete archetype_by_label[key]
+  for (const key in traittype_by_label) delete traittype_by_label[key]
 }
 
 // ============================================================================
@@ -178,13 +169,10 @@ export function reset_registries() {
  */
 export function register( archetypes, traittypes ) {
   for (const [label, def] of Object.entries(traittypes)) {
-    //traittypes[label] = def; // TODO: resolve trait datatypes
     traittype_by_label[label] = new Traittype(label, def)
-    //log("Registered traittype", label)
   }
 
   for (const [label, def] of Object.entries(archetypes)) {
-    // Check label uniqueness across beliefs and archetypes
     if (archetype_by_label[label]) {
       throw new Error(`Label '${label}' is already used by another archetype`)
     }
@@ -192,6 +180,5 @@ export function register( archetypes, traittypes ) {
       throw new Error(`Label '${label}' is already used by a belief`)
     }
     archetype_by_label[label] = new Archetype(label, def)
-    //log("Registred archetype", label)
   }
 }

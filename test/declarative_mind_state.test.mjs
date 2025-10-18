@@ -75,7 +75,7 @@ describe('Declarative Mind State Construction', () => {
     };
 
     // Create player with declarative mind_states
-    const player = new Belief(player_body.in_mind, {
+    const player = Belief.from_template(player_body.in_mind, {
       bases: [player_body],
       traits: {
         mind_states: {

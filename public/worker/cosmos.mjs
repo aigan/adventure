@@ -26,14 +26,14 @@ export function create_mind(label = null, self = null) {
 }
 
 /**
- * Create a new Belief instance
+ * Create a new Belief instance from template
  * @param {Mind} mind - Mind this belief belongs to
- * @param {object} def - Belief definition
+ * @param {object} def - Belief definition (template with potential string bases and trait templates)
  * @param {import('./state.mjs').State|null} [creator_state] - State creating this belief
  * @returns {import('./belief.mjs').Belief}
  */
 export function create_belief(mind, def, creator_state = null) {
-  return new Belief(mind, def, creator_state)
+  return Belief.from_template(mind, def, creator_state)
 }
 
 /**

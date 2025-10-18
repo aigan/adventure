@@ -17,7 +17,7 @@ describe('Belief', () => {
         }
       });
 
-      const ball = new Belief(state.in_mind, {
+      const ball = Belief.from_template(state.in_mind, {
         label: 'ball',
         bases: ['PortableObject'],
         traits: {
@@ -25,7 +25,7 @@ describe('Belief', () => {
         }
       });
 
-      const ball_v2 = new Belief(ball.in_mind, {
+      const ball_v2 = Belief.from_template(ball.in_mind, {
         bases: [ball],
         traits: { color: 'blue' }
       });
@@ -41,12 +41,12 @@ describe('Belief', () => {
     it('versioned belief inherits archetypes from base', () => {
       const mind = new Mind('test');
       const state = mind.create_state(1);
-      const hammer = new Belief(mind, {
+      const hammer = Belief.from_template(mind, {
         label: 'hammer',
         bases: ['PortableObject']
       });
 
-      const hammer_v2 = new Belief(hammer.in_mind, {
+      const hammer_v2 = Belief.from_template(hammer.in_mind, {
         bases: [hammer],
         traits: { color: 'black' }
       });
@@ -65,7 +65,7 @@ describe('Belief', () => {
   describe('Mind Isolation', () => {
     it('beliefs store in_mind reference', () => {
       const mind = new Mind('test');
-      new Belief(mind, {label: 'workshop', bases: ['Location']});
+      Belief.from_template(mind, {label: 'workshop', bases: ['Location']});
 
       const workshop = DB.get_belief_by_label('workshop');
       expect(workshop.in_mind).to.equal(mind);
@@ -75,8 +75,8 @@ describe('Belief', () => {
       const mind_a = new Mind('mind_a');
       const mind_b = new Mind('mind_b');
 
-      const item_a = new Belief(mind_a, { label: 'item_unique_a', bases: ['PortableObject'] });
-      const item_b = new Belief(mind_b, { label: 'item_unique_b', bases: ['PortableObject'] });
+      const item_a = Belief.from_template(mind_a, { label: 'item_unique_a', bases: ['PortableObject'] });
+      const item_b = Belief.from_template(mind_b, { label: 'item_unique_b', bases: ['PortableObject'] });
 
       // Stored in different minds
       expect(item_a.in_mind).to.equal(mind_a);
@@ -88,18 +88,21 @@ describe('Belief', () => {
 
     it('currently allows referencing other mind\'s beliefs in bases', () => {
       const mind_a = new Mind('mind_a');
-      new Belief(mind_a, {label: 'workshop', bases: ['Location']});
+      Belief.from_template(mind_a, {label: 'workshop', bases: ['Location']});
 
       const mind_b = new Mind('mind_b');
 
       // Currently this works - mind_b can reference mind_a's belief
       const workshop_a = DB.get_belief_by_label('workshop');
       const item = new Belief(mind_b, {
-        label: 'item',
-        bases: [workshop_a]  // Using belief from another mind
+        sid: workshop_a.sid,  // Explicitly creating a version in mind_b
+        bases: [workshop_a]
       });
 
+      // item is a version of workshop_a, so it shares the same sid and label
       expect(item.bases.has(workshop_a)).to.be.true;
+      expect(item.sid).to.equal(workshop_a.sid);
+      expect(item.get_label()).to.equal('workshop');
     });
   });
 
@@ -107,7 +110,7 @@ describe('Belief', () => {
     it('creates belief with both sid and _id from same sequence', () => {
       const world_mind = new Mind('world');
 
-      const workshop = new Belief(world_mind, {
+      const workshop = Belief.from_template(world_mind, {
         label: 'workshop',
         bases: ['Location'],
       });
@@ -127,7 +130,7 @@ describe('Belief', () => {
     it('creates versioned belief with same sid but new _id', () => {
       const world_mind = new Mind('world');
 
-      const room1 = new Belief(world_mind, {
+      const room1 = Belief.from_template(world_mind, {
         label: 'room1',
         bases: ['Location'],
       });
@@ -135,8 +138,9 @@ describe('Belief', () => {
       const original_sid = room1.sid;
       const original_id = room1._id;
 
-      // Create new version
-      const room1_v2 = new Belief(world_mind, {
+      // Create new version (explicitly pass sid for versioning)
+      const room1_v2 = Belief.from_template(world_mind, {
+        sid: room1.sid,
         bases: [room1],
         traits: {
           color: 'blue',
@@ -152,7 +156,7 @@ describe('Belief', () => {
     it('registers beliefs in belief_by_sid registry', () => {
       const world_mind = new Mind('world');
 
-      const room = new Belief(world_mind, {
+      const room = Belief.from_template(world_mind, {
         label: 'room',
         bases: ['Location'],
       });
@@ -170,17 +174,19 @@ describe('Belief', () => {
     it('registers multiple versions under same sid', () => {
       const world_mind = new Mind('world');
 
-      const room_v1 = new Belief(world_mind, {
+      const room_v1 = Belief.from_template(world_mind, {
         label: 'room',
         bases: ['Location'],
       });
 
-      const room_v2 = new Belief(world_mind, {
+      const room_v2 = Belief.from_template(world_mind, {
+        sid: room_v1.sid,
         bases: [room_v1],
         traits: { color: 'red' },
       });
 
-      const room_v3 = new Belief(world_mind, {
+      const room_v3 = Belief.from_template(world_mind, {
+        sid: room_v1.sid,
         bases: [room_v2],
         traits: { color: 'blue' },
       });
@@ -200,12 +206,12 @@ describe('Belief', () => {
     it('stores trait value as sid integer when value is a Belief', () => {
       const world_mind = new Mind('world');
 
-      const workshop = new Belief(world_mind, {
+      const workshop = Belief.from_template(world_mind, {
         label: 'workshop',
         bases: ['Location'],
       });
 
-      const hammer = new Belief(world_mind, {
+      const hammer = Belief.from_template(world_mind, {
         label: 'hammer',
         bases: ['PortableObject'],
         traits: {
@@ -222,7 +228,7 @@ describe('Belief', () => {
     it('stores primitive values directly (not as sid)', () => {
       const world_mind = new Mind('world');
 
-      const ball = new Belief(world_mind, {
+      const ball = Belief.from_template(world_mind, {
         label: 'ball',
         bases: ['PortableObject'],
         traits: {
@@ -237,12 +243,13 @@ describe('Belief', () => {
     it('associates label with sid, not _id', () => {
       const world_mind = new Mind('world');
 
-      const room_v1 = new Belief(world_mind, {
+      const room_v1 = Belief.from_template(world_mind, {
         label: 'room',
         bases: ['Location'],
       });
 
-      const room_v2 = new Belief(world_mind, {
+      const room_v2 = Belief.from_template(world_mind, {
+        sid: room_v1.sid,
         bases: [room_v1],
         traits: { color: 'red' },
       });

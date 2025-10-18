@@ -78,14 +78,10 @@ const room2 = world_state.add_belief({
   },
 });
 
-// Update room1 to point back to room2
-const room1_v2 = new Cosmos.Belief(world_mind, {
-  bases: [room1],
-  traits: {
-    location: room2,
-  },
+// Update room1 to point back to room2 (using tick_with_traits for versioning)
+const state2 = world_state.tick_with_traits(room1, {
+  location: room2,
 });
-const state2 = world_state.tick({ replace: [room1_v2] });
 
 // Save and reload
 const json = Cosmos.save_mind(world_mind);
@@ -105,8 +101,8 @@ if (!loaded_state) throw new Error('State with timestamp 2 not found');
 
 
 const beliefs = [...loaded_state.get_beliefs()];
-const loaded_room1 = beliefs.find(b => b.get_display_label() === 'room1');
-const loaded_room2 = beliefs.find(b => b.get_display_label() === 'room2');
+const loaded_room1 = beliefs.find(b => b.get_label() === 'room1');
+const loaded_room2 = beliefs.find(b => b.get_label() === 'room2');
 
 const loc1 = /** @type {import('./cosmos.mjs').Belief} */ (loaded_room1).traits.get('location');
 const loc2 = /** @type {import('./cosmos.mjs').Belief} */ (loaded_room2).traits.get('location');
