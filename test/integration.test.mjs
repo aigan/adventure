@@ -32,7 +32,7 @@ describe('Integration', () => {
       const world_state = createMindWithBeliefs('world', world_belief);
       const world_mind = world_state.in_mind;
 
-      let ball = world_mind.add({
+      let ball = world_state.add_belief({
         label: 'ball',
         bases: ['PortableObject'],
         traits: {

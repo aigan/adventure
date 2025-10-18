@@ -13,7 +13,7 @@ describe('Archetype', () => {
     it('single archetype has correct structure', () => {
       const mind = new Mind('test');
       const state = mind.create_state(1);
-      const workshop = mind.add({
+      const workshop = new Belief(mind, {
         label: 'workshop',
         bases: ['Location']
       });
@@ -25,7 +25,7 @@ describe('Archetype', () => {
 
     it('archetype with base inherits traits from parent', () => {
       const mind = new Mind('test');
-      const hammer = mind.add({
+      const hammer = new Belief(mind, {
         label: 'hammer',
         bases: ['PortableObject'],
         traits: {
@@ -41,7 +41,7 @@ describe('Archetype', () => {
     it('Person archetype inherits from multiple bases', () => {
       const mind = new Mind('test');
       const state = mind.create_state(1);
-      const player = mind.add({
+      const player = new Belief(mind, {
         label: 'player',
         bases: ['Person']
       });
@@ -57,7 +57,7 @@ describe('Archetype', () => {
 
     it('get_archetypes walks full inheritance chain', () => {
       const mind = new Mind('test');
-      const player = mind.add({
+      const player = new Belief(mind, {
         label: 'player',
         bases: ['Person']
       });

@@ -65,12 +65,12 @@ setupStandardArchetypes();
 const world_mind = new Cosmos.Mind('world');
 const world_state = world_mind.create_state(1);
 
-const room1 = world_mind.add({
+const room1 = world_state.add_belief({
   label: 'room1',
   bases: ['Location'],
 });
 
-const room2 = world_mind.add({
+const room2 = world_state.add_belief({
   label: 'room2',
   bases: ['Location'],
   traits: {
@@ -85,8 +85,6 @@ const room1_v2 = new Cosmos.Belief(world_mind, {
     location: room2,
   },
 });
-
-world_state.insert.push(room1, room2);
 const state2 = world_state.tick({ replace: [room1_v2] });
 
 // Save and reload
@@ -161,7 +159,7 @@ const player = loc1;
 //let state = world_mind.create_state(1);
 //state.add_beliefs(world_belief);
 //
-//const ball = world_mind.add({
+//const ball = state.add_belief({
 //  label: 'ball',
 //  bases: ['PortableObject'],
 //  traits: {
@@ -169,9 +167,7 @@ const player = loc1;
 //  },
 //});
 //
-//state = state.tick({
-//  insert: [ball],
-//});
+//state = state.tick({});
 //
 //state = state.tick_with_traits(ball, {
 //  color: 'blue',

@@ -77,15 +77,6 @@ export class Mind {
   }
 
   /**
-   * @param {object} belief_def
-   * @returns {import('./belief.mjs').Belief}
-   */
-  add(belief_def) {
-    const belief = Cosmos.create_belief(this, belief_def)
-    return belief
-  }
-
-  /**
    * @param {number} timestamp
    * @param {import('./state.mjs').State|null} ground_state
    * @returns {import('./state.mjs').State}

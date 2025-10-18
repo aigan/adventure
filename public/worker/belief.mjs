@@ -33,93 +33,12 @@ export class Belief {
    * @param {import('./mind.mjs').Mind} mind
    * @param {object} param1
    * @param {string|null} [param1.label]
-   * @param {Belief|number|null} [param1.about] - Belief object or _id (when loading from JSON)
-   * @param {(string|Archetype|Belief|number)[]} [param1.bases] - Archetype labels, Belief objects, or _ids (when loading from JSON)
+   * @param {Belief|null} [param1.about] - Belief object this is about
+   * @param {(string|Archetype|Belief)[]} [param1.bases] - Archetype labels or Belief objects
    * @param {object} [param1.traits]
-   * @param {string|null} [param1._type]
-   * @param {number|null} [param1._id]
-   * @param {number|null} [param1.sid]
    * @param {import('./state.mjs').State|null} [creator_state] - State that's creating this belief (for inferring ground_state)
    */
-  constructor(mind, {label=null, about=null, bases=[], traits={}, _type=null, _id=null, sid=null}, creator_state = null) {
-    // Check if loading from JSON
-    if (_type === 'Belief' && _id != null) {
-      this._id = _id
-      /** @type {number} */
-      this.sid = 0  // Temporary, will be set immediately
-      this.sid = /** @type {number} */ (sid)  // sid must be present when loading from JSON
-      this.in_mind = mind
-      this.locked = false
-
-      // Resolve 'about' reference (ID to Belief object)
-      /** @type {Belief|null} */
-      this._about = null
-      /** @type {Belief|null} */
-      let resolved_about = null
-      if (about != null) {
-        if (typeof about === 'number') {
-          resolved_about = DB.belief_by_id.get(about) ?? null
-          if (!resolved_about) {
-            throw new Error(`Cannot resolve about reference ${about} for belief ${this._id}`)
-          }
-        } else {
-          // Should not happen when loading from JSON, but handle for safety
-          resolved_about = about
-        }
-      }
-      this._about = resolved_about
-
-      // Resolve 'bases' (archetype labels or belief IDs)
-      this._bases = new Set()
-      for (const base_ref of bases) {
-        if (typeof base_ref === 'string') {
-          const archetype = DB.archetype_by_label[base_ref]
-          if (!archetype) {
-            throw new Error(`Archetype '${base_ref}' not found for belief ${this._id}`)
-          }
-          this._bases.add(archetype)
-        } else if (typeof base_ref === 'number') {
-          const base_belief = DB.belief_by_id.get(base_ref)
-          if (!base_belief) {
-            throw new Error(`Cannot resolve base belief ${base_ref} for belief ${this._id}`)
-          }
-          this._bases.add(base_belief)
-        } else {
-          // Direct Belief or Archetype object (not from JSON)
-          this._bases.add(base_ref)
-        }
-      }
-
-      // Copy traits as-is - sids, primitives, and State/Mind reference objects
-      // Resolution happens lazily when accessed via get_trait()
-      this._traits = new Map()
-      for (const [trait_name, trait_value] of Object.entries(traits)) {
-        this._traits.set(trait_name, trait_value)
-      }
-
-      // Register globally
-      DB.belief_by_id.set(this._id, this)
-
-      // Register in by_sid (sid → Set<Belief>)
-      const sid_val = /** @type {number} */ (this.sid)
-      if (!DB.belief_by_sid.has(sid_val)) {
-        DB.belief_by_sid.set(sid_val, new Set())
-      }
-      /** @type {Set<Belief>} */ (DB.belief_by_sid.get(sid_val)).add(this)
-
-      if (label) {
-        // Register label-sid mappings (for first belief with this label loaded)
-        if (!DB.sid_by_label.has(label)) {
-          if (DB.archetype_by_label[label]) {
-            throw new Error(`Label '${label}' is already used by an archetype`)
-          }
-          DB.sid_by_label.set(label, sid_val)
-          DB.label_by_sid.set(sid_val, label)
-        }
-      }
-      return
-    }
-
+  constructor(mind, {label=null, about=null, bases=[], traits={}}, creator_state = null) {
     // Resolve bases early to determine if this is a new subject or version
     /** @type {Set<Belief|Archetype>} */
     this._bases = new Set([])
@@ -144,6 +63,8 @@ export class Belief {
     }
 
     // Normal construction
+    /** @type {number} */
+    this.sid = 0 // Temporary, will be set immediately
     if (parent_belief) {
       // This is a version of an existing subject
       this.sid = /** @type {Belief} */ (parent_belief).sid
@@ -417,13 +338,76 @@ export class Belief {
   }
 
   /**
-   * Create Belief from JSON data with lazy loading
-   * @param {import('./mind.mjs').Mind} mind - Mind this belief belongs to
-   * @param {BeliefJSON} data - JSON data with _type: 'Belief'
+   * Load belief from JSON data
+   * @param {import('./mind.mjs').Mind} mind
+   * @param {BeliefJSON} data
    * @returns {Belief}
    */
   static from_json(mind, data) {
-    return new Belief(mind, data)
+    // Create belief shell without going through normal constructor
+    const belief = Object.create(Belief.prototype)
+
+    belief._id = data._id
+    belief.sid = data.sid
+    belief.in_mind = mind
+    belief.locked = false
+
+    // Resolve 'about' reference (ID to Belief object)
+    belief._about = null
+    if (data.about != null) {
+      const resolved_about = DB.belief_by_id.get(data.about)
+      if (!resolved_about) {
+        throw new Error(`Cannot resolve about reference ${data.about} for belief ${belief._id}`)
+      }
+      belief._about = resolved_about
+    }
+
+    // Resolve 'bases' (archetype labels or belief IDs)
+    belief._bases = new Set()
+    for (const base_ref of data.bases) {
+      if (typeof base_ref === 'string') {
+        const archetype = DB.archetype_by_label[base_ref]
+        if (!archetype) {
+          throw new Error(`Archetype '${base_ref}' not found for belief ${belief._id}`)
+        }
+        belief._bases.add(archetype)
+      } else if (typeof base_ref === 'number') {
+        const base_belief = DB.belief_by_id.get(base_ref)
+        if (!base_belief) {
+          throw new Error(`Cannot resolve base belief ${base_ref} for belief ${belief._id}`)
+        }
+        belief._bases.add(base_belief)
+      }
+    }
+
+    // Copy traits as-is - sids, primitives, and State/Mind reference objects
+    // Resolution happens lazily via _finalize_traits() or when accessed
+    belief._traits = new Map()
+    for (const [trait_name, trait_value] of Object.entries(data.traits)) {
+      belief._traits.set(trait_name, trait_value)
+    }
+
+    // Register globally
+    DB.belief_by_id.set(belief._id, belief)
+
+    // Register in by_sid (sid → Set<Belief>)
+    if (!DB.belief_by_sid.has(belief.sid)) {
+      DB.belief_by_sid.set(belief.sid, new Set())
+    }
+    /** @type {Set<Belief>} */ (DB.belief_by_sid.get(belief.sid)).add(belief)
+
+    // Register label-sid mappings (for first belief with this label loaded)
+    if (data.label) {
+      if (!DB.sid_by_label.has(data.label)) {
+        if (DB.archetype_by_label[data.label]) {
+          throw new Error(`Label '${data.label}' is already used by an archetype`)
+        }
+        DB.sid_by_label.set(data.label, belief.sid)
+        DB.label_by_sid.set(belief.sid, data.label)
+      }
+    }
+
+    return belief
   }
 
   // Simple property accessors (no lazy loading needed with SID system)

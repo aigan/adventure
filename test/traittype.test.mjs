@@ -60,7 +60,7 @@ describe('Traittype', () => {
   describe('Simple types (backward compatibility)', () => {
     it('resolves string type', () => {
       const mind = new Mind('test_mind');
-      const obj = mind.add({
+      const obj = new Belief(mind, {
         label: 'test_obj',
         bases: ['ObjectPhysical'],
         traits: { color: 'blue' }
@@ -71,7 +71,7 @@ describe('Traittype', () => {
 
     it('resolves number type', () => {
       const mind = new Mind('test_mind');
-      const obj = mind.add({
+      const obj = new Belief(mind, {
         label: 'test_obj',
         bases: ['TestObject'],
         traits: { count: 42 }
@@ -82,7 +82,7 @@ describe('Traittype', () => {
 
     it('resolves boolean type', () => {
       const mind = new Mind('test_mind');
-      const obj = mind.add({
+      const obj = new Belief(mind, {
         label: 'test_obj',
         bases: ['TestObject'],
         traits: { active: true }
@@ -94,7 +94,7 @@ describe('Traittype', () => {
     it('resolves State type', () => {
       const mind = new Mind('test_mind');
       const state = mind.create_state(1);
-      const obj = mind.add({
+      const obj = new Belief(mind, {
         label: 'test_obj',
         bases: ['Mental'],
         traits: { mind_states: [state] }
@@ -110,7 +110,7 @@ describe('Traittype', () => {
       const state1 = mind.create_state(1);
       const state2 = mind.create_state(2);
 
-      const obj = mind.add({
+      const obj = new Belief(mind, {
         label: 'test_obj',
         bases: ['Mental'],
         traits: { states_array: [state1, state2] }
@@ -125,7 +125,7 @@ describe('Traittype', () => {
 
     it('resolves array of strings with valid min/max constraints', () => {
       const mind = new Mind('test_mind');
-      const obj = mind.add({
+      const obj = new Belief(mind, {
         label: 'test_obj',
         bases: ['TestObject'],
         traits: { colors_array: ['red', 'blue', 'green'] }
@@ -141,7 +141,7 @@ describe('Traittype', () => {
       const mind = new Mind('test_mind');
 
       expect(() => {
-        mind.add({
+        new Belief(mind, {
           label: 'test_obj',
           bases: ['TestObject'],
           traits: { colors_array: ['red'] }  // min is 2
@@ -153,7 +153,7 @@ describe('Traittype', () => {
       const mind = new Mind('test_mind');
 
       expect(() => {
-        mind.add({
+        new Belief(mind, {
           label: 'test_obj',
           bases: ['TestObject'],
           traits: { colors_array: ['red', 'blue', 'green', 'yellow', 'purple', 'orange'] }  // max is 5
@@ -166,7 +166,7 @@ describe('Traittype', () => {
       const state = mind.create_state(1);
 
       expect(() => {
-        mind.add({
+        new Belief(mind, {
           label: 'test_obj',
           bases: ['Mental'],
           traits: { states_array: state }  // Should be an array
@@ -178,7 +178,7 @@ describe('Traittype', () => {
       const mind = new Mind('test_mind');
 
       expect(() => {
-        mind.add({
+        new Belief(mind, {
           label: 'test_obj',
           bases: ['TestObject'],
           traits: { colors_array: ['red', 42, 'blue'] }  // 42 is not a string
@@ -207,7 +207,7 @@ describe('Traittype', () => {
       DB.register(archetypes, traittypes);
 
       const mind = new Mind('test_mind');
-      const obj = mind.add({
+      const obj = new Belief(mind, {
         label: 'test_obj',
         bases: ['Tagged'],
         traits: { tags: [] }
@@ -225,7 +225,7 @@ describe('Traittype', () => {
       const state1 = mind.create_state(1);
       const state2 = mind.create_state(2);
 
-      const obj = mind.add({
+      const obj = new Belief(mind, {
         label: 'test_obj',
         bases: ['Mental'],
         traits: { states_array: [state1, state2] }
@@ -241,7 +241,7 @@ describe('Traittype', () => {
       const state1 = mind.create_state(1);
       const state2 = mind.create_state(2);
 
-      const obj = mind.add({
+      const obj = new Belief(mind, {
         label: 'test_obj',
         bases: ['Mental'],
         traits: { states_array: [state1, state2] }

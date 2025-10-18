@@ -41,6 +41,7 @@ export class State {
    * @param {State|null} ground_state
    */
   constructor(mind, timestamp, base=null, ground_state=null) {
+    assert(base === null || base.locked, 'Cannot create state from unlocked base state')
                               this._id = next_id()
                               this.in_mind = mind
     /** @type {State|null} */   this.base = base
@@ -63,6 +64,17 @@ export class State {
     for (const belief of this.insert) {
       belief.lock()
     }
+  }
+
+  /**
+   * @param {object} template - Belief template
+   * @returns {import('./belief.mjs').Belief}
+   */
+  add_belief(template) {
+    assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
+    const belief = Cosmos.create_belief(this.in_mind, template, this)
+    this.insert.push(belief)
+    return belief
   }
 
   /**
@@ -138,6 +150,7 @@ export class State {
    * @returns {State} New locked state with operations applied
    */
   tick({insert=[], remove=[], replace=[], ground_state}) {
+    this.lock()  // Lock this state before branching
     const state = this.branch_state(ground_state)
 
     if (replace.length > 0) {

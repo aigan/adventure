@@ -46,12 +46,12 @@ describe('Declarative Mind State Construction', () => {
     const world_mind = new Mind('world');
     const world_state = world_mind.create_state(1);
 
-    const main_area = world_mind.add({
+    const main_area = world_state.add_belief({
       label: 'main_area',
       bases: ['Location'],
     });
 
-    const workshop = world_mind.add({
+    const workshop = world_state.add_belief({
       label: 'workshop',
       bases: ['Location'],
       traits: {
@@ -59,15 +59,13 @@ describe('Declarative Mind State Construction', () => {
       },
     });
 
-    const player_body = world_mind.add({
+    const player_body = world_state.add_belief({
       label: 'player_body',
       bases: ['Person'],
       traits: {
         location: workshop,
       },
     });
-
-    world_state.insert.push(main_area, workshop, player_body);
 
     // Define state prototype
     DB.state_by_label.player_mind = {
@@ -154,18 +152,17 @@ describe('Declarative Mind State Construction', () => {
     const world_mind = new Mind('world');
     const world_state = world_mind.create_state(1);
 
-    const base_location = world_mind.add({ label: 'base_location', bases: ['Location'] });
-    const location1 = world_mind.add({
+    const base_location = world_state.add_belief({ label: 'base_location', bases: ['Location'] });
+    const location1 = world_state.add_belief({
       label: 'location1',
       bases: ['Location'],
       traits: { location: base_location }
     });
-    const location2 = world_mind.add({
+    const location2 = world_state.add_belief({
       label: 'location2',
       bases: ['Location'],
       traits: { location: base_location }
     });
-    world_state.insert.push(base_location, location1, location2);
 
     // Define prototype
     DB.state_by_label.test_prototype = {
@@ -174,7 +171,7 @@ describe('Declarative Mind State Construction', () => {
       }
     };
 
-    const entity = world_mind.add({
+    const entity = world_state.add_belief({
       label: 'entity',
       bases: ['Mental'],
       traits: {
@@ -223,18 +220,17 @@ describe('Declarative Mind State Construction', () => {
     const world_mind = new Mind('world');
     const world_state = world_mind.create_state(1);
 
-    const base_location = world_mind.add({ label: 'base_location', bases: ['Location'] });
-    const location1 = world_mind.add({
+    const base_location = world_state.add_belief({ label: 'base_location', bases: ['Location'] });
+    const location1 = world_state.add_belief({
       label: 'location1',
       bases: ['Location'],
       traits: { location: base_location }
     });
-    const location2 = world_mind.add({
+    const location2 = world_state.add_belief({
       label: 'location2',
       bases: ['Location'],
       traits: { location: base_location }
     });
-    world_state.insert.push(base_location, location1, location2);
 
     // Prototype learns location1
     DB.state_by_label.test_prototype = {
@@ -244,7 +240,7 @@ describe('Declarative Mind State Construction', () => {
     };
 
     // Custom adds location2
-    const entity = world_mind.add({
+    const entity = world_state.add_belief({
       label: 'entity',
       bases: ['Mental'],
       traits: {
@@ -304,10 +300,9 @@ describe('Declarative Mind State Construction', () => {
     const world_mind = new Mind('world');
     const world_state = world_mind.create_state(1);
 
-    const location1 = world_mind.add({ label: 'location1', bases: ['Location'] });
-    world_state.insert.push(location1);
+    const location1 = world_state.add_belief({ label: 'location1', bases: ['Location'] });
 
-    const entity = world_mind.add({
+    const entity = world_state.add_belief({
       label: 'entity',
       bases: ['Mental'],
       traits: {
@@ -350,7 +345,7 @@ describe('Declarative Mind State Construction', () => {
     const world_state = world_mind.create_state(1);
 
     expect(() => {
-      world_mind.add({
+      world_state.add_belief({
         label: 'entity',
         bases: ['Mental'],
         traits: {

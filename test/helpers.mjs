@@ -12,8 +12,7 @@ export function createMindWithBeliefs(label, beliefs = {}) {
   const state = mind.create_state(1);
 
   for (const [belief_label, def] of Object.entries(beliefs)) {
-    const belief = mind.add({...def, label: belief_label});
-    state.insert.push(belief);
+    state.add_belief({...def, label: belief_label});
   }
 
   return state;

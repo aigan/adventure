@@ -15,12 +15,10 @@ describe('Save/Load functionality', () => {
       const world_mind = new Mind('world');
       const world_state = world_mind.create_state(1);
 
-      const workshop = world_mind.add({
+      const workshop = world_state.add_belief({
         label: 'workshop',
         bases: ['Location'],
       });
-
-      world_state.insert.push(workshop);
 
       // Save
       const json = save_mind(world_mind);
@@ -49,20 +47,18 @@ describe('Save/Load functionality', () => {
       const world_mind = new Mind('world');
       const world_state = world_mind.create_state(1);
 
-      const workshop = world_mind.add({
+      const workshop = world_state.add_belief({
         label: 'workshop',
         bases: ['Location'],
       });
 
-      const hammer = world_mind.add({
+      const hammer = world_state.add_belief({
         label: 'hammer',
         bases: ['PortableObject'],
         traits: {
           location: workshop,
         },
       });
-
-      world_state.insert.push(workshop, hammer);
 
       // Save and reload
       const json = save_mind(world_mind);
@@ -87,20 +83,18 @@ describe('Save/Load functionality', () => {
       const world_mind = new Mind('world');
       const state1 = world_mind.create_state(1);
 
-      const room1 = world_mind.add({
+      const room1 = state1.add_belief({
         label: 'room1',
         bases: ['Location'],
       });
 
-      const room2 = world_mind.add({
+      const room2 = state1.add_belief({
         label: 'room2',
         bases: ['Location'],
         traits: {
           location: room1,  // room2 → room1 in state1
         },
       });
-
-      state1.insert.push(room1, room2);
 
       // State 2: Update room1 to point back to room2 (creates circular reference)
       const room1_v2 = new Belief(world_mind, {
@@ -153,11 +147,10 @@ describe('Save/Load functionality', () => {
     it('loads state chains with base references', () => {
       const world_mind = new Mind('world');
       const state1 = world_mind.create_state(1);
-      const ball = world_mind.add({
+      const ball = state1.add_belief({
         label: 'ball',
         bases: ['PortableObject'],
       });
-      state1.insert.push(ball);
 
       const state2 = state1.tick({ insert: [] });
       const state3 = state2.tick({ insert: [] });
@@ -212,7 +205,7 @@ describe('Save/Load functionality', () => {
       let state = world_mind.create_state(1);
       state.add_beliefs(world_belief);
 
-      const ball = world_mind.add({
+      const ball = state.add_belief({
         label: 'ball',
         bases: ['PortableObject'],
         traits: {
@@ -220,7 +213,7 @@ describe('Save/Load functionality', () => {
         },
       });
 
-      state = state.tick({ insert: [ball] });
+      state = state.tick({ insert: [] });
       state = state.tick_with_traits(ball, { color: 'blue' });
 
       // Get versioned ball's ID before saving
@@ -254,11 +247,10 @@ describe('Save/Load functionality', () => {
     it('preserves and continues id_sequence', () => {
       const world_mind = new Mind('world');
       const state = world_mind.create_state(1);
-      const workshop = world_mind.add({
+      const workshop = state.add_belief({
         label: 'workshop',
         bases: ['Location'],
       });
-      state.insert.push(workshop);
 
       const max_id = Math.max(world_mind._id, state._id, workshop._id);
 
@@ -277,11 +269,10 @@ describe('Save/Load functionality', () => {
       const world_mind = new Mind('world');
       const world_state = world_mind.create_state(1);
 
-      const workshop = world_mind.add({
+      const workshop = world_state.add_belief({
         label: 'workshop',
         bases: ['Location'],
       });
-      world_state.insert.push(workshop);
 
       // Create player mind with ground_state
       const player_mind = new Mind('player_mind');
@@ -339,7 +330,7 @@ describe('Save/Load functionality', () => {
       state.add_beliefs(world_belief);
 
       // Add entities and create versions
-      const ball = world_mind.add({
+      const ball = state.add_belief({
         label: 'ball',
         bases: ['PortableObject'],
         traits: {
@@ -347,16 +338,13 @@ describe('Save/Load functionality', () => {
         },
       });
 
-      state = state.tick({ insert: [ball] });
-      state = state.tick_with_traits(ball, { color: 'blue' });
-
-      // Create circular reference
-      const room1 = world_mind.add({
+      // Create circular reference first (before locking state)
+      const room1 = state.add_belief({
         label: 'room1',
         bases: ['Location'],
       });
 
-      const room2 = world_mind.add({
+      const room2 = state.add_belief({
         label: 'room2',
         bases: ['Location'],
         traits: {
@@ -364,14 +352,14 @@ describe('Save/Load functionality', () => {
         },
       });
 
+      state = state.tick_with_traits(ball, { color: 'blue' });
+
       const room1_v2 = new Belief(world_mind, {
         bases: [room1],
         traits: {
           location: room2,
         },
       });
-
-      state = state.tick({ insert: [room1, room2] });
       state = state.tick({ replace: [room1_v2] });
 
       // First save

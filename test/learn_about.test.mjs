@@ -58,8 +58,7 @@ describe('learn_about', () => {
     it('learn_about on versioned belief walks chain to find archetypes', () => {
       const world_mind = new Mind('world');
       const world_mind_state = world_mind.create_state(1);
-      const hammer_v1_belief = world_mind.add({label: 'hammer_v1', bases: ['PortableObject']});
-      world_mind_state.insert.push(hammer_v1_belief);
+      const hammer_v1_belief = world_mind_state.add_belief({label: 'hammer_v1', bases: ['PortableObject']});
 
       const hammer_v1 = DB.get_belief_by_label('hammer_v1');
       const hammer_v2 = new Belief(hammer_v1.in_mind, {
@@ -99,7 +98,7 @@ describe('learn_about', () => {
       );
 
       // Should be able to reference learned belief in traits
-      const hammer_knowledge = player_mind.add({
+      const hammer_knowledge = player_mind_state.add_belief({
         label: 'hammer_knowledge',
         bases: ['PortableObject'],
         traits: { location: workshop_knowledge }
@@ -111,8 +110,7 @@ describe('learn_about', () => {
     it('learn_about directly from base belief works', () => {
       const world_mind = new Mind('world');
       const world_mind_state = world_mind.create_state(1);
-      const base_hammer_belief = world_mind.add({label: 'base_hammer', bases: ['PortableObject']});
-      world_mind_state.insert.push(base_hammer_belief);
+      const base_hammer_belief = world_mind_state.add_belief({label: 'base_hammer', bases: ['PortableObject']});
 
       const base_hammer = DB.get_belief_by_label('base_hammer');
 
@@ -170,12 +168,11 @@ describe('learn_about', () => {
       const npc_mind_state = npc_mind.create_state(1);
 
       // NPC already knows about the workshop
-      const existing_workshop = npc_mind.add({
+      const existing_workshop = npc_mind_state.add_belief({
         label: 'my_workshop',
         about: DB.get_belief_by_label('workshop'),
         bases: ['Location']
       });
-      npc_mind_state.insert.push(existing_workshop);
 
       const hammer_knowledge = npc_mind_state.learn_about(
         world_state,
@@ -201,19 +198,17 @@ describe('learn_about', () => {
       const npc_mind_state = npc_mind.create_state(1);
 
       // NPC has two different beliefs about the workshop (uncertainty case)
-      const belief1 = npc_mind.add({
+      const belief1 = npc_mind_state.add_belief({
         label: 'workshop_belief_1',
         about: DB.get_belief_by_label('workshop'),
         bases: ['Location']
       });
 
-      const belief2 = npc_mind.add({
+      const belief2 = npc_mind_state.add_belief({
         label: 'workshop_belief_2',
         about: DB.get_belief_by_label('workshop'),
         bases: ['Location']
       });
-
-      npc_mind_state.insert.push(belief1, belief2);
 
       // Should error - can't determine which to use without certainty tracking
       expect(() => {
@@ -228,11 +223,11 @@ describe('learn_about', () => {
     it('learn_about should follow about chain to original entity', () => {
       const world_mind = new Mind('world');
       const world_mind_state = world_mind.create_state(1);
-      world_mind.add({label: 'workshop', bases: ['Location']});
+      world_mind_state.add_belief({label: 'workshop', bases: ['Location']});
 
       const npc1_mind = new Mind('npc1');
       const npc1_mind_state = npc1_mind.create_state(1);
-      const workshop_from_npc1 = npc1_mind.add({
+      const workshop_from_npc1 = npc1_mind_state.add_belief({
         label: 'workshop_knowledge',
         about: DB.get_belief_by_label('workshop'),
         bases: ['Location']
@@ -251,7 +246,7 @@ describe('learn_about', () => {
     it('learn_about should walk belief chain to find archetypes', () => {
       const world_mind = new Mind('world');
       const world_mind_state = world_mind.create_state(1);
-      world_mind.add({label: 'hammer_v1', bases: ['PortableObject']});
+      world_mind_state.add_belief({label: 'hammer_v1', bases: ['PortableObject']});
 
       const hammer_v1 = DB.get_belief_by_label('hammer_v1');
       const hammer_v2 = new Belief(hammer_v1.in_mind, {
@@ -326,28 +321,27 @@ describe('learn_about', () => {
 
       const world_mind = new Mind('world');
 
+      const world_mind_state = world_mind.create_state(1);
+
       // Create items
-      const sword = world_mind.add({
+      const sword = world_mind_state.add_belief({
         label: 'sword',
         bases: ['PortableObject']
       });
 
-      const shield = world_mind.add({
+      const shield = world_mind_state.add_belief({
         label: 'shield',
         bases: ['PortableObject']
       });
 
       // Create container with array of items
-      const chest = world_mind.add({
+      const chest = world_mind_state.add_belief({
         label: 'chest',
         bases: ['Container'],
         traits: {
           items: [sword, shield]
         }
       });
-
-      const world_mind_state = world_mind.create_state(1);
-      world_mind_state.insert.push(sword, shield, chest);
 
       const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);

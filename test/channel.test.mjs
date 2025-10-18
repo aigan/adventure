@@ -116,13 +116,12 @@ describe('Channel Message Handlers', () => {
       global.BroadcastChannel = function() { return mockChannel; };
 
       const world_mind = new Mind('test_mind');
-      const hammer = world_mind.add({
+      const state = world_mind.create_state(1);
+      const hammer = state.add_belief({
         label: 'test_hammer',
         bases: ['PortableObject'],
         traits: { color: 'red' }
       });
-      const state = world_mind.create_state(1);
-      state.insert.push(hammer);
 
       mockSession = new Session(world_mind, state, hammer);
 
@@ -215,9 +214,8 @@ describe('Channel Message Handlers', () => {
 
     it('can find state by searching all minds', () => {
       const mind2 = new Mind('mind2');
-      const hammer = mind2.add({ label: 'hammer', bases: ['PortableObject'] });
       const state2 = mind2.create_state(1);
-      state2.insert.push(hammer);
+      const hammer = state2.add_belief({ label: 'hammer', bases: ['PortableObject'] });
 
       messages.length = 0;
 
@@ -268,12 +266,11 @@ describe('Channel Message Handlers', () => {
 
     it('can find belief by id and returns correct data', () => {
       const mind = new Mind('belief_test_mind');
-      const hammer = mind.add({
+      const state = mind.create_state(1);
+      const hammer = state.add_belief({
         label: 'query_hammer',
         bases: ['PortableObject']
       });
-      const state = mind.create_state(1);
-      state.insert.push(hammer);
 
       messages.length = 0;
 
@@ -305,12 +302,11 @@ describe('Channel Message Handlers', () => {
 
     it('includes about chain in response', () => {
       const world_mind = new Mind('world');
-      const workshop = world_mind.add({
+      const world_state = world_mind.create_state(1);
+      const workshop = world_state.add_belief({
         label: 'query_workshop',
         bases: ['Location']
       });
-      const world_state = world_mind.create_state(1);
-      world_state.insert.push(workshop);
 
       const npc_mind = new Mind('npc');
       const npc_state = npc_mind.create_state(1);
@@ -332,12 +328,11 @@ describe('Channel Message Handlers', () => {
 
     it('includes bases information', () => {
       const mind = new Mind('bases_test_mind');
-      const hammer = mind.add({
+      const state = mind.create_state(1);
+      const hammer = state.add_belief({
         label: 'bases_hammer',
         bases: ['PortableObject']
       });
-      const state = mind.create_state(1);
-      state.insert.push(hammer);
 
       messages.length = 0;
 
@@ -373,13 +368,12 @@ describe('Channel Message Handlers', () => {
 
     it('can find belief in Session.state', async () => {
       const mind = new Mind('entity_test_mind');
-      const ball = mind.add({
+      const state = mind.create_state(1);
+      const ball = state.add_belief({
         label: 'test_ball',
         bases: ['PortableObject'],
         traits: { color: 'red' }
       });
-      const state = mind.create_state(1);
-      state.insert.push(ball);
 
       const mockSession = new Session(mind, state, ball);
 

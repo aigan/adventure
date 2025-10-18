@@ -12,9 +12,9 @@ describe('State', () => {
   describe('Iteration Patterns', () => {
     it('mind.belief Set contains all beliefs for that mind', () => {
       const mind = new Mind('test');
-      mind.add({label: 'workshop', bases: ['Location']});
+      new Belief(mind, {label: 'workshop', bases: ['Location']});
 
-      const hammer = mind.add({
+      const hammer = new Belief(mind, {
         label: 'hammer',
         bases: ['PortableObject']
       });
@@ -43,7 +43,7 @@ describe('State', () => {
 
     it('mind.belief_by_label provides fast label lookup', () => {
       const mind = new Mind('test');
-      mind.add({label: 'workshop', bases: ['Location']});
+      new Belief(mind, {label: 'workshop', bases: ['Location']});
 
       expect(DB.get_belief_by_label('workshop')).to.exist;
       expect(DB.get_belief_by_label('workshop').get_label()).to.equal('workshop');
@@ -53,13 +53,13 @@ describe('State', () => {
   describe('Cross-Mind Visibility', () => {
     it('state.get_beliefs only returns beliefs from that state\'s mind', () => {
       const mind_a = new Mind('mind_a');
-      mind_a.add({label: 'item_a', bases: ['PortableObject']});
+      new Belief(mind_a, {label: 'item_a', bases: ['PortableObject']});
       const state_a = mind_a.create_state(1);
       const beliefs_for_a = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_a);
       state_a.insert.push(...beliefs_for_a);
 
       const mind_b = new Mind('mind_b');
-      mind_b.add({label: 'item_b', bases: ['PortableObject']});
+      new Belief(mind_b, {label: 'item_b', bases: ['PortableObject']});
       const state_b = mind_b.create_state(1);
       const beliefs_for_b = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_b);
       state_b.insert.push(...beliefs_for_b);
@@ -76,10 +76,10 @@ describe('State', () => {
 
     it('beliefs from different minds don\'t mix in states', () => {
       const mind_a = new Mind('mind_a');
-      mind_a.add({label: 'workshop_a', bases: ['Location']});
+      new Belief(mind_a, {label: 'workshop_a', bases: ['Location']});
 
       const mind_b = new Mind('mind_b');
-      mind_b.add({label: 'workshop_b', bases: ['Location']});
+      new Belief(mind_b, {label: 'workshop_b', bases: ['Location']});
 
       const state_a = mind_a.create_state(1);
       const beliefs_a = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_a);
@@ -99,7 +99,7 @@ describe('State', () => {
   describe('State Operations', () => {
     it('state.tick with replace removes correct belief', () => {
       const mind = new Mind('test');
-      mind.add({label: 'hammer_v1', bases: ['PortableObject']});
+      new Belief(mind, {label: 'hammer_v1', bases: ['PortableObject']});
 
       const state1 = mind.create_state(1);
       const hammer_v1 = DB.get_belief_by_label('hammer_v1');
@@ -118,11 +118,11 @@ describe('State', () => {
 
     it('multiple minds can have states without interference', () => {
       const mind_a = new Mind('mind_a');
-      mind_a.add({label: 'item_in_a', bases: ['PortableObject']});
+      new Belief(mind_a, {label: 'item_in_a', bases: ['PortableObject']});
       const state_a1 = mind_a.create_state(1);
 
       const mind_b = new Mind('mind_b');
-      mind_b.add({label: 'item_in_b', bases: ['PortableObject']});
+      new Belief(mind_b, {label: 'item_in_b', bases: ['PortableObject']});
       const state_b1 = mind_b.create_state(1);
 
       // Add different beliefs to each mind
@@ -155,7 +155,7 @@ describe('State', () => {
       });
       const mind = state1.in_mind;
 
-      const item3 = mind.add({ label: 'item3', bases: ['PortableObject'] });
+      const item3 = new Belief(mind, { label: 'item3', bases: ['PortableObject'] });
       const state2 = state1.tick({ insert: [item3] });
 
       // state2 should have all three items
@@ -241,12 +241,10 @@ describe('State', () => {
       const world_mind = new Mind('world');
       const state1 = world_mind.create_state(1);
 
-      const room = world_mind.add({
+      const room = state1.add_belief({
         label: 'room',
         bases: ['Location'],
       });
-
-      state1.insert.push(room);
 
       // Should resolve to the belief
       const resolved = state1.resolve_subject(room.sid);
@@ -257,12 +255,10 @@ describe('State', () => {
       const world_mind = new Mind('world');
       const state1 = world_mind.create_state(1);
 
-      const room_v1 = world_mind.add({
+      const room_v1 = state1.add_belief({
         label: 'room',
         bases: ['Location'],
       });
-
-      state1.insert.push(room_v1);
 
       // Create v2 and add to state2
       const room_v2 = new Belief(world_mind, {
@@ -282,10 +278,8 @@ describe('State', () => {
       const world_mind = new Mind('world');
       const state = world_mind.create_state(1);
 
-      const room1 = world_mind.add({ label: 'room1', bases: ['Location'] });
-      const room2 = world_mind.add({ label: 'room2', bases: ['Location'] });
-
-      state.insert.push(room1, room2);
+      const room1 = state.add_belief({ label: 'room1', bases: ['Location'] });
+      const room2 = state.add_belief({ label: 'room2', bases: ['Location'] });
 
       // Lock state to enable caching
       state.lock();
@@ -311,20 +305,18 @@ describe('State', () => {
       const state1 = world_mind.create_state(1);
 
       // Create two rooms with circular reference
-      const room1 = world_mind.add({
+      const room1 = state1.add_belief({
         label: 'room1',
         bases: ['Location'],
       });
 
-      const room2 = world_mind.add({
+      const room2 = state1.add_belief({
         label: 'room2',
         bases: ['Location'],
         traits: {
           location: room1,  // room2 inside room1
         },
       });
-
-      state1.insert.push(room1, room2);
 
       // Now update room1 to be inside room2
       const room1_v2 = new Belief(world_mind, {
