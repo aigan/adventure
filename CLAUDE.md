@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Version Control
+
+**Important**: This project is under Git version control, but Claude Code does not have direct access to the Git repository. When working with the codebase:
+- Ask the user about Git history, branches, or commit information when needed
+- Do not assume knowledge of previous commits or changes
+- Request information about merge conflicts or branch states if relevant to the task
+
 ## Project Overview
 
 **What it is**: A single-player systemic story game where narrative emerges from simulated agents and constraint-based generation, rather than pre-authored content. Think NetHack/Dwarf Fortress narrative depth meets detective game investigation, with Wildermyth-style adaptive story arcs.

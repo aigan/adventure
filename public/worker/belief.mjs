@@ -1,0 +1,509 @@
+import { assert } from '../lib/debug.mjs'
+import { next_id } from './id_sequence.mjs'
+import { Archetype } from './archetype.mjs'
+
+/**
+ * Forward declarations to avoid circular dependencies
+ * @type {any}
+ */
+let Traittype = null
+/** @type {any} */
+let Mind = null
+/** @type {any} */
+let State = null
+
+/**
+ * Initialize references after all modules are loaded
+ * @param {object} refs
+ * @param {typeof import('./traittype.mjs').Traittype} refs.Traittype
+ * @param {typeof import('./mind.mjs').Mind} refs.Mind
+ * @param {typeof import('./state.mjs').State} refs.State
+ */
+export function init_belief_refs(refs) {
+  Traittype = refs.Traittype
+  Mind = refs.Mind
+  State = refs.State
+}
+
+/**
+ * @typedef {object} BeliefJSON
+ * @property {string} _type - Always "Belief"
+ * @property {number} _id - Unique version identifier
+ * @property {number} sid - Subject identifier (stable across versions)
+ * @property {string|null} label - Optional label for lookup
+ * @property {number|null} about - Parent belief _id (null if not about another belief)
+ * @property {string[]} archetypes - Archetype labels for this belief
+ * @property {(string|number)[]} bases - Base archetype labels or belief _ids
+ * @property {Object<string, any>} traits - Trait values (sids, primitives, or references)
+ */
+
+/**
+ * Represents a belief about an entity with versioning support
+ * @property {number} _id - Unique version identifier
+ * @property {number} sid - Subject identifier (stable across versions)
+ * @property {string|null} label - Optional label for lookup
+ * @property {import('./mind.mjs').Mind} in_mind - Mind this belief belongs to
+ * @property {Belief|null} _about - Parent belief this is about (identity chain)
+ * @property {Set<Belief|Archetype>} _bases - Base archetypes/beliefs for inheritance
+ * @property {Map<string, *>} _traits - Trait values (sids, primitives, State/Mind refs)
+ * @property {boolean} locked - Whether belief can be modified
+ */
+export class Belief {
+  /** @type {Map<number, Belief>} */
+  static by_id = new Map()
+  /** @type {Map<string, Belief>} */
+  static by_label = new Map()
+  /** @type {Map<number, Set<Belief>>} */ // sid → Set<Belief> (all versions of a subject)
+  static by_sid = new Map()
+  /** @type {Map<string, number>} */ // label → sid
+  static sid_by_label = new Map()
+  /** @type {Map<number, string>} */ // sid → label
+  static label_by_sid = new Map()
+
+  /**
+   * @param {import('./mind.mjs').Mind} mind
+   * @param {object} param1
+   * @param {string|null} [param1.label]
+   * @param {Belief|number|null} [param1.about] - Belief object or _id (when loading from JSON)
+   * @param {(string|Archetype|Belief|number)[]} [param1.bases] - Archetype labels, Belief objects, or _ids (when loading from JSON)
+   * @param {object} [param1.traits]
+   * @param {string|null} [param1._type]
+   * @param {number|null} [param1._id]
+   * @param {number|null} [param1.sid]
+   * @param {import('./state.mjs').State|null} [creator_state] - State that's creating this belief (for inferring ground_state)
+   */
+  constructor(mind, {label=null, about=null, bases=[], traits={}, _type=null, _id=null, sid=null}, creator_state = null) {
+    // Check if loading from JSON
+    if (_type === 'Belief' && _id != null) {
+      this._id = _id
+      /** @type {number} */
+      this.sid = 0  // Temporary, will be set immediately
+      this.sid = /** @type {number} */ (sid)  // sid must be present when loading from JSON
+      this.in_mind = mind
+      this.label = label
+      this.locked = false
+
+      // Resolve 'about' reference (ID to Belief object)
+      /** @type {Belief|null} */
+      this._about = null
+      /** @type {Belief|null} */
+      let resolved_about = null
+      if (about != null) {
+        if (typeof about === 'number') {
+          resolved_about = Belief.by_id.get(about) ?? null
+          if (!resolved_about) {
+            throw new Error(`Cannot resolve about reference ${about} for belief ${this._id}`)
+          }
+        } else {
+          // Should not happen when loading from JSON, but handle for safety
+          resolved_about = about
+        }
+      }
+      this._about = resolved_about
+
+      // Resolve 'bases' (archetype labels or belief IDs)
+      this._bases = new Set()
+      for (const base_ref of bases) {
+        if (typeof base_ref === 'string') {
+          const archetype = Archetype.by_label[base_ref]
+          if (!archetype) {
+            throw new Error(`Archetype '${base_ref}' not found for belief ${this._id}`)
+          }
+          this._bases.add(archetype)
+        } else if (typeof base_ref === 'number') {
+          const base_belief = Belief.by_id.get(base_ref)
+          if (!base_belief) {
+            throw new Error(`Cannot resolve base belief ${base_ref} for belief ${this._id}`)
+          }
+          this._bases.add(base_belief)
+        } else {
+          // Direct Belief or Archetype object (not from JSON)
+          this._bases.add(base_ref)
+        }
+      }
+
+      // Copy traits as-is - sids, primitives, and State/Mind reference objects
+      // Resolution happens lazily when accessed via get_trait()
+      this._traits = new Map()
+      for (const [trait_name, trait_value] of Object.entries(traits)) {
+        this._traits.set(trait_name, trait_value)
+      }
+
+      // Register globally
+      Belief.by_id.set(this._id, this)
+
+      // Register in by_sid (sid → Set<Belief>)
+      const sid_val = /** @type {number} */ (this.sid)
+      if (!Belief.by_sid.has(sid_val)) {
+        Belief.by_sid.set(sid_val, new Set())
+      }
+      /** @type {Set<Belief>} */ (Belief.by_sid.get(sid_val)).add(this)
+
+      if (label) {
+        // Register label-sid mappings (for first belief with this label loaded)
+        if (!Belief.sid_by_label.has(label)) {
+          if (Archetype.by_label[label]) {
+            throw new Error(`Label '${label}' is already used by an archetype`)
+          }
+          Belief.sid_by_label.set(label, sid_val)
+          Belief.label_by_sid.set(sid_val, label)
+        }
+
+        // Still maintain by_label for backward compatibility
+        Belief.by_label.set(label, this)
+      }
+      return
+    }
+
+    // Resolve bases early to determine if this is a new subject or version
+    /** @type {Set<Belief|Archetype>} */
+    this._bases = new Set([])
+
+    for (let base of bases) {
+      if (typeof base === 'string') {
+        const base_label = base
+        // Resolution order: belief registry → archetype registry
+        base = Belief.by_label.get(base) ?? Archetype.by_label[base]
+        assert(base != null, `Base '${base_label}' not found in belief registry or archetype registry`, {base_label, Belief_by_label: Belief.by_label, Archetype_by_label: Archetype.by_label})
+      }
+      this._bases.add(/** @type {Belief|Archetype} */ (base))
+    }
+
+    // Determine sid: reuse from belief base, or assign new subject id
+    let parent_belief = null
+    for (const base of this._bases) {
+      if (base.constructor.name === 'Belief') {
+        parent_belief = base
+        break
+      }
+    }
+
+    // Normal construction
+    if (parent_belief) {
+      // This is a version of an existing subject
+      this.sid = /** @type {Belief} */ (parent_belief).sid
+      this._id = next_id()
+    } else {
+      // This is a new subject
+      this.sid = next_id()
+      this._id = next_id()
+    }
+
+    this.in_mind = mind
+    this.label = label
+    this._about = /** @type {Belief|null} */ (about)
+    this._traits = new Map()
+    this.locked = false
+
+    for (const [trait_label, trait_data] of Object.entries(traits)) {
+      this.resolve_and_add_trait(trait_label, trait_data, creator_state)
+    }
+
+    // Register globally
+    Belief.by_id.set(this._id, this)
+
+    // Register in by_sid (sid → Set<Belief>)
+    if (!Belief.by_sid.has(this.sid)) {
+      Belief.by_sid.set(this.sid, new Set())
+    }
+    /** @type {Set<Belief>} */ (Belief.by_sid.get(this.sid)).add(this)
+
+    if (label) {
+      // For new subjects, register label-sid mappings
+      if (!parent_belief) {
+        // Check label uniqueness across beliefs and archetypes
+        if (Belief.sid_by_label.has(label)) {
+          throw new Error(`Label '${label}' is already used by another belief`)
+        }
+        if (Archetype.by_label[label]) {
+          throw new Error(`Label '${label}' is already used by an archetype`)
+        }
+
+        // Register label-sid bidirectional mapping
+        Belief.sid_by_label.set(label, this.sid)
+        Belief.label_by_sid.set(this.sid, label)
+      }
+
+      // Still maintain by_label for backward compatibility (maps label → latest belief)
+      Belief.by_label.set(label, this)
+    }
+
+    // TODO: add default trait values
+  }
+
+  /**
+   * @param {string} label
+   * @param {*} data - Raw data to be resolved by traittype
+   * @param {import('./state.mjs').State|null} [creator_state] - State creating this belief (for inferring ground_state)
+   */
+  resolve_and_add_trait(label, data, creator_state = null) {
+    assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.label})
+
+    const traittype = Traittype.by_label[label]
+    //log('looking up traittype', label, traittype)
+    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.label, data, Traittype_by_label: Traittype.by_label})
+
+    const value = traittype.resolve(this.in_mind, data, this, creator_state)
+
+    assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.label, value, archetypes: [...this.get_archetypes()].map(a => a.label)})
+
+    this._traits.set(label, value)
+
+    //log('belief', this.label, 'add trait', label, data, datatype, value)
+  }
+
+  /**
+   * @param {string} label
+   * @returns {boolean}
+   */
+  can_have_trait(label) {
+    for (const archetype of this.get_archetypes()) {
+      //log ("check traits of archetype", archetype.label, archetype)
+      // @ts-ignore - generator always yields valid archetypes
+      if (label in archetype.traits_template) return true
+    }
+    return false
+  }
+
+  /**
+   * Get a trait value with sids resolved to Beliefs
+   * @param {import('./state.mjs').State} state - State context for resolving sids
+   * @param {string} trait_name - Name of the trait to get
+   * @returns {*} Resolved trait value (Beliefs instead of sids)
+   */
+  get_trait(state, trait_name) {
+    const raw_value = this.traits.get(trait_name)
+    return this._resolve_trait_value(raw_value, state)
+  }
+
+  /**
+   * @private
+   * @param {*} value - Raw trait value (may contain sids or State/Mind refs)
+   * @param {import('./state.mjs').State} state - State context for resolving sids
+   * @returns {*} Resolved value
+   */
+  _resolve_trait_value(value, state) {
+    if (Array.isArray(value)) {
+      return value.map(item => this._resolve_trait_value(item, state))
+    } else if (typeof value === 'number') {
+      // Might be a sid - try to resolve to Belief
+      const resolved = state.resolve_subject(value)
+      return resolved !== null ? resolved : value
+    } else if (value && typeof value === 'object' && value._type) {
+      // State/Mind reference object from JSON - deserialize it
+      return deserialize_trait_value(value)
+    } else {
+      return value
+    }
+  }
+
+  /**
+   * @param {Set<Belief|Archetype>} seen
+   * @returns {Generator<Archetype>}
+   */
+  *get_archetypes(seen = new Set([])) {
+    // bredth first
+    /** @type {(Belief|Archetype)[]} */
+    const bases = [this]
+    while (bases.length > 0) {
+      const base = bases.shift()
+      if (!base || seen.has(base)) continue
+
+      // If base is an Archetype, yield it and its bases
+      if (base instanceof Archetype) {
+        yield* base.get_archetypes(seen)
+      } else {
+        // If base is a Belief, continue walking its bases
+        seen.add(base)
+        bases.push(... base.bases)
+      }
+    }
+  }
+
+  lock() {
+    this.locked = true
+  }
+
+  /**
+   * Get label for display by walking the belief chain
+   * @returns {string|null}
+   */
+  get_display_label() {
+    if (this.label) return this.label
+
+    // Walk bases to find label (only Belief bases, not Archetypes)
+    for (const base of this.bases) {
+      if (base.constructor.name === 'Belief') {
+        const label = /** @type {Belief} */ (base).get_display_label()
+        if (label) return label
+      }
+    }
+
+    return null
+  }
+
+  sysdesig() {
+    const parts = []
+
+    const label = this.get_display_label()
+    if (label) {
+      parts.push(label)
+    }
+
+    // Get edge archetypes (directly in bases, not full inheritance)
+    const edge_archetypes = []
+    const seen = new Set()
+    /** @type {Belief[]} */
+    const bases_to_check = [this]
+
+    while (bases_to_check.length > 0) {
+      const base = bases_to_check.shift()
+      if (!base || seen.has(base)) continue
+      seen.add(base)
+
+      for (const b of base.bases) {
+        if (b instanceof Archetype) {
+          edge_archetypes.push(b)
+        } else if (b.constructor.name === 'Belief') {
+          // Walk up belief chain to find archetypes
+          bases_to_check.push(b)
+        }
+      }
+
+      // Stop after finding archetypes
+      if (edge_archetypes.length > 0) break
+    }
+
+    if (edge_archetypes.length > 0) {
+      parts.push(`[${edge_archetypes.map(a => a.label).join(', ')}]`)
+    }
+
+    parts.push(`#${this._id}`)
+
+    return parts.join(' ')
+  }
+
+  toJSON() {
+    return {
+      _type: 'Belief',
+      _id: this._id,
+      sid: this.sid,
+      label: this.label,
+      about: this.about?._id ?? null,
+      archetypes: [...this.get_archetypes()].map(a => a.label),
+      bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
+      traits: Object.fromEntries(
+        [...this.traits].map(([k, v]) => [k, Traittype.serializeTraitValue(v)])
+      )
+    }
+  }
+
+  inspect() {
+    return {
+      _type: 'Belief',
+      _id: this._id,
+      label: this.label,
+      about: this.about ? {_ref: this.about._id, label: this.about.get_display_label()} : null,
+      archetypes: [...this.get_archetypes()].map(a => a.label),
+      bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
+      traits: Object.fromEntries(
+        [...this.traits].map(([k, v]) => [k, Traittype.inspectTraitValue(v)])
+      )
+    }
+  }
+
+  /**
+   * Finalize traits after loading - resolve State/Mind reference objects
+   * Called after all entities are loaded
+   */
+  _finalize_traits() {
+    for (const [trait_name, trait_value] of this._traits) {
+      this._traits.set(trait_name, this._resolve_final_trait_value(trait_value))
+    }
+  }
+
+  /**
+   * Resolve trait value completely (including nested State/Mind references)
+   * @param {*} value - Trait value (may contain {_type, _id} reference objects)
+   * @returns {*} Fully resolved value
+   */
+  _resolve_final_trait_value(value) {
+    if (Array.isArray(value)) {
+      return value.map(item => this._resolve_final_trait_value(item))
+    } else if (value && typeof value === 'object' && value._type) {
+      // State/Mind reference object from JSON - deserialize it
+      return deserialize_trait_value(value)
+    } else {
+      // Primitives and sids stay as-is
+      return value
+    }
+  }
+
+  /**
+   * Create Belief from JSON data with lazy loading
+   * @param {import('./mind.mjs').Mind} mind - Mind this belief belongs to
+   * @param {BeliefJSON} data - JSON data with _type: 'Belief'
+   * @returns {Belief}
+   */
+  static from_json(mind, data) {
+    return new Belief(mind, data)
+  }
+
+  // Simple property accessors (no lazy loading needed with SID system)
+  get about() {
+    return this._about
+  }
+
+  get bases() {
+    return this._bases
+  }
+
+  get traits() {
+    return this._traits
+  }
+}
+
+/**
+ * Deserialize trait value (handle nested Mind/State/Belief references)
+ * @param {*} value - Serialized value
+ * @returns {*} Deserialized value
+ */
+function deserialize_trait_value(value) {
+  if (Array.isArray(value)) {
+    return value.map(item => deserialize_trait_value(item))
+  }
+
+  if (value && typeof value === 'object' && value._type) {
+    // Handle nested references
+    if (value._type === 'Belief') {
+      // Use ID lookup (exact version), fall back to label lookup if needed
+      const belief = Belief.by_id.get(value._id)
+      if (!belief) {
+        throw new Error(`Cannot resolve belief reference ${value._id} in trait`)
+      }
+      return belief
+    }
+
+    if (value._type === 'State') {
+      // States are nested in minds, need to search
+      for (const mind of Mind.by_id.values()) {
+        for (const state of mind.state) {
+          if (state._id === value._id) {
+            return state
+          }
+        }
+      }
+      throw new Error(`Cannot resolve state reference ${value._id} in trait`)
+    }
+
+    if (value._type === 'Mind') {
+      const mind = Mind.by_id.get(value._id)
+      if (!mind) {
+        throw new Error(`Cannot resolve mind reference ${value._id} in trait`)
+      }
+      return mind
+    }
+  }
+
+  return value
+}
