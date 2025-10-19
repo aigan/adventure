@@ -144,6 +144,27 @@ export function get_or_create_subject(sid) {
 }
 
 /**
+ * Find beliefs in a mind that are about a specific subject
+ * @param {import('./mind.mjs').Mind} mind - Mind to search in
+ * @param {import('./subject.mjs').Subject} about_subject - Subject to find beliefs about
+ * @param {import('./state.mjs').State} state - State context for resolving @about trait
+ * @returns {Array<import('./belief.mjs').Belief>} Array of beliefs about the subject (may be empty)
+ */
+export function find_beliefs_about_subject(mind, about_subject, state) {
+  const mind_beliefs = belief_by_mind.get(mind)
+  if (!mind_beliefs) return []
+
+  const results = []
+  for (const belief of mind_beliefs) {
+    const b_about = belief.get_about(state)
+    if (b_about?.subject === about_subject) {
+      results.push(belief)
+    }
+  }
+  return results
+}
+
+/**
  * Get State by ID
  * @param {number} id
  * @returns {import('./state.mjs').State|undefined}

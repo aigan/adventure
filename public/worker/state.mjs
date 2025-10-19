@@ -295,21 +295,19 @@ export class State {
    * @returns {import('./belief.mjs').Belief}
    */
   _find_or_learn_belief_about(source_state, belief_reference) {
-    // Search for existing belief about the same subject
-    const existing_beliefs = []
-    for (const b of this.get_beliefs()) {
-      const b_about = b.get_about(this)
-      if (b_about && b_about.subject === belief_reference.subject) {
-        existing_beliefs.push(b)
-      }
-    }
+    // Query DB for beliefs in this mind that are about the same subject
+    const beliefs_about_subject = DB.find_beliefs_about_subject(
+      this.in_mind,
+      belief_reference.subject,
+      this
+    )
 
-    if (existing_beliefs.length > 1) {
+    if (beliefs_about_subject.length > 1) {
       throw new Error(`Multiple beliefs about subject sid ${belief_reference.subject.sid} exist in mind ${this.in_mind.label}`)
     }
 
-    if (existing_beliefs.length === 1) {
-      return existing_beliefs[0]
+    if (beliefs_about_subject.length === 1) {
+      return beliefs_about_subject[0]
     } else {
       // Create new belief about the referenced entity
       // Use source_state from belief's mind if not provided
