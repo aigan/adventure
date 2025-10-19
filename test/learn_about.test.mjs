@@ -150,7 +150,7 @@ describe('learn_about', () => {
       expect(location_ref.in_mind).to.equal(npc_mind);
 
       // Should be about the workshop from world_mind
-      expect(location_ref.about).to.equal(DB.get_belief_by_label('workshop'));
+      expect(location_ref.get_about(npc_mind_state)).to.equal(DB.get_belief_by_label('workshop'));
 
       // Should have the same archetypes
       const archetypes = [...location_ref.get_archetypes()].map(a => a.label);
@@ -172,8 +172,10 @@ describe('learn_about', () => {
       // NPC already knows about the workshop
       const existing_workshop = npc_mind_state.add_belief({
         label: 'my_workshop',
-        about: DB.get_belief_by_label('workshop'),
-        bases: ['Location']
+        bases: ['Location'],
+        traits: {
+          '@about': DB.get_belief_by_label('workshop')
+        }
       });
 
       const hammer_knowledge = npc_mind_state.learn_about(
@@ -202,14 +204,18 @@ describe('learn_about', () => {
       // NPC has two different beliefs about the workshop (uncertainty case)
       const belief1 = npc_mind_state.add_belief({
         label: 'workshop_belief_1',
-        about: DB.get_belief_by_label('workshop'),
-        bases: ['Location']
+        bases: ['Location'],
+        traits: {
+          '@about': DB.get_belief_by_label('workshop')
+        }
       });
 
       const belief2 = npc_mind_state.add_belief({
         label: 'workshop_belief_2',
-        about: DB.get_belief_by_label('workshop'),
-        bases: ['Location']
+        bases: ['Location'],
+        traits: {
+          '@about': DB.get_belief_by_label('workshop')
+        }
       });
 
       // Should error - can't determine which to use without certainty tracking
@@ -231,8 +237,10 @@ describe('learn_about', () => {
       const npc1_mind_state = npc1_mind.create_state(1);
       const workshop_from_npc1 = npc1_mind_state.add_belief({
         label: 'workshop_knowledge',
-        about: DB.get_belief_by_label('workshop'),
-        bases: ['Location']
+        bases: ['Location'],
+        traits: {
+          '@about': DB.get_belief_by_label('workshop')
+        }
       });
 
       const npc2_mind = new Mind('npc2');
@@ -241,8 +249,8 @@ describe('learn_about', () => {
       const workshop_from_npc2 = npc2_mind_state.learn_about(npc1_mind_state, workshop_from_npc1);
 
       // Should follow about chain: npc2_belief.about = world.workshop (not npc1_belief)
-      expect(workshop_from_npc2.about).to.equal(DB.get_belief_by_label('workshop'));
-      expect(workshop_from_npc2.about).to.not.equal(workshop_from_npc1);
+      expect(workshop_from_npc2.get_about(npc2_mind_state)).to.equal(DB.get_belief_by_label('workshop'));
+      expect(workshop_from_npc2.get_about(npc2_mind_state)).to.not.equal(workshop_from_npc1);
     });
 
     it('learn_about should walk belief chain to find archetypes', () => {
@@ -291,6 +299,10 @@ describe('learn_about', () => {
       DB.reset_registries();
 
       const traittypes = {
+        '@about': {
+          type: 'Subject',
+          mind: 'parent'
+        },
         location: 'Location',
         items: {
           type: 'PortableObject',
@@ -302,6 +314,7 @@ describe('learn_about', () => {
       const archetypes = {
         ObjectPhysical: {
           traits: {
+            '@about': null,
             location: null,
           },
         },
@@ -360,8 +373,8 @@ describe('learn_about', () => {
       expect(items[1].in_mind).to.equal(npc_mind);
 
       // Should preserve the about links to original beliefs
-      expect(items[0].about).to.equal(sword);
-      expect(items[1].about).to.equal(shield);
+      expect(items[0].get_about(npc_mind_state)).to.equal(sword);
+      expect(items[1].get_about(npc_mind_state)).to.equal(shield);
     });
   });
 });

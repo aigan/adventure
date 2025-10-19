@@ -23,7 +23,6 @@ import { Subject } from './subject.mjs'
  * @property {number} sid - Subject identifier (stable across versions)
  * @property {string|null} label - Optional label for lookup
  * @property {import('./mind.mjs').Mind} in_mind - Mind this belief belongs to
- * @property {Belief|null} _about - Parent belief this is about (identity chain)
  * @property {Set<Belief|Archetype>} _bases - Base archetypes/beliefs for inheritance
  * @property {Map<string, *>} _traits - Trait values (sids, primitives, State/Mind refs)
  * @property {boolean} locked - Whether belief can be modified
@@ -34,11 +33,10 @@ export class Belief {
    * @param {import('./mind.mjs').Mind} mind
    * @param {object} param1
    * @param {number|null} [param1.sid] - Subject ID (provide to create version of existing subject)
-   * @param {Belief|null} [param1.about] - Belief object this is about
    * @param {Array<Archetype|Belief>} [param1.bases] - Archetype or Belief objects (no strings)
    * @param {import('./state.mjs').State|null} [creator_state] - State that's creating this belief (for inferring ground_state)
    */
-  constructor(mind, {sid=null, about=null, bases=[]}, creator_state = null) {
+  constructor(mind, {sid=null, bases=[]}, creator_state = null) {
     for (const base of bases) {
       assert(typeof base !== 'string',
         'Constructor received string base - use Belief.from_template() instead',
@@ -53,7 +51,6 @@ export class Belief {
     /** @type {number} */ this.sid = sid !== null ? sid : next_id()
     this._id = next_id()
     this.in_mind = mind
-    this._about = /** @type {Belief|null} */ (about)
     this._traits = new Map()
     this.locked = false
 
@@ -102,6 +99,33 @@ export class Belief {
   get_trait(state, trait_name) {
     const raw_value = this.traits.get(trait_name)
     return this._resolve_trait_value(raw_value, state)
+  }
+
+  /**
+   * Get the belief this is about (resolves @about trait)
+   * @param {import('./state.mjs').State} state - State context for resolving Subject
+   * @returns {Belief|null} The belief this is about, or null
+   */
+  get_about(state) {
+    const about_trait = this.traits.get('@about')
+    if (about_trait instanceof Subject) {
+      // Check if @about traittype specifies mind scope
+      let resolve_state = state
+      if (Cosmos.get_traittype('@about')?.mind_scope === 'parent' && state?.ground_state) {
+        resolve_state = state.ground_state
+      }
+
+      // Try to resolve in the determined state
+      const belief = resolve_state?.resolve_subject?.(about_trait.sid)
+      if (belief) return belief
+
+      // Fallback to global registry (cross-mind reference)
+      const beliefs = DB.belief_by_sid.get(about_trait.sid)
+      if (beliefs?.size) return [...beliefs][0]
+      return null
+    }
+    // No @about trait set
+    return null
   }
 
   /**
@@ -214,12 +238,13 @@ export class Belief {
   }
 
   toJSON() {
+    const about_trait = this.traits.get('@about')
     return {
       _type: 'Belief',
       _id: this._id,
       sid: this.sid,
       label: this.get_label(),
-      about: this.about?._id ?? null,
+      about: about_trait?.toJSON() ?? null,
       archetypes: [...this.get_archetypes()].map(a => a.label),
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
@@ -234,11 +259,12 @@ export class Belief {
    * @returns {object} Shallow representation with references
    */
   inspect(state) {
+    const about_belief = this.get_about(state)
     return {
       _type: 'Belief',
       _id: this._id,
       label: this.get_label(),
-      about: this.about ? {_ref: this.about._id, label: this.about.get_label()} : null,
+      about: about_belief ? {_ref: about_belief._id, label: about_belief.get_label()} : null,
       archetypes: [...this.get_archetypes()].map(a => a.label),
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
@@ -270,11 +296,16 @@ export class Belief {
       // State/Mind reference object from JSON - deserialize it
       return deserialize_trait_value(value)
     } else if (typeof value === 'number') {
-      // Check if this trait type is a Belief reference
+      // Check if this trait type is a Belief reference or Subject
       const traittype = Cosmos.get_traittype(trait_name)
-      if (traittype && DB.archetype_by_label[traittype.data_type]) {
-        // It's a Belief reference - wrap in Subject
-        return new Subject(value, traittype.data_type)
+      if (traittype) {
+        if (DB.archetype_by_label[traittype.data_type]) {
+          // It's a Belief reference - wrap in Subject with archetype constraint
+          return new Subject(value, traittype.data_type)
+        } else if (traittype.data_type === 'Subject') {
+          // It's a Subject type - wrap without archetype constraint
+          return new Subject(value, null)
+        }
       }
       // Literal number
       return value
@@ -298,16 +329,6 @@ export class Belief {
     belief.sid = data.sid
     belief.in_mind = mind
     belief.locked = false
-
-    // Resolve 'about' reference (ID to Belief object)
-    belief._about = null
-    if (data.about != null) {
-      const resolved_about = DB.belief_by_id.get(data.about)
-      if (!resolved_about) {
-        throw new Error(`Cannot resolve about reference ${data.about} for belief ${belief._id}`)
-      }
-      belief._about = resolved_about
-    }
 
     // Resolve 'bases' (archetype labels or belief IDs)
     belief._bases = new Set()
@@ -334,6 +355,13 @@ export class Belief {
       belief._traits.set(trait_name, trait_value)
     }
 
+    // If about field exists in JSON (for backward compat or from @about trait serialization),
+    // store it as sid in @about trait
+    if (data.about != null && !belief._traits.has('@about')) {
+      // data.about is a sid (from Subject.toJSON()), store it directly
+      belief._traits.set('@about', data.about)
+    }
+
     // Register globally
     DB.belief_by_id.set(belief._id, belief)
     DB.register_belief_by_sid(belief)
@@ -358,13 +386,12 @@ export class Belief {
    * @param {object} template
    * @param {number|null} [template.sid] - Subject ID (optional, for explicit versioning)
    * @param {string|null} [template.label]
-   * @param {Belief|null} [template.about]
    * @param {Array<string|Belief|import('./archetype.mjs').Archetype>} [template.bases]
    * @param {Object<string, any>} [template.traits]
    * @param {import('./state.mjs').State|null} [creator_state]
    * @returns {Belief}
    */
-  static from_template(mind, {sid=null, label=null, about=null, bases=[], traits={}}, creator_state = null) {
+  static from_template(mind, {sid=null, label=null, bases=[], traits={}}, creator_state = null) {
     /** @type {Array<Belief|import('./archetype.mjs').Archetype>} */ const resolved_bases = []
     for (const base of bases) {
       if (typeof base === 'string') {
@@ -379,7 +406,6 @@ export class Belief {
 
     const belief = new Belief(mind, {
       sid,
-      about,
       bases: resolved_bases
     }, creator_state)
 
@@ -395,10 +421,6 @@ export class Belief {
   }
 
   // Simple property accessors (no lazy loading needed with SID system)
-  get about() {
-    return this._about
-  }
-
   get bases() {
     return this._bases
   }

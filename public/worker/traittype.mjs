@@ -19,6 +19,7 @@ import { Belief } from './belief.mjs'
  * @property {Function} [container] - Container constructor (e.g., Array)
  * @property {number} [min] - Minimum array length
  * @property {number} [max] - Maximum array length
+ * @property {string} [mind] - Mind scope for Subject resolution ('parent', 'current', 'any')
  */
 
 /**
@@ -50,10 +51,12 @@ export class Traittype {
       this.data_type = def
       this.container = null
       this.constraints = null
+      this.mind_scope = null
     } else {
-      // Object schema: {type: 'State', container: Array, min: 1}
+      // Object schema: {type: 'State', container: Array, min: 1, mind: 'parent'}
       this.data_type = def.type
       this.container = def.container ?? null
+      this.mind_scope = def.mind ?? null
       this.constraints = {
         min: def.min ?? null,
         max: def.max ?? null
@@ -136,7 +139,7 @@ export class Traittype {
       throw new Error(`Expected ${type_label} for trait '${this.label}', got ${typeof data}`)
     }
 
-    // Check if it's a data type (Mind, State)
+    // Check if it's a data type (Mind, State, Subject)
     if (type_label === 'Mind') {
       if (data instanceof Mind) {
         return data
@@ -148,6 +151,17 @@ export class Traittype {
         return data
       }
       throw new Error(`Expected State instance for trait '${this.label}'`)
+    }
+    if (type_label === 'Subject') {
+      // Subject type accepts a Belief and wraps it in a Subject
+      if (data instanceof Subject) {
+        return data
+      }
+      if (data instanceof Belief) {
+        // Wrap belief in Subject (no archetype constraint for generic Subject type)
+        return new Subject(data.sid, null)
+      }
+      throw new Error(`Expected Belief or Subject instance for trait '${this.label}'`)
     }
 
     throw new Error(`Unknown type '${type_label}' for trait '${this.label}'`)

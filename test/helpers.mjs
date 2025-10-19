@@ -23,6 +23,10 @@ export function createMindWithBeliefs(label, beliefs = {}) {
  */
 export function setupStandardArchetypes() {
   const traittypes = {
+    '@about': {
+      type: 'Subject',
+      mind: 'parent'
+    },
     location: 'Location',
     mind_states: {
       type: 'State',
@@ -35,6 +39,7 @@ export function setupStandardArchetypes() {
   const archetypes = {
     ObjectPhysical: {
       traits: {
+        '@about': null,
         location: null,
         color: null,
       },
@@ -66,6 +71,10 @@ export function setupStandardArchetypes() {
  */
 export function setupMinimalArchetypes() {
   const traittypes = {
+    '@about': {
+      type: 'Subject',
+      mind: 'parent'
+    },
     location: 'Location',
     color: 'string',
   };
@@ -73,6 +82,7 @@ export function setupMinimalArchetypes() {
   const archetypes = {
     ObjectPhysical: {
       traits: {
+        '@about': null,
         location: null,
         color: null,
       },

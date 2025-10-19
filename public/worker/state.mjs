@@ -246,7 +246,7 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
     assert(source_state != null, 'source_state is required for resolving trait references')
 
-    const original = this._follow_about_chain_to_original(belief)
+    const original = this._follow_about_chain_to_original(source_state, belief)
     const archetype_bases = [...belief.get_archetypes()]
 
     // Copy traits, dereferencing belief references to this mind
@@ -261,9 +261,11 @@ export class State {
 
     // Create the belief and add to state's insert list
     const new_belief = Cosmos.create_belief(this.in_mind, {
-      about: original,
       bases: archetype_bases,
-      traits: copied_traits
+      traits: {
+        '@about': original,
+        ...copied_traits
+      }
     })
 
     this.insert.push(new_belief)
@@ -272,14 +274,17 @@ export class State {
   }
 
   /**
+   * @param {State} state - State context for resolving @about trait
    * @param {import('./belief.mjs').Belief} belief
    * @param {boolean} throw_on_cycle - If false, returns null on cycle instead of throwing
    * @returns {import('./belief.mjs').Belief|null}
    */
-  _follow_about_chain_to_original(belief, throw_on_cycle = true) {
+  _follow_about_chain_to_original(state, belief, throw_on_cycle = true) {
     let original = belief
     const seen = new Set()
-    while (original.about != null) {
+    while (true) {
+      const about_belief = original.get_about(state)
+      if (!about_belief) break
       if (seen.has(original)) {
         if (throw_on_cycle) {
           throw new Error(`Cycle detected in about chain for belief ${belief._id}`)
@@ -287,7 +292,7 @@ export class State {
         return null
       }
       seen.add(original)
-      original = original.about
+      original = about_belief
     }
     return original
   }
@@ -318,7 +323,8 @@ export class State {
     // Search for existing belief about the same subject (same sid)
     const existing_beliefs = []
     for (const b of this.get_beliefs()) {
-      if (b.about && b.about.sid === belief_reference.sid) {
+      const b_about = b.get_about(this)
+      if (b_about && b_about.sid === belief_reference.sid) {
         existing_beliefs.push(b)
       }
     }

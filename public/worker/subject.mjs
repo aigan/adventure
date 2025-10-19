@@ -5,7 +5,7 @@
 export class Subject {
   /**
    * @param {number} sid - Subject identifier
-   * @param {string} archetype_label - Expected archetype type
+   * @param {string|null} archetype_label - Expected archetype type (null for generic Subject)
    */
   constructor(sid, archetype_label) {
     this.sid = sid

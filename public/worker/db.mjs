@@ -173,6 +173,7 @@ export function reset_all_registries() {
  * @property {Function} [container] - Container constructor (e.g., Array)
  * @property {number} [min] - Minimum array length
  * @property {number} [max] - Maximum array length
+ * @property {string} [mind] - Mind scope for Subject resolution ('parent', 'current', 'any')
  */
 
 /**

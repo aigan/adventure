@@ -59,6 +59,10 @@ describe('Channel Message Handlers', () => {
     mockCounter = 0; // Reset sequence counter
     DB.reset_registries();
     const traittypes = {
+      '@about': {
+        type: 'Subject',
+        mind: 'parent'
+      },
       location: 'Location',
       mind_states: {
         type: 'State',
@@ -71,6 +75,7 @@ describe('Channel Message Handlers', () => {
     const archetypes = {
       ObjectPhysical: {
         traits: {
+          '@about': null,
           location: null,
           color: null,
         },

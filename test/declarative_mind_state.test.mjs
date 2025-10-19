@@ -12,6 +12,7 @@ describe('Declarative Mind State Construction', () => {
     const archetypes = {
       ObjectPhysical: {
         traits: {
+          '@about': null,
           location: null,
         },
       },
@@ -32,6 +33,10 @@ describe('Declarative Mind State Construction', () => {
     };
 
     const traittypes = {
+      '@about': {
+        type: 'Subject',
+        mind: 'parent'
+      },
       location: 'Location',
       mind_states: {
         type: 'State',
@@ -107,12 +112,12 @@ describe('Declarative Mind State Construction', () => {
     expect(beliefs.length).to.be.at.least(2);
 
     // Find workshop belief
-    const workshop_belief = beliefs.find(b => b.about === workshop);
+    const workshop_belief = beliefs.find(b => b.get_about(state) === workshop);
     expect(workshop_belief).to.exist;
     expect(workshop_belief.traits.has('location')).to.be.true;
 
     // Find player belief
-    const player_belief = beliefs.find(b => b.about === player_body);
+    const player_belief = beliefs.find(b => b.get_about(state) === player_body);
     expect(player_belief).to.exist;
     expect(player_belief.traits.has('location')).to.be.true;
 
@@ -121,14 +126,14 @@ describe('Declarative Mind State Construction', () => {
     expect(player_location).to.equal(workshop_belief);
 
     // Verify main_area was also dereferenced from workshop's location
-    const main_area_belief = beliefs.find(b => b.about === main_area);
+    const main_area_belief = beliefs.find(b => b.get_about(state) === main_area);
     expect(main_area_belief).to.exist;
   });
 
   it('applies prototype template', () => {
     const archetypes = {
       ObjectPhysical: {
-        traits: { location: null },
+        traits: { '@about': null, location: null },
       },
       Location: {
         bases: ['ObjectPhysical'],
@@ -139,6 +144,10 @@ describe('Declarative Mind State Construction', () => {
     };
 
     const traittypes = {
+      '@about': {
+        type: 'Subject',
+        mind: 'parent'
+      },
       location: 'Location',
       mind_states: {
         type: 'State',
@@ -188,7 +197,7 @@ describe('Declarative Mind State Construction', () => {
     const beliefs = [...state.get_beliefs()];
 
     // Should have learned about location1 from prototype
-    const loc1_belief = beliefs.find(b => b.about === location1);
+    const loc1_belief = beliefs.find(b => b.get_about(state) === location1);
     expect(loc1_belief).to.exist;
     expect(loc1_belief.traits.has('location')).to.be.true;
   });
@@ -196,7 +205,7 @@ describe('Declarative Mind State Construction', () => {
   it('merges prototype and custom learning', () => {
     const archetypes = {
       ObjectPhysical: {
-        traits: { location: null },
+        traits: { '@about': null, location: null },
       },
       Location: {
         bases: ['ObjectPhysical'],
@@ -207,6 +216,10 @@ describe('Declarative Mind State Construction', () => {
     };
 
     const traittypes = {
+      '@about': {
+        type: 'Subject',
+        mind: 'parent'
+      },
       location: 'Location',
       mind_states: {
         type: 'State',
@@ -262,21 +275,21 @@ describe('Declarative Mind State Construction', () => {
     // Should have both from prototype and custom (plus dereferenced base_location)
     expect(beliefs.length).to.be.at.least(2);
 
-    const loc1_belief = beliefs.find(b => b.about === location1);
+    const loc1_belief = beliefs.find(b => b.get_about(state) === location1);
     expect(loc1_belief).to.exist;
 
-    const loc2_belief = beliefs.find(b => b.about === location2);
+    const loc2_belief = beliefs.find(b => b.get_about(state) === location2);
     expect(loc2_belief).to.exist;
 
     // Verify base_location was dereferenced
-    const base_belief = beliefs.find(b => b.about === base_location);
+    const base_belief = beliefs.find(b => b.get_about(state) === base_location);
     expect(base_belief).to.exist;
   });
 
   it('empty trait array learns nothing', () => {
     const archetypes = {
       ObjectPhysical: {
-        traits: { location: null },
+        traits: { '@about': null, location: null },
       },
       Location: {
         bases: ['ObjectPhysical'],
@@ -287,6 +300,10 @@ describe('Declarative Mind State Construction', () => {
     };
 
     const traittypes = {
+      '@about': {
+        type: 'Subject',
+        mind: 'parent'
+      },
       location: 'Location',
       mind_states: {
         type: 'State',
@@ -332,6 +349,10 @@ describe('Declarative Mind State Construction', () => {
     };
 
     const traittypes = {
+      '@about': {
+        type: 'Subject',
+        mind: 'parent'
+      },
       mind_states: {
         type: 'State',
         container: Array,

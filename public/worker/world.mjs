@@ -16,6 +16,10 @@ const log = console.log.bind(console);
 export function setupStandardArchetypes() {
   /** @type {Record<string, string|TraitTypeSchema>} */
   const traittypes = {
+    '@about': {
+      type: 'Subject',
+      mind: 'parent'  // Resolve in parent mind's ground state
+    },
     location: 'Location',
     mind_states: {
       type: 'State',
@@ -29,6 +33,7 @@ export function setupStandardArchetypes() {
   const archetypes = {
     ObjectPhysical: {
       traits: {
+        '@about': null,
         location: null,
         color: null,
       },
