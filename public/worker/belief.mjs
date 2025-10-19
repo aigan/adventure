@@ -115,8 +115,6 @@ export class Belief {
       return value.map(item => this._resolve_trait_value(item, state))
     } else if (value instanceof Subject) {
       return value.resolve(state)
-    } else if (typeof value === 'number') {
-      return value
     } else if (value && typeof value === 'object' && value._type) {
       // State/Mind reference object from JSON - deserialize it
       return deserialize_trait_value(value)
@@ -198,7 +196,7 @@ export class Belief {
       for (const b of base.bases) {
         if (b instanceof Archetype) {
           edge_archetypes.push(b)
-        } else if (b.constructor.name === 'Belief') {
+        } else if (b instanceof Belief) {
           bases_to_check.push(b)
         }
       }
@@ -432,15 +430,11 @@ function deserialize_trait_value(value) {
     }
 
     if (value._type === 'State') {
-      // States are nested in minds, need to search
-      for (const mind of DB.mind_by_id.values()) {
-        for (const state of mind.state) {
-          if (state._id === value._id) {
-            return state
-          }
-        }
+      const state = DB.state_by_id.get(value._id)
+      if (!state) {
+        throw new Error(`Cannot resolve state reference ${value._id} in trait`)
       }
-      throw new Error(`Cannot resolve state reference ${value._id} in trait`)
+      return state
     }
 
     if (value._type === 'Mind') {

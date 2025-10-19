@@ -81,13 +81,9 @@ export class Mind {
    * @returns {Omit<MindJSON, 'nested_minds'>}
    */
   toJSON() {
-    // Filter beliefs from global registry that belong to this mind
-    const mind_beliefs = []
-    for (const belief of DB.belief_by_id.values()) {
-      if (belief.in_mind === this) {
-        mind_beliefs.push(belief.toJSON())
-      }
-    }
+    // Get beliefs from belief_by_mind index
+    const beliefs = DB.belief_by_mind.get(this) || new Set()
+    const mind_beliefs = [...beliefs].map(b => b.toJSON())
 
     return {
       _type: 'Mind',

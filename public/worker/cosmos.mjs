@@ -50,34 +50,6 @@ export function create_state(mind, timestamp, base = null, ground_state = null) 
 }
 
 // ============================================================================
-// Type Checking Functions (to replace instanceof checks)
-// ============================================================================
-
-/**
- * @param {*} obj
- * @returns {boolean}
- */
-export function is_mind(obj) {
-  return obj instanceof Mind
-}
-
-/**
- * @param {*} obj
- * @returns {boolean}
- */
-export function is_state(obj) {
-  return obj instanceof State
-}
-
-/**
- * @param {*} obj
- * @returns {boolean}
- */
-export function is_belief(obj) {
-  return obj instanceof Belief
-}
-
-// ============================================================================
 // Serialization State Management
 // ============================================================================
 

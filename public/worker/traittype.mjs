@@ -2,6 +2,9 @@ import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'
 import { Subject } from './subject.mjs'
+import { Mind } from './mind.mjs'
+import { State } from './state.mjs'
+import { Belief } from './belief.mjs'
 
 /**
  * @typedef {string|TraitTypeSchema} TraitTypeDefinition
@@ -135,13 +138,13 @@ export class Traittype {
 
     // Check if it's a data type (Mind, State)
     if (type_label === 'Mind') {
-      if (Cosmos.is_mind(data)) {
+      if (data instanceof Mind) {
         return data
       }
       throw new Error(`Expected Mind instance for trait '${this.label}'`)
     }
     if (type_label === 'State') {
-      if (Cosmos.is_state(data)) {
+      if (data instanceof State) {
         return data
       }
       throw new Error(`Expected State instance for trait '${this.label}'`)
@@ -212,13 +215,14 @@ export class Traittype {
     if (typeof value === 'number') {
       return value
     }
-    if (value && (value.constructor.name === 'Belief' || value.constructor.name === 'State' || value.constructor.name === 'Mind')) {
-      /** @type {{_ref: number, _type: string, label?: string|null}} */
-      const result = {_ref: value._id, _type: value.constructor.name}
-      if (value.constructor.name === 'Belief' || value.constructor.name === 'Mind') {
-        result.label = value.label
-      }
-      return result
+    if (value instanceof Belief) {
+      return {_ref: value._id, _type: 'Belief', label: value.get_label()}
+    }
+    if (value instanceof State) {
+      return {_ref: value._id, _type: 'State'}
+    }
+    if (value instanceof Mind) {
+      return {_ref: value._id, _type: 'Mind', label: value.label}
     }
     if (value?.toJSON) return value.toJSON()
     return value

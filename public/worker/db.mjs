@@ -37,6 +37,9 @@ export const belief_by_id = new Map()
 /** @type {Map<number, Set<import('./belief.mjs').Belief>>} */
 export const belief_by_sid = new Map()
 
+/** @type {Map<import('./mind.mjs').Mind, Set<import('./belief.mjs').Belief>>} */
+export const belief_by_mind = new Map()
+
 /** @type {Map<string, number>} */
 export const sid_by_label = new Map()
 
@@ -104,7 +107,7 @@ export function get_belief_by_label(label) {
 }
 
 /**
- * Register belief in belief_by_sid registry
+ * Register belief in belief_by_sid and belief_by_mind registries
  * @param {import('./belief.mjs').Belief} belief - Belief to register
  */
 export function register_belief_by_sid(belief) {
@@ -112,6 +115,12 @@ export function register_belief_by_sid(belief) {
     belief_by_sid.set(belief.sid, new Set())
   }
   /** @type {Set<import('./belief.mjs').Belief>} */ (belief_by_sid.get(belief.sid)).add(belief)
+
+  // Register by mind
+  if (!belief_by_mind.has(belief.in_mind)) {
+    belief_by_mind.set(belief.in_mind, new Set())
+  }
+  /** @type {Set<import('./belief.mjs').Belief>} */ (belief_by_mind.get(belief.in_mind)).add(belief)
 }
 
 /**
@@ -132,6 +141,7 @@ export function reset_all_registries() {
   state_by_id.clear()
   belief_by_id.clear()
   belief_by_sid.clear()
+  belief_by_mind.clear()
   sid_by_label.clear()
   label_by_sid.clear()
 

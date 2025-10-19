@@ -3,6 +3,7 @@ import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'
 import { Subject } from './subject.mjs'
+import { Belief } from './belief.mjs'
 
 /**
  * @typedef {object} StateJSON
@@ -132,7 +133,7 @@ export class State {
   replace_beliefs(...beliefs) {
     for (const belief of beliefs) {
       // Only remove Belief bases (version chains), not Archetypes
-      const belief_bases = /** @type {import('./belief.mjs').Belief[]} */ ([...belief.bases].filter(b => b.constructor.name === 'Belief'))
+      const belief_bases = /** @type {import('./belief.mjs').Belief[]} */ ([...belief.bases].filter(b => b instanceof Belief))
       this.remove_beliefs(...belief_bases)
       this.insert_beliefs(belief)
     }
@@ -314,20 +315,16 @@ export class State {
    * @returns {import('./belief.mjs').Belief}
    */
   _find_or_learn_belief_about(source_state, belief_reference) {
-    // Find the original entity this belief is about
-    const original = this._follow_about_chain_to_original(belief_reference)
-
-    // Search for existing belief about this entity in current state
+    // Search for existing belief about the same subject (same sid)
     const existing_beliefs = []
     for (const b of this.get_beliefs()) {
-      const candidate_original = this._follow_about_chain_to_original(b, false)
-      if (candidate_original && candidate_original === original) {
+      if (b.about && b.about.sid === belief_reference.sid) {
         existing_beliefs.push(b)
       }
     }
 
     if (existing_beliefs.length > 1) {
-      throw new Error(`Multiple beliefs about entity ${/** @type {import('./belief.mjs').Belief} */ (original)._id} exist in mind ${this.in_mind.label}`)
+      throw new Error(`Multiple beliefs about subject sid ${belief_reference.sid} exist in mind ${this.in_mind.label}`)
     }
 
     if (existing_beliefs.length === 1) {
