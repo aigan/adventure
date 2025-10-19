@@ -124,7 +124,8 @@ export class Traittype {
       // Check if belief has the required archetype in its chain
       for (const a of belief.get_archetypes()) {
         if (a === archetype) {
-          return new Subject(belief.sid, type_label)
+          // Return the canonical Subject (one per sid)
+          return belief.subject
         }
       }
 
@@ -153,13 +154,13 @@ export class Traittype {
       throw new Error(`Expected State instance for trait '${this.label}'`)
     }
     if (type_label === 'Subject') {
-      // Subject type accepts a Belief and wraps it in a Subject
+      // Subject type accepts a Belief and returns its subject
       if (data instanceof Subject) {
         return data
       }
       if (data instanceof Belief) {
-        // Wrap belief in Subject (no archetype constraint for generic Subject type)
-        return new Subject(data.sid, null)
+        // Return the belief's subject (canonical identity with null archetype)
+        return data.subject
       }
       throw new Error(`Expected Belief or Subject instance for trait '${this.label}'`)
     }

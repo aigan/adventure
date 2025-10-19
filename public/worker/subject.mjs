@@ -1,15 +1,13 @@
 /**
- * Typed reference to a belief subject
- * Wraps a sid with archetype type information
+ * Canonical identity reference for a belief subject
+ * Wraps a stable sid that persists across belief versions
  */
 export class Subject {
   /**
    * @param {number} sid - Subject identifier
-   * @param {string|null} archetype_label - Expected archetype type (null for generic Subject)
    */
-  constructor(sid, archetype_label) {
+  constructor(sid) {
     this.sid = sid
-    this.archetype = archetype_label
   }
 
   /**
@@ -20,7 +18,7 @@ export class Subject {
   resolve(state) {
     const belief = state.resolve_subject(this.sid)
     if (!belief) {
-      throw new Error(`Cannot resolve Subject with sid ${this.sid} (expected archetype: ${this.archetype})`)
+      throw new Error(`Cannot resolve Subject with sid ${this.sid}`)
     }
     return belief
   }
@@ -41,7 +39,7 @@ export class Subject {
   inspect(state) {
     const belief = state.resolve_subject(this.sid)
     if (!belief) {
-      return {_ref: this.sid, _type: 'Subject', archetype: this.archetype}
+      return {_ref: this.sid, _type: 'Subject'}
     }
     return {_ref: belief._id, _type: 'Belief', label: belief.get_label()}
   }

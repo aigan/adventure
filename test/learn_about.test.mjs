@@ -106,7 +106,7 @@ describe('learn_about', () => {
 
       const location_trait = hammer_knowledge.traits.get('location');
       expect(location_trait).to.be.instanceOf(Subject);
-      expect(location_trait.sid).to.equal(workshop_knowledge.sid);
+      expect(location_trait).to.equal(workshop_knowledge.subject);
     });
 
     it('learn_about directly from base belief works', () => {
@@ -228,7 +228,7 @@ describe('learn_about', () => {
       }).to.throw();
     });
 
-    it('learn_about should follow about chain to original entity', () => {
+    it('learn_about is not transitive - about points to the belief, not what it\'s about', () => {
       const world_mind = new Mind('world');
       const world_mind_state = world_mind.create_state(1);
       world_mind_state.add_belief({label: 'workshop', bases: ['Location']});
@@ -248,9 +248,9 @@ describe('learn_about', () => {
       // NPC2 learns about NPC1's belief
       const workshop_from_npc2 = npc2_mind_state.learn_about(npc1_mind_state, workshop_from_npc1);
 
-      // Should follow about chain: npc2_belief.about = world.workshop (not npc1_belief)
-      expect(workshop_from_npc2.get_about(npc2_mind_state)).to.equal(DB.get_belief_by_label('workshop'));
-      expect(workshop_from_npc2.get_about(npc2_mind_state)).to.not.equal(workshop_from_npc1);
+      // @about is not transitive: npc2's belief is about npc1's belief, not the workshop
+      expect(workshop_from_npc2.get_about(npc2_mind_state)).to.equal(workshop_from_npc1);
+      expect(workshop_from_npc2.get_about(npc2_mind_state)).to.not.equal(DB.get_belief_by_label('workshop'));
     });
 
     it('learn_about should walk belief chain to find archetypes', () => {

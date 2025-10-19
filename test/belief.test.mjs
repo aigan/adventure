@@ -95,13 +95,13 @@ describe('Belief', () => {
       // Currently this works - mind_b can reference mind_a's belief
       const workshop_a = DB.get_belief_by_label('workshop');
       const item = new Belief(mind_b, {
-        sid: workshop_a.sid,  // Explicitly creating a version in mind_b
+        subject: workshop_a.subject,  // Explicitly creating a version in mind_b
         bases: [workshop_a]
       });
 
       // item is a version of workshop_a, so it shares the same sid and label
       expect(item.bases.has(workshop_a)).to.be.true;
-      expect(item.sid).to.equal(workshop_a.sid);
+      expect(item.subject.sid).to.equal(workshop_a.subject.sid);
       expect(item.get_label()).to.equal('workshop');
     });
   });
@@ -115,16 +115,16 @@ describe('Belief', () => {
         bases: ['Location'],
       });
 
-      // Should have both sid and _id
-      expect(workshop).to.have.property('sid');
+      // Should have both subject and _id
+      expect(workshop).to.have.property('subject');
       expect(workshop).to.have.property('_id');
 
-      // Both should be positive integers
-      expect(workshop.sid).to.be.a('number');
+      // Subject.sid and _id should be positive integers
+      expect(workshop.subject.sid).to.be.a('number');
       expect(workshop._id).to.be.a('number');
 
       // For a new subject, sid should be assigned first, then _id
-      expect(workshop._id).to.be.greaterThan(workshop.sid);
+      expect(workshop._id).to.be.greaterThan(workshop.subject.sid);
     });
 
     it('creates versioned belief with same sid but new _id', () => {
@@ -135,12 +135,12 @@ describe('Belief', () => {
         bases: ['Location'],
       });
 
-      const original_sid = room1.sid;
+      const original_sid = room1.subject.sid;
       const original_id = room1._id;
 
       // Create new version (explicitly pass sid for versioning)
       const room1_v2 = Belief.from_template(world_mind, {
-        sid: room1.sid,
+        sid: room1.subject.sid,
         bases: [room1],
         traits: {
           color: 'blue',
@@ -148,7 +148,7 @@ describe('Belief', () => {
       });
 
       // Should have same sid but different _id
-      expect(room1_v2.sid).to.equal(original_sid);
+      expect(room1_v2.subject.sid).to.equal(original_sid);
       expect(room1_v2._id).to.not.equal(original_id);
       expect(room1_v2._id).to.be.greaterThan(original_id);
     });
@@ -163,10 +163,10 @@ describe('Belief', () => {
 
       // Should be in belief_by_sid registry
       expect(DB.belief_by_sid).to.exist;
-      expect(DB.belief_by_sid.get(room.sid)).to.exist;
+      expect(DB.belief_by_sid.get(room.subject.sid)).to.exist;
 
       // Registry should contain a Set of beliefs with this sid
-      const beliefs_with_sid = DB.belief_by_sid.get(room.sid);
+      const beliefs_with_sid = DB.belief_by_sid.get(room.subject.sid);
       expect(beliefs_with_sid).to.be.instanceof(Set);
       expect(beliefs_with_sid.has(room)).to.be.true;
     });
@@ -180,23 +180,23 @@ describe('Belief', () => {
       });
 
       const room_v2 = Belief.from_template(world_mind, {
-        sid: room_v1.sid,
+        sid: room_v1.subject.sid,
         bases: [room_v1],
         traits: { color: 'red' },
       });
 
       const room_v3 = Belief.from_template(world_mind, {
-        sid: room_v1.sid,
+        sid: room_v1.subject.sid,
         bases: [room_v2],
         traits: { color: 'blue' },
       });
 
       // All three should share the same sid
-      expect(room_v2.sid).to.equal(room_v1.sid);
-      expect(room_v3.sid).to.equal(room_v1.sid);
+      expect(room_v2.subject.sid).to.equal(room_v1.subject.sid);
+      expect(room_v3.subject.sid).to.equal(room_v1.subject.sid);
 
       // All should be in belief_by_sid registry
-      const beliefs_with_sid = DB.belief_by_sid.get(room_v1.sid);
+      const beliefs_with_sid = DB.belief_by_sid.get(room_v1.subject.sid);
       expect(beliefs_with_sid.size).to.equal(3);
       expect(beliefs_with_sid.has(room_v1)).to.be.true;
       expect(beliefs_with_sid.has(room_v2)).to.be.true;
@@ -222,8 +222,7 @@ describe('Belief', () => {
       // Trait should store a Subject wrapping the sid
       const location_value = hammer.traits.get('location');
       expect(location_value).to.be.instanceOf(Subject);
-      expect(location_value.sid).to.equal(workshop.sid);
-      expect(location_value.archetype).to.equal('Location');
+      expect(location_value).to.equal(workshop.subject);
     });
 
     it('stores primitive values directly (not as sid)', () => {
@@ -250,17 +249,17 @@ describe('Belief', () => {
       });
 
       const room_v2 = Belief.from_template(world_mind, {
-        sid: room_v1.sid,
+        sid: room_v1.subject.sid,
         bases: [room_v1],
         traits: { color: 'red' },
       });
 
       // Both versions should share the same label
-      expect(DB.label_by_sid.get(room_v1.sid)).to.equal('room');
-      expect(DB.sid_by_label.get('room')).to.equal(room_v1.sid);
+      expect(DB.label_by_sid.get(room_v1.subject.sid)).to.equal('room');
+      expect(DB.sid_by_label.get('room')).to.equal(room_v1.subject.sid);
 
       // v2 should have same sid, so same label association
-      expect(room_v2.sid).to.equal(room_v1.sid);
+      expect(room_v2.subject.sid).to.equal(room_v1.subject.sid);
     });
 
     it('lookup by label returns sid, then resolve in state', () => {
@@ -274,7 +273,7 @@ describe('Belief', () => {
 
       // Look up by label to get sid
       const sid = DB.sid_by_label.get('workshop');
-      expect(sid).to.equal(room.sid);
+      expect(sid).to.equal(room.subject.sid);
 
       // Then resolve in state context
       const resolved = state.resolve_subject(sid);

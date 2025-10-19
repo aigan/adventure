@@ -173,7 +173,7 @@ export class State {
    * @returns {State}
    */
   tick_with_traits(belief, traits) {
-    const new_belief = Cosmos.create_belief(this.in_mind, {sid: belief.sid, bases: [belief], traits}, this)
+    const new_belief = Cosmos.create_belief(this.in_mind, {sid: belief.subject.sid, bases: [belief], traits}, this)
     return this.tick({ replace: [new_belief] })
   }
 
@@ -208,7 +208,7 @@ export class State {
     // If unlocked, don't cache - just search with early termination
     if (!this.locked) {
       for (const belief of this.get_beliefs()) {
-        if (belief.sid === sid) return belief
+        if (belief.subject.sid === sid) return belief
       }
       return null
     }
@@ -220,12 +220,12 @@ export class State {
 
     for (const belief of this.get_beliefs()) {
       // Cache each belief we encounter
-      if (!this._sid_index.has(belief.sid)) {
-        this._sid_index.set(belief.sid, belief)
+      if (!this._sid_index.has(belief.subject.sid)) {
+        this._sid_index.set(belief.subject.sid, belief)
       }
 
       // Found it? Return immediately (early termination)
-      if (belief.sid === sid) {
+      if (belief.subject.sid === sid) {
         return belief
       }
     }
@@ -246,7 +246,6 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
     assert(source_state != null, 'source_state is required for resolving trait references')
 
-    const original = this._follow_about_chain_to_original(source_state, belief)
     const archetype_bases = [...belief.get_archetypes()]
 
     // Copy traits, dereferencing belief references to this mind
@@ -263,7 +262,7 @@ export class State {
     const new_belief = Cosmos.create_belief(this.in_mind, {
       bases: archetype_bases,
       traits: {
-        '@about': original,
+        '@about': DB.get_or_create_subject(belief.subject.sid),  // Shared canonical Subject
         ...copied_traits
       }
     })
@@ -271,30 +270,6 @@ export class State {
     this.insert.push(new_belief)
 
     return new_belief
-  }
-
-  /**
-   * @param {State} state - State context for resolving @about trait
-   * @param {import('./belief.mjs').Belief} belief
-   * @param {boolean} throw_on_cycle - If false, returns null on cycle instead of throwing
-   * @returns {import('./belief.mjs').Belief|null}
-   */
-  _follow_about_chain_to_original(state, belief, throw_on_cycle = true) {
-    let original = belief
-    const seen = new Set()
-    while (true) {
-      const about_belief = original.get_about(state)
-      if (!about_belief) break
-      if (seen.has(original)) {
-        if (throw_on_cycle) {
-          throw new Error(`Cycle detected in about chain for belief ${belief._id}`)
-        }
-        return null
-      }
-      seen.add(original)
-      original = about_belief
-    }
-    return original
   }
 
   /**
@@ -320,17 +295,17 @@ export class State {
    * @returns {import('./belief.mjs').Belief}
    */
   _find_or_learn_belief_about(source_state, belief_reference) {
-    // Search for existing belief about the same subject (same sid)
+    // Search for existing belief about the same subject
     const existing_beliefs = []
     for (const b of this.get_beliefs()) {
       const b_about = b.get_about(this)
-      if (b_about && b_about.sid === belief_reference.sid) {
+      if (b_about && b_about.subject === belief_reference.subject) {
         existing_beliefs.push(b)
       }
     }
 
     if (existing_beliefs.length > 1) {
-      throw new Error(`Multiple beliefs about subject sid ${belief_reference.sid} exist in mind ${this.in_mind.label}`)
+      throw new Error(`Multiple beliefs about subject sid ${belief_reference.subject.sid} exist in mind ${this.in_mind.label}`)
     }
 
     if (existing_beliefs.length === 1) {

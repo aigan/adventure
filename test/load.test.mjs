@@ -98,7 +98,7 @@ describe('Save/Load functionality', () => {
 
       // State 2: Update room1 to point back to room2 (creates circular reference)
       const room1_v2 = Belief.from_template(world_mind, {
-        sid: room1.sid,
+        sid: room1.subject.sid,
         bases: [room1],
         traits: {
           location: room2,  // room1_v2 → room2 in state2

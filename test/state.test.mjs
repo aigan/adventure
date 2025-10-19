@@ -247,7 +247,7 @@ describe('State', () => {
       });
 
       // Should resolve to the belief
-      const resolved = state1.resolve_subject(room.sid);
+      const resolved = state1.resolve_subject(room.subject.sid);
       expect(resolved).to.equal(room);
     });
 
@@ -262,17 +262,17 @@ describe('State', () => {
 
       // Create v2 and add to state2
       const room_v2 = Belief.from_template(world_mind, {
-        sid: room_v1.sid,
+        sid: room_v1.subject.sid,
         bases: [room_v1],
         traits: { color: 'red' },
       });
       const state2 = state1.tick({ replace: [room_v2] });
 
       // state1 should resolve to v1
-      expect(state1.resolve_subject(room_v1.sid)).to.equal(room_v1);
+      expect(state1.resolve_subject(room_v1.subject.sid)).to.equal(room_v1);
 
       // state2 should resolve to v2
-      expect(state2.resolve_subject(room_v1.sid)).to.equal(room_v2);
+      expect(state2.resolve_subject(room_v1.subject.sid)).to.equal(room_v2);
     });
 
     it('builds sid index on-demand for efficient lookups', () => {
@@ -286,19 +286,19 @@ describe('State', () => {
       state.lock();
 
       // First resolution should progressively build cache
-      const resolved1 = state.resolve_subject(room1.sid);
+      const resolved1 = state.resolve_subject(room1.subject.sid);
       expect(resolved1).to.equal(room1);
 
       // Check that index was created (implementation detail)
       expect(state._sid_index).to.exist;
-      expect(state._sid_index.has(room1.sid)).to.be.true;
+      expect(state._sid_index.has(room1.subject.sid)).to.be.true;
 
       // Second resolution should use cached index
-      const resolved2 = state.resolve_subject(room2.sid);
+      const resolved2 = state.resolve_subject(room2.subject.sid);
       expect(resolved2).to.equal(room2);
 
       // Cache should now have both rooms
-      expect(state._sid_index.has(room2.sid)).to.be.true;
+      expect(state._sid_index.has(room2.subject.sid)).to.be.true;
     });
 
     it('fixes circular reference problem - traits point to subject, not version', () => {
@@ -321,7 +321,7 @@ describe('State', () => {
 
       // Now update room1 to be inside room2
       const room1_v2 = Belief.from_template(world_mind, {
-        sid: room1.sid,
+        sid: room1.subject.sid,
         bases: [room1],
         traits: {
           location: room2,  // room1 now inside room2
@@ -332,7 +332,7 @@ describe('State', () => {
       // THE KEY TEST: room2's location trait stores a Subject
       const room2_location = room2.traits.get('location');
       expect(room2_location).to.be.instanceOf(Subject);
-      expect(room2_location.sid).to.equal(room1.sid);
+      expect(room2_location).to.equal(room1.subject);
 
       // In state1: room2.location resolves to room1 (no location trait)
       const room2_location_in_state1 = room2_location.resolve(state1);
@@ -346,7 +346,7 @@ describe('State', () => {
       // And room1_v2's location points back to room2
       const room1_v2_location = room2_location_in_state2.traits.get('location');
       expect(room1_v2_location).to.be.instanceOf(Subject);
-      expect(room1_v2_location.sid).to.equal(room2.sid);
+      expect(room1_v2_location).to.equal(room2.subject);
 
       // This creates a proper circular reference in state2
       const room1_v2_location_resolved = room1_v2_location.resolve(state2);

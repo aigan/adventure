@@ -6,6 +6,7 @@
 import { reset_id_sequence } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import { Traittype } from './traittype.mjs'
+import { Subject } from './subject.mjs'
 
 // ============================================================================
 // Mind Registries
@@ -45,6 +46,13 @@ export const sid_by_label = new Map()
 
 /** @type {Map<number, string>} */
 export const label_by_sid = new Map()
+
+// ============================================================================
+// Subject Registries
+// ============================================================================
+
+/** @type {Map<number, import('./subject.mjs').Subject>} */
+export const subject_by_sid = new Map()
 
 // ============================================================================
 // Archetype Registries
@@ -111,16 +119,28 @@ export function get_belief_by_label(label) {
  * @param {import('./belief.mjs').Belief} belief - Belief to register
  */
 export function register_belief_by_sid(belief) {
-  if (!belief_by_sid.has(belief.sid)) {
-    belief_by_sid.set(belief.sid, new Set())
-  }
-  /** @type {Set<import('./belief.mjs').Belief>} */ (belief_by_sid.get(belief.sid)).add(belief)
+  // Add to belief_by_sid (Set already initialized by get_or_create_subject)
+  /** @type {Set<import('./belief.mjs').Belief>} */ (belief_by_sid.get(belief.subject.sid)).add(belief)
 
   // Register by mind
   if (!belief_by_mind.has(belief.in_mind)) {
     belief_by_mind.set(belief.in_mind, new Set())
   }
   /** @type {Set<import('./belief.mjs').Belief>} */ (belief_by_mind.get(belief.in_mind)).add(belief)
+}
+
+/**
+ * Get or create the canonical Subject for a given SID
+ * @param {number} sid - Subject ID
+ * @returns {Subject}
+ */
+export function get_or_create_subject(sid) {
+  if (!subject_by_sid.has(sid)) {
+    const subject = new Subject(sid)
+    subject_by_sid.set(sid, subject)
+    belief_by_sid.set(sid, new Set())
+  }
+  return /** @type {Subject} */ (subject_by_sid.get(sid))
 }
 
 /**
@@ -144,6 +164,7 @@ export function reset_all_registries() {
   belief_by_mind.clear()
   sid_by_label.clear()
   label_by_sid.clear()
+  subject_by_sid.clear()
 
   for (const key in state_by_label) delete state_by_label[key]
   for (const key in archetype_by_label) delete archetype_by_label[key]

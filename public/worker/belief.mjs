@@ -20,7 +20,7 @@ import { Subject } from './subject.mjs'
 /**
  * Represents a belief about an entity with versioning support
  * @property {number} _id - Unique version identifier
- * @property {number} sid - Subject identifier (stable across versions)
+ * @property {import('./subject.mjs').Subject} subject - Canonical Subject (identity holder)
  * @property {string|null} label - Optional label for lookup
  * @property {import('./mind.mjs').Mind} in_mind - Mind this belief belongs to
  * @property {Set<Belief|Archetype>} _bases - Base archetypes/beliefs for inheritance
@@ -32,23 +32,19 @@ export class Belief {
   /**
    * @param {import('./mind.mjs').Mind} mind
    * @param {object} param1
-   * @param {number|null} [param1.sid] - Subject ID (provide to create version of existing subject)
+   * @param {import('./subject.mjs').Subject|null} [param1.subject] - Subject (provide to create version of existing subject)
    * @param {Array<Archetype|Belief>} [param1.bases] - Archetype or Belief objects (no strings)
    * @param {import('./state.mjs').State|null} [creator_state] - State that's creating this belief (for inferring ground_state)
    */
-  constructor(mind, {sid=null, bases=[]}, creator_state = null) {
+  constructor(mind, {subject=null, bases=[]}, creator_state = null) {
     for (const base of bases) {
       assert(typeof base !== 'string',
         'Constructor received string base - use Belief.from_template() instead',
         {base})
     }
 
-    /** @type {Set<Belief|Archetype>} */ this._bases = new Set()
-    for (const base of bases) {
-      this._bases.add(/** @type {Belief|Archetype} */ (base))
-    }
-
-    /** @type {number} */ this.sid = sid !== null ? sid : next_id()
+    /** @type {Set<Belief|Archetype>} */ this._bases = new Set(bases)
+    this.subject = subject ?? DB.get_or_create_subject(next_id())
     this._id = next_id()
     this.in_mind = mind
     this._traits = new Map()
@@ -176,7 +172,7 @@ export class Belief {
    * @returns {string|null}
    */
   get_label() {
-    return DB.label_by_sid.get(this.sid) ?? null
+    return DB.label_by_sid.get(this.subject.sid) ?? null
   }
 
   /**
@@ -186,7 +182,7 @@ export class Belief {
   set_label(label) {
     const existing_label = this.get_label()
     if (existing_label !== null) {
-      throw new Error(`Subject sid ${this.sid} already has label '${existing_label}', cannot set to '${label}'`)
+      throw new Error(`Subject sid ${this.subject.sid} already has label '${existing_label}', cannot set to '${label}'`)
     }
 
     if (DB.sid_by_label.has(label)) {
@@ -196,8 +192,8 @@ export class Belief {
       throw new Error(`Label '${label}' is already used by an archetype`)
     }
 
-    DB.sid_by_label.set(label, this.sid)
-    DB.label_by_sid.set(this.sid, label)
+    DB.sid_by_label.set(label, this.subject.sid)
+    DB.label_by_sid.set(this.subject.sid, label)
   }
 
   sysdesig() {
@@ -242,7 +238,7 @@ export class Belief {
     return {
       _type: 'Belief',
       _id: this._id,
-      sid: this.sid,
+      sid: this.subject.sid,
       label: this.get_label(),
       about: about_trait?.toJSON() ?? null,
       archetypes: [...this.get_archetypes()].map(a => a.label),
@@ -299,12 +295,9 @@ export class Belief {
       // Check if this trait type is a Belief reference or Subject
       const traittype = Cosmos.get_traittype(trait_name)
       if (traittype) {
-        if (DB.archetype_by_label[traittype.data_type]) {
-          // It's a Belief reference - wrap in Subject with archetype constraint
-          return new Subject(value, traittype.data_type)
-        } else if (traittype.data_type === 'Subject') {
-          // It's a Subject type - wrap without archetype constraint
-          return new Subject(value, null)
+        if (DB.archetype_by_label[traittype.data_type] || traittype.data_type === 'Subject') {
+          // It's a Belief/Subject reference - wrap in Subject
+          return new Subject(value)
         }
       }
       // Literal number
@@ -326,7 +319,7 @@ export class Belief {
     const belief = Object.create(Belief.prototype)
 
     belief._id = data._id
-    belief.sid = data.sid
+    belief.subject = DB.get_or_create_subject(data.sid)
     belief.in_mind = mind
     belief.locked = false
 
@@ -372,8 +365,8 @@ export class Belief {
         if (DB.archetype_by_label[data.label]) {
           throw new Error(`Label '${data.label}' is already used by an archetype`)
         }
-        DB.sid_by_label.set(data.label, belief.sid)
-        DB.label_by_sid.set(belief.sid, data.label)
+        DB.sid_by_label.set(data.label, belief.subject.sid)
+        DB.label_by_sid.set(belief.subject.sid, data.label)
       }
     }
 
@@ -392,20 +385,19 @@ export class Belief {
    * @returns {Belief}
    */
   static from_template(mind, {sid=null, label=null, bases=[], traits={}}, creator_state = null) {
-    /** @type {Array<Belief|import('./archetype.mjs').Archetype>} */ const resolved_bases = []
-    for (const base of bases) {
+    const resolved_bases = bases.map(base => {
       if (typeof base === 'string') {
-        const base_label = base
-        const resolved = DB.get_belief_by_label(base_label) ?? DB.archetype_by_label[base_label]
-        assert(resolved != null, `Base '${base_label}' not found as belief label or archetype`, {base_label})
-        resolved_bases.push(resolved)
-      } else {
-        resolved_bases.push(base)
+        const resolved = DB.get_belief_by_label(base) ?? DB.archetype_by_label[base]
+        assert(resolved != null, `Base '${base}' not found as belief label or archetype`, {base})
+        return /** @type {Belief|import('./archetype.mjs').Archetype} */ (resolved)
       }
-    }
+      return base
+    })
+
+    const subject = sid ? DB.get_or_create_subject(sid) : null
 
     const belief = new Belief(mind, {
-      sid,
+      subject,
       bases: resolved_bases
     }, creator_state)
 
