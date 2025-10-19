@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { Mind, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupStandardArchetypes, setupMinimalArchetypes } from './helpers.mjs';
 
@@ -104,7 +104,9 @@ describe('learn_about', () => {
         traits: { location: workshop_knowledge }
       });
 
-      expect(hammer_knowledge.traits.get('location')).to.equal(workshop_knowledge.sid);
+      const location_trait = hammer_knowledge.traits.get('location');
+      expect(location_trait).to.be.instanceOf(Subject);
+      expect(location_trait.sid).to.equal(workshop_knowledge.sid);
     });
 
     it('learn_about directly from base belief works', () => {

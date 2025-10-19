@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { Mind, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupStandardArchetypes } from './helpers.mjs';
 
@@ -203,7 +203,7 @@ describe('Belief', () => {
       expect(beliefs_with_sid.has(room_v3)).to.be.true;
     });
 
-    it('stores trait value as sid integer when value is a Belief', () => {
+    it('stores trait value as Subject when value is a Belief', () => {
       const world_mind = new Mind('world');
 
       const workshop = Belief.from_template(world_mind, {
@@ -219,10 +219,11 @@ describe('Belief', () => {
         },
       });
 
-      // Trait should store the sid, not the object
+      // Trait should store a Subject wrapping the sid
       const location_value = hammer.traits.get('location');
-      expect(location_value).to.be.a('number');
-      expect(location_value).to.equal(workshop.sid);
+      expect(location_value).to.be.instanceOf(Subject);
+      expect(location_value.sid).to.equal(workshop.sid);
+      expect(location_value.archetype).to.equal('Location');
     });
 
     it('stores primitive values directly (not as sid)', () => {

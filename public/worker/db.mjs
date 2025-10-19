@@ -104,6 +104,17 @@ export function get_belief_by_label(label) {
 }
 
 /**
+ * Register belief in belief_by_sid registry
+ * @param {import('./belief.mjs').Belief} belief - Belief to register
+ */
+export function register_belief_by_sid(belief) {
+  if (!belief_by_sid.has(belief.sid)) {
+    belief_by_sid.set(belief.sid, new Set())
+  }
+  /** @type {Set<import('./belief.mjs').Belief>} */ (belief_by_sid.get(belief.sid)).add(belief)
+}
+
+/**
  * Get State by ID
  * @param {number} id
  * @returns {import('./state.mjs').State|undefined}

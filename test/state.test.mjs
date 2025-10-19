@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { Mind, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupMinimalArchetypes, setupStandardArchetypes } from './helpers.mjs';
 
@@ -329,26 +329,28 @@ describe('State', () => {
       });
       const state2 = state1.tick({ replace: [room1_v2] });
 
-      // THE KEY TEST: room2's location trait stores room1's SID
-      const room2_location_sid = room2.traits.get('location');
-      expect(room2_location_sid).to.equal(room1.sid);
+      // THE KEY TEST: room2's location trait stores a Subject
+      const room2_location = room2.traits.get('location');
+      expect(room2_location).to.be.instanceOf(Subject);
+      expect(room2_location.sid).to.equal(room1.sid);
 
       // In state1: room2.location resolves to room1 (no location trait)
-      const room2_location_in_state1 = state1.resolve_subject(room2_location_sid);
+      const room2_location_in_state1 = room2_location.resolve(state1);
       expect(room2_location_in_state1).to.equal(room1);
       expect(room2_location_in_state1.traits.get('location')).to.be.undefined;
 
       // In state2: room2.location resolves to room1_v2 (has location trait)
-      const room2_location_in_state2 = state2.resolve_subject(room2_location_sid);
+      const room2_location_in_state2 = room2_location.resolve(state2);
       expect(room2_location_in_state2).to.equal(room1_v2);
 
       // And room1_v2's location points back to room2
-      const room1_v2_location_sid = room2_location_in_state2.traits.get('location');
-      expect(room1_v2_location_sid).to.equal(room2.sid);
+      const room1_v2_location = room2_location_in_state2.traits.get('location');
+      expect(room1_v2_location).to.be.instanceOf(Subject);
+      expect(room1_v2_location.sid).to.equal(room2.sid);
 
       // This creates a proper circular reference in state2
-      const room1_v2_location = state2.resolve_subject(room1_v2_location_sid);
-      expect(room1_v2_location).to.equal(room2);
+      const room1_v2_location_resolved = room1_v2_location.resolve(state2);
+      expect(room1_v2_location_resolved).to.equal(room2);
     });
   });
 });

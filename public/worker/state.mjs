@@ -2,6 +2,7 @@ import { assert } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'
+import { Subject } from './subject.mjs'
 
 /**
  * @typedef {object} StateJSON
@@ -299,16 +300,8 @@ export class State {
   _dereference_trait_value(source_state, value) {
     if (Array.isArray(value)) {
       return value.map(item => this._dereference_trait_value(source_state, item))
-    } else if (typeof value === 'number' && source_state) {
-      // Value is a sid - resolve it to a belief in source_state
-      const resolved_belief = source_state.resolve_subject(value)
-      if (resolved_belief) {
-        return this._find_or_learn_belief_about(source_state, resolved_belief)
-      }
-      // If can't resolve, return the sid as-is (might be a primitive number)
-      return value
-    } else if (value && value.constructor.name === 'Belief') {
-      return this._find_or_learn_belief_about(source_state, value)
+    } else if (value instanceof Subject) {
+      return this._find_or_learn_belief_about(source_state, value.resolve(source_state))
     } else {
       return value
     }
@@ -444,12 +437,7 @@ export class State {
     // Resolve base reference
     let base = null
     if (data.base != null) {
-      for (const state of resolved_mind.state) {
-        if (state._id === data.base) {
-          base = state
-          break
-        }
-      }
+      base = DB.state_by_id.get(data.base)
       if (!base) {
         throw new Error(`Cannot resolve base state ${data.base} for state ${data._id}`)
       }
@@ -458,16 +446,7 @@ export class State {
     // Resolve ground_state reference
     let ground_state = null
     if (data.ground_state != null) {
-      // Search all minds for the ground state
-      for (const m of DB.mind_by_id.values()) {
-        for (const state of m.state) {
-          if (state._id === data.ground_state) {
-            ground_state = state
-            break
-          }
-        }
-        if (ground_state) break
-      }
+      ground_state = DB.state_by_id.get(data.ground_state)
       if (!ground_state) {
         throw new Error(`Cannot resolve ground_state ${data.ground_state} for state ${data._id}`)
       }

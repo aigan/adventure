@@ -1,6 +1,7 @@
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'
+import { Subject } from './subject.mjs'
 
 /**
  * @typedef {string|TraitTypeSchema} TraitTypeDefinition
@@ -103,6 +104,9 @@ export class Traittype {
       let belief
       if (typeof data === 'string') {
         belief = DB.get_belief_by_label(data)
+      } else if (data instanceof Subject) {
+        // Already a Subject - return as-is
+        return data
       } else {
         belief = data
       }
@@ -114,8 +118,7 @@ export class Traittype {
       // Check if belief has the required archetype in its chain
       for (const a of belief.get_archetypes()) {
         if (a === archetype) {
-          // Store sid (subject ID) instead of object reference
-          return belief.sid
+          return new Subject(belief.sid, type_label)
         }
       }
 
@@ -187,6 +190,7 @@ export class Traittype {
     if (Array.isArray(value)) {
       return value.map(item => Traittype.serializeTraitValue(item))
     }
+    if (value instanceof Subject) return value.toJSON()
     if (value?.toJSON) return value.toJSON()
     return value
   }
@@ -202,14 +206,10 @@ export class Traittype {
     if (Array.isArray(value)) {
       return value.map(item => Traittype.inspectTraitValue(state, item))
     }
-    // Check if it's a number (potential sid)
+    if (value instanceof Subject) {
+      return value.inspect(state)
+    }
     if (typeof value === 'number') {
-      const resolved = state.resolve_subject(value)
-      if (resolved) {
-        // It's a sid - convert resolved Belief to reference format
-        return {_ref: resolved._id, _type: 'Belief', label: resolved.get_label()}
-      }
-      // Not a sid, just a number
       return value
     }
     if (value && (value.constructor.name === 'Belief' || value.constructor.name === 'State' || value.constructor.name === 'Mind')) {

@@ -3,6 +3,7 @@ import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'
+import { Subject } from './subject.mjs'
 
 /**
  * @typedef {object} BeliefJSON
@@ -57,10 +58,7 @@ export class Belief {
     this.locked = false
 
     DB.belief_by_id.set(this._id, this)
-    if (!DB.belief_by_sid.has(this.sid)) {
-      DB.belief_by_sid.set(this.sid, new Set())
-    }
-    /** @type {Set<Belief>} */ (DB.belief_by_sid.get(this.sid)).add(this)
+    DB.register_belief_by_sid(this)
 
     // TODO: add default trait values
   }
@@ -115,10 +113,10 @@ export class Belief {
   _resolve_trait_value(value, state) {
     if (Array.isArray(value)) {
       return value.map(item => this._resolve_trait_value(item, state))
+    } else if (value instanceof Subject) {
+      return value.resolve(state)
     } else if (typeof value === 'number') {
-      // Might be a sid - try to resolve to Belief
-      const resolved = state.resolve_subject(value)
-      return resolved !== null ? resolved : value
+      return value
     } else if (value && typeof value === 'object' && value._type) {
       // State/Mind reference object from JSON - deserialize it
       return deserialize_trait_value(value)
@@ -257,23 +255,33 @@ export class Belief {
    */
   _finalize_traits() {
     for (const [trait_name, trait_value] of this._traits) {
-      this._traits.set(trait_name, this._resolve_final_trait_value(trait_value))
+      this._traits.set(trait_name, this._resolve_final_trait_value(trait_name, trait_value))
     }
   }
 
   /**
    * Resolve trait value completely (including nested State/Mind references)
-   * @param {*} value - Trait value (may contain {_type, _id} reference objects)
+   * @param {string} trait_name - Trait name for type lookup
+   * @param {*} value - Trait value (may contain {_type, _id} reference objects or raw sids)
    * @returns {*} Fully resolved value
    */
-  _resolve_final_trait_value(value) {
+  _resolve_final_trait_value(trait_name, value) {
     if (Array.isArray(value)) {
-      return value.map(item => this._resolve_final_trait_value(item))
+      return value.map(item => this._resolve_final_trait_value(trait_name, item))
     } else if (value && typeof value === 'object' && value._type) {
       // State/Mind reference object from JSON - deserialize it
       return deserialize_trait_value(value)
+    } else if (typeof value === 'number') {
+      // Check if this trait type is a Belief reference
+      const traittype = Cosmos.get_traittype(trait_name)
+      if (traittype && DB.archetype_by_label[traittype.data_type]) {
+        // It's a Belief reference - wrap in Subject
+        return new Subject(value, traittype.data_type)
+      }
+      // Literal number
+      return value
     } else {
-      // Primitives and sids stay as-is
+      // Other primitives
       return value
     }
   }
@@ -330,12 +338,7 @@ export class Belief {
 
     // Register globally
     DB.belief_by_id.set(belief._id, belief)
-
-    // Register in by_sid (sid → Set<Belief>)
-    if (!DB.belief_by_sid.has(belief.sid)) {
-      DB.belief_by_sid.set(belief.sid, new Set())
-    }
-    /** @type {Set<Belief>} */ (DB.belief_by_sid.get(belief.sid)).add(belief)
+    DB.register_belief_by_sid(belief)
 
     // Register label-sid mappings (for first belief with this label loaded)
     if (data.label) {

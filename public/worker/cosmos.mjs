@@ -6,6 +6,7 @@ import { Traittype } from './traittype.mjs'
 import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
+import { Subject } from './subject.mjs'
 import { Session } from './session.mjs'
 import { Serialize, save_mind, load } from './serialize.mjs'
 
@@ -185,6 +186,7 @@ export {
   Mind,
   State,
   Belief,
+  Subject,
   Session,
   Serialize,
   save_mind,
