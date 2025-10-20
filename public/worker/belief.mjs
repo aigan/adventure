@@ -1,3 +1,18 @@
+/**
+ * Belief - represents any entity in the game (objects, NPCs, events, observations)
+ *
+ * Beliefs are the universal building block. Everything from "hammer" to "Bob saw hammer"
+ * to "player thinks Bob is lying" is represented as a Belief with traits.
+ *
+ * Key concepts:
+ * - Archetype composition: Beliefs inherit traits from archetypes (e.g., Player = Actor + Mental)
+ * - Immutability: Create new versions via `base` property instead of mutating
+ * - Universal structure: Same format for objects, events, NPCs, observations
+ *
+ * See docs/SPECIFICATION.md for data model design
+ * See docs/ALPHA-1.md for how beliefs are used in gameplay
+ */
+
 import { assert } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'

@@ -1,3 +1,27 @@
+/**
+ * Traittype - type system for belief traits
+ *
+ * Defines what type each trait is (string, number, belief reference, etc.)
+ * and handles validation/resolution. This ensures data integrity across the system.
+ *
+ * Key concepts:
+ * - Type validation: Ensures traits have correct types
+ * - Reference resolution: Converts IDs to actual Belief/Mind/State objects
+ * - Container types: Arrays, Sets, Maps of typed values
+ *
+ * Supported types:
+ * - Primitives: string, number, boolean
+ * - References: Belief refs (e.g., 'Location'), Mind refs, State refs
+ * - Containers: Arrays/Sets/Maps containing any of the above
+ *
+ * Example:
+ *   location: 'Location'  // Must be a belief with Location archetype
+ *   descriptors: { type: 'string', container: Array }  // Array of strings
+ *
+ * See docs/SPECIFICATION.md for type system
+ * See world.mjs for traittype definitions
+ */
+
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'

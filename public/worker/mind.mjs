@@ -1,3 +1,25 @@
+/**
+ * Mind - container for beliefs representing an entity's knowledge/perspective
+ *
+ * Each entity (world, player, NPC) has a mind containing their beliefs.
+ * No objective truth exists - even world_mind holds possibility distributions that
+ * collapse on observation, same as NPC minds.
+ *
+ * Key concepts:
+ * - Nested minds: world_mind contains npc_minds, enabling theory of mind
+ * - Label-based lookup: Quickly find beliefs by label
+ * - State management: Minds track belief states over time
+ * - Possibility distributions: Beliefs can exist in superposition until observed
+ *
+ * Example hierarchy:
+ * - world_mind: current state of possibilities (collapses on player observation)
+ * - player_mind: what player has observed (subset of collapsed possibilities)
+ * - npc_mind: what NPC believes (may differ from world_mind)
+ *
+ * See docs/SPECIFICATION.md for mind architecture and "No Objective Truth" principle
+ * See docs/ALPHA-1.md Stage 1 for basic usage, Stage 5 for NPC minds
+ */
+
 import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'

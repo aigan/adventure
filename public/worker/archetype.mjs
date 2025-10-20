@@ -1,3 +1,23 @@
+/**
+ * Archetype - defines what traits entities have and supports inheritance
+ *
+ * Archetypes define the structure for beliefs - what properties they can have.
+ * Multiple inheritance via `bases` array allows composing traits from multiple sources.
+ * Also intended to support methods and virtual (computed) traits.
+ *
+ * Key concepts:
+ * - Trait definitions: What properties this type of entity can have
+ * - Multiple inheritance: Combine traits from multiple archetypes
+ * - Type validation: Ensures beliefs have appropriate traits
+ *
+ * Example: Player archetype has bases ['Actor', 'Mental']
+ * - Inherits location, inventory from Actor
+ * - Inherits mind, beliefs from Mental
+ *
+ * See docs/SPECIFICATION.md for archetype design
+ * See world.mjs for archetype definitions
+ */
+
 import { assert } from '../lib/debug.mjs'
 import * as DB from './db.mjs'
 

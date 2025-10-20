@@ -1,3 +1,10 @@
+/**
+ * Test utilities for creating consistent test fixtures
+ *
+ * See .CONTEXT.md for test patterns and conventions
+ * See docs/IMPLEMENTATION.md for implementation architecture
+ */
+
 import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 

@@ -1,6 +1,9 @@
 /**
  * Centralized registry for all database entities
  * This is the data storage layer - classes use these registries to store/lookup instances
+ *
+ * See docs/SPECIFICATION.md for data model design
+ * See .CONTEXT.md for module documentation
  */
 
 import { reset_id_sequence } from './id_sequence.mjs'

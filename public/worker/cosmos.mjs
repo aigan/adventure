@@ -1,3 +1,14 @@
+/**
+ * Cosmos - mediator providing unified access to all core classes
+ *
+ * Implements the Mediator pattern: single point to import Mind, Belief, State, etc.
+ * Keeps modules from directly depending on each other.
+ *
+ * Just a re-export hub - the less in here, the better.
+ *
+ * See .CONTEXT.md for module details
+ */
+
 import * as DB from './db.mjs'
 
 // Import all classes

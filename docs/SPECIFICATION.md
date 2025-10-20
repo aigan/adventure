@@ -1,4 +1,24 @@
-# Data structure
+# Specification
+
+**Purpose**: This is the language-agnostic specification for the game's data model. It defines what we're building, not how it's currently implemented.
+
+**What belongs here**:
+- Conceptual data model and relationships
+- Design rationale and principles
+- Planned features and future extensions
+- Implementation-agnostic patterns
+
+**What does NOT belong here**:
+- JavaScript code or syntax
+- Current implementation details (see IMPLEMENTATION.md)
+- Implementation-specific workarounds
+- File paths or module references
+
+**Maintenance**: Keep this updated as the design evolves, even if features aren't implemented yet.
+
+---
+
+# Data Structure
 
 ## Why This Structure?
 

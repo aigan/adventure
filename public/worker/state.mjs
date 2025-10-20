@@ -1,3 +1,24 @@
+/**
+ * State - immutable snapshot of beliefs at a specific time/tick
+ *
+ * States represent "what exists at this moment" in a mind. Once finalized, they never mutate;
+ * instead, create new states via tick() operations. This enables time travel,
+ * branching possibilities, and maintaining observation history.
+ *
+ * Key concepts:
+ * - Immutability: Changes create new states linked via `base` property
+ * - Multi-stage creation: States are unlocked during creation, allowing gradual buildup
+ * - Tick progression: Each state has a tick number showing temporal ordering
+ * - Operations: insert (new beliefs), remove (beliefs), replace (belief updates)
+ * - Superposition: Multiple states can exist at same tick with different certainty
+ *
+ * Usage pattern:
+ *   const state2 = state1.tick({ insert: [new_belief], replace: [[old_id, new_belief]] })
+ *
+ * See docs/SPECIFICATION.md for state architecture
+ * See docs/ALPHA-1.md for how states track observations over time
+ */
+
 import { assert } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
