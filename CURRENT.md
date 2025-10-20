@@ -21,8 +21,8 @@ Save plans in `docs/plans/` using this structure:
 **Goal**: Brief description of what we're implementing
 
 **Related**:
-- ROADMAP.md stage
-- SPECIFICATION.md sections
+- docs/ALPHA-1.md stage
+- docs/SPECIFICATION.md sections
 
 ## Context
 

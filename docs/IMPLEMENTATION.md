@@ -139,9 +139,9 @@ The application uses a **Web Worker architecture** to separate game logic from U
 
 **Specification**:
 - [SPECIFICATION.md](SPECIFICATION.md) - Language-agnostic data model specification
-- [observations.md](observations.md) - Trait exposure system
-- [prototypes.md](prototypes.md) - Prototype/flyweight pattern
-- [temporal-mind-states.md](temporal-mind-states.md) - Temporal reasoning
+- [notes/observations.md](notes/observations.md) - Trait exposure system
+- [notes/prototypes.md](notes/prototypes.md) - Prototype/flyweight pattern
+- [notes/temporal-mind-states.md](notes/temporal-mind-states.md) - Temporal reasoning
 - [requirements.md](requirements.md) - Detailed requirements
 
 **External**:

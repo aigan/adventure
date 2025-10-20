@@ -159,6 +159,6 @@ Run: `npx eslint .` or `npx eslint <file>`
 
 ## References
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System design and patterns
+- [IMPLEMENTATION.md](IMPLEMENTATION.md) - System design and patterns
 - [test/.CONTEXT.md](../test/.CONTEXT.md) - Testing conventions
 - ESLint config: `eslint.config.mjs`
