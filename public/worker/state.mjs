@@ -257,6 +257,98 @@ export class State {
   }
 
   /**
+   * Find existing beliefs about a subject in this state's mind
+   * @param {import('./belief.mjs').Belief} belief - Belief to find matches for
+   * @returns {Array<import('./belief.mjs').Belief>} Ranked list of matching beliefs (max 3)
+   */
+  recognize(belief) {
+    // Query DB for all beliefs in this mind about the same subject
+    const beliefs_about_subject = DB.find_beliefs_about_subject(
+      this.in_mind,
+      belief.subject,
+      this
+    )
+
+    // TODO: Sort by confidence (for now just return first 3)
+    // TODO: Limit to explicit knowledge beliefs (not observation events, etc.)
+    return beliefs_about_subject.slice(0, 3)
+  }
+
+  /**
+   * Integrate new knowledge with existing beliefs
+   * @param {State} source_state - State context for resolving trait references
+   * @param {import('./belief.mjs').Belief} belief - Belief to integrate
+   * @param {string[]} trait_names - Traits to copy/update
+   * @param {Array<import('./belief.mjs').Belief>} existing_beliefs - Beliefs from recognize()
+   * @returns {import('./belief.mjs').Belief} Updated or new belief
+   */
+  integrate(source_state, belief, trait_names, existing_beliefs) {
+    assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
+
+    // TODO: Reconciliation logic - try options to minimize contradictions
+    // TODO: Check trait compatibility (detect contradictions)
+    // TODO: May create variants instead of updating
+    // TODO: Source trust comparison
+    // TODO: Time-based logic (old knowledge vs fresh observation)
+
+    if (existing_beliefs.length === 0) {
+      // No existing knowledge - create new belief
+      const archetype_bases = [...belief.get_archetypes()]
+
+      // Copy traits, dereferencing belief references to this mind
+      /** @type {Record<string, any>} */
+      const copied_traits = {}
+      for (const name of trait_names) {
+        if (belief.traits.has(name)) {
+          const value = belief.traits.get(name)
+          copied_traits[name] = this._dereference_trait_value(source_state, value)
+        }
+      }
+
+      // Create the belief and add to state's insert list
+      const new_belief = Cosmos.create_belief(this.in_mind, {
+        bases: archetype_bases,
+        traits: {
+          '@about': DB.get_or_create_subject(belief.subject.sid),  // Shared canonical Subject
+          ...copied_traits
+        }
+      })
+
+      this.insert.push(new_belief)
+      return new_belief
+
+    } else {
+      // Update existing belief (use first from ranked list)
+      const existing_belief = existing_beliefs[0]
+
+      // Copy new traits, dereferencing belief references
+      /** @type {Record<string, any>} */
+      const new_traits = {}
+      for (const name of trait_names) {
+        if (belief.traits.has(name)) {
+          const value = belief.traits.get(name)
+          new_traits[name] = this._dereference_trait_value(source_state, value)
+        }
+      }
+
+      // If no new traits, just return existing belief
+      if (Object.keys(new_traits).length === 0) {
+        return existing_belief
+      }
+
+      // Create updated belief - keeps all old traits, updates specified ones
+      const updated_belief = Cosmos.create_belief(this.in_mind, {
+        bases: [existing_belief],
+        traits: new_traits
+      })
+
+      this.insert.push(updated_belief)
+      this.remove.push(existing_belief)
+      return updated_belief
+    }
+  }
+
+  /**
    * Learn about a belief from another mind, copying it into this state's mind
    * @param {State} source_state - State context to resolve trait sids in (REQUIRED)
    * @param {import('./belief.mjs').Belief} belief - Belief from another mind/state to learn about
@@ -267,30 +359,11 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
     assert(source_state != null, 'source_state is required for resolving trait references')
 
-    const archetype_bases = [...belief.get_archetypes()]
+    // Step 1: Recognize existing knowledge
+    const existing_beliefs = this.recognize(belief)
 
-    // Copy traits, dereferencing belief references to this mind
-    /** @type {Record<string, any>} */
-    const copied_traits = {}
-    for (const name of trait_names) {
-      if (belief.traits.has(name)) {
-        const value = belief.traits.get(name)
-        copied_traits[name] = this._dereference_trait_value(source_state, value)
-      }
-    }
-
-    // Create the belief and add to state's insert list
-    const new_belief = Cosmos.create_belief(this.in_mind, {
-      bases: archetype_bases,
-      traits: {
-        '@about': DB.get_or_create_subject(belief.subject.sid),  // Shared canonical Subject
-        ...copied_traits
-      }
-    })
-
-    this.insert.push(new_belief)
-
-    return new_belief
+    // Step 2: Integrate new knowledge
+    return this.integrate(source_state, belief, trait_names, existing_beliefs)
   }
 
   /**
@@ -303,41 +376,10 @@ export class State {
     if (Array.isArray(value)) {
       return value.map(item => this._dereference_trait_value(source_state, item))
     } else if (value instanceof Subject) {
-      return this._find_or_learn_belief_about(source_state, value.resolve(source_state))
+      // Resolve Subject to belief, then learn_about it (which calls recognize → integrate)
+      return this.learn_about(source_state, value.resolve(source_state))
     } else {
       return value
-    }
-  }
-
-  /**
-   * Calls learn_about() recursively if belief doesn't exist in this state
-   * @param {State|null} source_state - State context for resolving trait references
-   * @param {import('./belief.mjs').Belief} belief_reference
-   * @returns {import('./belief.mjs').Belief}
-   */
-  _find_or_learn_belief_about(source_state, belief_reference) {
-    // Query DB for beliefs in this mind that are about the same subject
-    const beliefs_about_subject = DB.find_beliefs_about_subject(
-      this.in_mind,
-      belief_reference.subject,
-      this
-    )
-
-    if (beliefs_about_subject.length > 1) {
-      throw new Error(`Multiple beliefs about subject sid ${belief_reference.subject.sid} exist in mind ${this.in_mind.label}`)
-    }
-
-    if (beliefs_about_subject.length === 1) {
-      return beliefs_about_subject[0]
-    } else {
-      // Create new belief about the referenced entity
-      // Use source_state from belief's mind if not provided
-      if (!source_state && belief_reference.in_mind) {
-        // Get the latest state from the source mind
-        const states = [...belief_reference.in_mind.state]
-        source_state = states[states.length - 1]
-      }
-      return this.learn_about(/** @type {State} */ (source_state), belief_reference)
     }
   }
 

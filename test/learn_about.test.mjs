@@ -189,7 +189,7 @@ describe('learn_about', () => {
       expect(location_ref).to.equal(existing_workshop);
     });
 
-    it('learn_about should error when multiple beliefs about same entity exist', () => {
+    it('learn_about should update first belief when multiple beliefs about same entity exist', () => {
       const world_state = createMindWithBeliefs('world', {
         workshop: { bases: ['Location'] },
         hammer: {
@@ -218,14 +218,20 @@ describe('learn_about', () => {
         }
       });
 
-      // Should error - can't determine which to use without certainty tracking
-      expect(() => {
-        npc_mind_state.learn_about(
-          world_state,
-          DB.get_belief_by_label('hammer'),
-          ['location']
-        );
-      }).to.throw();
+      npc_mind_state.lock();
+      const new_state = npc_mind_state.branch_state();
+
+      // New behavior: updates first belief (highest confidence in future)
+      const hammer_knowledge = new_state.learn_about(
+        world_state,
+        DB.get_belief_by_label('hammer'),
+        ['location']
+      );
+
+      // Should have created hammer knowledge with location reference
+      const location_ref = hammer_knowledge.get_trait(new_state, 'location');
+      expect(location_ref).to.exist;
+      expect(location_ref.in_mind).to.equal(npc_mind);
     });
 
     it('learn_about is not transitive - about points to the belief, not what it\'s about', () => {

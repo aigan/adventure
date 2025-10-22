@@ -1,6 +1,22 @@
 # Current Work
 
-**Status**: No active plan
+**Status**: Active plan - [Exposure Metadata](docs/plans/exposure-metadata.md)
+
+## Recently Completed
+
+### `learn_about()` Refactor (2025-01-23)
+- Split knowledge acquisition into three phases:
+  - `recognize()` - Find existing beliefs about a subject
+  - `integrate()` - Reconcile new knowledge with existing beliefs
+  - `learn_about()` - Orchestrates recognize → integrate
+- Behavior change: Multiple beliefs about same subject now updates first (was: error)
+- Foundation for variant beliefs (contradictions, alternative scenarios, personas)
+- All 110 tests passing
+
+## Next Up
+
+**Exposure Metadata** - Add observation modality metadata to support perception system
+- See [docs/plans/exposure-metadata.md](docs/plans/exposure-metadata.md) for details
 
 ## Instructions for Claude Code
 
