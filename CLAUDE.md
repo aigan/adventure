@@ -47,7 +47,7 @@ See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for detailed patterns and [
 - JSDoc types only, minimal comments
 - ES2024+ features, explicit `.mjs` imports
 
-**Post-implementation**: Review against [docs/STYLE.md](docs/STYLE.md) checklist
+**Post-implementation**: Review against [docs/STYLE.md](docs/STYLE.md) checklist, update [CHANGELOG.md](CHANGELOG.md) with date
 
 ## Version Control
 

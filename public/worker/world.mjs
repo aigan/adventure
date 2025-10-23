@@ -30,6 +30,7 @@ export function setupStandardArchetypes() {
     },
     location: 'Location',
     mind_states: {
+      // All the states that are having this ground_state
       type: 'State',
       container: Array,
       min: 1
@@ -107,6 +108,16 @@ const world_belief = {
 const world_mind = new Cosmos.Mind('world');
 const state = world_mind.create_state(1);
 state.add_beliefs(world_belief);
+state.lock();
+
+const player = DB.get_belief_by_label('player');
+if (!player) throw new Error('Player belief not found');
+let player_state = player.get_trait(state, 'mind_states')[0];
+player_state = player_state.branch_state(state);
+player_state.learn_about(DB.get_belief_by_label('hammer'), ['location']);
+player_state.lock();
+
+log(player_state);
 
 //const ball = state.add_belief({
 //  label: 'ball',
@@ -122,7 +133,6 @@ state.add_beliefs(world_belief);
 //  color: 'blue',
 //});
 
-const player = DB.get_belief_by_label('player');
 
 // Create game session
 export const session = new Session(world_mind, state, player);

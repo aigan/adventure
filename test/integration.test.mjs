@@ -64,7 +64,7 @@ describe('Integration', () => {
 
       // Verify learn_about
       const workshop = DB.get_belief_by_label('workshop');
-      const workshop_knowledge = player_mind_state.learn_about(world_state, workshop);
+      const workshop_knowledge = player_mind_state.learn_about(workshop, [], world_state);
 
       const workshop_inspected = workshop_knowledge.inspect(player_mind_state);
       expect(workshop_inspected.traits['@about']._ref).to.equal(workshop._id);

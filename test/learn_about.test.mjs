@@ -20,7 +20,7 @@ describe('learn_about', () => {
       const player_mind = new Mind('player');
       const player_mind_state = player_mind.create_state(1);
       const workshop = DB.get_belief_by_label('workshop');
-      const workshop_knowledge = player_mind_state.learn_about(world_state, workshop);
+      const workshop_knowledge = player_mind_state.learn_about(workshop, [], world_state);
 
       const inspected = workshop_knowledge.inspect(player_mind_state);
       expect(inspected.traits['@about']._ref).to.equal(workshop._id);
@@ -41,7 +41,7 @@ describe('learn_about', () => {
       const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
       const hammer = DB.get_belief_by_label('hammer');
-      const hammer_belief = npc_mind_state.learn_about(world_state, hammer, ['color']);
+      const hammer_belief = npc_mind_state.learn_about(hammer, ['color'], world_state);
 
       expect(hammer_belief.can_have_trait('color')).to.be.true;
       expect(hammer_belief.can_have_trait('location')).to.be.true;
@@ -68,7 +68,7 @@ describe('learn_about', () => {
 
       const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
-      const hammer_knowledge = npc_mind_state.learn_about(world_mind_state, hammer_v2);
+      const hammer_knowledge = npc_mind_state.learn_about(hammer_v2, [], world_mind_state);
 
       // hammer_v2.bases only contains hammer_v1 (Belief)
       // But learn_about walks the chain and finds PortableObject
@@ -93,8 +93,9 @@ describe('learn_about', () => {
       const player_mind = new Mind('player');
       const player_mind_state = player_mind.create_state(1);
       const workshop_knowledge = player_mind_state.learn_about(
-        world_state,
-        DB.get_belief_by_label('workshop')
+        DB.get_belief_by_label('workshop'),
+        [],
+        world_state
       );
 
       // Should be able to reference learned belief in traits
@@ -118,7 +119,7 @@ describe('learn_about', () => {
 
       const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
-      const learned = npc_mind_state.learn_about(world_mind_state, base_hammer);
+      const learned = npc_mind_state.learn_about(base_hammer, [], world_mind_state);
 
       // Works when learning directly from belief with archetype bases
       const archetypes = [...learned.get_archetypes()].map(a => a.label);
@@ -138,9 +139,9 @@ describe('learn_about', () => {
       const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
       const hammer_knowledge = npc_mind_state.learn_about(
-        world_state,
         DB.get_belief_by_label('hammer'),
-        ['location']
+        ['location'],
+        world_state
       );
 
       // Expected behavior: trait references should be dereferenced to npc_mind
@@ -179,9 +180,9 @@ describe('learn_about', () => {
       });
 
       const hammer_knowledge = npc_mind_state.learn_about(
-        world_state,
         DB.get_belief_by_label('hammer'),
-        ['location']
+        ['location'],
+        world_state
       );
 
       // Should reuse existing belief about the workshop
@@ -223,9 +224,9 @@ describe('learn_about', () => {
 
       // New behavior: updates first belief (highest confidence in future)
       const hammer_knowledge = new_state.learn_about(
-        world_state,
         DB.get_belief_by_label('hammer'),
-        ['location']
+        ['location'],
+        world_state
       );
 
       // Should have created hammer knowledge with location reference
@@ -252,7 +253,7 @@ describe('learn_about', () => {
       const npc2_mind = new Mind('npc2');
       const npc2_mind_state = npc2_mind.create_state(1);
       // NPC2 learns about NPC1's belief
-      const workshop_from_npc2 = npc2_mind_state.learn_about(npc1_mind_state, workshop_from_npc1);
+      const workshop_from_npc2 = npc2_mind_state.learn_about(workshop_from_npc1, [], npc1_mind_state);
 
       // @about is not transitive: npc2's belief is about npc1's belief, not the workshop
       expect(workshop_from_npc2.get_about(npc2_mind_state)).to.equal(workshop_from_npc1);
@@ -272,7 +273,7 @@ describe('learn_about', () => {
 
       const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
-      const hammer_knowledge = npc_mind_state.learn_about(world_mind_state, hammer_v2);
+      const hammer_knowledge = npc_mind_state.learn_about(hammer_v2, [], world_mind_state);
 
       // Should walk belief chain to find PortableObject
       const archetypes = [...hammer_knowledge.get_archetypes()].map(a => a.label);
@@ -291,9 +292,9 @@ describe('learn_about', () => {
       const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
       const hammer_knowledge = npc_mind_state.learn_about(
-        world_state,
         DB.get_belief_by_label('hammer'),
-        ['color']
+        ['color'],
+        world_state
       );
 
       // String trait should be copied as-is
@@ -367,7 +368,7 @@ describe('learn_about', () => {
       const npc_mind = new Mind('npc');
       const npc_mind_state = npc_mind.create_state(1);
 
-      const chest_knowledge = npc_mind_state.learn_about(world_mind_state, chest, ['items']);
+      const chest_knowledge = npc_mind_state.learn_about(chest, ['items'], world_mind_state);
 
       // Array should be dereferenced - each item copied to npc_mind
       const items = chest_knowledge.get_trait(npc_mind_state, 'items');

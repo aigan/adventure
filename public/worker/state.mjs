@@ -111,7 +111,7 @@ export class State {
 
   /**
    * Create a new branched state from this state (low-level)
-   * @param {State|null} [ground_state] - Optional ground_state override
+   * @param {State|null} [ground_state] - External world state this mind observes (for resolving beliefs in learn_about)
    * @returns {State} New unlocked state
    */
   branch_state(ground_state) {
@@ -350,20 +350,22 @@ export class State {
 
   /**
    * Learn about a belief from another mind, copying it into this state's mind
-   * @param {State} source_state - State context to resolve trait sids in (REQUIRED)
    * @param {import('./belief.mjs').Belief} belief - Belief from another mind/state to learn about
    * @param {string[]} [trait_names] - Traits to copy (empty = copy no traits, just archetypes)
+   * @param {State|null} [source_state] - State where the belief exists (defaults to this.ground_state)
    * @returns {import('./belief.mjs').Belief}
    */
-  learn_about(source_state, belief, trait_names = []) {
+  learn_about(belief, trait_names = [], source_state = null) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
-    assert(source_state != null, 'source_state is required for resolving trait references')
+
+    const resolved_source = source_state ?? this.ground_state
+    assert(resolved_source != null, 'source_state required: either pass explicitly or set ground_state')
 
     // Step 1: Recognize existing knowledge
     const existing_beliefs = this.recognize(belief)
 
     // Step 2: Integrate new knowledge
-    return this.integrate(source_state, belief, trait_names, existing_beliefs)
+    return this.integrate(resolved_source, belief, trait_names, existing_beliefs)
   }
 
   /**
@@ -377,7 +379,7 @@ export class State {
       return value.map(item => this._dereference_trait_value(source_state, item))
     } else if (value instanceof Subject) {
       // Resolve Subject to belief, then learn_about it (which calls recognize → integrate)
-      return this.learn_about(source_state, value.resolve(source_state))
+      return this.learn_about(value.resolve(source_state), [], source_state)
     } else {
       return value
     }
@@ -448,7 +450,7 @@ export class State {
       if (trait_names.length > 0) {
         // Use ground state as source context (the parent mind's state we're observing from)
         assert(ground != null, `Cannot learn about beliefs without ground_state context`)
-        state.learn_about(/** @type {State} */ (ground), belief, trait_names)
+        state.learn_about(belief, trait_names, /** @type {State} */ (ground))
       }
     }
 

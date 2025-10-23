@@ -315,7 +315,7 @@ describe('Channel Message Handlers', () => {
 
       const npc_mind = new Mind('npc');
       const npc_state = npc_mind.create_state(1);
-      const workshop_belief = npc_state.learn_about(world_state, workshop);
+      const workshop_belief = npc_state.learn_about(workshop, [], world_state);
 
       messages.length = 0;
 

@@ -260,7 +260,7 @@ const observation = observe(entity, {
 const observable_traits = trait_names.filter(t =>
   traittype[t].exposure in observation.modalities
 )
-state.learn_about(source_state, belief, observable_traits)
+state.learn_about(belief, observable_traits, source_state)
 ```
 
 **Acquaintance/Recognition**:
