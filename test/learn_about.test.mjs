@@ -23,7 +23,7 @@ describe('learn_about', () => {
       const workshop_knowledge = player_mind_state.learn_about(world_state, workshop);
 
       const inspected = workshop_knowledge.inspect(player_mind_state);
-      expect(inspected.about._ref).to.equal(workshop._id);
+      expect(inspected.traits['@about']._ref).to.equal(workshop._id);
       // Location inherits from ObjectPhysical
       expect(inspected.archetypes).to.deep.equal(['Location', 'ObjectPhysical']);
     });

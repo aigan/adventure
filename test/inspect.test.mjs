@@ -194,16 +194,21 @@ describe('inspect.mjs', () => {
           data: {
             data: {
               _id: 50,
-              label: 'belief_about_workshop'
+              label: 'belief_about_workshop',
+              traits: {
+                '@about': {
+                  _ref: 100,
+                  _type: 'Belief',
+                  label: 'workshop',
+                  mind_id: 1,
+                  mind_label: 'world'
+                }
+              }
             }
           },
-          about: {
-            id: 100,
-            label: 'workshop',
-            mind: {
-              id: 1,
-              label: 'world'
-            }
+          mind: {
+            id: 2,
+            label: 'npc'
           }
         }
       };
@@ -211,7 +216,7 @@ describe('inspect.mjs', () => {
       render_entity(input, mockTarget);
 
       const html = mockTarget.innerHTML;
-      expect(html).to.include('<dt>About</dt>');
+      expect(html).to.include('<dt>@about</dt>');
       expect(html).to.include('href="?belief=100"');
       expect(html).to.include('world:');
       expect(html).to.include('(workshop)');

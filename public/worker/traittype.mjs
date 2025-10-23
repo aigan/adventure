@@ -238,18 +238,22 @@ export class Traittype {
   }
 
   /**
-   * Inspect trait value for shallow reference view (light serialization)
-   * Returns only {_ref, _type, label} for Beliefs/States/Minds
+   * Inspect trait value using this traittype's mind_scope
    * @param {import('./state.mjs').State} state - State context for resolving sids
    * @param {*} value - Value to inspect
    * @returns {*} Shallow representation with references
    */
-  static inspectTraitValue(state, value) {
+  inspect(state, value) {
     if (Array.isArray(value)) {
-      return value.map(item => Traittype.inspectTraitValue(state, item))
+      return value.map(item => this.inspect(state, item))
     }
     if (value instanceof Subject) {
-      return value.inspect(state)
+      // Determine which state to resolve in based on mind_scope
+      let resolve_state = state
+      if (this.mind_scope === 'parent' && state?.ground_state) {
+        resolve_state = state.ground_state
+      }
+      return value.inspect(resolve_state)
     }
     if (typeof value === 'number') {
       return value

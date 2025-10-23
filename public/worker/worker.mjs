@@ -11,11 +11,11 @@ const log = console.log.bind(console);
 let world,Cosmos;
 async function init(){
   const World = await import("./world.mjs");
-  const Session = World.Session;
+  const session = World.session;
 
   Cosmos = await import("./cosmos.mjs");
   const Channel = await import("./channel.mjs");
-  await Channel.init_channel(Session);
+  await Channel.init_channel(session);
 
   //const world = Adventure.world;
   //world.player_enter_location();

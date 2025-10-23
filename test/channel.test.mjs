@@ -326,9 +326,9 @@ describe('Channel Message Handlers', () => {
       });
 
       expect(messages).to.have.lengthOf(1);
-      expect(messages[0].about).to.not.be.null;
-      expect(messages[0].about.label).to.equal('query_workshop');
-      expect(messages[0].about.mind.label).to.equal('world');
+      expect(messages[0].data.data.traits['@about']).to.not.be.undefined;
+      expect(messages[0].data.data.traits['@about'].label).to.equal('query_workshop');
+      expect(messages[0].data.data.traits['@about'].mind_label).to.equal('world');
     });
 
     it('includes bases information', () => {

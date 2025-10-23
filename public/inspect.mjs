@@ -138,6 +138,7 @@ function render_table(a, target = $main){
 function render_entity(a, target = $main){
   const belief_data = a.entity.data.data;
   const state_id = a.state_id;
+  const belief_mind_id = a.entity.mind?.id;
 
   let hout = "<dl>";
 
@@ -152,16 +153,6 @@ function render_entity(a, target = $main){
   // Display archetypes
   if (belief_data.archetypes?.length > 0) {
     hout += `<dt>Archetypes</dt><dd>${belief_data.archetypes.join(', ')}</dd>`;
-  }
-
-  // Display about
-  if (a.entity.about) {
-    const about = a.entity.about;
-    const mind_prefix = about.mind?.label || `Mind #${about.mind?.id}`;
-    hout += `<dt>About</dt><dd>`;
-    const about_link = state_id ? `?belief=${about.id}&state=${state_id}` : `?belief=${about.id}`;
-    hout += `<a href="${about_link}">${mind_prefix}: #${about.id}${about.label ? ' (' + about.label + ')' : ''}</a>`;
-    hout += `</dd>`;
   }
 
   // Display bases
@@ -190,7 +181,11 @@ function render_entity(a, target = $main){
               const link = (type_lower === 'belief' && state_id)
                 ? `?${type_lower}=${item._ref}&state=${state_id}`
                 : `?${type_lower}=${item._ref}`;
-              return `<a href="${link}">#${item._ref}${label_text}</a>`;
+              // Add mind prefix if different mind
+              const mind_prefix = (item.mind_id && item.mind_id !== belief_mind_id)
+                ? `${item.mind_label || 'Mind #' + item.mind_id}: `
+                : '';
+              return `<a href="${link}">${mind_prefix}#${item._ref}${label_text}</a>`;
             } else {
               return JSON.stringify(item);
             }
@@ -206,7 +201,11 @@ function render_entity(a, target = $main){
           const link = (type_lower === 'belief' && state_id)
             ? `?${type_lower}=${value._ref}&state=${state_id}`
             : `?${type_lower}=${value._ref}`;
-          display_value = `<a href="${link}">#${value._ref}${label_text}</a>`;
+          // Add mind prefix if different mind
+          const mind_prefix = (value.mind_id && value.mind_id !== belief_mind_id)
+            ? `${value.mind_label || 'Mind #' + value.mind_id}: `
+            : '';
+          display_value = `<a href="${link}">${mind_prefix}#${value._ref}${label_text}</a>`;
         } else {
           display_value = JSON.stringify(value, null, 2);
         }

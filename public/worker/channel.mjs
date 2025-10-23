@@ -69,7 +69,7 @@ export const dispatch = {
 			data.push({
 				id: belief._id,
 				label: belief.get_label(),
-				desig: belief.sysdesig(),
+				desig: belief.sysdesig(state),
 			});
 		}
 
@@ -103,7 +103,7 @@ export const dispatch = {
 			data.push({
 				id: belief._id,
 				label: belief.get_label(),
-				desig: belief.sysdesig(),
+				desig: belief.sysdesig(state_obj),
 			});
 		}
 
@@ -146,16 +146,8 @@ export const dispatch = {
 			data: {
 				data: belief_obj.inspect(state),
 			},
-			desig: belief_obj.sysdesig(),
+			desig: belief_obj.sysdesig(state),
 			mind: {id: belief_obj.in_mind._id, label: belief_obj.in_mind.label},
-			about: (() => {
-				const about_belief = belief_obj.get_about(state)
-				return about_belief ? {
-					id: about_belief._id,
-					label: about_belief.get_label(),
-					mind: {id: about_belief.in_mind._id, label: about_belief.in_mind.label}
-				} : null
-			})(),
 			bases: [...belief_obj.bases].map(b => ({
 				id: b instanceof Cosmos.Belief ? b._id : null,
 				label: b instanceof Cosmos.Belief ? b.get_label() : b.label,
@@ -188,16 +180,8 @@ export const dispatch = {
 			data: {
 				data: belief.toJSON(),
 			},
-			desig: belief.sysdesig(),
+			desig: belief.sysdesig(Session.state),
 			mind: {id: belief.in_mind._id, label: belief.in_mind.label},
-			about: (() => {
-				const about_belief = belief.get_about(Session.state)
-				return about_belief ? {
-					id: about_belief._id,
-					label: about_belief.get_label(),
-					mind: {id: about_belief.in_mind._id, label: about_belief.in_mind.label}
-				} : null
-			})(),
 			bases: [...belief.bases].map(b => ({
 				id: b instanceof Cosmos.Belief ? b._id : null,
 				label: b instanceof Cosmos.Belief ? b.get_label() : b.label,

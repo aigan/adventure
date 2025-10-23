@@ -67,7 +67,7 @@ describe('Integration', () => {
       const workshop_knowledge = player_mind_state.learn_about(world_state, workshop);
 
       const workshop_inspected = workshop_knowledge.inspect(player_mind_state);
-      expect(workshop_inspected.about._ref).to.equal(workshop._id);
+      expect(workshop_inspected.traits['@about']._ref).to.equal(workshop._id);
       expect(workshop_inspected.archetypes).to.include('Location');
     });
   });

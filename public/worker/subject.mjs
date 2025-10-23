@@ -1,3 +1,5 @@
+import * as DB from './db.mjs'
+
 /**
  * Canonical identity reference for a belief subject
  * Wraps a stable sid that persists across belief versions
@@ -37,10 +39,25 @@ export class Subject {
    * @returns {object}
    */
   inspect(state) {
-    const belief = state.resolve_subject(this.sid)
+    let belief = state.resolve_subject(this.sid)
+
+    // Fallback to global registry if not found in state
+    if (!belief) {
+      const beliefs = DB.belief_by_sid.get(this.sid)
+      if (beliefs?.size) {
+        belief = [...beliefs][0]
+      }
+    }
+
     if (!belief) {
       return {_ref: this.sid, _type: 'Subject'}
     }
-    return {_ref: belief._id, _type: 'Belief', label: belief.get_label()}
+    return {
+      _ref: belief._id,
+      _type: 'Belief',
+      label: belief.get_label(),
+      mind_id: belief.in_mind._id,
+      mind_label: belief.in_mind.label
+    }
   }
 }

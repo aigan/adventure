@@ -211,7 +211,12 @@ export class Belief {
     DB.label_by_sid.set(this.subject.sid, label)
   }
 
-  sysdesig() {
+  /**
+   * Generate a designation string for this belief
+   * @param {import('./state.mjs').State|null} [state] - State context for resolving @about
+   * @returns {string} Designation string (e.g., "hammer [PortableObject] #42")
+   */
+  sysdesig(state = null) {
     const parts = []
 
     const label = this.get_label()
@@ -243,6 +248,17 @@ export class Belief {
       parts.push(`[${edge_archetypes.map(a => a.label).join(', ')}]`)
     }
 
+    // Include subject label if this belief is about something
+    if (state) {
+      const about_belief = this.get_about(state)
+      if (about_belief) {
+        const about_label = about_belief.get_label()
+        if (about_label) {
+          parts.push(`about ${about_label}`)
+        }
+      }
+    }
+
     parts.push(`#${this._id}`)
 
     return parts.join(' ')
@@ -270,16 +286,18 @@ export class Belief {
    * @returns {object} Shallow representation with references
    */
   inspect(state) {
-    const about_belief = this.get_about(state)
     return {
       _type: 'Belief',
       _id: this._id,
       label: this.get_label(),
-      about: about_belief ? {_ref: about_belief._id, label: about_belief.get_label()} : null,
       archetypes: [...this.get_archetypes()].map(a => a.label),
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
-        [...this.traits].map(([k, v]) => [k, Cosmos.Traittype.inspectTraitValue(state, v)])
+        [...this.traits].map(([k, v]) => {
+          const traittype = Cosmos.get_traittype(k)
+          assert(traittype != null, `Traittype '${k}' not found`)
+          return [k, traittype.inspect(state, v)]
+        })
       )
     }
   }
