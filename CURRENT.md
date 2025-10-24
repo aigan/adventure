@@ -14,7 +14,6 @@ None - Ready to start next feature!
 
 ## Backlog
 - [ ] Generalize Traittype system - Remove ALL hardcoded type checks (Mind, State, Subject, Belief) from traittype.mjs. Instead, use a registry-based system where classes register themselves with their capabilities (resolve_template, instanceof checks, serialization, inspection). Affects lines 168-190 (_resolve_item), 203-222 (resolve), 237 (serializeTraitValue), 263-271 (inspect)
-- [ ] Audit Cosmos usage - remove indirection where circular dependencies don't exist (e.g., get_traittype, DB access, unnecessary factory calls)
 
 ## Next Up
 
@@ -27,6 +26,9 @@ When working on features:
 1. **Start**: Create plan in `docs/plans/`, update CURRENT.md to point to it
 2. **During**: Track progress with checkboxes in the plan file
 3. **Complete**: Mark plan complete, update CURRENT.md to next plan
-4. **Changelog**: Add summary to CHANGELOG.md when feature is fully complete (for multi-phase work, wait until all phases done)
+4. **Changelog**: Add BRIEF summary to CHANGELOG.md when feature is fully complete (for multi-phase work, wait until all phases done)
+   - Only include information valuable for updating old unimplemented plans
+   - Focus on WHAT changed, not HOW it was done
+   - Omit implementation details, file names, test counts
 
 See existing plans in `docs/plans/` for format examples.

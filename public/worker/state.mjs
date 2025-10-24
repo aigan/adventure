@@ -25,6 +25,7 @@ import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'
 import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
+import { Serialize } from './serialize.mjs'
 
 /**
  * @typedef {object} StateJSON
@@ -103,7 +104,7 @@ export class State {
    */
   add_belief(template) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
-    const belief = Cosmos.create_belief(this.in_mind, template, this)
+    const belief = Belief.from_template(this.in_mind, template, this)
     this.insert.push(belief)
     return belief
   }
@@ -115,7 +116,7 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     for (const [label, def] of Object.entries(beliefs)) {
-      const belief = Cosmos.create_belief(this.in_mind, {...def, label}, this)
+      const belief = Belief.from_template(this.in_mind, {...def, label}, this)
       this.insert.push(belief)
     }
   }
@@ -126,7 +127,7 @@ export class State {
    * @returns {State} New unlocked state
    */
   branch_state(ground_state) {
-    const state = Cosmos.create_state(this.in_mind, this.timestamp + 1, this, ground_state ?? this.ground_state, this.self)
+    const state = new State(this.in_mind, this.timestamp + 1, this, ground_state ?? this.ground_state, this.self)
     this.branches.push(state)
     return state
   }
@@ -205,7 +206,7 @@ export class State {
    * @returns {State}
    */
   tick_with_traits(belief, traits) {
-    const new_belief = Cosmos.create_belief(this.in_mind, {sid: belief.subject.sid, bases: [belief], traits}, this)
+    const new_belief = Belief.from_template(this.in_mind, {sid: belief.subject.sid, bases: [belief], traits}, this)
     return this.tick({ replace: [new_belief] })
   }
 
@@ -317,7 +318,7 @@ export class State {
       }
 
       // Create the belief and add to state's insert list
-      const new_belief = Cosmos.create_belief(this.in_mind, {
+      const new_belief = Belief.from_template(this.in_mind, {
         bases: archetype_bases,
         traits: {
           '@about': DB.get_or_create_subject(belief.subject.sid),  // Shared canonical Subject
@@ -348,7 +349,7 @@ export class State {
       }
 
       // Create updated belief - keeps all old traits, updates specified ones
-      const updated_belief = Cosmos.create_belief(this.in_mind, {
+      const updated_belief = Belief.from_template(this.in_mind, {
         bases: [existing_belief],
         traits: new_traits
       })
@@ -398,8 +399,8 @@ export class State {
 
   toJSON() {
     // Register in_mind as dependency if we're in a serialization context
-    if (Cosmos.is_serializing() && this.in_mind) {
-      Cosmos.add_serialization_dependency(this.in_mind)
+    if (Serialize.active && this.in_mind) {
+      Serialize.add_dependency(this.in_mind)
     }
 
     return {

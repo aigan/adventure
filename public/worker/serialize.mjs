@@ -1,5 +1,5 @@
 import { set_id_sequence } from './id_sequence.mjs'
-import * as Cosmos from './cosmos.mjs'
+import { Mind } from './mind.mjs'
 
 /**
  * Serialization coordinator with dependency tracking
@@ -9,6 +9,17 @@ export class Serialize {
   static dependency_queue = null
   /** @type {Set<number>|null} */
   static seen = null
+  /** @type {boolean} */
+  static active = false
+
+  /**
+   * @param {import('./mind.mjs').Mind} mind
+   */
+  static add_dependency(mind) {
+    if (Serialize.dependency_queue !== null) {
+      Serialize.dependency_queue.push(mind)
+    }
+  }
 
   /**
    * Save mind to JSON string with automatic nested mind discovery
@@ -16,7 +27,7 @@ export class Serialize {
    * @returns {string} JSON string
    */
   static save_mind(mind) {
-    Cosmos.set_serializing(true)
+    Serialize.active = true
     Serialize.dependency_queue = []
     Serialize.seen = new Set([mind._id])
 
@@ -31,7 +42,7 @@ export class Serialize {
       }
     }
 
-    Cosmos.set_serializing(false)
+    Serialize.active = false
     Serialize.dependency_queue = null
     Serialize.seen = null
 
@@ -68,7 +79,7 @@ export function load(json_string) {
   let result
   switch (data._type) {
     case 'Mind':
-      result = Cosmos.Mind.from_json(/** @type {import('./mind.mjs').MindJSON} */ (data))
+      result = Mind.from_json(/** @type {import('./mind.mjs').MindJSON} */ (data))
       break
     case 'Belief':
       throw new Error('Loading individual Belief not yet implemented')

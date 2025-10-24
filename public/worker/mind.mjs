@@ -23,6 +23,7 @@
 import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'
+import { State } from './state.mjs'
 
 /**
  * @typedef {object} MindJSON
@@ -95,7 +96,7 @@ export class Mind {
    * @returns {import('./state.mjs').State}
    */
   create_state(timestamp, ground_state = null) {
-    const state = Cosmos.create_state(this, timestamp, null, ground_state)
+    const state = new State(this, timestamp, null, ground_state)
     return state
   }
 
@@ -170,10 +171,10 @@ export class Mind {
     }
 
     // Create the mind (no self property - that's on State now)
-    const entity_mind = Cosmos.create_mind(null)
+    const entity_mind = new Mind(null)
 
     // Create initial state with self reference
-    const state = Cosmos.create_state(
+    const state = new State(
       entity_mind,
       1,  // timestamp
       null,  // no base

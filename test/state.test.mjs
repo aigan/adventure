@@ -371,7 +371,7 @@ describe('State', () => {
       });
 
       // Create state with self
-      const state = Cosmos.create_state(
+      const state = new State(
         mind,
         1,
         null,
@@ -389,7 +389,7 @@ describe('State', () => {
         bases: ['Actor']
       });
 
-      const state1 = Cosmos.create_state(mind, 1, null, null, body.subject);
+      const state1 = new State(mind, 1, null, null, body.subject);
       state1.lock();
 
       const state2 = state1.branch_state(null);
@@ -405,7 +405,7 @@ describe('State', () => {
         bases: ['Actor']
       });
 
-      const state1 = Cosmos.create_state(mind, 1, null, null, body.subject);
+      const state1 = new State(mind, 1, null, null, body.subject);
       const state2 = state1.tick({ insert: [] });
 
       expect(state2.self).to.equal(body.subject);
@@ -419,7 +419,7 @@ describe('State', () => {
         bases: ['Actor']
       });
 
-      const state = Cosmos.create_state(mind, 1, null, null, body.subject);
+      const state = new State(mind, 1, null, null, body.subject);
 
       const json = state.toJSON();
       expect(json.self).to.equal(body.subject.sid);

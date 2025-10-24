@@ -1,6 +1,7 @@
 import { describe, it, beforeEach } from 'mocha'
 import { expect } from 'chai'
 import { Mind } from '../public/worker/mind.mjs'
+import { State } from '../public/worker/state.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { setupStandardArchetypes } from './helpers.mjs'
@@ -46,10 +47,9 @@ describe('Locking Constraints', () => {
       // world_state is still unlocked, but player is locked
       const player_mind = new Mind('player_mind')
 
-      // Use Cosmos.create_state directly to pass self parameter
-      const Cosmos = await import('../public/worker/cosmos.mjs')
+      // Use State constructor directly to pass self parameter
       expect(() => {
-        Cosmos.create_state(player_mind, 1, null, world_state, player.subject)
+        new State(player_mind, 1, null, world_state, player.subject)
       }).to.throw('Cannot create state for locked self')
     })
 

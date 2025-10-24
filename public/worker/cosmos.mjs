@@ -21,87 +21,8 @@ import { Subject } from './subject.mjs'
 import { Session } from './session.mjs'
 import { Serialize, save_mind, load } from './serialize.mjs'
 
-// No more init function calls needed! Classes use factory functions from this module.
-
-// ============================================================================
-// Factory Functions (to eliminate circular dependencies in class files)
-// ============================================================================
-
-/**
- * Create a new Mind instance
- * @param {string|null} label - Mind identifier
- * @param {import('./belief.mjs').Belief|null} self - What this mind considers "self"
- * @returns {Mind}
- */
-export function create_mind(label = null, self = null) {
-  return new Mind(label, self)
-}
-
-/**
- * Create a new Belief instance from template
- * @param {Mind} mind - Mind this belief belongs to
- * @param {object} def - Belief definition (template with potential string bases and trait templates)
- * @param {import('./state.mjs').State|null} [creator_state] - State creating this belief
- * @returns {import('./belief.mjs').Belief}
- */
-export function create_belief(mind, def, creator_state = null) {
-  return Belief.from_template(mind, def, creator_state)
-}
-
-/**
- * Create a new State instance
- * @param {Mind} mind - Mind this state belongs to
- * @param {number} timestamp - State timestamp/tick
- * @param {import('./state.mjs').State|null} base - Base state
- * @param {import('./state.mjs').State|null} ground_state - Ground state reference
- * @param {import('./subject.mjs').Subject|null} self - Who experiences this state
- * @returns {import('./state.mjs').State}
- */
-export function create_state(mind, timestamp, base = null, ground_state = null, self = null) {
-  return new State(mind, timestamp, base, ground_state, self)
-}
-
-// ============================================================================
-// Serialization State Management
-// ============================================================================
-
-let _serializing = false
-
-/**
- * @returns {boolean}
- */
-export function is_serializing() {
-  return _serializing
-}
-
-/**
- * @param {boolean} val
- */
-export function set_serializing(val) {
-  _serializing = val
-}
-
-/**
- * @param {Mind} mind
- */
-export function add_serialization_dependency(mind) {
-  if (Serialize.dependency_queue !== null) {
-    Serialize.dependency_queue.push(mind)
-  }
-}
-
-// ============================================================================
-// Registry Access Functions
-// ============================================================================
-
-/**
- * Get Traittype by label
- * @param {string} label
- * @returns {import('./traittype.mjs').Traittype|undefined}
- */
-export function get_traittype(label) {
-  return DB.traittype_by_label[label]
-}
+// No more init function calls needed! Classes import each other directly where possible.
+// Serialization state management lives in Serialize class (serialize.mjs)
 
 // ============================================================================
 // Type Definitions

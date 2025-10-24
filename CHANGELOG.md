@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## 2025-10-24
 
+### Cosmos Cleanup
+Removed factory methods from Cosmos (create_mind, create_belief, create_state, get_traittype). Classes now import directly - no circular dependencies exist. Serialization state moved to Serialize class. Cosmos is now pure re-export mediator.
+
+### Inspection UI Enhancement
+Added `[MUTABLE]` indicator for unlocked states and beliefs
+
+## 2025-10-24
+
 ### Mind and Self Refactor
 - **State.self**: `self` property moved from Mind to State (temporal self-identity)
 - **`mind` trait**: Replaced `mind_states` array with singular `mind` reference

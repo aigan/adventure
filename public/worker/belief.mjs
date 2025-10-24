@@ -79,7 +79,7 @@ export class Belief {
   resolve_and_add_trait(label, data, creator_state = null) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
-    const traittype = Cosmos.get_traittype(label)
+    const traittype = DB.traittype_by_label[label]
     assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.get_label(), data, Traittype_by_label: DB.traittype_by_label})
 
     const value = /** @type {import('./traittype.mjs').Traittype} */ (traittype).resolve(this.in_mind, data, this, creator_state)
@@ -122,7 +122,7 @@ export class Belief {
     if (about_trait instanceof Subject) {
       // Check if @about traittype specifies mind scope
       let resolve_state = state
-      if (Cosmos.get_traittype('@about')?.mind_scope === 'parent' && state?.ground_state) {
+      if (DB.traittype_by_label['@about']?.mind_scope === 'parent' && state?.ground_state) {
         resolve_state = state.ground_state
       }
 
@@ -324,7 +324,7 @@ export class Belief {
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
         [...this.traits].map(([k, v]) => {
-          const traittype = Cosmos.get_traittype(k)
+          const traittype = DB.traittype_by_label[k]
           assert(traittype != null, `Traittype '${k}' not found`)
           return [k, traittype.inspect(state, v)]
         })
@@ -361,7 +361,7 @@ export class Belief {
       return deserialize_trait_value(value)
     } else if (typeof value === 'number') {
       // Check if this trait type is a Belief reference or Subject
-      const traittype = Cosmos.get_traittype(trait_name)
+      const traittype = DB.traittype_by_label[trait_name]
       if (traittype) {
         if (DB.archetype_by_label[traittype.data_type] || traittype.data_type === 'Subject') {
           // It's a Belief/Subject reference - wrap in Subject
