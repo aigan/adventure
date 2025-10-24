@@ -54,10 +54,11 @@ export function create_belief(mind, def, creator_state = null) {
  * @param {number} timestamp - State timestamp/tick
  * @param {import('./state.mjs').State|null} base - Base state
  * @param {import('./state.mjs').State|null} ground_state - Ground state reference
+ * @param {import('./subject.mjs').Subject|null} self - Who experiences this state
  * @returns {import('./state.mjs').State}
  */
-export function create_state(mind, timestamp, base = null, ground_state = null) {
-  return new State(mind, timestamp, base, ground_state)
+export function create_state(mind, timestamp, base = null, ground_state = null, self = null) {
+  return new State(mind, timestamp, base, ground_state, self)
 }
 
 // ============================================================================
@@ -123,6 +124,7 @@ export function get_traittype(label) {
  * @property {number} timestamp - State timestamp/tick
  * @property {number|null} base - Base state _id (null for root states)
  * @property {number|null} ground_state - Ground state _id (null if no external reference)
+ * @property {number|null} self - Subject sid (null if no self identity)
  * @property {number[]} insert - Belief _ids present in this state
  * @property {number[]} remove - Belief _ids removed in this state
  * @property {number} in_mind - Mind _id this state belongs to

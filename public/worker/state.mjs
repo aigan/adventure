@@ -33,6 +33,7 @@ import { Belief } from './belief.mjs'
  * @property {number} timestamp - State timestamp/tick
  * @property {number|null} base - Base state _id (null for root states)
  * @property {number|null} ground_state - Ground state _id (null if no external reference)
+ * @property {number|null} self - Subject sid (null if no self identity)
  * @property {number[]} insert - Belief _ids present in this state
  * @property {number[]} remove - Belief _ids removed in this state
  * @property {number} in_mind - Mind _id this state belongs to
@@ -62,9 +63,11 @@ export class State {
    * @param {number} timestamp
    * @param {State|null} base
    * @param {State|null} ground_state
+   * @param {import('./subject.mjs').Subject|null} self
    */
-  constructor(mind, timestamp, base=null, ground_state=null) {
+  constructor(mind, timestamp, base=null, ground_state=null, self=null) {
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
+    assert(self === null || self instanceof Subject, 'self must be Subject or null')
     this._id = next_id()
     this.in_mind = mind
     /** @type {State|null} */ this.base = base
@@ -72,6 +75,7 @@ export class State {
     /** @type {import('./belief.mjs').Belief[]} */ this.insert = []
     /** @type {import('./belief.mjs').Belief[]} */ this.remove = []
     /** @type {State|null} */ this.ground_state = ground_state
+    /** @type {import('./subject.mjs').Subject|null} */ this.self = self
     /** @type {State[]} */ this.branches = []
     this.locked = false
 
@@ -115,7 +119,7 @@ export class State {
    * @returns {State} New unlocked state
    */
   branch_state(ground_state) {
-    const state = Cosmos.create_state(this.in_mind, this.timestamp + 1, this, ground_state ?? this.ground_state)
+    const state = Cosmos.create_state(this.in_mind, this.timestamp + 1, this, ground_state ?? this.ground_state, this.self)
     this.branches.push(state)
     return state
   }
@@ -397,6 +401,7 @@ export class State {
       timestamp: this.timestamp,
       base: this.base?._id ?? null,
       ground_state: this.ground_state?._id ?? null,
+      self: this.self?.toJSON() ?? null,
       insert: this.insert.map(b => b._id),
       remove: this.remove.map(b => b._id),
       in_mind: this.in_mind?._id ?? null
@@ -423,8 +428,14 @@ export class State {
     // Ground state: explicit in spec, or inferred from creator, or null
     const ground = spec.ground_state ?? creator_state ?? null
 
-    // Create initial state
-    const state = entity_mind.create_state(1, ground)
+    // Create initial state with self reference
+    const state = Cosmos.create_state(
+      entity_mind,
+      1,
+      null,
+      ground,
+      owner_belief?.subject ?? null
+    )
 
     // Build combined learn spec (prototype + custom)
     /** @type {Record<string, any>} */
@@ -493,6 +504,12 @@ export class State {
       }
     }
 
+    // Resolve self reference
+    let self = null
+    if (data.self != null) {
+      self = DB.get_or_create_subject(data.self)
+    }
+
     // Resolve insert/remove belief references
     const insert = []
     for (const belief_id of data.insert) {
@@ -521,6 +538,7 @@ export class State {
     state.insert = insert
     state.remove = remove
     state.ground_state = ground_state
+    state.self = self
     state.branches = []
     state.locked = false
 

@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import * as Cosmos from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupMinimalArchetypes, setupStandardArchetypes } from './helpers.mjs';
 
@@ -351,6 +352,115 @@ describe('State', () => {
       // This creates a proper circular reference in state2
       const room1_v2_location_resolved = room1_v2_location.resolve(state2);
       expect(room1_v2_location_resolved).to.equal(room2);
+    });
+  });
+
+  describe('State self property', () => {
+    beforeEach(() => {
+      DB.reset_registries();
+      setupStandardArchetypes();
+    });
+
+    it('creates state with self reference', () => {
+      const mind = new Mind('test');
+
+      // Create a belief to be self
+      const body = Belief.from_template(mind, {
+        label: 'body',
+        bases: ['Actor']
+      });
+
+      // Create state with self
+      const state = Cosmos.create_state(
+        mind,
+        1,
+        null,
+        null,
+        body.subject
+      );
+
+      expect(state.self).to.equal(body.subject);
+    });
+
+    it('branch_state inherits self from parent', () => {
+      const mind = new Mind('test');
+      const body = Belief.from_template(mind, {
+        label: 'body',
+        bases: ['Actor']
+      });
+
+      const state1 = Cosmos.create_state(mind, 1, null, null, body.subject);
+      state1.lock();
+
+      const state2 = state1.branch_state(null);
+
+      expect(state2.self).to.equal(body.subject);
+      expect(state2.self).to.equal(state1.self);
+    });
+
+    it('tick inherits self from parent', () => {
+      const mind = new Mind('test');
+      const body = Belief.from_template(mind, {
+        label: 'body',
+        bases: ['Actor']
+      });
+
+      const state1 = Cosmos.create_state(mind, 1, null, null, body.subject);
+      const state2 = state1.tick({ insert: [] });
+
+      expect(state2.self).to.equal(body.subject);
+      expect(state2.self).to.equal(state1.self);
+    });
+
+    it('serializes and deserializes self', () => {
+      const mind = new Mind('test');
+      const body = Belief.from_template(mind, {
+        label: 'body',
+        bases: ['Actor']
+      });
+
+      const state = Cosmos.create_state(mind, 1, null, null, body.subject);
+
+      const json = state.toJSON();
+      expect(json.self).to.equal(body.subject.sid);
+    });
+
+    it('allows null self for root minds', () => {
+      const mind = new Mind('world');
+      const state = mind.create_state(1);
+
+      expect(state.self).to.be.null;
+    });
+
+    it('State.resolve_template sets self from owner_belief', () => {
+      const world_mind = new Mind('world');
+      const world_state = world_mind.create_state(1);
+
+      const player_body = Belief.from_template(world_mind, {
+        label: 'player_body',
+        bases: ['Actor']
+      });
+
+      world_state.insert_beliefs(player_body);
+      world_state.lock();
+
+      // Create player with mind_states using resolve_template
+      // Person archetype has Mental which has mind_states trait
+      const player = Belief.from_template(world_mind, {
+        label: 'player',
+        bases: ['Person'],
+        traits: {
+          mind_states: {
+            _type: 'State',
+            learn: {}
+          }
+        }
+      }, world_state);
+
+      const mind_states = player.traits.get('mind_states');
+      const player_state = mind_states[0];
+
+      expect(player_state.self).to.equal(player.subject);
     });
   });
 });
