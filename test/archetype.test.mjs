@@ -50,9 +50,9 @@ describe('Archetype', () => {
       expect(inspected.archetypes).to.deep.equal(['Person', 'Actor', 'Mental', 'ObjectPhysical']);
 
       // Person → Actor → ObjectPhysical (has location, color)
-      // Person → Mental (has mind_states)
+      // Person → Mental (has mind)
       expect(player.can_have_trait('location')).to.be.true;
-      expect(player.can_have_trait('mind_states')).to.be.true;
+      expect(player.can_have_trait('mind')).to.be.true;
     });
 
     it('get_archetypes walks full inheritance chain', () => {

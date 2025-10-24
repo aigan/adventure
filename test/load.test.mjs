@@ -192,11 +192,8 @@ describe('Save/Load functionality', () => {
           bases: ['Person'],
           traits: {
             location: 'workshop',
-            mind_states: {
-              _type: 'State',
-              learn: {
-                workshop: ['location']
-              },
+            mind: {
+              workshop: ['location']
             }
           },
         },
@@ -233,11 +230,13 @@ describe('Save/Load functionality', () => {
       expect(DB.get_belief_by_label('player')).to.exist;
       expect(DB.get_belief_by_label('ball')).to.exist;
 
-      // Verify player has mind_states
+      // Verify player has mind
       const loaded_player = DB.get_belief_by_label('player');
-      const mind_states = loaded_player.traits.get('mind_states');
-      expect(mind_states).to.be.an('array');
-      expect(mind_states[0]).to.be.instanceOf(State);
+      const player_mind = loaded_player.traits.get('mind');
+      expect(player_mind).to.be.instanceOf(Mind);
+      const states = [...player_mind.state];
+      expect(states.length).to.be.at.least(1);
+      expect(states[0]).to.be.instanceOf(State);
 
       // Verify ball has color (use ID to find exact versioned belief)
       const loaded_ball = DB.belief_by_id.get(ball_v2_id);
@@ -316,11 +315,8 @@ describe('Save/Load functionality', () => {
           bases: ['Person'],
           traits: {
             location: 'workshop',
-            mind_states: {
-              _type: 'State',
-              learn: {
-                workshop: ['location']
-              },
+            mind: {
+              workshop: ['location']
             }
           },
         },

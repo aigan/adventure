@@ -432,7 +432,10 @@ describe('State', () => {
       expect(state.self).to.be.null;
     });
 
-    it('State.resolve_template sets self from owner_belief', () => {
+    it('Mind.resolve_template sets state.self from owner_belief subject', () => {
+      DB.reset_registries();
+      setupStandardArchetypes();
+
       const world_mind = new Mind('world');
       const world_state = world_mind.create_state(1);
 
@@ -444,23 +447,26 @@ describe('State', () => {
       world_state.insert_beliefs(player_body);
       world_state.lock();
 
-      // Create player with mind_states using resolve_template
-      // Person archetype has Mental which has mind_states trait
+      // Create player with mind trait using resolve_template
+      // Person archetype has Mental which has mind trait
       const player = Belief.from_template(world_mind, {
         label: 'player',
         bases: ['Person'],
         traits: {
-          mind_states: {
-            _type: 'State',
-            learn: {}
+          mind: {
+            // empty learn spec
           }
         }
       }, world_state);
 
-      const mind_states = player.traits.get('mind_states');
-      const player_state = mind_states[0];
+      const player_mind = player.traits.get('mind');
+      expect(player_mind).to.be.instanceOf(Mind);
+
+      const states = [...player_mind.state];
+      const player_state = states[0];
 
       expect(player_state.self).to.equal(player.subject);
+      expect(player_state.ground_state).to.equal(world_state);
     });
   });
 });

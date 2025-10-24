@@ -1,6 +1,6 @@
 # Mind-Self Refactor - Phase 1: Add `self` to State
 
-**Parent Plan**: [mind-self-refactor.md](mind-self-refactor.md)
+**Parent Plan**: [mind-self-refactor.md](../mind-self-refactor.md)
 
 **Goal**: Add `self` property to State without breaking any existing code. This is a purely additive change.
 

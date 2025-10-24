@@ -409,67 +409,6 @@ export class State {
   }
 
   /**
-   * Construct State from declarative template
-   * @param {import('./mind.mjs').Mind} parent_mind - Mind creating this (context for belief resolution)
-   * @param {object} spec
-   * @param {string} spec._type - Must be 'State'
-   * @param {string} [spec.mind_label] - Optional label for the mind (for debugging)
-   * @param {string} [spec.base] - Prototype template name from State.by_label
-   * @param {Object<string, string[]>} [spec.learn] - {belief_label: [trait_names]}
-   * @param {State} [spec.ground_state] - Explicit ground state reference
-   * @param {import('./belief.mjs').Belief|null} owner_belief - Belief that this mind considers "self"
-   * @param {State|null} [creator_state] - State creating this (for inferring ground_state)
-   * @returns {State}
-   */
-  static resolve_template(parent_mind, spec, owner_belief = null, creator_state = null) {
-    // Create entity's mind with optional label and self
-    const entity_mind = Cosmos.create_mind(spec.mind_label || null, owner_belief)
-
-    // Ground state: explicit in spec, or inferred from creator, or null
-    const ground = spec.ground_state ?? creator_state ?? null
-
-    // Create initial state with self reference
-    const state = Cosmos.create_state(
-      entity_mind,
-      1,
-      null,
-      ground,
-      owner_belief?.subject ?? null
-    )
-
-    // Build combined learn spec (prototype + custom)
-    /** @type {Record<string, any>} */
-    const learn_spec = {}
-
-    // Apply prototype template
-    if (spec.base && DB.state_by_label[spec.base]) {
-      const prototype = /** @type {any} */ (DB.state_by_label[spec.base])
-      Object.assign(learn_spec, prototype.learn || {})
-    }
-
-    // Merge custom learning (overrides prototype)
-    Object.assign(learn_spec, spec.learn || {})
-
-    // Execute learning
-    for (const [label, trait_names] of Object.entries(learn_spec)) {
-      const belief = DB.get_belief_by_label(label)
-      if (!belief) {
-        throw new Error(`Cannot learn about '${label}': belief not found`)
-      }
-
-      // Only learn explicitly listed traits (empty array = nothing)
-      if (trait_names.length > 0) {
-        // Use ground state as source context (the parent mind's state we're observing from)
-        assert(ground != null, `Cannot learn about beliefs without ground_state context`)
-        state.learn_about(belief, trait_names, /** @type {State} */ (ground))
-      }
-    }
-
-    state.lock()
-    return state
-  }
-
-  /**
    * Create State from JSON data (fully materialized)
    * @param {import('./mind.mjs').Mind} mind - Mind this state belongs to (or context for resolution)
    * @param {StateJSON} data - JSON data with _type: 'State'

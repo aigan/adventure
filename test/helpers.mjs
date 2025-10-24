@@ -35,11 +35,7 @@ export function setupStandardArchetypes() {
       mind: 'parent'
     },
     location: 'Location',
-    mind_states: {
-      type: 'State',
-      container: Array,
-      min: 1
-    },
+    mind: 'Mind',
     color: 'string',
   };
 
@@ -53,7 +49,7 @@ export function setupStandardArchetypes() {
     },
     Mental: {
       traits: {
-        mind_states: null,
+        mind: null,
       },
     },
     Location: {

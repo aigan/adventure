@@ -200,23 +200,25 @@ export class Traittype {
    * @returns {*}
    */
   resolve(mind, data, owner_belief = null, creator_state = null) {
-    // Check for template construction first (_type field)
-    if (data?._type) {
-      let result
-      if (data._type === 'Mind') {
-        // TypeScript: Call resolve_template as any to avoid type check on static method
-        result = /** @type {any} */ (Cosmos.Mind).resolve_template(mind, data, owner_belief, creator_state)
-      } else if (data._type === 'State') {
-        result = /** @type {any} */ (Cosmos.State).resolve_template(mind, data, owner_belief, creator_state)
-      }
+    // Check for Mind template (plain object learn spec)
+    if (this.data_type === 'Mind' &&
+        data &&
+        typeof data === 'object' &&
+        !data._type &&
+        !(data instanceof Mind)) {
+      // It's a learn spec - call Mind.resolve_template
+      return /** @type {any} */ (Cosmos.Mind).resolve_template(
+        mind,
+        data,
+        owner_belief?.subject ?? null,
+        creator_state
+      )
+    }
 
-      if (result !== undefined) {
-        // Wrap in array if container expects it
-        if (this.container === Array && !Array.isArray(result)) {
-          return [result]
-        }
-        return result
-      }
+    // Check for template construction with _type field (Mind only)
+    if (data?._type === 'Mind') {
+      // TypeScript: Call resolve_template as any to avoid type check on static method
+      return /** @type {any} */ (Cosmos.Mind).resolve_template(mind, data, owner_belief, creator_state)
     }
 
     return this._resolver(mind, data)
@@ -265,7 +267,12 @@ export class Traittype {
       return {_ref: value._id, _type: 'State'}
     }
     if (value instanceof Mind) {
-      return {_ref: value._id, _type: 'Mind', label: value.label}
+      return {
+        _ref: value._id,
+        _type: 'Mind',
+        label: value.label,
+        states: [...value.state].map(s => ({_ref: s._id, _type: 'State'}))
+      }
     }
     if (value?.toJSON) return value.toJSON()
     return value

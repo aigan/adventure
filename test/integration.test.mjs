@@ -56,11 +56,11 @@ describe('Integration', () => {
       const player_mind_state = player_mind.create_state(1);
       player = Belief.from_template(player.in_mind, {
         bases: [player],
-        traits: { mind_states: [player_mind_state] }
+        traits: { mind: player_mind }
       });
 
       const player_inspected = player.inspect(world_state);
-      expect(player_inspected.traits.mind_states[0]._ref).to.equal(player_mind_state._id);
+      expect(player_inspected.traits.mind._ref).to.equal(player_mind._id);
 
       // Verify learn_about
       const workshop = DB.get_belief_by_label('workshop');

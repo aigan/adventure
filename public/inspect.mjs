@@ -195,17 +195,26 @@ function render_entity(a, target = $main){
         display_value = items.join(', ');
       } else if (typeof value === 'object' && value !== null) {
         if (value._ref && value._type) {
-          // Reference to another belief or object
-          const type_lower = value._type.toLowerCase();
-          const label_text = value.label ? ` (${value.label})` : '';
-          const link = (type_lower === 'belief' && state_id)
-            ? `?${type_lower}=${value._ref}&state=${state_id}`
-            : `?${type_lower}=${value._ref}`;
-          // Add mind prefix if different mind
-          const mind_prefix = (value.mind_id && value.mind_id !== belief_mind_id)
-            ? `${value.mind_label || 'Mind #' + value.mind_id}: `
-            : '';
-          display_value = `<a href="${link}">${mind_prefix}#${value._ref}${label_text}</a>`;
+          // Handle Mind type specially - render its states instead of linking to Mind
+          if (value._type === 'Mind' && value.states) {
+            const state_links = value.states.map(s => {
+              const link = `?state=${s._ref}`;
+              return `<a href="${link}">#${s._ref}</a>`;
+            });
+            display_value = state_links.join(', ');
+          } else {
+            // Reference to another belief or object
+            const type_lower = value._type.toLowerCase();
+            const label_text = value.label ? ` (${value.label})` : '';
+            const link = (type_lower === 'belief' && state_id)
+              ? `?${type_lower}=${value._ref}&state=${state_id}`
+              : `?${type_lower}=${value._ref}`;
+            // Add mind prefix if different mind
+            const mind_prefix = (value.mind_id && value.mind_id !== belief_mind_id)
+              ? `${value.mind_label || 'Mind #' + value.mind_id}: `
+              : '';
+            display_value = `<a href="${link}">${mind_prefix}#${value._ref}${label_text}</a>`;
+          }
         } else {
           display_value = JSON.stringify(value, null, 2);
         }

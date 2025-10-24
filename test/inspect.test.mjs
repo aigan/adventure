@@ -109,7 +109,7 @@ describe('inspect.mjs', () => {
       expect(html).to.include('(workshop)');
     });
 
-    it('renders entity with array of State references', () => {
+    it('renders entity with Mind reference', () => {
       const input = {
         entity: {
           data: {
@@ -117,10 +117,15 @@ describe('inspect.mjs', () => {
               _id: 10,
               label: 'player',
               traits: {
-                mind_states: [
-                  { _ref: 101, _type: 'State' },
-                  { _ref: 102, _type: 'State', label: 'current' }
-                ]
+                mind: {
+                  _ref: 7,
+                  _type: 'Mind',
+                  label: 'player_mind',
+                  states: [
+                    { _ref: 8, _type: 'State' },
+                    { _ref: 9, _type: 'State' }
+                  ]
+                }
               }
             }
           }
@@ -130,14 +135,12 @@ describe('inspect.mjs', () => {
       render_entity(input, mockTarget);
 
       const html = mockTarget.innerHTML;
-      expect(html).to.include('<dt>mind_states</dt>');
-      expect(html).to.include('href="?state=101"');
-      expect(html).to.include('#101');
-      expect(html).to.include('href="?state=102"');
-      expect(html).to.include('#102');
-      expect(html).to.include('(current)');
-      // Should be comma-separated
-      expect(html).to.match(/#101.*,.*#102/);
+      expect(html).to.include('<dt>mind</dt>');
+      // Mind trait should link to its states, not the Mind itself
+      expect(html).to.include('href="?state=8"');
+      expect(html).to.include('#8');
+      expect(html).to.include('href="?state=9"');
+      expect(html).to.include('#9');
     });
 
     it('renders entity with array of primitive values', () => {
@@ -313,7 +316,7 @@ describe('inspect.mjs', () => {
               _id: 72,
               label: 'npc_with_multiple_states',
               traits: {
-                mind_states: [
+                state_history: [
                   { _ref: 301, _type: 'State' },
                   { _ref: 302, _type: 'State', label: 'planning' },
                   { _ref: 303, _type: 'State', label: 'current' }
@@ -327,7 +330,7 @@ describe('inspect.mjs', () => {
       render_entity(input, mockTarget);
 
       const html = mockTarget.innerHTML;
-      expect(html).to.include('<dt>mind_states</dt>');
+      expect(html).to.include('<dt>state_history</dt>');
       // Check all three states are linked
       expect(html).to.include('href="?state=301"');
       expect(html).to.include('#301');

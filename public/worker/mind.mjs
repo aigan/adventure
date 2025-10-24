@@ -155,4 +155,45 @@ export class Mind {
 
     return mind
   }
+
+  /**
+   * Create Mind with initial state from declarative template
+   * @param {Mind} parent_mind - Mind creating this (context for belief resolution)
+   * @param {Object<string, string[]>} learn_spec - {belief_label: [trait_names]}
+   * @param {import('./subject.mjs').Subject|null} self_subject - Subject that becomes state.self
+   * @param {import('./state.mjs').State|null} creator_state - State creating this (provides ground_state)
+   * @returns {Mind}
+   */
+  static resolve_template(parent_mind, learn_spec, self_subject, creator_state) {
+    const assert = (/** @type {any} */ condition, /** @type {string} */ message, /** @type {any} */ context) => {
+      if (!condition) throw new Error(message + (context ? ': ' + JSON.stringify(context) : ''))
+    }
+
+    // Create the mind (no self property - that's on State now)
+    const entity_mind = Cosmos.create_mind(null)
+
+    // Create initial state with self reference
+    const state = Cosmos.create_state(
+      entity_mind,
+      1,  // timestamp
+      null,  // no base
+      creator_state,  // ground_state (where body exists)
+      self_subject  // self (WHO is experiencing this)
+    )
+
+    // Execute learning
+    for (const [label, trait_names] of Object.entries(learn_spec)) {
+      const belief = DB.get_belief_by_label(label)
+      if (!belief) {
+        throw new Error(`Cannot learn about '${label}': belief not found`)
+      }
+      if (trait_names.length > 0) {
+        assert(creator_state != null, `Cannot learn about beliefs without ground_state context`, null)
+        state.learn_about(belief, trait_names, creator_state)
+      }
+    }
+
+    state.lock()
+    return entity_mind  // Return Mind, not State
+  }
 }

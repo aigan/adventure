@@ -29,12 +29,7 @@ export function setupStandardArchetypes() {
       mind: 'parent'  // Resolve in parent mind's ground state
     },
     location: 'Location',
-    mind_states: {
-      // All the states that are having this ground_state
-      type: 'State',
-      container: Array,
-      min: 1
-    },
+    mind: 'Mind',  // Singular Mind reference
     color: 'string',
   };
 
@@ -49,7 +44,7 @@ export function setupStandardArchetypes() {
     },
     Mental: {
       traits: {
-        mind_states: null,
+        mind: null,
       },
     },
     Location: {
@@ -91,14 +86,8 @@ const world_belief = {
     bases: ['Person'],
     traits: {
       location: 'workshop',
-      mind_states: {
-        _type: 'State',
-        learn: {
-          workshop: ['location']
-        },
-        // ground_state automatically inferred from state.add_beliefs context
-        // Note: Can't learn about 'player' here since it's not registered yet
-        // The prototype already learns about workshop
+      mind: {
+        workshop: ['location']
       }
     },
   },
@@ -112,7 +101,8 @@ state.lock();
 
 const player = DB.get_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
-let player_state = player.get_trait(state, 'mind_states')[0];
+const player_mind = player.get_trait(state, 'mind');
+let player_state = [...player_mind.state][0];
 player_state = player_state.branch_state(state);
 player_state.learn_about(DB.get_belief_by_label('hammer'), ['location']);
 player_state.lock();
