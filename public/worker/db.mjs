@@ -222,6 +222,20 @@ export function reset_all_registries() {
  */
 
 /**
+ * Get all trait names that are Mind-typed (including arrays of Minds)
+ * @returns {string[]} Array of trait names with Mind data_type
+ */
+export function get_mind_trait_names() {
+  const mind_traits = []
+  for (const [label, traittype] of Object.entries(traittype_by_label)) {
+    if (traittype.data_type === 'Mind') {
+      mind_traits.push(label)
+    }
+  }
+  return mind_traits
+}
+
+/**
  * Reset all registries (for testing)
  */
 export function reset_registries() {

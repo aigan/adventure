@@ -1,6 +1,6 @@
 # Mind-Self Refactor - Phase 3: Replace mind_states with mind everywhere
 
-**Parent Plan**: [mind-self-refactor.md](../mind-self-refactor.md)
+**Parent Plan**: [mind-self-refactor.md](mind-self-refactor.md)
 
 **Goal**: Complete migration from `mind_states` array to `mind` singular Mind reference. Remove all legacy code.
 

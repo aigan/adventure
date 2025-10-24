@@ -68,6 +68,13 @@ export class State {
   constructor(mind, timestamp, base=null, ground_state=null, self=null) {
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
     assert(self === null || self instanceof Subject, 'self must be Subject or null')
+
+    // Check if self belief is unlocked
+    if (self !== null && ground_state !== null) {
+      const self_belief = ground_state.resolve_subject(self.sid)
+      assert(self_belief === null || !self_belief.locked, 'Cannot create state for locked self')
+    }
+
     this._id = next_id()
     this.in_mind = mind
     /** @type {State|null} */ this.base = base

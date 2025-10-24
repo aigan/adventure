@@ -64,9 +64,10 @@ const dispatch = {
       : '';
 
     const mind_prefix = dat.state.mind_label || dat.state.self_label || `Mind #${dat.state.mind_id}`;
+    const mutable_indicator = dat.state.locked === false ? ' <span style="color: orange; font-weight: bold;">[MUTABLE]</span>' : '';
 
     render({
-      header: `${mind_prefix} beliefs (State #${dat.state.id}, timestamp: ${dat.state.timestamp}) ${state_nav}`,
+      header: `${mind_prefix} beliefs (State #${dat.state.id}, timestamp: ${dat.state.timestamp}) ${state_nav}${mutable_indicator}`,
       table: {
         columns: ["label", "desig"],
         rows: dat.state.beliefs,
@@ -142,8 +143,9 @@ function render_entity(a, target = $main){
 
   let hout = "<dl>";
 
-  // Display ID
-  hout += `<dt>ID</dt><dd>#${belief_data._id}</dd>`;
+  // Display ID with mutable indicator if unlocked
+  const mutable_indicator = belief_data.locked === false ? ' <span style="color: orange; font-weight: bold;">[MUTABLE]</span>' : '';
+  hout += `<dt>ID</dt><dd>#${belief_data._id}${mutable_indicator}</dd>`;
 
   // Display label
   if (belief_data.label) {

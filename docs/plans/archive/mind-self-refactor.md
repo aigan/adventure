@@ -172,10 +172,12 @@ Mind.resolve_template(parent_mind, learn_spec, self_belief, creator_state)
 
 ## Current Status
 
-**Phase 1: COMPLETE** ✅ - Added `self` property to State ([details](archive/mind-self-refactor-phase1.md))
+**Phase 1: COMPLETE** ✅ - Added `self` property to State ([details](mind-self-refactor-phase1.md))
 
-**Phase 2: COMPLETE** ✅ - Created Mind.resolve_template() and new `mind` trait ([details](archive/mind-self-refactor-phase2.md))
+**Phase 2: COMPLETE** ✅ - Created Mind.resolve_template() and new `mind` trait ([details](mind-self-refactor-phase2.md))
 
-**Phase 3: COMPLETE** ✅ - Replaced mind_states with mind everywhere ([details](archive/mind-self-refactor-phase3.md))
+**Phase 3: COMPLETE** ✅ - Replaced mind_states with mind everywhere ([details](mind-self-refactor-phase3.md))
 
-Next: Implement Phase 4 (add locking constraints)
+**Phase 4: COMPLETE** ✅ - Added locking constraints with cascade ([details](mind-self-refactor-phase4.md))
+
+All phases complete! Mind and Self Refactor is finished.

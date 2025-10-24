@@ -1,6 +1,6 @@
 # Mind-Self Refactor - Phase 2: Create Mind.resolve_template() and `mind` Trait
 
-**Parent Plan**: [mind-self-refactor.md](../mind-self-refactor.md)
+**Parent Plan**: [mind-self-refactor.md](mind-self-refactor.md)
 
 **Goal**: Introduce new `mind` trait (singular Mind reference) alongside existing `mind_states` trait (array). Convert tests to use new syntax.
 

@@ -73,19 +73,25 @@ export const dispatch = {
 			});
 		}
 
+		const state_info = /** @type {{id: number, timestamp: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
+			id: state._id,
+			timestamp: state.timestamp,
+			mind_id: state.in_mind._id,
+			mind_label: state.in_mind.label,
+			self_label: state.in_mind.self?.get_label(),
+			base_id: state.base?._id ?? null,
+			beliefs: data,
+		});
+		// Only include locked field if unlocked (to highlight mutable state)
+		if (!state.locked) {
+			state_info.locked = false;
+		}
+
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity_list",
 			server_id,
 			client_id,
-			state: {
-				id: state._id,
-				timestamp: state.timestamp,
-				mind_id: state.in_mind._id,
-				mind_label: state.in_mind.label,
-				self_label: state.in_mind.self?.get_label(),
-				base_id: state.base?._id ?? null,
-				beliefs: data,
-			},
+			state: state_info,
 		});
 	},
 
@@ -107,19 +113,25 @@ export const dispatch = {
 			});
 		}
 
+		const state_info = /** @type {{id: number, timestamp: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
+			id: state_obj._id,
+			timestamp: state_obj.timestamp,
+			mind_id: state_obj.in_mind._id,
+			mind_label: state_obj.in_mind.label,
+			self_label: state_obj.in_mind.self?.get_label(),
+			base_id: state_obj.base?._id ?? null,
+			beliefs: data,
+		});
+		// Only include locked field if unlocked (to highlight mutable state)
+		if (!state_obj.locked) {
+			state_info.locked = false;
+		}
+
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity_list",
 			server_id,
 			client_id,
-			state: {
-				id: state_obj._id,
-				timestamp: state_obj.timestamp,
-				mind_id: state_obj.in_mind._id,
-				mind_label: state_obj.in_mind.label,
-				self_label: state_obj.in_mind.self?.get_label(),
-				base_id: state_obj.base?._id ?? null,
-				beliefs: data,
-			},
+			state: state_info,
 		});
 	},
 

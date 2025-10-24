@@ -180,6 +180,36 @@ export class Belief {
 
   lock() {
     this.locked = true
+
+    // Cascade to child mind states
+    // Note: Only checks _traits (directly set on this belief), not inherited traits.
+    // Inherited Mind traits come from base beliefs that must already be locked,
+    // so they were already cascaded when the base belief locked.
+    // Query DB for Mind-typed trait names to avoid iterating all traits.
+    const mind_trait_names = DB.get_mind_trait_names()
+    for (const trait_name of mind_trait_names) {
+      const trait_value = this._traits.get(trait_name)
+      if (!trait_value) continue
+
+      // Handle array of Mind references
+      if (Array.isArray(trait_value)) {
+        for (const mind of trait_value) {
+          for (const state of mind.state) {
+            if (!state.locked) {
+              state.lock()
+            }
+          }
+        }
+      }
+      // Handle single Mind reference
+      else {
+        for (const state of trait_value.state) {
+          if (!state.locked) {
+            state.lock()  // This will cascade to state's beliefs, which cascade to their minds, etc.
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -283,10 +313,10 @@ export class Belief {
   /**
    * Create shallow inspection view of this belief
    * @param {import('./state.mjs').State} state - State context for resolving trait sids
-   * @returns {object} Shallow representation with references
+   * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], bases: (string|number)[], traits: any, locked?: boolean}} Shallow representation with references
    */
   inspect(state) {
-    return {
+    const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], bases: (string|number)[], traits: any, locked?: boolean}} */ ({
       _type: 'Belief',
       _id: this._id,
       label: this.get_label(),
@@ -299,7 +329,12 @@ export class Belief {
           return [k, traittype.inspect(state, v)]
         })
       )
+    })
+    // Only include locked field if unlocked (to highlight mutable state)
+    if (!this.locked) {
+      result.locked = false
     }
+    return result
   }
 
   /**

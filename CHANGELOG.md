@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-10-24
+
+### Mind and Self Refactor
+- **State.self**: `self` property moved from Mind to State (temporal self-identity)
+- **`mind` trait**: Replaced `mind_states` array with singular `mind` reference
+  - Old: `mind_states: [{_type: 'State', learn: {...}}]`
+  - New: `mind: {workshop: ['location']}`
+- **State.resolve_template()**: Removed (use Mind.resolve_template() instead)
+- **Locking cascade**: Belief.lock() now cascades to child mind states
+- **Breaking change**: Save file format (pre-alpha, acceptable)
+- Details: [docs/plans/archive/mind-self-refactor.md](docs/plans/archive/mind-self-refactor.md)
+
 ## 2025-01-24
 
 ### `learn_about()` Parameter Refactor
