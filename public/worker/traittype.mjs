@@ -98,7 +98,7 @@ export class Traittype {
    */
   _build_resolver() {
     if (this.container === Array) {
-      return (/** @type {import('./belief.mjs').Belief} */ owner_belief, /** @type {any} */ data, /** @type {import('./state.mjs').State|null} */ creator_state) => {
+      return (/** @type {Belief} */ owner_belief, /** @type {any} */ data, /** @type {State|null} */ creator_state) => {
         if (!Array.isArray(data)) {
           throw new Error(`Expected array for trait '${this.label}', got ${typeof data}`)
         }
@@ -116,15 +116,15 @@ export class Traittype {
       }
     } else {
       // No container - single value
-      return (/** @type {import('./belief.mjs').Belief} */ owner_belief, /** @type {any} */ data, /** @type {import('./state.mjs').State|null} */ creator_state) => this._resolve_item(owner_belief, data, creator_state)
+      return (/** @type {Belief} */ owner_belief, /** @type {any} */ data, /** @type {State|null} */ creator_state) => this._resolve_item(owner_belief, data, creator_state)
     }
   }
 
   /**
    * Resolve a single item (not an array)
-   * @param {import('./belief.mjs').Belief} owner_belief
+   * @param {Belief} owner_belief
    * @param {*} data
-   * @param {import('./state.mjs').State|null} creator_state
+   * @param {State|null} creator_state
    * @returns {*}
    */
   _resolve_item(owner_belief, data, creator_state) {
@@ -133,8 +133,8 @@ export class Traittype {
     //creator_state ??= owner_belief.origin_state
 
     // Check if it's an Archetype reference
-    if (DB.archetype_by_label[type_label]) {
-      const archetype = DB.archetype_by_label[type_label]
+    if (DB.get_archetype_by_label(type_label)) {
+      const archetype = DB.get_archetype_by_label(type_label)
 
       // Handle different input types
       if (typeof data === 'string') {
@@ -187,9 +187,9 @@ export class Traittype {
   }
 
   /**
-   * @param {import('./belief.mjs').Belief} owner_belief - Belief being constructed
+   * @param {Belief} owner_belief - Belief being constructed
    * @param {*} data - Raw data to resolve
-   * @param {import('./state.mjs').State|null} [creator_state] - State creating the belief
+   * @param {State|null} [creator_state] - State creating the belief
    * @returns {*}
    */
   resolve(owner_belief, data, creator_state = null) {
@@ -233,7 +233,7 @@ export class Traittype {
 
   /**
    * Inspect trait value using this traittype's mind_scope
-   * @param {import('./state.mjs').State} state - State context for resolving sids
+   * @param {State} state - State context for resolving sids
    * @param {*} value - Value to inspect
    * @returns {*} Shallow representation with references
    */

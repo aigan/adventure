@@ -258,7 +258,7 @@ describe('Traittype', () => {
   describe('Resolver pattern efficiency', () => {
     it('uses pre-built resolver function', () => {
       const mind = new Mind('test_mind');
-      const traittype = DB.traittype_by_label['states_array'];
+      const traittype = DB._reflect().traittype_by_label['states_array'];
 
       // Verify resolver function exists and is callable
       expect(traittype._resolver).to.be.a('function');
@@ -271,7 +271,7 @@ describe('Traittype', () => {
     });
 
     it('resolver is created during construction', () => {
-      const traittype = DB.traittype_by_label['colors_array'];
+      const traittype = DB._reflect().traittype_by_label['colors_array'];
 
       // Verify properties set during construction
       expect(traittype.data_type).to.equal('string');

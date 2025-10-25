@@ -1,6 +1,11 @@
 import * as DB from './db.mjs'
 
 /**
+ * @typedef {import('./state.mjs').State} State
+ * @typedef {import('./belief.mjs').Belief} Belief
+ */
+
+/**
  * Canonical identity reference for a belief subject
  * Wraps a stable sid that persists across belief versions
  */
@@ -14,8 +19,8 @@ export class Subject {
 
   /**
    * Get Belief for this Subject in state context
-   * @param {import('./state.mjs').State} state
-   * @returns {import('./belief.mjs').Belief}
+   * @param {State} state
+   * @returns {Belief}
    */
   get_belief_by_state(state) {
     const belief = state.get_belief_by_subject(this)
@@ -35,7 +40,7 @@ export class Subject {
 
   /**
    * Shallow inspection for debugging
-   * @param {import('./state.mjs').State} state
+   * @param {State} state
    * @returns {object}
    */
   inspect(state) {
@@ -43,7 +48,7 @@ export class Subject {
 
     // Fallback to global registry if not found in state
     if (!belief) {
-      const beliefs = DB.belief_by_subject.get(this)
+      const beliefs = DB.get_beliefs_by_subject(this)
       if (beliefs?.size) {
         belief = beliefs.values().next().value ?? null
       }

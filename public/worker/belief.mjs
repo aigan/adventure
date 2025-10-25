@@ -21,6 +21,26 @@ import * as Cosmos from './cosmos.mjs'
 import { Subject } from './subject.mjs'
 
 /**
+ * @typedef {import('./state.mjs').State} State
+ * @typedef {import('./mind.mjs').Mind} Mind
+ * @typedef {import('./traittype.mjs').Traittype} Traittype
+ */
+
+/**
+ * @typedef {import('./state.mjs').StateReference} StateReference
+ * @typedef {import('./mind.mjs').MindReference} MindReference
+ */
+
+/**
+ * @typedef {number|string|boolean|null|StateReference|MindReference|Array<number|string|boolean|null|StateReference|MindReference>} SerializedTraitValue
+ * Trait values in JSON can be:
+ * - number (sid or primitive)
+ * - string/boolean/null (primitives)
+ * - StateReference/MindReference (for State/Mind traits)
+ * - Array of any of the above
+ */
+
+/**
  * @typedef {object} BeliefJSON
  * @property {string} _type - Always "Belief"
  * @property {number} _id - Unique version identifier
@@ -29,15 +49,15 @@ import { Subject } from './subject.mjs'
  * @property {number|null} about - Parent belief _id (null if not about another belief)
  * @property {string[]} archetypes - Archetype labels for this belief
  * @property {(string|number)[]} bases - Base archetype labels or belief _ids
- * @property {Object<string, any>} traits - Trait values (sids, primitives, or references)
+ * @property {Object<string, SerializedTraitValue>} traits - Trait values (sids, primitives, or references)
  */
 
 /**
  * Represents a belief about an entity with versioning support
  * @property {number} _id - Unique version identifier
- * @property {import('./subject.mjs').Subject} subject - Canonical Subject (identity holder)
+ * @property {Subject} subject - Canonical Subject (identity holder)
  * @property {string|null} label - Optional label for lookup
- * @property {import('./mind.mjs').Mind} in_mind - Mind this belief belongs to
+ * @property {Mind} in_mind - Mind this belief belongs to
  * @property {Set<Belief|Archetype>} _bases - Base archetypes/beliefs for inheritance
  * @property {Map<string, *>} _traits - Trait values (sids, primitives, State/Mind refs)
  * @property {boolean} locked - Whether belief can be modified
@@ -45,11 +65,11 @@ import { Subject } from './subject.mjs'
 export class Belief {
 
   /**
-   * @param {import('./mind.mjs').Mind} mind
+   * @param {Mind} mind
    * @param {object} param1
-   * @param {import('./subject.mjs').Subject|null} [param1.subject] - Subject (provide to create version of existing subject)
+   * @param {Subject|null} [param1.subject] - Subject (provide to create version of existing subject)
    * @param {Array<Archetype|Belief>} [param1.bases] - Archetype or Belief objects (no strings)
-   * @param {import('./state.mjs').State|null} [origin_state] - State that's creating this belief
+   * @param {State|null} [origin_state] - State that's creating this belief
    */
   constructor(mind, {subject=null, bases=[]}, origin_state = null) {
     for (const base of bases) {
@@ -66,7 +86,7 @@ export class Belief {
     this.locked = false
     this.origin_state = origin_state
 
-    DB.belief_by_id.set(this._id, this)
+    DB.register_belief_by_id(this)
     DB.register_belief_by_subject(this)
 
     // TODO: add default trait values
@@ -75,15 +95,15 @@ export class Belief {
   /**
    * @param {string} label
    * @param {*} data - Raw data to be resolved by traittype
-   * @param {import('./state.mjs').State|null} [creator_state] - State creating this belief (for inferring ground_state)
+   * @param {State|null} [creator_state] - State creating this belief (for inferring ground_state)
    */
   resolve_and_add_trait(label, data, creator_state = null) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
-    const traittype = DB.traittype_by_label[label]
-    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.get_label(), data, Traittype_by_label: DB.traittype_by_label})
+    const traittype = DB.get_traittype_by_label(label)
+    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
 
-    const value = /** @type {import('./traittype.mjs').Traittype} */ (traittype).resolve(this, data, creator_state)
+    const value = /** @type {Traittype} */ (traittype).resolve(this, data, creator_state)
 
     assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.get_label(), value, archetypes: [...this.get_archetypes()].map(a => a.label)})
 
@@ -93,13 +113,13 @@ export class Belief {
   /**
    * @param {string} label
    * @param {Record<string, any>} data
-   * @param {import('./state.mjs').State|null} [creator_state] - State creating this belief (for inferring ground_state)
+   * @param {State|null} [creator_state] - State creating this belief (for inferring ground_state)
    */
   add_trait(label, data, creator_state = null) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
-    const traittype = DB.traittype_by_label[label]
-    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.get_label(), data, Traittype_by_label: DB.traittype_by_label})
+    const traittype = DB.get_traittype_by_label(label)
+    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
 
     assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
 
@@ -120,7 +140,7 @@ export class Belief {
 
   /**
    * Get a trait value with sids resolved to Beliefs
-   * @param {import('./state.mjs').State} state - State context for resolving sids
+   * @param {State} state - State context for resolving sids
    * @param {string} trait_name - Name of the trait to get
    * @returns {*} Resolved trait value (Beliefs instead of sids)
    */
@@ -131,7 +151,7 @@ export class Belief {
 
   /**
    * Get the belief this is about (resolves `@about` trait)
-   * @param {import('./state.mjs').State} state - State context for resolving Subject
+   * @param {State} state - State context for resolving Subject
    * @returns {Belief|null} The belief this is about, or null
    */
   get_about(state) {
@@ -139,7 +159,7 @@ export class Belief {
     if (about_trait instanceof Subject) {
       // Check if @about traittype specifies mind scope
       let resolve_state = state
-      if (DB.traittype_by_label['@about']?.mind_scope === 'parent' && state?.ground_state) {
+      if (DB.get_traittype_by_label('@about')?.mind_scope === 'parent' && state?.ground_state) {
         resolve_state = state.ground_state
       }
 
@@ -148,7 +168,7 @@ export class Belief {
       if (belief) return belief
 
       // Fallback to global registry (cross-mind reference)
-      const beliefs = DB.belief_by_subject.get(about_trait)
+      const beliefs = DB.get_beliefs_by_subject(about_trait)
       if (beliefs?.size) return beliefs.values().next().value ?? null
       return null
     }
@@ -159,7 +179,7 @@ export class Belief {
   /**
    * @private
    * @param {*} value - Raw trait value (may contain sids or State/Mind refs)
-   * @param {import('./state.mjs').State} state - State context for resolving sids
+   * @param {State} state - State context for resolving sids
    * @returns {*} Resolved value
    */
   _resolve_trait_value(value, state) {
@@ -197,7 +217,7 @@ export class Belief {
 
   /**
    * Lock this belief and cascade to child mind states
-   * @param {import('./state.mjs').State} state - State context being locked
+   * @param {State} state - State context being locked
    */
   lock(state) {
     this.locked = true
@@ -239,7 +259,7 @@ export class Belief {
    * @returns {string|null}
    */
   get_label() {
-    return DB.label_by_sid.get(this.subject.sid) ?? null
+    return DB.get_label_by_sid(this.subject.sid) ?? null
   }
 
   /**
@@ -252,20 +272,19 @@ export class Belief {
       throw new Error(`Subject sid ${this.subject.sid} already has label '${existing_label}', cannot set to '${label}'`)
     }
 
-    if (DB.sid_by_label.has(label)) {
+    if (DB.has_label(label)) {
       throw new Error(`Label '${label}' is already used by another belief`)
     }
-    if (DB.archetype_by_label[label]) {
+    if (DB.get_archetype_by_label(label)) {
       throw new Error(`Label '${label}' is already used by an archetype`)
     }
 
-    DB.sid_by_label.set(label, this.subject.sid)
-    DB.label_by_sid.set(this.subject.sid, label)
+    DB.register_label(label, this.subject.sid)
   }
 
   /**
    * Generate a designation string for this belief
-   * @param {import('./state.mjs').State|null} [state] - State context for resolving `@about`
+   * @param {State|null} [state] - State context for resolving `@about`
    * @returns {string} Designation string (e.g., "hammer [PortableObject] #42")
    */
   sysdesig(state = null) {
@@ -334,7 +353,7 @@ export class Belief {
 
   /**
    * Create shallow inspection view of this belief
-   * @param {import('./state.mjs').State} state - State context for resolving trait sids
+   * @param {State} state - State context for resolving trait sids
    * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], bases: (string|number)[], traits: any, locked?: boolean}} Shallow representation with references
    */
   inspect(state) {
@@ -346,7 +365,7 @@ export class Belief {
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
         [...this.traits].map(([k, v]) => {
-          const traittype = DB.traittype_by_label[k]
+          const traittype = DB.get_traittype_by_label(k)
           assert(traittype != null, `Traittype '${k}' not found`)
           return [k, traittype.inspect(state, v)]
         })
@@ -383,9 +402,9 @@ export class Belief {
       return deserialize_trait_value(value)
     } else if (typeof value === 'number') {
       // Check if this trait type is a Belief reference or Subject
-      const traittype = DB.traittype_by_label[trait_name]
+      const traittype = DB.get_traittype_by_label(trait_name)
       if (traittype) {
-        if (DB.archetype_by_label[traittype.data_type] || traittype.data_type === 'Subject') {
+        if (DB.get_archetype_by_label(traittype.data_type) || traittype.data_type === 'Subject') {
           // It's a Belief/Subject reference - get canonical Subject
           return DB.get_or_create_subject(value)
         }
@@ -400,7 +419,7 @@ export class Belief {
 
   /**
    * Load belief from JSON data
-   * @param {import('./mind.mjs').Mind} mind
+   * @param {Mind} mind
    * @param {BeliefJSON} data
    * @returns {Belief}
    */
@@ -417,13 +436,13 @@ export class Belief {
     belief._bases = new Set()
     for (const base_ref of data.bases) {
       if (typeof base_ref === 'string') {
-        const archetype = DB.archetype_by_label[base_ref]
+        const archetype = DB.get_archetype_by_label(base_ref)
         if (!archetype) {
           throw new Error(`Archetype '${base_ref}' not found for belief ${belief._id}`)
         }
         belief._bases.add(archetype)
       } else if (typeof base_ref === 'number') {
-        const base_belief = DB.belief_by_id.get(base_ref)
+        const base_belief = DB.get_belief(base_ref)
         if (!base_belief) {
           throw new Error(`Cannot resolve base belief ${base_ref} for belief ${belief._id}`)
         }
@@ -446,17 +465,16 @@ export class Belief {
     }
 
     // Register globally
-    DB.belief_by_id.set(belief._id, belief)
+    DB.register_belief_by_id(belief)
     DB.register_belief_by_subject(belief)
 
     // Register label-sid mappings (for first belief with this label loaded)
     if (data.label) {
-      if (!DB.sid_by_label.has(data.label)) {
-        if (DB.archetype_by_label[data.label]) {
+      if (!DB.has_label(data.label)) {
+        if (DB.get_archetype_by_label(data.label)) {
           throw new Error(`Label '${data.label}' is already used by an archetype`)
         }
-        DB.sid_by_label.set(data.label, belief.subject.sid)
-        DB.label_by_sid.set(belief.subject.sid, data.label)
+        DB.register_label(data.label, belief.subject.sid)
       }
     }
 
@@ -465,21 +483,21 @@ export class Belief {
 
   /**
    * Create belief from template with string resolution and trait templates
-   * @param {import('./mind.mjs').Mind} mind
+   * @param {Mind} mind
    * @param {object} template
    * @param {number|null} [template.sid] - Subject ID (optional, for explicit versioning)
    * @param {string|null} [template.label]
-   * @param {Array<string|Belief|import('./archetype.mjs').Archetype>} [template.bases]
+   * @param {Array<string|Belief|Archetype>} [template.bases]
    * @param {Object<string, any>} [template.traits]
-   * @param {import('./state.mjs').State|null} [creator_state]
+   * @param {State|null} [creator_state]
    * @returns {Belief}
    */
   static from_template(mind, {sid=null, label=null, bases=[], traits={}}, creator_state = null) {
     const resolved_bases = bases.map(base => {
       if (typeof base === 'string') {
-        const resolved = DB.get_first_belief_by_label(base) ?? DB.archetype_by_label[base]
+        const resolved = DB.get_first_belief_by_label(base) ?? DB.get_archetype_by_label(base)
         assert(resolved != null, `Base '${base}' not found as belief label or archetype`, {base})
-        return /** @type {Belief|import('./archetype.mjs').Archetype} */ (resolved)
+        return /** @type {Belief|Archetype} */ (resolved)
       }
       return base
     })
@@ -504,9 +522,9 @@ export class Belief {
 
   /**
    * Create belief without template
-   * @param {import('./mind.mjs').Mind} mind
-   * @param {{bases?: Array<Belief|import('./archetype.mjs').Archetype>, traits?: Record<string, any>}} options
-   * @param {import('./state.mjs').State|null} [creator_state]
+   * @param {Mind} mind
+   * @param {{bases?: Array<Belief|Archetype>, traits?: Record<string, any>}} options
+   * @param {State|null} [creator_state]
    * @returns {Belief}
    */
   static from(mind, {bases=[], traits={}}, creator_state = null) {
@@ -545,7 +563,7 @@ function deserialize_trait_value(value) {
     // Handle nested references
     if (value._type === 'Belief') {
       // Use ID lookup (exact version), fall back to label lookup if needed
-      const belief = DB.belief_by_id.get(value._id)
+      const belief = DB.get_belief(value._id)
       if (!belief) {
         throw new Error(`Cannot resolve belief reference ${value._id} in trait`)
       }
@@ -553,7 +571,7 @@ function deserialize_trait_value(value) {
     }
 
     if (value._type === 'State') {
-      const state = DB.state_by_id.get(value._id)
+      const state = DB.get_state_by_id(value._id)
       if (!state) {
         throw new Error(`Cannot resolve state reference ${value._id} in trait`)
       }
@@ -561,7 +579,7 @@ function deserialize_trait_value(value) {
     }
 
     if (value._type === 'Mind') {
-      const mind = DB.mind_by_id.get(value._id)
+      const mind = DB.get_mind_by_id(value._id)
       if (!mind) {
         throw new Error(`Cannot resolve mind reference ${value._id} in trait`)
       }

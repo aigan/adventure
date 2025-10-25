@@ -11,92 +11,142 @@ import { Archetype } from './archetype.mjs'
 import { Traittype } from './traittype.mjs'
 import { Subject } from './subject.mjs'
 
+/**
+ * @typedef {import('./mind.mjs').Mind} Mind
+ * @typedef {import('./state.mjs').State} State
+ * @typedef {import('./belief.mjs').Belief} Belief
+ */
+
 // ============================================================================
 // Mind Registries
 // ============================================================================
 
-/** @type {Map<number, import('./mind.mjs').Mind>} */
-export const mind_by_id = new Map()
+/** @type {Map<number, Mind>} */
+const mind_by_id = new Map()
 
-/** @type {Map<string, import('./mind.mjs').Mind>} */
-export const mind_by_label = new Map()
+/** @type {Map<string, Mind>} */
+const mind_by_label = new Map()
 
 // ============================================================================
 // State Registries
 // ============================================================================
 
-/** @type {Map<number, import('./state.mjs').State>} */
-export const state_by_id = new Map()
+/** @type {Map<number, State>} */
+const state_by_id = new Map()
 
 /** @type {Record<string, object>} */
-export const state_by_label = {}
+const state_by_label = {}
 
 // ============================================================================
 // Belief Registries
 // ============================================================================
 
-/** @type {Map<number, import('./belief.mjs').Belief>} */
-export const belief_by_id = new Map()
+/** @type {Map<number, Belief>} */
+const belief_by_id = new Map()
 
-/** @type {Map<import('./subject.mjs').Subject, Set<import('./belief.mjs').Belief>>} */
-export const belief_by_subject = new Map()
+/** @type {Map<Subject, Set<Belief>>} */
+const belief_by_subject = new Map()
 
-/** @type {Map<import('./mind.mjs').Mind, Set<import('./belief.mjs').Belief>>} */
-export const belief_by_mind = new Map()
+/** @type {Map<Mind, Set<Belief>>} */
+const belief_by_mind = new Map()
 
 /** @type {Map<string, number>} */
-export const sid_by_label = new Map()
+const sid_by_label = new Map()
 
 /** @type {Map<number, string>} */
-export const label_by_sid = new Map()
+const label_by_sid = new Map()
 
 // ============================================================================
 // Subject Registries
 // ============================================================================
 
-/** @type {Map<number, import('./subject.mjs').Subject>} */
-export const subject_by_sid = new Map()
+/** @type {Map<number, Subject>} */
+const subject_by_sid = new Map()
 
 // ============================================================================
 // Archetype Registries
 // ============================================================================
 
-/** @type {Record<string, import('./archetype.mjs').Archetype>} */
-export const archetype_by_label = {}
+/** @type {Record<string, Archetype>} */
+const archetype_by_label = {}
 
 // ============================================================================
 // Traittype Registries
 // ============================================================================
 
-/** @type {Record<string, import('./traittype.mjs').Traittype>} */
-export const traittype_by_label = {}
+/** @type {Record<string, Traittype>} */
+const traittype_by_label = {}
+
+// ============================================================================
+// Reflection (for testing/debugging)
+// ============================================================================
+
+/**
+ * @internal - For testing and debugging only
+ * @returns {object} Internal registry state
+ */
+export function _reflect() {
+  return {
+    mind_by_id,
+    mind_by_label,
+    state_by_id,
+    state_by_label,
+    belief_by_id,
+    belief_by_subject,
+    belief_by_mind,
+    sid_by_label,
+    label_by_sid,
+    subject_by_sid,
+    archetype_by_label,
+    traittype_by_label
+  }
+}
 
 // ============================================================================
 // Convenience Functions
 // ============================================================================
 
 /**
+ * Register mind in registries
+ * @param {Mind} mind - Mind to register
+ */
+export function register_mind(mind) {
+  mind_by_id.set(mind._id, mind)
+  if (mind.label) {
+    mind_by_label.set(mind.label, mind)
+  }
+}
+
+/**
  * Get Mind by ID
  * @param {number} id
- * @returns {import('./mind.mjs').Mind|undefined}
+ * @returns {Mind|undefined}
  */
-export function get_mind(id) {
+export function get_mind_by_id(id) {
   return mind_by_id.get(id)
 }
 
 /**
  * Get Mind by label
  * @param {string} label
- * @returns {import('./mind.mjs').Mind|undefined}
+ * @returns {Mind|undefined}
  */
 export function get_mind_by_label(label) {
   return mind_by_label.get(label)
 }
 
 /**
+ * Register belief in belief_by_id registry
+ * @param {Belief} belief - Belief to register
+ */
+export function register_belief_by_id(belief) {
+  belief_by_id.set(belief._id, belief)
+}
+
+/**
  * Get Belief by ID
  * @param {number} id
- * @returns {import('./belief.mjs').Belief|undefined}
+ * @returns {Belief|undefined}
  */
 export function get_belief(id) {
   return belief_by_id.get(id)
@@ -105,7 +155,7 @@ export function get_belief(id) {
 /**
  * Get first Belief by label (resolves via sid)
  * @param {string} label
- * @returns {import('./belief.mjs').Belief|undefined}
+ * @returns {Belief|undefined}
  */
 export function get_first_belief_by_label(label) {
   const sid = sid_by_label.get(label)
@@ -119,18 +169,91 @@ export function get_first_belief_by_label(label) {
 }
 
 /**
+ * Get Archetype by label
+ * @param {string} label
+ * @returns {Archetype|undefined}
+ */
+export function get_archetype_by_label(label) {
+  return archetype_by_label[label]
+}
+
+/**
+ * Get Traittype by label
+ * @param {string} label
+ * @returns {Traittype|undefined}
+ */
+export function get_traittype_by_label(label) {
+  return traittype_by_label[label]
+}
+
+/**
+ * Get SID by label
+ * @param {string} label
+ * @returns {number|undefined}
+ */
+export function get_sid_by_label(label) {
+  return sid_by_label.get(label)
+}
+
+/**
+ * Get label by SID
+ * @param {number} sid
+ * @returns {string|undefined}
+ */
+export function get_label_by_sid(sid) {
+  return label_by_sid.get(sid)
+}
+
+/**
+ * Check if label is already registered
+ * @param {string} label
+ * @returns {boolean}
+ */
+export function has_label(label) {
+  return sid_by_label.has(label)
+}
+
+/**
+ * Register label-sid mapping (keeps both registries in sync)
+ * @param {string} label
+ * @param {number} sid
+ */
+export function register_label(label, sid) {
+  sid_by_label.set(label, sid)
+  label_by_sid.set(sid, label)
+}
+
+/**
+ * Get beliefs by subject
+ * @param {Subject} subject
+ * @returns {Set<Belief>|undefined}
+ */
+export function get_beliefs_by_subject(subject) {
+  return belief_by_subject.get(subject)
+}
+
+/**
+ * Get beliefs by mind
+ * @param {Mind} mind
+ * @returns {Set<Belief>|undefined}
+ */
+export function get_beliefs_by_mind(mind) {
+  return belief_by_mind.get(mind)
+}
+
+/**
  * Register belief in belief_by_subject and belief_by_mind registries
- * @param {import('./belief.mjs').Belief} belief - Belief to register
+ * @param {Belief} belief - Belief to register
  */
 export function register_belief_by_subject(belief) {
   // Add to belief_by_subject (Set already initialized by get_or_create_subject)
-  /** @type {Set<import('./belief.mjs').Belief>} */ (belief_by_subject.get(belief.subject)).add(belief)
+  /** @type {Set<Belief>} */ (belief_by_subject.get(belief.subject)).add(belief)
 
   // Register by mind
   if (!belief_by_mind.has(belief.in_mind)) {
     belief_by_mind.set(belief.in_mind, new Set())
   }
-  /** @type {Set<import('./belief.mjs').Belief>} */ (belief_by_mind.get(belief.in_mind)).add(belief)
+  /** @type {Set<Belief>} */ (belief_by_mind.get(belief.in_mind)).add(belief)
 }
 
 /**
@@ -149,10 +272,10 @@ export function get_or_create_subject(sid) {
 
 /**
  * Find beliefs in a mind that are about a specific subject
- * @param {import('./mind.mjs').Mind} mind - Mind to search in
- * @param {import('./subject.mjs').Subject} about_subject - Subject to find beliefs about
- * @param {import('./state.mjs').State} state - State context for resolving @about trait
- * @returns {Array<import('./belief.mjs').Belief>} Array of beliefs about the subject (may be empty)
+ * @param {Mind} mind - Mind to search in
+ * @param {Subject} about_subject - Subject to find beliefs about
+ * @param {State} state - State context for resolving @about trait
+ * @returns {Array<Belief>} Array of beliefs about the subject (may be empty)
  */
 export function find_beliefs_about_subject(mind, about_subject, state) {
   const mind_beliefs = belief_by_mind.get(mind)
@@ -169,9 +292,26 @@ export function find_beliefs_about_subject(mind, about_subject, state) {
 }
 
 /**
+ * Register state in registries
+ * @param {State} state - State to register
+ */
+export function register_state(state) {
+  state_by_id.set(state._id, state)
+}
+
+/**
  * Get State by ID
  * @param {number} id
- * @returns {import('./state.mjs').State|undefined}
+ * @returns {State|undefined}
+ */
+export function get_state_by_id(id) {
+  return state_by_id.get(id)
+}
+
+/**
+ * Get State by ID (alias for backward compatibility)
+ * @param {number} id
+ * @returns {State|undefined}
  */
 export function get_state(id) {
   return state_by_id.get(id)
@@ -180,7 +320,7 @@ export function get_state(id) {
 /**
  * Get Subject by label
  * @param {string} label
- * @returns {import('./subject.mjs').Subject|undefined}
+ * @returns {Subject|undefined}
  */
 export function get_subject_by_label(label) {
   const sid = sid_by_label.get(label)

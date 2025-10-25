@@ -162,11 +162,11 @@ describe('Belief', () => {
       });
 
       // Should be in belief_by_subject registry
-      expect(DB.belief_by_subject).to.exist;
-      expect(DB.belief_by_subject.get(room.subject)).to.exist;
+      expect(DB._reflect().belief_by_subject).to.exist;
+      expect(DB._reflect().belief_by_subject.get(room.subject)).to.exist;
 
       // Registry should contain a Set of beliefs with this subject
-      const beliefs_with_subject = DB.belief_by_subject.get(room.subject);
+      const beliefs_with_subject = DB._reflect().belief_by_subject.get(room.subject);
       expect(beliefs_with_subject).to.be.instanceof(Set);
       expect(beliefs_with_subject.has(room)).to.be.true;
     });
@@ -196,7 +196,7 @@ describe('Belief', () => {
       expect(room_v3.subject).to.equal(room_v1.subject);
 
       // All should be in belief_by_subject registry
-      const beliefs_with_subject = DB.belief_by_subject.get(room_v1.subject);
+      const beliefs_with_subject = DB._reflect().belief_by_subject.get(room_v1.subject);
       expect(beliefs_with_subject.size).to.equal(3);
       expect(beliefs_with_subject.has(room_v1)).to.be.true;
       expect(beliefs_with_subject.has(room_v2)).to.be.true;
@@ -255,8 +255,8 @@ describe('Belief', () => {
       });
 
       // Both versions should share the same label
-      expect(DB.label_by_sid.get(room_v1.subject.sid)).to.equal('room');
-      expect(DB.sid_by_label.get('room')).to.equal(room_v1.subject.sid);
+      expect(DB._reflect().label_by_sid.get(room_v1.subject.sid)).to.equal('room');
+      expect(DB._reflect().sid_by_label.get('room')).to.equal(room_v1.subject.sid);
 
       // v2 should have same sid, so same label association
       expect(room_v2.subject.sid).to.equal(room_v1.subject.sid);
@@ -272,7 +272,7 @@ describe('Belief', () => {
       });
 
       // Look up by label to get sid
-      const sid = DB.sid_by_label.get('workshop');
+      const sid = DB._reflect().sid_by_label.get('workshop');
       expect(sid).to.equal(room.subject.sid);
 
       // Then resolve in state context

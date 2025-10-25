@@ -26,27 +26,41 @@ import * as Cosmos from './cosmos.mjs'
 import { State } from './state.mjs'
 
 /**
+ * @typedef {import('./belief.mjs').Belief} Belief
+ * @typedef {import('./belief.mjs').BeliefJSON} BeliefJSON
+ * @typedef {import('./state.mjs').StateJSON} StateJSON
+ * @typedef {import('./subject.mjs').Subject} Subject
+ */
+
+/**
  * @typedef {object} MindJSON
  * @property {string} _type - Always "Mind"
  * @property {number} _id - Mind identifier
  * @property {string|null} label - Optional label for lookup
- * @property {import('./belief.mjs').BeliefJSON[]} belief - All beliefs in this mind
- * @property {import('./state.mjs').StateJSON[]} state - All states in this mind
+ * @property {BeliefJSON[]} belief - All beliefs in this mind
+ * @property {StateJSON[]} state - All states in this mind
  * @property {MindJSON[]} [nested_minds] - Nested minds discovered during serialization
+ */
+
+/**
+ * @typedef {object} MindReference
+ * @property {string} _type - Always "Mind"
+ * @property {number} _id - Mind identifier
+ * @property {string|null} label - Mind label
  */
 
 /**
  * Container for beliefs with state tracking
  * @property {number} _id - Unique identifier
  * @property {string|null} label - Optional label for lookup
- * @property {import('./belief.mjs').Belief|null} self - What this mind considers "self"
- * @property {Set<import('./state.mjs').State>} state - All states belonging to this mind
+ * @property {Belief|null} self - What this mind considers "self"
+ * @property {Set<State>} state - All states belonging to this mind
  */
 export class Mind {
 
   /**
    * @param {string|null|MindJSON} label - Mind identifier or JSON data
-   * @param {import('./belief.mjs').Belief|null} self - What this mind considers "self" (can be null, can change)
+   * @param {Belief|null} self - What this mind considers "self" (can be null, can change)
    */
   constructor(label = null, self = null) {
     if (label && typeof label === 'object' && label._type === 'Mind') {
@@ -55,27 +69,21 @@ export class Mind {
       this.label = data.label
       this.self = null
       this.state = new Set()
-      /** @type {Map<import('./state.mjs').State, Set<import('./state.mjs').State>>} */
+      /** @type {Map<State, Set<State>>} */
       this._states_by_ground_state = new Map()
 
-      DB.mind_by_id.set(this._id, this)
-      if (this.label) {
-        DB.mind_by_label.set(this.label, this)
-      }
+      DB.register_mind(this)
       return
     }
 
     this._id = next_id()
     this.label = /** @type {string|null} */ (label)
     this.self = self
-    /** @type {Set<import('./state.mjs').State>} */ this.state = new Set()
-    /** @type {Map<import('./state.mjs').State, Set<import('./state.mjs').State>>} */
+    /** @type {Set<State>} */ this.state = new Set()
+    /** @type {Map<State, Set<State>>} */
     this._states_by_ground_state = new Map()
 
-    DB.mind_by_id.set(this._id, this)
-    if (this.label) {
-      DB.mind_by_label.set(this.label, this)
-    }
+    DB.register_mind(this)
   }
 
   /**
@@ -83,7 +91,7 @@ export class Mind {
    * @returns {Mind|undefined}
    */
   static get_by_id(id) {
-    return DB.mind_by_id.get(id)
+    return DB.get_mind_by_id(id)
   }
 
   /**
@@ -91,13 +99,13 @@ export class Mind {
    * @returns {Mind|undefined}
    */
   static get_by_label(label) {
-    return DB.mind_by_label.get(label)
+    return DB.get_mind_by_label(label)
   }
 
   /**
    * Get states in this mind that have the specified ground_state
-   * @param {import('./state.mjs').State} ground_state
-   * @returns {Set<import('./state.mjs').State>}
+   * @param {State} ground_state
+   * @returns {Set<State>}
    */
   get_states_by_ground_state(ground_state) {
     return this._states_by_ground_state.get(ground_state) ?? new Set()
@@ -105,7 +113,7 @@ export class Mind {
 
   /**
    * Register a state in the ground_state index
-   * @param {import('./state.mjs').State} state
+   * @param {State} state
    */
   _register_state_by_ground_state(state) {
     if (state.ground_state) {
@@ -113,14 +121,14 @@ export class Mind {
         this._states_by_ground_state.set(state.ground_state, new Set())
       }
       // TypeScript: We just ensured the key exists above
-      /** @type {Set<import('./state.mjs').State>} */ (this._states_by_ground_state.get(state.ground_state)).add(state)
+      /** @type {Set<State>} */ (this._states_by_ground_state.get(state.ground_state)).add(state)
     }
   }
 
   /**
    * @param {number} timestamp
-   * @param {import('./state.mjs').State|null} ground_state
-   * @returns {import('./state.mjs').State}
+   * @param {State|null} ground_state
+   * @returns {State}
    */
   create_state(timestamp, ground_state = null) {
     const state = new State(this, timestamp, null, ground_state)
@@ -129,7 +137,7 @@ export class Mind {
 
   /**
    * Shallow inspection for debugging
-   * @param {import('./state.mjs').State} state
+   * @param {State} state
    * @returns {object}
    */
   inspect(state) {
@@ -146,7 +154,7 @@ export class Mind {
    */
   toJSON() {
     // Get beliefs from belief_by_mind index
-    const beliefs = DB.belief_by_mind.get(this) || new Set()
+    const beliefs = DB.get_beliefs_by_mind(this) || new Set()
     const mind_beliefs = [...beliefs].map(b => b.toJSON())
 
     return {
@@ -189,7 +197,7 @@ export class Mind {
     // Finalize beliefs for THIS mind (resolve State/Mind references in traits)
     // Do this AFTER loading nested minds so all State/Mind references can be resolved
     for (const belief_data of data.belief) {
-      const belief = DB.belief_by_id.get(belief_data._id)
+      const belief = DB.get_belief(belief_data._id)
       if (belief) {
         belief._finalize_traits()
       }
@@ -202,8 +210,8 @@ export class Mind {
    * Create Mind with initial state from declarative template
    * @param {Mind} parent_mind - Mind creating this (context for belief resolution)
    * @param {Object<string, string[]>} learn_spec - {belief_label: [trait_names]}
-   * @param {import('./subject.mjs').Subject|null} self_subject - Subject that becomes state.self
-   * @param {import('./state.mjs').State|null} creator_state - State creating this (provides ground_state)
+   * @param {Subject|null} self_subject - Subject that becomes state.self
+   * @param {State|null} creator_state - State creating this (provides ground_state)
    * @returns {Mind}
    */
   static resolve_template(parent_mind, learn_spec, self_subject, creator_state) {

@@ -1,12 +1,18 @@
 /**
+ * @typedef {import('./mind.mjs').Mind} Mind
+ * @typedef {import('./state.mjs').State} State
+ * @typedef {import('./belief.mjs').Belief} Belief
+ */
+
+/**
  * Session class - manages the current game state
  * Replaces the old Adventure object
  */
 export class Session {
   /**
-   * @param {import('./mind.mjs').Mind} world_mind - The world mind
-   * @param {import('./state.mjs').State} initial_state - Initial game state
-   * @param {import('./belief.mjs').Belief|null} player - Player belief
+   * @param {Mind} world_mind - The world mind
+   * @param {State} initial_state - Initial game state
+   * @param {Belief|null} player - Player belief
    */
   constructor(world_mind, initial_state, player = null) {
     this.world = world_mind
@@ -18,7 +24,7 @@ export class Session {
 
   /**
    * Get current state
-   * @returns {import('./state.mjs').State}
+   * @returns {State}
    */
   get state() {
     return this._state
@@ -26,7 +32,7 @@ export class Session {
 
   /**
    * Set current state and notify observers
-   * @param {import('./state.mjs').State} new_state
+   * @param {State} new_state
    */
   set state(new_state) {
     this._state = new_state

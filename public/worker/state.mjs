@@ -28,6 +28,10 @@ import { Belief } from './belief.mjs'
 import { Serialize } from './serialize.mjs'
 
 /**
+ * @typedef {import('./mind.mjs').Mind} Mind
+ */
+
+/**
  * @typedef {object} StateJSON
  * @property {string} _type - Always "State"
  * @property {number} _id - State identifier
@@ -41,17 +45,23 @@ import { Serialize } from './serialize.mjs'
  */
 
 /**
+ * @typedef {object} StateReference
+ * @property {string} _type - Always "State"
+ * @property {number} _id - State identifier
+ */
+
+/**
  * Immutable state snapshot with differential updates
  * @property {number} _id - Unique identifier
- * @property {import('./mind.mjs').Mind} in_mind - Mind this state belongs to
+ * @property {Mind} in_mind - Mind this state belongs to
  * @property {number} timestamp - State timestamp/tick
  * @property {State|null} base - Parent state (inheritance chain)
  * @property {State|null} ground_state - External world state this references
- * @property {import('./belief.mjs').Belief[]} insert - Beliefs added/present in this state
- * @property {import('./belief.mjs').Belief[]} remove - Beliefs removed in this state
+ * @property {Belief[]} insert - Beliefs added/present in this state
+ * @property {Belief[]} remove - Beliefs removed in this state
  * @property {State[]} branches - Child states branching from this one
  * @property {boolean} locked - Whether state can be modified
- * @property {Map<import('./subject.mjs').Subject, import('./belief.mjs').Belief>|null} _subject_index - Cached subject→belief lookup (lazy, only on locked states)
+ * @property {Map<Subject, Belief>|null} _subject_index - Cached subject→belief lookup (lazy, only on locked states)
  */
 export class State {
   // TODO: Populate this registry for prototype state templates
@@ -60,11 +70,11 @@ export class State {
   // Now stored in DB.state_by_label
 
   /**
-   * @param {import('./mind.mjs').Mind} mind
+   * @param {Mind} mind
    * @param {number} timestamp
    * @param {State|null} base
    * @param {State|null} ground_state
-   * @param {import('./subject.mjs').Subject|null} self
+   * @param {Subject|null} self
    */
   constructor(mind, timestamp, base=null, ground_state=null, self=null) {
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
@@ -80,16 +90,16 @@ export class State {
     this.in_mind = mind
     /** @type {State|null} */ this.base = base
     this.timestamp = timestamp
-    /** @type {import('./belief.mjs').Belief[]} */ this.insert = []
-    /** @type {import('./belief.mjs').Belief[]} */ this.remove = []
+    /** @type {Belief[]} */ this.insert = []
+    /** @type {Belief[]} */ this.remove = []
     /** @type {State|null} */ this.ground_state = ground_state
-    /** @type {import('./subject.mjs').Subject|null} */ this.self = self
+    /** @type {Subject|null} */ this.self = self
     /** @type {State[]} */ this.branches = []
     this.locked = false
 
     this.in_mind.state.add(this)
     this.in_mind._register_state_by_ground_state(this)
-    DB.state_by_id.set(this._id, this)
+    DB.register_state(this)
   }
 
   lock() {
@@ -101,7 +111,7 @@ export class State {
 
   /**
    * @param {object} template - Belief template
-   * @returns {import('./belief.mjs').Belief}
+   * @returns {Belief}
    */
   add_belief(template) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
@@ -135,7 +145,7 @@ export class State {
 
   /**
    * Add beliefs to this state's insert list
-   * @param {...import('./belief.mjs').Belief} beliefs - Beliefs to insert
+   * @param {...Belief} beliefs - Beliefs to insert
    */
   insert_beliefs(...beliefs) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
@@ -151,7 +161,7 @@ export class State {
 
   /**
    * Add beliefs to this state's remove list
-   * @param {...import('./belief.mjs').Belief} beliefs - Beliefs to remove
+   * @param {...Belief} beliefs - Beliefs to remove
    */
   remove_beliefs(...beliefs) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
@@ -162,12 +172,12 @@ export class State {
   /**
    * Replace beliefs (convenience for remove+insert)
    * Removes the Belief bases of each belief and inserts the belief itself
-   * @param {...import('./belief.mjs').Belief} beliefs - Beliefs to replace
+   * @param {...Belief} beliefs - Beliefs to replace
    */
   replace_beliefs(...beliefs) {
     for (const belief of beliefs) {
       // Only remove Belief bases (version chains), not Archetypes
-      const belief_bases = /** @type {import('./belief.mjs').Belief[]} */ ([...belief.bases].filter(b => b instanceof Belief))
+      const belief_bases = /** @type {Belief[]} */ ([...belief.bases].filter(b => b instanceof Belief))
       this.remove_beliefs(...belief_bases)
       this.insert_beliefs(belief)
     }
@@ -176,9 +186,9 @@ export class State {
   /**
    * High-level convenience method: branch state and apply operations
    * @param {object} param0
-   * @param {import('./belief.mjs').Belief[]} [param0.insert]
-   * @param {import('./belief.mjs').Belief[]} [param0.remove]
-   * @param {import('./belief.mjs').Belief[]} [param0.replace]
+   * @param {Belief[]} [param0.insert]
+   * @param {Belief[]} [param0.remove]
+   * @param {Belief[]} [param0.replace]
    * @param {State|null} [param0.ground_state]
    * @returns {State} New locked state with operations applied
    */
@@ -202,7 +212,7 @@ export class State {
 
   /**
    * Create new belief version with updated traits and add to new state
-   * @param {import('./belief.mjs').Belief} belief - Belief to version
+   * @param {Belief} belief - Belief to version
    * @param {object} traits - New traits to add
    * @returns {State}
    */
@@ -230,8 +240,8 @@ export class State {
   /**
    * Get Belief for a Subject in this state
    * Progressively builds cache as beliefs are accessed (locked states only)
-   * @param {import('./subject.mjs').Subject} subject - Subject to find belief for
-   * @returns {import('./belief.mjs').Belief|null} The belief for this subject visible in this state, or null if not found
+   * @param {Subject} subject - Subject to find belief for
+   * @returns {Belief|null} The belief for this subject visible in this state, or null if not found
    */
   get_belief_by_subject(subject) {
     // Check cache first (only on locked states)
@@ -271,8 +281,8 @@ export class State {
 
   /**
    * Find existing beliefs about a subject in this state's mind
-   * @param {import('./belief.mjs').Belief} belief - Belief to find matches for
-   * @returns {Array<import('./belief.mjs').Belief>} Ranked list of matching beliefs (max 3)
+   * @param {Belief} belief - Belief to find matches for
+   * @returns {Array<Belief>} Ranked list of matching beliefs (max 3)
    */
   recognize(belief) {
     // Query DB for all beliefs in this mind about the same subject
@@ -290,10 +300,10 @@ export class State {
   /**
    * Integrate new knowledge with existing beliefs
    * @param {State} source_state - State context for resolving trait references
-   * @param {import('./belief.mjs').Belief} belief - Belief to integrate
+   * @param {Belief} belief - Belief to integrate
    * @param {string[]} trait_names - Traits to copy/update
-   * @param {Array<import('./belief.mjs').Belief>} existing_beliefs - Beliefs from recognize()
-   * @returns {import('./belief.mjs').Belief} Updated or new belief
+   * @param {Array<Belief>} existing_beliefs - Beliefs from recognize()
+   * @returns {Belief} Updated or new belief
    */
   integrate(source_state, belief, trait_names, existing_beliefs) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
@@ -362,10 +372,10 @@ export class State {
 
   /**
    * Learn about a belief from another mind, copying it into this state's mind
-   * @param {import('./belief.mjs').Belief} belief - Belief from another mind/state to learn about
+   * @param {Belief} belief - Belief from another mind/state to learn about
    * @param {string[]} [trait_names] - Traits to copy (empty = copy no traits, just archetypes)
    * @param {State|null} [source_state] - State where the belief exists (defaults to this.ground_state)
-   * @returns {import('./belief.mjs').Belief}
+   * @returns {Belief}
    */
   learn_about(belief, trait_names = [], source_state = null) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
@@ -427,7 +437,7 @@ export class State {
 
   /**
    * Create State from JSON data (fully materialized)
-   * @param {import('./mind.mjs').Mind} mind - Mind this state belongs to (or context for resolution)
+   * @param {Mind} mind - Mind this state belongs to (or context for resolution)
    * @param {StateJSON} data - JSON data with _type: 'State'
    * @returns {State}
    */
@@ -435,7 +445,7 @@ export class State {
     // Resolve in_mind reference (if present in data, otherwise use parameter)
     let resolved_mind = mind
     if (data.in_mind != null) {
-      const found_mind = DB.mind_by_id.get(data.in_mind)
+      const found_mind = DB.get_mind_by_id(data.in_mind)
       if (!found_mind) {
         throw new Error(`Cannot resolve in_mind ${data.in_mind} for state ${data._id}`)
       }
@@ -445,7 +455,7 @@ export class State {
     // Resolve base reference
     let base = null
     if (data.base != null) {
-      base = DB.state_by_id.get(data.base)
+      base = DB.get_state_by_id(data.base)
       if (!base) {
         throw new Error(`Cannot resolve base state ${data.base} for state ${data._id}`)
       }
@@ -454,7 +464,7 @@ export class State {
     // Resolve ground_state reference
     let ground_state = null
     if (data.ground_state != null) {
-      ground_state = DB.state_by_id.get(data.ground_state)
+      ground_state = DB.get_state_by_id(data.ground_state)
       if (!ground_state) {
         throw new Error(`Cannot resolve ground_state ${data.ground_state} for state ${data._id}`)
       }
@@ -469,7 +479,7 @@ export class State {
     // Resolve insert/remove belief references
     const insert = []
     for (const belief_id of data.insert) {
-      const belief = DB.belief_by_id.get(belief_id)
+      const belief = DB.get_belief(belief_id)
       if (!belief) {
         throw new Error(`Cannot resolve insert belief ${belief_id} for state ${data._id}`)
       }
@@ -478,7 +488,7 @@ export class State {
 
     const remove = []
     for (const belief_id of data.remove) {
-      const belief = DB.belief_by_id.get(belief_id)
+      const belief = DB.get_belief(belief_id)
       if (!belief) {
         throw new Error(`Cannot resolve remove belief ${belief_id} for state ${data._id}`)
       }
@@ -499,7 +509,7 @@ export class State {
     state.locked = false
 
     // Register in global registry
-    DB.state_by_id.set(state._id, state)
+    DB.register_state(state)
 
     // Update branches
     if (base) {

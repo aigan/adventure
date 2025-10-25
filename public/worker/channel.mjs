@@ -2,13 +2,17 @@ import { log, assert } from "../lib/debug.mjs";
 import * as Cosmos from './cosmos.mjs';
 //log('Loading Channel');
 
+/**
+ * @typedef {import('./session.mjs').Session} Session
+ */
+
 /** @type {BroadcastChannel|null} */
 let channel = null;
 let client_id_sequence = 0; // Client id
 /** @type {number|null} */
 let server_id = null;
-/** @type {import('./session.mjs').Session|null} */
-let Session = null;
+/** @type {Session|null} */
+let session = null;
 
 /** @type {{[key: string]: Function}} */
 export const dispatch = {
@@ -29,15 +33,15 @@ export const dispatch = {
 
 	/** @param {{client_id: number}} param0 */
 	query_adventure({client_id}){
-		assert(Session != null, 'Session not initialized');
-		// Return current Session state info
+		assert(session != null, 'session not initialized');
+		// Return current session state info
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "adventure_info",
 			server_id,
 			client_id,
-			world_mind_id: Session.world._id,
-			world_mind_label: Session.world.label,
-			state_id: Session.state._id,
+			world_mind_id: session.world._id,
+			world_mind_label: session.world.label,
+			state_id: session.state._id,
 		});
 	},
 
@@ -140,7 +144,7 @@ export const dispatch = {
 		const belief_id = Number(belief);
 
 		// Find belief by id in global registry
-		const belief_obj = Cosmos.DB.belief_by_id.get(belief_id);
+		const belief_obj = Cosmos.DB.get_belief(belief_id);
 
 		assert(belief_obj != null, `Belief not found: ${belief_id}`);
 
@@ -170,13 +174,13 @@ export const dispatch = {
 
 	/** @param {{id: string|number, client_id: number}} param0 */
 	query_entity({id, client_id}){
-		assert(Session != null, 'Session not initialized');
+		assert(session != null, 'session not initialized');
 		id = Number(id);
 		//log("query_entity", id);
 
 		// Find belief by id in current state
 		let belief = null;
-		for (const b of Session.state.get_beliefs()) {
+		for (const b of session.state.get_beliefs()) {
 			if (b._id === id) {
 				belief = b;
 				break;
@@ -192,7 +196,7 @@ export const dispatch = {
 			data: {
 				data: belief.toJSON(),
 			},
-			desig: belief.sysdesig(Session.state),
+			desig: belief.sysdesig(session.state),
 			mind: {id: belief.in_mind._id, label: belief.in_mind.label},
 			bases: [...belief.bases].map(b => ({
 				id: b instanceof Cosmos.Belief ? b._id : null,
@@ -204,16 +208,16 @@ export const dispatch = {
 }
 
 /**
- * @param {import('./session.mjs').Session} session - Session instance from world.mjs
+ * @param {Session} session_param - session instance from world.mjs
  */
-export async function init_channel(session) {
-	Session = session;
+export async function init_channel(session_param) {
+	session = session_param;
 
 	channel = new BroadcastChannel('inspect');
 	server_id = await increment_sequence("server_id");
 
 	// Wire up session to channel for state change notifications
-	Session.set_channel(channel);
+	session.set_channel(channel);
 
 	//log("Server id", server_id);
 	channel.postMessage({

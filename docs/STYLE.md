@@ -23,9 +23,11 @@ Write short, readable code using modern JavaScript features. Prefer clarity over
 ## Naming Conventions
 
 - ✓ `snake_case` for methods and variables
+- ✓ `PascalCase` for classes, types, and typedefs
 - ✓ `_prefix` for internal/private properties
 - ✓ Descriptive names - no abbreviations unless obvious
 - ✓ Boolean variables start with `is_`, `has_`, `can_`, etc.
+- ✓ **Class vs instance naming**: Type/class names are capitalized (e.g., `Session`), instance variables are lowercase (e.g., `session`)
 
 ## Formatting
 

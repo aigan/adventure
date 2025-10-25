@@ -20,9 +20,9 @@ describe('State', () => {
         bases: ['PortableObject']
       });
 
-      expect([...DB.belief_by_id.values()].filter(b => b.in_mind === mind).length).to.equal(2);
-      expect([...DB.belief_by_id.values()].some(b => b.in_mind === mind && b === DB.get_first_belief_by_label('workshop'))).to.be.true;
-      expect([...DB.belief_by_id.values()].some(b => b.in_mind === mind && b === hammer)).to.be.true;
+      expect([...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind).length).to.equal(2);
+      expect([...DB._reflect().belief_by_id.values()].some(b => b.in_mind === mind && b === DB.get_first_belief_by_label('workshop'))).to.be.true;
+      expect([...DB._reflect().belief_by_id.values()].some(b => b.in_mind === mind && b === hammer)).to.be.true;
     });
 
     it('can iterate over beliefs for a mind', () => {
@@ -33,7 +33,7 @@ describe('State', () => {
       const mind = state.in_mind;
 
       const labels = [];
-      for (const belief of DB.belief_by_id.values()) {
+      for (const belief of DB._reflect().belief_by_id.values()) {
         if (belief.in_mind === mind) {
           labels.push(belief.get_label());
         }
@@ -56,13 +56,13 @@ describe('State', () => {
       const mind_a = new Mind('mind_a');
       Belief.from_template(mind_a, {label: 'item_a', bases: ['PortableObject']});
       const state_a = mind_a.create_state(1);
-      const beliefs_for_a = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_a);
+      const beliefs_for_a = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_a);
       state_a.insert.push(...beliefs_for_a);
 
       const mind_b = new Mind('mind_b');
       Belief.from_template(mind_b, {label: 'item_b', bases: ['PortableObject']});
       const state_b = mind_b.create_state(1);
-      const beliefs_for_b = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_b);
+      const beliefs_for_b = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_b);
       state_b.insert.push(...beliefs_for_b);
 
       const beliefs_a = [...state_a.get_beliefs()];
@@ -83,10 +83,10 @@ describe('State', () => {
       Belief.from_template(mind_b, {label: 'workshop_b', bases: ['Location']});
 
       const state_a = mind_a.create_state(1);
-      const beliefs_a = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_a);
+      const beliefs_a = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_a);
       state_a.insert.push(...beliefs_a);
       const state_b = mind_b.create_state(1);
-      const beliefs_b = [...DB.belief_by_id.values()].filter(b => b.in_mind === mind_b);
+      const beliefs_b = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_b);
       state_b.insert.push(...beliefs_b);
 
       const labels_a = [...state_a.get_beliefs()].map(b => b.get_label());

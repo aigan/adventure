@@ -121,7 +121,7 @@ describe('Save/Load functionality', () => {
       const loaded_room1 = DB.get_first_belief_by_label('room1');
       const loaded_room2 = DB.get_first_belief_by_label('room2');
       // room1_v2 is a version of room1 (has room1 as base)
-      const loaded_room1_v2 = [...DB.belief_by_id.values()].find(b =>
+      const loaded_room1_v2 = [...DB._reflect().belief_by_id.values()].find(b =>
         b !== loaded_room1 && b.bases.size === 1 && [...b.bases][0] === loaded_room1
       );
 
@@ -239,7 +239,7 @@ describe('Save/Load functionality', () => {
       expect(states[0]).to.be.instanceOf(State);
 
       // Verify ball has color (use ID to find exact versioned belief)
-      const loaded_ball = DB.belief_by_id.get(ball_v2_id);
+      const loaded_ball = DB._reflect().belief_by_id.get(ball_v2_id);
       expect(loaded_ball).to.exist;
       expect(loaded_ball.traits.get('color')).to.equal('blue');
     });

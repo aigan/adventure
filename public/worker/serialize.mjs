@@ -2,10 +2,18 @@ import { set_id_sequence } from './id_sequence.mjs'
 import { Mind } from './mind.mjs'
 
 /**
+ * @typedef {import('./belief.mjs').Belief} Belief
+ * @typedef {import('./state.mjs').State} State
+ * @typedef {import('./mind.mjs').MindJSON} MindJSON
+ * @typedef {import('./belief.mjs').BeliefJSON} BeliefJSON
+ * @typedef {import('./state.mjs').StateJSON} StateJSON
+ */
+
+/**
  * Serialization coordinator with dependency tracking
  */
 export class Serialize {
-  /** @type {import('./mind.mjs').Mind[]|null} */
+  /** @type {Mind[]|null} */
   static dependency_queue = null
   /** @type {Set<number>|null} */
   static seen = null
@@ -13,7 +21,7 @@ export class Serialize {
   static active = false
 
   /**
-   * @param {import('./mind.mjs').Mind} mind
+   * @param {Mind} mind
    */
   static add_dependency(mind) {
     if (Serialize.dependency_queue !== null) {
@@ -23,7 +31,7 @@ export class Serialize {
 
   /**
    * Save mind to JSON string with automatic nested mind discovery
-   * @param {import('./mind.mjs').Mind} mind - Mind to serialize
+   * @param {Mind} mind - Mind to serialize
    * @returns {string} JSON string
    */
   static save_mind(mind) {
@@ -31,7 +39,7 @@ export class Serialize {
     Serialize.dependency_queue = []
     Serialize.seen = new Set([mind._id])
 
-    /** @type {import('./mind.mjs').MindJSON} */ const root = /** @type {any} */ (mind.toJSON())
+    /** @type {MindJSON} */ const root = /** @type {any} */ (mind.toJSON())
 
     const nested_minds = []
     while (Serialize.dependency_queue.length > 0) {
@@ -56,7 +64,7 @@ export class Serialize {
 
 /**
  * Save mind to JSON string
- * @param {import('./mind.mjs').Mind} mind - Mind to serialize
+ * @param {Mind} mind - Mind to serialize
  * @returns {string} JSON string
  */
 export function save_mind(mind) {
@@ -67,10 +75,10 @@ export function save_mind(mind) {
  * Load from JSON string (dispatches on _type field)
  * Assumes empty DB - updates id_sequence from loaded data
  * @param {string} json_string - JSON string to load
- * @returns {import('./mind.mjs').Mind|import('./belief.mjs').Belief|import('./state.mjs').State} Loaded object
+ * @returns {Mind|Belief|State} Loaded object
  */
 export function load(json_string) {
-  const data = /** @type {import('./mind.mjs').MindJSON|import('./belief.mjs').BeliefJSON|import('./state.mjs').StateJSON} */ (JSON.parse(json_string))
+  const data = /** @type {MindJSON|BeliefJSON|StateJSON} */ (JSON.parse(json_string))
 
   if (!data._type) {
     throw new Error('JSON data missing _type field')
@@ -79,7 +87,7 @@ export function load(json_string) {
   let result
   switch (data._type) {
     case 'Mind':
-      result = Mind.from_json(/** @type {import('./mind.mjs').MindJSON} */ (data))
+      result = Mind.from_json(/** @type {MindJSON} */ (data))
       break
     case 'Belief':
       throw new Error('Loading individual Belief not yet implemented')
@@ -96,7 +104,7 @@ export function load(json_string) {
 }
 
 /**
- * @param {import('./mind.mjs').MindJSON|import('./belief.mjs').BeliefJSON|import('./state.mjs').StateJSON} data
+ * @param {MindJSON|BeliefJSON|StateJSON} data
  */
 function update_id_sequence_from_data(data) {
   /** @param {any} obj @param {number} [max] @returns {number} */
