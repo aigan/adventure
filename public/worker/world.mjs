@@ -53,15 +53,6 @@ export function setupStandardArchetypes() {
     PortableObject: {
       bases: ['ObjectPhysical'],
     },
-    Actor: {
-      bases: ['ObjectPhysical'],
-    },
-    Person: {
-      bases: ['Actor', 'Mental'],
-    },
-    Player: {
-      bases: ['Actor', 'Mental'],
-    },
   };
 
   DB.register(archetypes, traittypes);
@@ -75,10 +66,32 @@ const world_belief = {
     bases: ['Location'],
   },
 
+  market: {
+    bases: ['Location'],
+  },
+
   hammer: {
     bases: ['PortableObject'],
     traits: {
       location: 'workshop',
+    },
+  },
+
+  Actor: {
+    bases: ['ObjectPhysical'],
+  },
+
+  Person: {
+    bases: ['Actor', 'Mental'],
+  },
+
+  npc1: {
+    bases: ['Person'],
+    traits: {
+      location: 'market',
+      mind: {
+        workshop: ['location']
+      }
     },
   },
 

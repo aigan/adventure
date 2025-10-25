@@ -6,6 +6,13 @@ Use this document as a checklist after implementation to ensure code quality.
 
 Write short, readable code using modern JavaScript features. Prefer clarity over cleverness.
 
+**Scalability constraint**: This codebase is a proof-of-concept for a future distributed/sharded system. All data access patterns must work when beliefs are distributed across multiple database shards. This means:
+- ✓ Use indexed lookups only (by id, sid, label)
+- ✗ Never iterate over all beliefs/states/minds
+- ✓ Always use specific context (state, mind) for lookups
+- ✓ When you realize a lookup is missing, ask about adjusting the design
+- ✗ Don't introduce workarounds that iterate to find things
+
 ## Technical Constraints
 
 - ✓ Modern ES2024+ features, no compilation/build step required
@@ -44,9 +51,10 @@ Write short, readable code using modern JavaScript features. Prefer clarity over
   - Spread operator for copying/merging
   - Optional chaining `?.` for safe property access
   - Nullish coalescing `??` for default values
-- ✓ **Generators** for potentially large collections (world items, beliefs, state iterations)
-- ✓ Prefer `for...of` loops over `forEach` or `reduce` when clearer
-- ✓ Use `Array.from()` or spread for iterator-to-array conversion
+- ✓ **Generators** for inheritance chains and controlled iteration (e.g., walking `base` links)
+- ✗ Avoid `forEach`, `for...of`, or iteration over DB registries
+- ✓ Use indexed lookups: `DB.belief_by_id.get(id)`, `state.get_belief_by_subject(subject)`
+- ✓ When you need to "find" something, use a registry lookup with a key, not iteration
 
 ### Comments & Documentation
 
@@ -145,6 +153,9 @@ After implementing a feature, verify:
 - ✗ Clever one-liners that sacrifice clarity
 - ✗ Premature abstraction - wait for patterns to emerge
 - ✗ Comments explaining what code does (code should be obvious)
+- ✗ **Iterating over DB registries** - use indexed lookups instead
+- ✗ **Workarounds for missing lookups** - ask about design changes instead
+- ✗ **Accessing beliefs without state context** - means the design needs clarification
 
 ## ESLint Configuration
 

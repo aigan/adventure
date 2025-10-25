@@ -55,6 +55,8 @@ export class Mind {
       this.label = data.label
       this.self = null
       this.state = new Set()
+      /** @type {Map<import('./state.mjs').State, Set<import('./state.mjs').State>>} */
+      this._states_by_ground_state = new Map()
 
       DB.mind_by_id.set(this._id, this)
       if (this.label) {
@@ -67,6 +69,8 @@ export class Mind {
     this.label = /** @type {string|null} */ (label)
     this.self = self
     /** @type {Set<import('./state.mjs').State>} */ this.state = new Set()
+    /** @type {Map<import('./state.mjs').State, Set<import('./state.mjs').State>>} */
+    this._states_by_ground_state = new Map()
 
     DB.mind_by_id.set(this._id, this)
     if (this.label) {
@@ -88,6 +92,29 @@ export class Mind {
    */
   static get_by_label(label) {
     return DB.mind_by_label.get(label)
+  }
+
+  /**
+   * Get states in this mind that have the specified ground_state
+   * @param {import('./state.mjs').State} ground_state
+   * @returns {Set<import('./state.mjs').State>}
+   */
+  get_states_by_ground_state(ground_state) {
+    return this._states_by_ground_state.get(ground_state) ?? new Set()
+  }
+
+  /**
+   * Register a state in the ground_state index
+   * @param {import('./state.mjs').State} state
+   */
+  _register_state_by_ground_state(state) {
+    if (state.ground_state) {
+      if (!this._states_by_ground_state.has(state.ground_state)) {
+        this._states_by_ground_state.set(state.ground_state, new Set())
+      }
+      // TypeScript: We just ensured the key exists above
+      /** @type {Set<import('./state.mjs').State>} */ (this._states_by_ground_state.get(state.ground_state)).add(state)
+    }
   }
 
   /**

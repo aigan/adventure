@@ -92,6 +92,22 @@ export class Belief {
 
   /**
    * @param {string} label
+   * @param {Record<string, any>} data
+   * @param {import('./state.mjs').State|null} [creator_state] - State creating this belief (for inferring ground_state)
+   */
+  add_trait(label, data, creator_state = null) {
+    assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
+
+    const traittype = DB.traittype_by_label[label]
+    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.get_label(), data, Traittype_by_label: DB.traittype_by_label})
+
+    assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
+
+    this._traits.set(label, data)
+  }
+
+  /**
+   * @param {string} label
    * @returns {boolean}
    */
   can_have_trait(label) {
@@ -179,14 +195,17 @@ export class Belief {
     }
   }
 
-  lock() {
+  /**
+   * Lock this belief and cascade to child mind states
+   * @param {import('./state.mjs').State} state - State context being locked
+   */
+  lock(state) {
     this.locked = true
 
     // Cascade to child mind states
     // Note: Only checks _traits (directly set on this belief), not inherited traits.
     // Inherited Mind traits come from base beliefs that must already be locked,
     // so they were already cascaded when the base belief locked.
-    // Query DB for Mind-typed trait names to avoid iterating all traits.
     const mind_trait_names = DB.get_mind_trait_names()
     for (const trait_name of mind_trait_names) {
       const trait_value = this._traits.get(trait_name)
@@ -195,18 +214,20 @@ export class Belief {
       // Handle array of Mind references
       if (Array.isArray(trait_value)) {
         for (const mind of trait_value) {
-          for (const state of mind.state) { // TODO: REPLACE!
-            if (!state.locked) {
-              state.lock()
+          const child_states = mind.get_states_by_ground_state(state)
+          for (const child_state of child_states) {
+            if (!child_state.locked) {
+              child_state.lock()
             }
           }
         }
       }
       // Handle single Mind reference
       else {
-        for (const state of trait_value.state) { // TODO: REPLACE!
-          if (!state.locked) {
-            state.lock()  // This will cascade to state's beliefs, which cascade to their minds, etc.
+        const child_states = trait_value.get_states_by_ground_state(state)
+        for (const child_state of child_states) {
+          if (!child_state.locked) {
+            child_state.lock()  // This will cascade to state's beliefs, which cascade to their minds, etc.
           }
         }
       }
@@ -475,6 +496,26 @@ export class Belief {
     }
 
     for (const [trait_label, trait_data] of Object.entries(traits)) {
+      belief.resolve_and_add_trait(trait_label, trait_data, creator_state)
+    }
+
+    return belief
+  }
+
+  /**
+   * Create belief without template
+   * @param {import('./mind.mjs').Mind} mind
+   * @param {{bases?: Array<Belief|import('./archetype.mjs').Archetype>, traits?: Record<string, any>}} options
+   * @param {import('./state.mjs').State|null} [creator_state]
+   * @returns {Belief}
+   */
+  static from(mind, {bases=[], traits={}}, creator_state = null) {
+    const belief = new Belief(mind, {
+      bases,
+    }, creator_state)
+
+    for (const [trait_label, trait_data] of Object.entries(traits)) {
+      // TODO: replace with belief.add_trait()
       belief.resolve_and_add_trait(trait_label, trait_data, creator_state)
     }
 

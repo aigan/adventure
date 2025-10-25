@@ -88,13 +88,14 @@ export class State {
     this.locked = false
 
     this.in_mind.state.add(this)
+    this.in_mind._register_state_by_ground_state(this)
     DB.state_by_id.set(this._id, this)
   }
 
   lock() {
     this.locked = true
     for (const belief of this.insert) {
-      belief.lock()
+      belief.lock(this)
     }
   }
 
@@ -317,8 +318,7 @@ export class State {
         }
       }
 
-      // Create the belief and add to state's insert list
-      const new_belief = Belief.from_template(this.in_mind, {
+      const new_belief = Belief.from(this.in_mind, {
         bases: archetype_bases,
         traits: {
           '@about': DB.get_or_create_subject(belief.subject.sid),  // Shared canonical Subject

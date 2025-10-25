@@ -2,20 +2,35 @@
 
 ## Active Plan
 
-None - Ready to start next feature!
+**Code Quality Cleanup** - Refactoring, cleanup, and quality improvements across the codebase
+
+Focus areas:
+- Code consistency and style compliance (docs/STYLE.md)
+- Test coverage and quality
+- Documentation accuracy
+- Naming conventions and clarity
+- Reducing complexity where possible
+- Removing dead code or TODOs
+
+Current priority: TBD - assessing areas that need attention
 
 ## Recently Completed
 
-**[Mind and Self Refactor](docs/plans/archive/mind-self-refactor.md)** - All 4 phases complete ✅
-- Phase 1: Added `self` property to State
-- Phase 2: Created Mind.resolve_template() and new `mind` trait
-- Phase 3: Replaced mind_states with mind everywhere
-- Phase 4: Added locking constraints with cascade
-
 ## Backlog
-- [ ] Generalize Traittype system - Remove ALL hardcoded type checks (Mind, State, Subject, Belief) from traittype.mjs. Instead, use a registry-based system where classes register themselves with their capabilities (resolve_template, instanceof checks, serialization, inspection). Affects lines 168-190 (_resolve_item), 203-222 (resolve), 237 (serializeTraitValue), 263-271 (inspect)
+- [ ] **Document all indexes and enforce encapsulation** - Make all internal data structures private
+  - Document all indexes (DB registries, Mind.states_by_ground_state, etc.)
+  - Make all Sets/Maps private (prefix with `_`)
+  - No code should directly access Sets/Maps except in their owning class
+  - All access must go through getter methods with proper indexed lookups
+  - Example: `Mind._states` (private), access via `mind.get_states_by_ground_state(state)`
+- [ ] **Clarify shared belief architecture** - Resolve confusion about beliefs without minds/states and remove workarounds
+  - All beliefs MUST have `in_mind` and `origin_state` (no null values)
+  - Shared/template beliefs live in a proper mind (not null)
+  - Remove all code handling null mind/state cases
+  - Remove code that iterates over states/beliefs (violates relative context principle)
+  - Create template context mechanism for label→belief resolution (keep out of Subject)
+  - No direct pointers to specific beliefs - everything must be contextual/relative
 - [ ] Create documentation for data traversal patterns - Document all navigation patterns (state_by_belief, belief_by_state, subject_by_label, etc.) showing how to traverse the data model
-- [ ] Replace sid with subject in more places - Continue refactoring to use Subject objects instead of raw SIDs throughout the codebase
 - [ ] Create test case for shared beliefs - Test how trait resolution works when multiple beliefs reference the same shared subject
 
 ## Next Up
