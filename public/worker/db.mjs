@@ -38,8 +38,8 @@ export const state_by_label = {}
 /** @type {Map<number, import('./belief.mjs').Belief>} */
 export const belief_by_id = new Map()
 
-/** @type {Map<number, Set<import('./belief.mjs').Belief>>} */
-export const belief_by_sid = new Map()
+/** @type {Map<import('./subject.mjs').Subject, Set<import('./belief.mjs').Belief>>} */
+export const belief_by_subject = new Map()
 
 /** @type {Map<import('./mind.mjs').Mind, Set<import('./belief.mjs').Belief>>} */
 export const belief_by_mind = new Map()
@@ -103,27 +103,28 @@ export function get_belief(id) {
 }
 
 /**
- * Get Belief by label (resolves via sid)
+ * Get first Belief by label (resolves via sid)
  * @param {string} label
  * @returns {import('./belief.mjs').Belief|undefined}
  */
-export function get_belief_by_label(label) {
+export function get_first_belief_by_label(label) {
   const sid = sid_by_label.get(label)
   if (sid === undefined) return undefined
 
-  const beliefs = belief_by_sid.get(sid)
+  const subject = get_or_create_subject(sid)
+  const beliefs = belief_by_subject.get(subject)
   if (!beliefs || beliefs.size === 0) return undefined
 
-  return [...beliefs][0]
+  return beliefs.values().next().value
 }
 
 /**
- * Register belief in belief_by_sid and belief_by_mind registries
+ * Register belief in belief_by_subject and belief_by_mind registries
  * @param {import('./belief.mjs').Belief} belief - Belief to register
  */
-export function register_belief_by_sid(belief) {
-  // Add to belief_by_sid (Set already initialized by get_or_create_subject)
-  /** @type {Set<import('./belief.mjs').Belief>} */ (belief_by_sid.get(belief.subject.sid)).add(belief)
+export function register_belief_by_subject(belief) {
+  // Add to belief_by_subject (Set already initialized by get_or_create_subject)
+  /** @type {Set<import('./belief.mjs').Belief>} */ (belief_by_subject.get(belief.subject)).add(belief)
 
   // Register by mind
   if (!belief_by_mind.has(belief.in_mind)) {
@@ -141,7 +142,7 @@ export function get_or_create_subject(sid) {
   if (!subject_by_sid.has(sid)) {
     const subject = new Subject(sid)
     subject_by_sid.set(sid, subject)
-    belief_by_sid.set(sid, new Set())
+    belief_by_subject.set(subject, new Set())
   }
   return /** @type {Subject} */ (subject_by_sid.get(sid))
 }
@@ -177,6 +178,17 @@ export function get_state(id) {
 }
 
 /**
+ * Get Subject by label
+ * @param {string} label
+ * @returns {import('./subject.mjs').Subject|undefined}
+ */
+export function get_subject_by_label(label) {
+  const sid = sid_by_label.get(label)
+  if (sid === undefined) return undefined
+  return subject_by_sid.get(sid)
+}
+
+/**
  * Reset all registries (for testing)
  */
 export function reset_all_registries() {
@@ -184,7 +196,7 @@ export function reset_all_registries() {
   mind_by_label.clear()
   state_by_id.clear()
   belief_by_id.clear()
-  belief_by_sid.clear()
+  belief_by_subject.clear()
   belief_by_mind.clear()
   sid_by_label.clear()
   label_by_sid.clear()

@@ -37,7 +37,7 @@ describe('Save/Load functionality', () => {
       expect(loaded_mind.state.size).to.equal(1);
 
       // Verify belief exists (lazy)
-      const loaded_workshop = DB.get_belief_by_label('workshop');
+      const loaded_workshop = DB.get_first_belief_by_label('workshop');
       expect(loaded_workshop).to.exist;
       expect(loaded_workshop._id).to.equal(workshop._id);
     });
@@ -56,7 +56,7 @@ describe('Save/Load functionality', () => {
         label: 'hammer',
         bases: ['PortableObject'],
         traits: {
-          location: workshop,
+          location: workshop.subject,
         },
       });
 
@@ -67,8 +67,8 @@ describe('Save/Load functionality', () => {
       const loaded_mind = load(json);
 
       // Get loaded beliefs
-      const loaded_hammer = DB.get_belief_by_label('hammer');
-      const loaded_workshop = DB.get_belief_by_label('workshop');
+      const loaded_hammer = DB.get_first_belief_by_label('hammer');
+      const loaded_workshop = DB.get_first_belief_by_label('workshop');
       const loaded_state = [...loaded_mind.state][0];
 
       // Trait reference should be resolved correctly after load
@@ -92,7 +92,7 @@ describe('Save/Load functionality', () => {
         label: 'room2',
         bases: ['Location'],
         traits: {
-          location: room1,  // room2 → room1 in state1
+          location: room1.subject,  // room2 → room1 in state1
         },
       });
 
@@ -101,7 +101,7 @@ describe('Save/Load functionality', () => {
         sid: room1.subject.sid,
         bases: [room1],
         traits: {
-          location: room2,  // room1_v2 → room2 in state2
+          location: room2.subject,  // room1_v2 → room2 in state2
         },
       });
 
@@ -118,8 +118,8 @@ describe('Save/Load functionality', () => {
       expect(loaded_state2).to.exist;
 
       // Get the beliefs
-      const loaded_room1 = DB.get_belief_by_label('room1');
-      const loaded_room2 = DB.get_belief_by_label('room2');
+      const loaded_room1 = DB.get_first_belief_by_label('room1');
+      const loaded_room2 = DB.get_first_belief_by_label('room2');
       // room1_v2 is a version of room1 (has room1 as base)
       const loaded_room1_v2 = [...DB.belief_by_id.values()].find(b =>
         b !== loaded_room1 && b.bases.size === 1 && [...b.bases][0] === loaded_room1
@@ -225,13 +225,13 @@ describe('Save/Load functionality', () => {
       const loaded_mind = load(json);
 
       // Verify all beliefs loaded
-      expect(DB.get_belief_by_label('workshop')).to.exist;
-      expect(DB.get_belief_by_label('hammer')).to.exist;
-      expect(DB.get_belief_by_label('player')).to.exist;
-      expect(DB.get_belief_by_label('ball')).to.exist;
+      expect(DB.get_first_belief_by_label('workshop')).to.exist;
+      expect(DB.get_first_belief_by_label('hammer')).to.exist;
+      expect(DB.get_first_belief_by_label('player')).to.exist;
+      expect(DB.get_first_belief_by_label('ball')).to.exist;
 
       // Verify player has mind
-      const loaded_player = DB.get_belief_by_label('player');
+      const loaded_player = DB.get_first_belief_by_label('player');
       const player_mind = loaded_player.traits.get('mind');
       expect(player_mind).to.be.instanceOf(Mind);
       const states = [...player_mind.state];

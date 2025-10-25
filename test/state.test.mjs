@@ -21,7 +21,7 @@ describe('State', () => {
       });
 
       expect([...DB.belief_by_id.values()].filter(b => b.in_mind === mind).length).to.equal(2);
-      expect([...DB.belief_by_id.values()].some(b => b.in_mind === mind && b === DB.get_belief_by_label('workshop'))).to.be.true;
+      expect([...DB.belief_by_id.values()].some(b => b.in_mind === mind && b === DB.get_first_belief_by_label('workshop'))).to.be.true;
       expect([...DB.belief_by_id.values()].some(b => b.in_mind === mind && b === hammer)).to.be.true;
     });
 
@@ -46,8 +46,8 @@ describe('State', () => {
       const mind = new Mind('test');
       Belief.from_template(mind, {label: 'workshop', bases: ['Location']});
 
-      expect(DB.get_belief_by_label('workshop')).to.exist;
-      expect(DB.get_belief_by_label('workshop').get_label()).to.equal('workshop');
+      expect(DB.get_first_belief_by_label('workshop')).to.exist;
+      expect(DB.get_first_belief_by_label('workshop').get_label()).to.equal('workshop');
     });
   });
 
@@ -103,7 +103,7 @@ describe('State', () => {
       Belief.from_template(mind, {label: 'hammer_v1', bases: ['PortableObject']});
 
       const state1 = mind.create_state(1);
-      const hammer_v1 = DB.get_belief_by_label('hammer_v1');
+      const hammer_v1 = DB.get_first_belief_by_label('hammer_v1');
       const hammer_v2 = Belief.from_template(hammer_v1.in_mind, {
         bases: [hammer_v1],
         traits: { color: 'red' }
@@ -127,14 +127,14 @@ describe('State', () => {
       const state_b1 = mind_b.create_state(1);
 
       // Add different beliefs to each mind
-      const item_a = DB.get_belief_by_label('item_in_a');
+      const item_a = DB.get_first_belief_by_label('item_in_a');
       const item_a2 = Belief.from_template(item_a.in_mind, {
         bases: [item_a],
         traits: { color: 'red' }
       });
       const state_a2 = state_a1.tick({ replace: [item_a2] });
 
-      const item_b = DB.get_belief_by_label('item_in_b');
+      const item_b = DB.get_first_belief_by_label('item_in_b');
       const item_b2 = Belief.from_template(item_b.in_mind, {
         bases: [item_b],
         traits: { color: 'blue' }
@@ -248,7 +248,7 @@ describe('State', () => {
       });
 
       // Should resolve to the belief
-      const resolved = state1.resolve_subject(room.subject.sid);
+      const resolved = state1.get_belief_by_subject(room.subject);
       expect(resolved).to.equal(room);
     });
 
@@ -270,10 +270,10 @@ describe('State', () => {
       const state2 = state1.tick({ replace: [room_v2] });
 
       // state1 should resolve to v1
-      expect(state1.resolve_subject(room_v1.subject.sid)).to.equal(room_v1);
+      expect(state1.get_belief_by_subject(room_v1.subject)).to.equal(room_v1);
 
       // state2 should resolve to v2
-      expect(state2.resolve_subject(room_v1.subject.sid)).to.equal(room_v2);
+      expect(state2.get_belief_by_subject(room_v1.subject)).to.equal(room_v2);
     });
 
     it('builds sid index on-demand for efficient lookups', () => {
@@ -287,19 +287,19 @@ describe('State', () => {
       state.lock();
 
       // First resolution should progressively build cache
-      const resolved1 = state.resolve_subject(room1.subject.sid);
+      const resolved1 = state.get_belief_by_subject(room1.subject);
       expect(resolved1).to.equal(room1);
 
       // Check that index was created (implementation detail)
-      expect(state._sid_index).to.exist;
-      expect(state._sid_index.has(room1.subject.sid)).to.be.true;
+      expect(state._subject_index).to.exist;
+      expect(state._subject_index.has(room1.subject)).to.be.true;
 
       // Second resolution should use cached index
-      const resolved2 = state.resolve_subject(room2.subject.sid);
+      const resolved2 = state.get_belief_by_subject(room2.subject);
       expect(resolved2).to.equal(room2);
 
       // Cache should now have both rooms
-      expect(state._sid_index.has(room2.subject.sid)).to.be.true;
+      expect(state._subject_index.has(room2.subject)).to.be.true;
     });
 
     it('fixes circular reference problem - traits point to subject, not version', () => {
@@ -316,7 +316,7 @@ describe('State', () => {
         label: 'room2',
         bases: ['Location'],
         traits: {
-          location: room1,  // room2 inside room1
+          location: room1.subject,  // room2 inside room1
         },
       });
 
@@ -325,7 +325,7 @@ describe('State', () => {
         sid: room1.subject.sid,
         bases: [room1],
         traits: {
-          location: room2,  // room1 now inside room2
+          location: room2.subject,  // room1 now inside room2
         },
       });
       const state2 = state1.tick({ replace: [room1_v2] });
@@ -336,12 +336,12 @@ describe('State', () => {
       expect(room2_location).to.equal(room1.subject);
 
       // In state1: room2.location resolves to room1 (no location trait)
-      const room2_location_in_state1 = room2_location.resolve(state1);
+      const room2_location_in_state1 = room2_location.get_belief_by_state(state1);
       expect(room2_location_in_state1).to.equal(room1);
       expect(room2_location_in_state1.traits.get('location')).to.be.undefined;
 
       // In state2: room2.location resolves to room1_v2 (has location trait)
-      const room2_location_in_state2 = room2_location.resolve(state2);
+      const room2_location_in_state2 = room2_location.get_belief_by_state(state2);
       expect(room2_location_in_state2).to.equal(room1_v2);
 
       // And room1_v2's location points back to room2
@@ -350,7 +350,7 @@ describe('State', () => {
       expect(room1_v2_location).to.equal(room2.subject);
 
       // This creates a proper circular reference in state2
-      const room1_v2_location_resolved = room1_v2_location.resolve(state2);
+      const room1_v2_location_resolved = room1_v2_location.get_belief_by_state(state2);
       expect(room1_v2_location_resolved).to.equal(room2);
     });
   });

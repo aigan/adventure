@@ -67,7 +67,7 @@ describe('Belief', () => {
       const mind = new Mind('test');
       Belief.from_template(mind, {label: 'workshop', bases: ['Location']});
 
-      const workshop = DB.get_belief_by_label('workshop');
+      const workshop = DB.get_first_belief_by_label('workshop');
       expect(workshop.in_mind).to.equal(mind);
     });
 
@@ -93,7 +93,7 @@ describe('Belief', () => {
       const mind_b = new Mind('mind_b');
 
       // Currently this works - mind_b can reference mind_a's belief
-      const workshop_a = DB.get_belief_by_label('workshop');
+      const workshop_a = DB.get_first_belief_by_label('workshop');
       const item = new Belief(mind_b, {
         subject: workshop_a.subject,  // Explicitly creating a version in mind_b
         bases: [workshop_a]
@@ -153,7 +153,7 @@ describe('Belief', () => {
       expect(room1_v2._id).to.be.greaterThan(original_id);
     });
 
-    it('registers beliefs in belief_by_sid registry', () => {
+    it('registers beliefs in belief_by_subject registry', () => {
       const world_mind = new Mind('world');
 
       const room = Belief.from_template(world_mind, {
@@ -161,14 +161,14 @@ describe('Belief', () => {
         bases: ['Location'],
       });
 
-      // Should be in belief_by_sid registry
-      expect(DB.belief_by_sid).to.exist;
-      expect(DB.belief_by_sid.get(room.subject.sid)).to.exist;
+      // Should be in belief_by_subject registry
+      expect(DB.belief_by_subject).to.exist;
+      expect(DB.belief_by_subject.get(room.subject)).to.exist;
 
-      // Registry should contain a Set of beliefs with this sid
-      const beliefs_with_sid = DB.belief_by_sid.get(room.subject.sid);
-      expect(beliefs_with_sid).to.be.instanceof(Set);
-      expect(beliefs_with_sid.has(room)).to.be.true;
+      // Registry should contain a Set of beliefs with this subject
+      const beliefs_with_subject = DB.belief_by_subject.get(room.subject);
+      expect(beliefs_with_subject).to.be.instanceof(Set);
+      expect(beliefs_with_subject.has(room)).to.be.true;
     });
 
     it('registers multiple versions under same sid', () => {
@@ -191,16 +191,16 @@ describe('Belief', () => {
         traits: { color: 'blue' },
       });
 
-      // All three should share the same sid
-      expect(room_v2.subject.sid).to.equal(room_v1.subject.sid);
-      expect(room_v3.subject.sid).to.equal(room_v1.subject.sid);
+      // All three should share the same subject
+      expect(room_v2.subject).to.equal(room_v1.subject);
+      expect(room_v3.subject).to.equal(room_v1.subject);
 
-      // All should be in belief_by_sid registry
-      const beliefs_with_sid = DB.belief_by_sid.get(room_v1.subject.sid);
-      expect(beliefs_with_sid.size).to.equal(3);
-      expect(beliefs_with_sid.has(room_v1)).to.be.true;
-      expect(beliefs_with_sid.has(room_v2)).to.be.true;
-      expect(beliefs_with_sid.has(room_v3)).to.be.true;
+      // All should be in belief_by_subject registry
+      const beliefs_with_subject = DB.belief_by_subject.get(room_v1.subject);
+      expect(beliefs_with_subject.size).to.equal(3);
+      expect(beliefs_with_subject.has(room_v1)).to.be.true;
+      expect(beliefs_with_subject.has(room_v2)).to.be.true;
+      expect(beliefs_with_subject.has(room_v3)).to.be.true;
     });
 
     it('stores trait value as Subject when value is a Belief', () => {
@@ -215,7 +215,7 @@ describe('Belief', () => {
         label: 'hammer',
         bases: ['PortableObject'],
         traits: {
-          location: workshop,
+          location: workshop.subject,
         },
       });
 
@@ -276,7 +276,7 @@ describe('Belief', () => {
       expect(sid).to.equal(room.subject.sid);
 
       // Then resolve in state context
-      const resolved = state.resolve_subject(sid);
+      const resolved = state.get_belief_by_subject(room.subject);
       expect(resolved).to.equal(room);
     });
   });

@@ -18,10 +18,10 @@ describe('Registry', () => {
       const workshop_b = Belief.from_template(mind_b, {label: 'workshop_unique_b', bases: ['Location']});
 
       // Labels are globally unique now
-      expect(DB.get_belief_by_label('workshop_unique_a')).to.exist;
-      expect(DB.get_belief_by_label('workshop_unique_b')).to.exist;
-      expect(DB.get_belief_by_label('workshop_unique_a')).to.not.equal(
-        DB.get_belief_by_label('workshop_unique_b')
+      expect(DB.get_first_belief_by_label('workshop_unique_a')).to.exist;
+      expect(DB.get_first_belief_by_label('workshop_unique_b')).to.exist;
+      expect(DB.get_first_belief_by_label('workshop_unique_a')).to.not.equal(
+        DB.get_first_belief_by_label('workshop_unique_b')
       );
     });
 

@@ -22,6 +22,7 @@
  * See world.mjs for traittype definitions
  */
 
+import { assert } from '../lib/debug.mjs'
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'
@@ -97,7 +98,7 @@ export class Traittype {
    */
   _build_resolver() {
     if (this.container === Array) {
-      return (/** @type {any} */ mind, /** @type {any} */ data) => {
+      return (/** @type {import('./belief.mjs').Belief} */ owner_belief, /** @type {any} */ data, /** @type {import('./state.mjs').State|null} */ creator_state) => {
         if (!Array.isArray(data)) {
           throw new Error(`Expected array for trait '${this.label}', got ${typeof data}`)
         }
@@ -111,49 +112,65 @@ export class Traittype {
         }
 
         // Resolve each item
-        return data.map(item => this._resolve_item(mind, item))
+        return data.map(item => this._resolve_item(owner_belief, item, creator_state))
       }
     } else {
       // No container - single value
-      return (/** @type {any} */ mind, /** @type {any} */ data) => this._resolve_item(mind, data)
+      return (/** @type {import('./belief.mjs').Belief} */ owner_belief, /** @type {any} */ data, /** @type {import('./state.mjs').State|null} */ creator_state) => this._resolve_item(owner_belief, data, creator_state)
     }
   }
 
   /**
    * Resolve a single item (not an array)
-   * @param {any} mind
+   * @param {import('./belief.mjs').Belief} owner_belief
    * @param {*} data
+   * @param {import('./state.mjs').State|null} creator_state
    * @returns {*}
    */
-  _resolve_item(mind, data) {
+  _resolve_item(owner_belief, data, creator_state) {
     const type_label = this.data_type
+
+    //creator_state ??= owner_belief.origin_state
 
     // Check if it's an Archetype reference
     if (DB.archetype_by_label[type_label]) {
       const archetype = DB.archetype_by_label[type_label]
-      let belief
+
+      // Handle different input types
       if (typeof data === 'string') {
-        belief = DB.get_belief_by_label(data)
-      } else if (data instanceof Subject) {
-        // Already a Subject - return as-is
-        return data
-      } else {
-        belief = data
-      }
 
-      if (belief == null) {
-        throw new Error(`Belief not found for trait '${this.label}': ${data}`)
-      }
+        // TODO: Get archtypes either from shared subject directly, or provided creator_State
 
-      // Check if belief has the required archetype in its chain
-      for (const a of belief.get_archetypes()) {
-        if (a === archetype) {
-          // Return the canonical Subject (one per sid)
-          return belief.subject
+        //const subject = DB.get_subject_by_label(data);
+        //const belief = creator_state.resolve_subject(sid);
+
+        // String label - lookup and validate
+        const belief = DB.get_first_belief_by_label(data)
+        if (belief == null) {
+          throw new Error(`Belief not found for trait '${this.label}': ${data}`)
         }
-      }
 
-      throw new Error(`Belief does not have required archetype '${type_label}' for trait '${this.label}'`)
+        // Validate archetype
+        for (const a of belief.get_archetypes()) {
+          if (a === archetype) {
+            return belief.subject
+          }
+        }
+        throw new Error(`Belief '${data}' does not have required archetype '${type_label}' for trait '${this.label}'`)
+
+      } else if (data.subject) {
+        // Belief - validate and return subject
+        for (const a of data.get_archetypes()) {
+          if (a === archetype) {
+            return data.subject
+          }
+        }
+        throw new Error(`Belief does not have required archetype '${type_label}' for trait '${this.label}'`)
+
+      } else {
+        // Subject - already validated, return as-is
+        return data
+      }
     }
 
     // Check if it's a literal type (string, number, boolean)
@@ -164,53 +181,29 @@ export class Traittype {
       throw new Error(`Expected ${type_label} for trait '${this.label}', got ${typeof data}`)
     }
 
-    // Check if it's a data type (Mind, State, Subject)
-    if (type_label === 'Mind') {
-      if (data instanceof Mind) {
-        return data
-      }
-      throw new Error(`Expected Mind instance for trait '${this.label}'`)
-    }
-    if (type_label === 'State') {
-      if (data instanceof State) {
-        return data
-      }
-      throw new Error(`Expected State instance for trait '${this.label}'`)
-    }
-    if (type_label === 'Subject') {
-      // Subject type accepts a Belief and returns its subject
-      if (data instanceof Subject) {
-        return data
-      }
-      if (data instanceof Belief) {
-        // Return the belief's subject (canonical identity with null archetype)
-        return data.subject
-      }
-      throw new Error(`Expected Belief or Subject instance for trait '${this.label}'`)
-    }
-
-    throw new Error(`Unknown type '${type_label}' for trait '${this.label}'`)
+    // For all other registered types (Mind, State, Subject, etc.), just return data as-is
+    // The caller is responsible for passing the correct type
+    return data
   }
 
   /**
-   * @param {any} mind
-   * @param {*} data
-   * @param {any} owner_belief - Belief being constructed (for setting mind owner)
-   * @param {any} [creator_state] - State creating the belief (for inferring ground_state)
+   * @param {import('./belief.mjs').Belief} owner_belief - Belief being constructed
+   * @param {*} data - Raw data to resolve
+   * @param {import('./state.mjs').State|null} [creator_state] - State creating the belief
    * @returns {*}
    */
-  resolve(mind, data, owner_belief = null, creator_state = null) {
+  resolve(owner_belief, data, creator_state = null) {
     // Check for Mind template (plain object learn spec)
     if (this.data_type === 'Mind' &&
         data &&
         typeof data === 'object' &&
         !data._type &&
-        !(data instanceof Mind)) {
-      // It's a learn spec - call Mind.resolve_template
+        !(data.state instanceof Set)) {
+      // It's a learn spec (plain object without Mind's state Set) - call Mind.resolve_template
       return /** @type {any} */ (Cosmos.Mind).resolve_template(
-        mind,
+        owner_belief.in_mind,
         data,
-        owner_belief?.subject ?? null,
+        owner_belief.subject ?? null,
         creator_state
       )
     }
@@ -218,10 +211,10 @@ export class Traittype {
     // Check for template construction with _type field (Mind only)
     if (data?._type === 'Mind') {
       // TypeScript: Call resolve_template as any to avoid type check on static method
-      return /** @type {any} */ (Cosmos.Mind).resolve_template(mind, data, owner_belief, creator_state)
+      return /** @type {any} */ (Cosmos.Mind).resolve_template(owner_belief.in_mind, data, owner_belief, creator_state)
     }
 
-    return this._resolver(mind, data)
+    return this._resolver(owner_belief, data, creator_state)
   }
 
   /**
@@ -234,7 +227,6 @@ export class Traittype {
     if (Array.isArray(value)) {
       return value.map(item => Traittype.serializeTraitValue(item))
     }
-    if (value instanceof Subject) return value.toJSON()
     if (value?.toJSON) return value.toJSON()
     return value
   }
@@ -249,7 +241,11 @@ export class Traittype {
     if (Array.isArray(value)) {
       return value.map(item => this.inspect(state, item))
     }
-    if (value instanceof Subject) {
+    if (typeof value === 'number' || typeof value === 'string') {
+      return value
+    }
+    // If it's a registered class (Mind, State, Belief, Subject), call inspect
+    if (typeof value?.inspect === 'function') {
       // Determine which state to resolve in based on mind_scope
       let resolve_state = state
       if (this.mind_scope === 'parent' && state?.ground_state) {
@@ -257,23 +253,7 @@ export class Traittype {
       }
       return value.inspect(resolve_state)
     }
-    if (typeof value === 'number') {
-      return value
-    }
-    if (value instanceof Belief) {
-      return {_ref: value._id, _type: 'Belief', label: value.get_label()}
-    }
-    if (value instanceof State) {
-      return {_ref: value._id, _type: 'State'}
-    }
-    if (value instanceof Mind) {
-      return {
-        _ref: value._id,
-        _type: 'Mind',
-        label: value.label,
-        states: [...value.state].map(s => ({_ref: s._id, _type: 'State'}))
-      }
-    }
+    // Fallback for other objects
     if (value?.toJSON) return value.toJSON()
     return value
   }

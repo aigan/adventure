@@ -49,9 +49,9 @@ export class Belief {
    * @param {object} param1
    * @param {import('./subject.mjs').Subject|null} [param1.subject] - Subject (provide to create version of existing subject)
    * @param {Array<Archetype|Belief>} [param1.bases] - Archetype or Belief objects (no strings)
-   * @param {import('./state.mjs').State|null} [creator_state] - State that's creating this belief (for inferring ground_state)
+   * @param {import('./state.mjs').State|null} [origin_state] - State that's creating this belief
    */
-  constructor(mind, {subject=null, bases=[]}, creator_state = null) {
+  constructor(mind, {subject=null, bases=[]}, origin_state = null) {
     for (const base of bases) {
       assert(typeof base !== 'string',
         'Constructor received string base - use Belief.from_template() instead',
@@ -64,9 +64,10 @@ export class Belief {
     this.in_mind = mind
     this._traits = new Map()
     this.locked = false
+    this.origin_state = origin_state
 
     DB.belief_by_id.set(this._id, this)
-    DB.register_belief_by_sid(this)
+    DB.register_belief_by_subject(this)
 
     // TODO: add default trait values
   }
@@ -82,7 +83,7 @@ export class Belief {
     const traittype = DB.traittype_by_label[label]
     assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.get_label(), data, Traittype_by_label: DB.traittype_by_label})
 
-    const value = /** @type {import('./traittype.mjs').Traittype} */ (traittype).resolve(this.in_mind, data, this, creator_state)
+    const value = /** @type {import('./traittype.mjs').Traittype} */ (traittype).resolve(this, data, creator_state)
 
     assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.get_label(), value, archetypes: [...this.get_archetypes()].map(a => a.label)})
 
@@ -113,7 +114,7 @@ export class Belief {
   }
 
   /**
-   * Get the belief this is about (resolves @about trait)
+   * Get the belief this is about (resolves `@about` trait)
    * @param {import('./state.mjs').State} state - State context for resolving Subject
    * @returns {Belief|null} The belief this is about, or null
    */
@@ -127,12 +128,12 @@ export class Belief {
       }
 
       // Try to resolve in the determined state
-      const belief = resolve_state?.resolve_subject?.(about_trait.sid)
+      const belief = resolve_state?.get_belief_by_subject?.(about_trait)
       if (belief) return belief
 
       // Fallback to global registry (cross-mind reference)
-      const beliefs = DB.belief_by_sid.get(about_trait.sid)
-      if (beliefs?.size) return [...beliefs][0]
+      const beliefs = DB.belief_by_subject.get(about_trait)
+      if (beliefs?.size) return beliefs.values().next().value ?? null
       return null
     }
     // No @about trait set
@@ -149,7 +150,7 @@ export class Belief {
     if (Array.isArray(value)) {
       return value.map(item => this._resolve_trait_value(item, state))
     } else if (value instanceof Subject) {
-      return value.resolve(state)
+      return value.get_belief_by_state(state)
     } else if (value && typeof value === 'object' && value._type) {
       // State/Mind reference object from JSON - deserialize it
       return deserialize_trait_value(value)
@@ -194,7 +195,7 @@ export class Belief {
       // Handle array of Mind references
       if (Array.isArray(trait_value)) {
         for (const mind of trait_value) {
-          for (const state of mind.state) {
+          for (const state of mind.state) { // TODO: REPLACE!
             if (!state.locked) {
               state.lock()
             }
@@ -203,7 +204,7 @@ export class Belief {
       }
       // Handle single Mind reference
       else {
-        for (const state of trait_value.state) {
+        for (const state of trait_value.state) { // TODO: REPLACE!
           if (!state.locked) {
             state.lock()  // This will cascade to state's beliefs, which cascade to their minds, etc.
           }
@@ -243,7 +244,7 @@ export class Belief {
 
   /**
    * Generate a designation string for this belief
-   * @param {import('./state.mjs').State|null} [state] - State context for resolving @about
+   * @param {import('./state.mjs').State|null} [state] - State context for resolving `@about`
    * @returns {string} Designation string (e.g., "hammer [PortableObject] #42")
    */
   sysdesig(state = null) {
@@ -364,8 +365,8 @@ export class Belief {
       const traittype = DB.traittype_by_label[trait_name]
       if (traittype) {
         if (DB.archetype_by_label[traittype.data_type] || traittype.data_type === 'Subject') {
-          // It's a Belief/Subject reference - wrap in Subject
-          return new Subject(value)
+          // It's a Belief/Subject reference - get canonical Subject
+          return DB.get_or_create_subject(value)
         }
       }
       // Literal number
@@ -425,7 +426,7 @@ export class Belief {
 
     // Register globally
     DB.belief_by_id.set(belief._id, belief)
-    DB.register_belief_by_sid(belief)
+    DB.register_belief_by_subject(belief)
 
     // Register label-sid mappings (for first belief with this label loaded)
     if (data.label) {
@@ -455,7 +456,7 @@ export class Belief {
   static from_template(mind, {sid=null, label=null, bases=[], traits={}}, creator_state = null) {
     const resolved_bases = bases.map(base => {
       if (typeof base === 'string') {
-        const resolved = DB.get_belief_by_label(base) ?? DB.archetype_by_label[base]
+        const resolved = DB.get_first_belief_by_label(base) ?? DB.archetype_by_label[base]
         assert(resolved != null, `Base '${base}' not found as belief label or archetype`, {base})
         return /** @type {Belief|import('./archetype.mjs').Archetype} */ (resolved)
       }
@@ -480,7 +481,6 @@ export class Belief {
     return belief
   }
 
-  // Simple property accessors (no lazy loading needed with SID system)
   get bases() {
     return this._bases
   }

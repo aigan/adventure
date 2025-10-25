@@ -101,6 +101,20 @@ export class Mind {
   }
 
   /**
+   * Shallow inspection for debugging
+   * @param {import('./state.mjs').State} state
+   * @returns {object}
+   */
+  inspect(state) {
+    return {
+      _ref: this._id,
+      _type: 'Mind',
+      label: this.label,
+      states: [...this.state].map(s => ({_ref: s._id, _type: 'State'}))
+    }
+  }
+
+  /**
    * @returns {Omit<MindJSON, 'nested_minds'>}
    */
   toJSON() {
@@ -184,7 +198,7 @@ export class Mind {
 
     // Execute learning
     for (const [label, trait_names] of Object.entries(learn_spec)) {
-      const belief = DB.get_belief_by_label(label)
+      const belief = DB.get_first_belief_by_label(label)
       if (!belief) {
         throw new Error(`Cannot learn about '${label}': belief not found`)
       }

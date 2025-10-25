@@ -14,6 +14,9 @@ None - Ready to start next feature!
 
 ## Backlog
 - [ ] Generalize Traittype system - Remove ALL hardcoded type checks (Mind, State, Subject, Belief) from traittype.mjs. Instead, use a registry-based system where classes register themselves with their capabilities (resolve_template, instanceof checks, serialization, inspection). Affects lines 168-190 (_resolve_item), 203-222 (resolve), 237 (serializeTraitValue), 263-271 (inspect)
+- [ ] Create documentation for data traversal patterns - Document all navigation patterns (state_by_belief, belief_by_state, subject_by_label, etc.) showing how to traverse the data model
+- [ ] Replace sid with subject in more places - Continue refactoring to use Subject objects instead of raw SIDs throughout the codebase
+- [ ] Create test case for shared beliefs - Test how trait resolution works when multiple beliefs reference the same shared subject
 
 ## Next Up
 

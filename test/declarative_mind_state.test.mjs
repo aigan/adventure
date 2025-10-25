@@ -56,7 +56,7 @@ describe('Mind Trait', () => {
       label: 'workshop',
       bases: ['Location'],
       traits: {
-        location: main_area,
+        location: main_area.subject,
       },
     });
 
@@ -64,7 +64,7 @@ describe('Mind Trait', () => {
       label: 'player_body',
       bases: ['Person'],
       traits: {
-        location: workshop,
+        location: workshop.subject,
       },
     });
 

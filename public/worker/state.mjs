@@ -51,7 +51,7 @@ import { Serialize } from './serialize.mjs'
  * @property {import('./belief.mjs').Belief[]} remove - Beliefs removed in this state
  * @property {State[]} branches - Child states branching from this one
  * @property {boolean} locked - Whether state can be modified
- * @property {Map<number, import('./belief.mjs').Belief>|null} _sid_index - Cached sid→belief lookup (lazy, only on locked states)
+ * @property {Map<import('./subject.mjs').Subject, import('./belief.mjs').Belief>|null} _subject_index - Cached subject→belief lookup (lazy, only on locked states)
  */
 export class State {
   // TODO: Populate this registry for prototype state templates
@@ -72,7 +72,7 @@ export class State {
 
     // Check if self belief is unlocked
     if (self !== null && ground_state !== null) {
-      const self_belief = ground_state.resolve_subject(self.sid)
+      const self_belief = ground_state.get_belief_by_subject(self)
       assert(self_belief === null || !self_belief.locked, 'Cannot create state for locked self')
     }
 
@@ -227,44 +227,44 @@ export class State {
   }
 
   /**
-   * Resolve a subject ID to the appropriate belief version visible in this state
+   * Get Belief for a Subject in this state
    * Progressively builds cache as beliefs are accessed (locked states only)
-   * @param {number} sid - Subject ID to resolve
-   * @returns {import('./belief.mjs').Belief|null} The belief with this sid visible in this state, or null if not found
+   * @param {import('./subject.mjs').Subject} subject - Subject to find belief for
+   * @returns {import('./belief.mjs').Belief|null} The belief for this subject visible in this state, or null if not found
    */
-  resolve_subject(sid) {
+  get_belief_by_subject(subject) {
     // Check cache first (only on locked states)
-    if (this.locked && this._sid_index?.has(sid)) {
-      return this._sid_index.get(sid)
+    if (this.locked && this._subject_index?.has(subject)) {
+      return this._subject_index.get(subject)
     }
 
     // If unlocked, don't cache - just search with early termination
     if (!this.locked) {
       for (const belief of this.get_beliefs()) {
-        if (belief.subject.sid === sid) return belief
+        if (belief.subject === subject) return belief
       }
       return null
     }
 
     // Locked state - search and cache as we go (progressive indexing)
-    if (!this._sid_index) {
-      this._sid_index = new Map()
+    if (!this._subject_index) {
+      this._subject_index = new Map()
     }
 
     for (const belief of this.get_beliefs()) {
       // Cache each belief we encounter
-      if (!this._sid_index.has(belief.subject.sid)) {
-        this._sid_index.set(belief.subject.sid, belief)
+      if (!this._subject_index.has(belief.subject)) {
+        this._subject_index.set(belief.subject, belief)
       }
 
       // Found it? Return immediately (early termination)
-      if (belief.subject.sid === sid) {
+      if (belief.subject === subject) {
         return belief
       }
     }
 
     // Not found - cache the null result to avoid re-scanning
-    this._sid_index.set(sid, null)
+    this._subject_index.set(subject, null)
     return null
   }
 
@@ -391,10 +391,19 @@ export class State {
       return value.map(item => this._dereference_trait_value(source_state, item))
     } else if (value instanceof Subject) {
       // Resolve Subject to belief, then learn_about it (which calls recognize → integrate)
-      return this.learn_about(value.resolve(source_state), [], source_state)
+      return this.learn_about(value.get_belief_by_state(source_state), [], source_state)
     } else {
       return value
     }
+  }
+
+  /**
+   * Shallow inspection for debugging
+   * @param {State} state
+   * @returns {object}
+   */
+  inspect(state) {
+    return {_ref: this._id, _type: 'State'}
   }
 
   toJSON() {

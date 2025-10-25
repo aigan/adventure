@@ -13,12 +13,12 @@ export class Subject {
   }
 
   /**
-   * Resolve to Belief in state context
+   * Get Belief for this Subject in state context
    * @param {import('./state.mjs').State} state
    * @returns {import('./belief.mjs').Belief}
    */
-  resolve(state) {
-    const belief = state.resolve_subject(this.sid)
+  get_belief_by_state(state) {
+    const belief = state.get_belief_by_subject(this)
     if (!belief) {
       throw new Error(`Cannot resolve Subject with sid ${this.sid}`)
     }
@@ -39,13 +39,13 @@ export class Subject {
    * @returns {object}
    */
   inspect(state) {
-    let belief = state.resolve_subject(this.sid)
+    let belief = state.get_belief_by_subject(this)
 
     // Fallback to global registry if not found in state
     if (!belief) {
-      const beliefs = DB.belief_by_sid.get(this.sid)
+      const beliefs = DB.belief_by_subject.get(this)
       if (beliefs?.size) {
-        belief = [...beliefs][0]
+        belief = beliefs.values().next().value ?? null
       }
     }
 

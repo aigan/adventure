@@ -98,12 +98,12 @@ const world_mind = new Cosmos.Mind('world');
 const state = world_mind.create_state(1);
 state.add_beliefs(world_belief);
 
-const player = DB.get_belief_by_label('player');
+const player = DB.get_first_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
 const player_mind = player.get_trait(state, 'mind');
 let player_state = [...player_mind.state][0];
 player_state = player_state.branch_state(state);
-player_state.learn_about(DB.get_belief_by_label('hammer'), ['location']);
+player_state.learn_about(DB.get_first_belief_by_label('hammer'), ['location']);
 
 state.lock();
 log(player_state);
