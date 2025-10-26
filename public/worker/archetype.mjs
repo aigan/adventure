@@ -37,14 +37,14 @@ export class Archetype {
   constructor(label, {bases=[], traits={}}) {
     this.label = label
 
-    /** @type {Set<Archetype>} */ this.bases = new Set()
+    /** @type {Set<Archetype>} */ this._bases = new Set()
     for (const base_label of bases) {
       const base = DB.get_archetype_by_label(base_label)
       assert(base != null, `Archetype '${base_label}' not found in archetype registry`, {base_label})
-      this.bases.add(base)
+      this._bases.add(base)
     }
 
-    this.traits_template = traits
+    this._traits_template = traits
   }
 
   /**
@@ -59,7 +59,7 @@ export class Archetype {
       if (!base || seen.has(base)) continue
 
       seen.add(base)
-      bases.push(... base.bases)
+      bases.push(... base._bases)
       yield base
     }
   }

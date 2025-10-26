@@ -91,7 +91,7 @@ describe('Locking Constraints', () => {
         }
       })
 
-      const player_mind = player.traits.get('mind')
+      const player_mind = player._traits.get('mind')
       const player_states = [...player_mind.state]
 
       // State is already locked from Mind.resolve_template(), belief is not
@@ -125,7 +125,7 @@ describe('Locking Constraints', () => {
         }
       })
 
-      const player_mind = player.traits.get('mind')
+      const player_mind = player._traits.get('mind')
       const player_states = [...player_mind.state]
 
       // Before locking world_state
@@ -157,7 +157,7 @@ describe('Locking Constraints', () => {
         }
       })
 
-      const base_mind = base_player.traits.get('mind')
+      const base_mind = base_player._traits.get('mind')
       const base_states = [...base_mind.state]
 
       // Lock the base belief - this cascades to its mind states
@@ -173,7 +173,7 @@ describe('Locking Constraints', () => {
 
       // The versioned belief does NOT have mind in _traits (it's inherited)
       expect(versioned_player._traits.has('mind')).to.be.false
-      expect(versioned_player.bases.has(base_player)).to.be.true
+      expect(versioned_player._bases.has(base_player)).to.be.true
 
       // Lock the versioned belief
       versioned_player.lock()
@@ -211,7 +211,7 @@ describe('Locking Constraints', () => {
         }
       })
 
-      const player_mind = player.traits.get('mind')
+      const player_mind = player._traits.get('mind')
       const player_state = [...player_mind.state][0]
       const player_beliefs = [...player_state.get_beliefs()]
 
@@ -244,7 +244,7 @@ describe('Locking Constraints', () => {
         }
       })
 
-      const player_mind = player.traits.get('mind')
+      const player_mind = player._traits.get('mind')
       const player_state = [...player_mind.state][0]
 
       world_state.lock()

@@ -46,7 +46,7 @@ describe('Integration', () => {
       });
 
       // Verify ball structure
-      const ball_inspected = ball.inspect(world_state);
+      const ball_inspected = ball.to_inspect_view(world_state);
       expect(ball_inspected.traits.color).to.equal('blue');
       expect([...ball.get_archetypes()].map(a => a.label)).to.include('PortableObject');
 
@@ -59,14 +59,14 @@ describe('Integration', () => {
         traits: { mind: player_mind }
       });
 
-      const player_inspected = player.inspect(world_state);
+      const player_inspected = player.to_inspect_view(world_state);
       expect(player_inspected.traits.mind._ref).to.equal(player_mind._id);
 
       // Verify learn_about
       const workshop = DB.get_first_belief_by_label('workshop');
       const workshop_knowledge = player_mind_state.learn_about(workshop, [], world_state);
 
-      const workshop_inspected = workshop_knowledge.inspect(player_mind_state);
+      const workshop_inspected = workshop_knowledge.to_inspect_view(player_mind_state);
       expect(workshop_inspected.traits['@about']._ref).to.equal(workshop._id);
       expect(workshop_inspected.archetypes).to.include('Location');
     });

@@ -18,7 +18,7 @@ describe('Archetype', () => {
         bases: ['Location']
       });
 
-      const inspected = workshop.inspect(state);
+      const inspected = workshop.to_inspect_view(state);
       // Location inherits from ObjectPhysical, so we get both
       expect(inspected.archetypes).to.deep.equal(['Location', 'ObjectPhysical']);
     });
@@ -46,7 +46,7 @@ describe('Archetype', () => {
         bases: ['Person']
       });
 
-      const inspected = player.inspect(state);
+      const inspected = player.to_inspect_view(state);
       expect(inspected.archetypes).to.deep.equal(['Person', 'Actor', 'Mental', 'ObjectPhysical']);
 
       // Person → Actor → ObjectPhysical (has location, color)

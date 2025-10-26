@@ -135,11 +135,11 @@ export class Mind {
   }
 
   /**
-   * Shallow inspection for debugging
+   * Shallow inspection view for the inspect UI
    * @param {State} state
    * @returns {object}
    */
-  inspect(state) {
+  to_inspect_view(state) {
     return {
       _ref: this._id,
       _type: 'Mind',

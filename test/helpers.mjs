@@ -34,6 +34,7 @@ export function setupStandardArchetypes() {
       type: 'Subject',
       mind: 'parent'
     },
+    '@timestamp': 'number',
     location: 'Location',
     mind: 'Mind',
     color: 'string',
@@ -50,6 +51,11 @@ export function setupStandardArchetypes() {
     Mental: {
       traits: {
         mind: null,
+      },
+    },
+    Temporal: {
+      traits: {
+        '@timestamp': null,
       },
     },
     Location: {

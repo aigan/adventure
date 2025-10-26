@@ -237,20 +237,21 @@ export class Traittype {
    * @returns {*} Shallow representation with references
    */
   inspect(state, value) {
+    assert(state instanceof State, "should be State", state, value);
     if (Array.isArray(value)) {
       return value.map(item => this.inspect(state, item))
     }
     if (typeof value === 'number' || typeof value === 'string') {
       return value
     }
-    // If it's a registered class (Mind, State, Belief, Subject), call inspect
-    if (typeof value?.inspect === 'function') {
+    // If it's a registered class (Mind, State, Belief, Subject), call to_inspect_view
+    if (typeof value?.to_inspect_view === 'function') {
       // Determine which state to resolve in based on mind_scope
       let resolve_state = state
       if (this.mind_scope === 'parent' && state?.ground_state) {
         resolve_state = state.ground_state
       }
-      return value.inspect(resolve_state)
+      return value.to_inspect_view(resolve_state)
     }
     // Fallback for other objects
     if (value?.toJSON) return value.toJSON()

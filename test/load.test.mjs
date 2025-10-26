@@ -72,7 +72,7 @@ describe('Save/Load functionality', () => {
       const loaded_state = [...loaded_mind.state][0];
 
       // Trait reference should be resolved correctly after load
-      const location_trait = loaded_hammer.get_trait(loaded_state, 'location');
+      const location_trait = loaded_hammer.get_trait_as_belief(loaded_state, 'location');
       expect(location_trait).to.equal(loaded_workshop);
     });
 
@@ -122,7 +122,7 @@ describe('Save/Load functionality', () => {
       const loaded_room2 = DB.get_first_belief_by_label('room2');
       // room1_v2 is a version of room1 (has room1 as base)
       const loaded_room1_v2 = [...DB._reflect().belief_by_id.values()].find(b =>
-        b !== loaded_room1 && b.bases.size === 1 && [...b.bases][0] === loaded_room1
+        b !== loaded_room1 && b._bases.size === 1 && [...b._bases][0] === loaded_room1
       );
 
       expect(loaded_room1).to.exist;
@@ -131,17 +131,17 @@ describe('Save/Load functionality', () => {
 
       // CRITICAL TEST: Verify temporal consistency in state2
       // room1_v2.location should resolve to room2
-      const loc1 = loaded_room1_v2.get_trait(loaded_state2, 'location');
+      const loc1 = loaded_room1_v2.get_trait_as_belief(loaded_state2, 'location');
       expect(loc1).to.equal(loaded_room2);
 
       // room2.location should resolve to room1_v2 (NOT old room1!)
       // This proves SIDs resolve to current version in state context (no time-travel)
-      const loc2 = loaded_room2.get_trait(loaded_state2, 'location');
+      const loc2 = loaded_room2.get_trait_as_belief(loaded_state2, 'location');
       expect(loc2).to.equal(loaded_room1_v2, 'room2 should point to room1_v2 in state2, not old room1');
 
       // Following the circular reference should stay in state2's temporal context
-      const circular_check = loaded_room1_v2.get_trait(loaded_state2, 'location')
-        .get_trait(loaded_state2, 'location');
+      const circular_check = loaded_room1_v2.get_trait_as_belief(loaded_state2, 'location')
+        .get_trait_as_belief(loaded_state2, 'location');
       expect(circular_check).to.equal(loaded_room1_v2, 'circular reference should stay in current state');
     });
 
@@ -232,7 +232,7 @@ describe('Save/Load functionality', () => {
 
       // Verify player has mind
       const loaded_player = DB.get_first_belief_by_label('player');
-      const player_mind = loaded_player.traits.get('mind');
+      const player_mind = loaded_player._traits.get('mind');
       expect(player_mind).to.be.instanceOf(Mind);
       const states = [...player_mind.state];
       expect(states.length).to.be.at.least(1);
@@ -241,7 +241,7 @@ describe('Save/Load functionality', () => {
       // Verify ball has color (use ID to find exact versioned belief)
       const loaded_ball = DB._reflect().belief_by_id.get(ball_v2_id);
       expect(loaded_ball).to.exist;
-      expect(loaded_ball.traits.get('color')).to.equal('blue');
+      expect(loaded_ball._traits.get('color')).to.equal('blue');
     });
 
     it('preserves and continues id_sequence', () => {

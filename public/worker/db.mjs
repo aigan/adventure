@@ -155,17 +155,17 @@ export function get_belief(id) {
 /**
  * Get first Belief by label (resolves via sid)
  * @param {string} label
- * @returns {Belief|undefined}
+ * @returns {Belief|null}
  */
 export function get_first_belief_by_label(label) {
   const sid = sid_by_label.get(label)
-  if (sid === undefined) return undefined
+  if (sid === undefined) return null
 
   const subject = get_or_create_subject(sid)
   const beliefs = belief_by_subject.get(subject)
-  if (!beliefs || beliefs.size === 0) return undefined
+  if (!beliefs || beliefs.size === 0) return null
 
-  return beliefs.values().next().value
+  return beliefs.values().next().value ?? null
 }
 
 /**
@@ -320,12 +320,12 @@ export function get_state(id) {
 /**
  * Get Subject by label
  * @param {string} label
- * @returns {Subject|undefined}
+ * @returns {Subject|null}
  */
 export function get_subject_by_label(label) {
   const sid = sid_by_label.get(label)
-  if (sid === undefined) return undefined
-  return subject_by_sid.get(sid)
+  if (sid === undefined) return null
+  return subject_by_sid.get(sid) ?? null
 }
 
 /**

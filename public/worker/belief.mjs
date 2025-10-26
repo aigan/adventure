@@ -19,9 +19,9 @@ import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
 import { Subject } from './subject.mjs'
 import { Traittype } from './traittype.mjs'
+import { State } from './state.mjs'
 
 /**
- * @typedef {import('./state.mjs').State} State
  * @typedef {import('./mind.mjs').Mind} Mind
  */
 
@@ -132,20 +132,141 @@ export class Belief {
   can_have_trait(label) {
     for (const archetype of this.get_archetypes()) {
       // @ts-ignore - generator always yields valid archetypes
-      if (label in archetype.traits_template) return true
+      if (label in archetype._traits_template) return true
     }
     return false
   }
 
   /**
-   * Get a trait value with sids resolved to Beliefs
-   * @param {State} state - State context for resolving sids
+   * Get raw trait value (Subject/primitive/State/Mind/array) including inherited
+   * Walks the bases chain to find inherited trait values (prototype pattern)
    * @param {string} trait_name - Name of the trait to get
-   * @returns {*} Resolved trait value (Beliefs instead of sids)
+   * @returns {*} Raw trait value (Subject, not Belief), or null if not found
    */
-  get_trait(state, trait_name) {
-    const raw_value = this.traits.get(trait_name)
-    return this._resolve_trait_value(raw_value, state)
+  get_trait(trait_name) {
+    // Check own traits first
+    if (this._traits.has(trait_name)) {
+      return this._traits.get(trait_name)
+    }
+
+    // Walk bases chain breadth-first to find inherited value
+    const queue = [...this._bases]
+    const seen = new Set()
+
+    while (queue.length > 0) {
+      const base = queue.shift()
+      if (!base || seen.has(base)) continue
+      seen.add(base)
+
+      // Only check Belief bases (Archetypes have definitions, not values)
+      if (base instanceof Belief) {
+        if (base._traits.has(trait_name)) {
+          return base._traits.get(trait_name)
+        }
+        // Add this belief's bases to search queue
+        queue.push(...base._bases)
+      }
+    }
+
+    // Not found in chain
+    return null
+  }
+
+  /**
+   * Iterate over all traits (own and inherited) with their raw values
+   * Own traits shadow inherited traits with the same name
+   * @returns {Generator<[string, *]>} Yields [trait_name, raw_value] pairs
+   */
+  *get_traits() {
+    const yielded = new Set()
+
+    // Yield own traits first
+    for (const [name, value] of this._traits) {
+      yield [name, value]
+      yielded.add(name)
+    }
+
+    // Walk bases chain for inherited traits
+    const queue = [...this._bases]
+    const seen = new Set()
+
+    while (queue.length > 0) {
+      const base = queue.shift()
+      if (!base || seen.has(base)) continue
+      seen.add(base)
+
+      // Only check Belief bases (Archetypes have definitions, not values)
+      if (base instanceof Belief) {
+        for (const [name, value] of base._traits) {
+          if (!yielded.has(name)) {
+            yield [name, value]
+            yielded.add(name)
+          }
+        }
+        // Add this belief's bases to search queue
+        queue.push(...base._bases)
+      }
+    }
+  }
+
+  /**
+   * Iterate over available trait slots from archetypes
+   * Shows what traits CAN be set based on archetype composition
+   * @returns {Generator<string>} Yields trait names available from archetypes
+   */
+  *get_slots() {
+    const yielded = new Set()
+
+    for (const archetype of this.get_archetypes()) {
+      for (const trait_name of Object.keys(archetype._traits_template)) {
+        if (!yielded.has(trait_name)) {
+          yield trait_name
+          yielded.add(trait_name)
+        }
+      }
+    }
+  }
+
+  /**
+   * Get a trait value with Subjects converted to Beliefs
+   * Walks the bases chain to find inherited trait values (prototype pattern)
+   * @deprecated Use get_trait() for raw values, then convert Subjects yourself if needed
+   * @param {State} state - State context for looking up Beliefs from Subjects
+   * @param {string} trait_name - Name of the trait to get
+   * @returns {*} Trait value with Subjects converted to Beliefs, or null if not found
+   */
+  get_trait_as_belief(state, trait_name) {
+    //console.log('get_trait_as_belief', trait_name, this._traits);
+
+    // Check own traits first
+    if (this._traits.has(trait_name)) {
+      const raw_value = this._traits.get(trait_name)
+      //console.log("val", raw_value);
+      return this._convert_subjects_to_beliefs(raw_value, state)
+    }
+
+    // Walk bases chain breadth-first to find inherited value
+    const queue = [...this._bases]
+    const seen = new Set()
+
+    while (queue.length > 0) {
+      const base = queue.shift()
+      if (!base || seen.has(base)) continue
+      seen.add(base)
+
+      // Only check Belief bases (Archetypes have definitions, not values)
+      if (base instanceof Belief) {
+        if (base._traits.has(trait_name)) {
+          const raw_value = base._traits.get(trait_name)
+          return this._convert_subjects_to_beliefs(raw_value, state)
+        }
+        // Add this belief's bases to search queue
+        queue.push(...base._bases)
+      }
+    }
+
+    // Not found in chain
+    return null
   }
 
   /**
@@ -154,7 +275,7 @@ export class Belief {
    * @returns {Belief|null} The belief this is about, or null
    */
   get_about(state) {
-    const about_trait = this.traits.get('@about')
+    const about_trait = this._traits.get('@about')
     if (about_trait instanceof Subject) {
       // Check if @about traittype specifies mind scope
       let resolve_state = state
@@ -176,14 +297,31 @@ export class Belief {
   }
 
   /**
-   * @private
-   * @param {*} value - Raw trait value (may contain sids or State/Mind refs)
-   * @param {State} state - State context for resolving sids
-   * @returns {*} Resolved value
+   * Get timestamp for this belief (supports both shared and regular beliefs)
+   * Checks @timestamp meta-trait first (for shared beliefs), falls back to origin_state.timestamp
+   * @returns {number} Timestamp when this belief was created
    */
-  _resolve_trait_value(value, state) {
+  get_timestamp() {
+    // Check meta-trait first (for shared beliefs)
+    const timestamp_trait = this._traits.get('@timestamp')
+    if (timestamp_trait !== undefined) {
+      return timestamp_trait
+    }
+
+    // Fall back to origin_state (for regular beliefs)
+    return this.origin_state?.timestamp ?? 0
+  }
+
+  /**
+   * Convert Subject references in trait values to Belief objects
+   * @private
+   * @param {*} value - Raw trait value (may contain Subjects, States, Minds, primitives, arrays)
+   * @param {State} state - State context for looking up Beliefs from Subjects
+   * @returns {*} Value with Subjects converted to Beliefs
+   */
+  _convert_subjects_to_beliefs(value, state) {
     if (Array.isArray(value)) {
-      return value.map(item => this._resolve_trait_value(item, state))
+      return value.map(item => this._convert_subjects_to_beliefs(item, state))
     } else if (value instanceof Subject) {
       return value.get_belief_by_state(state)
     } else if (value && typeof value === 'object' && value._type) {
@@ -209,7 +347,7 @@ export class Belief {
         yield* base.get_archetypes(seen)
       } else {
         seen.add(base)
-        bases.push(... base.bases)
+        bases.push(... base._bases)
       }
     }
   }
@@ -303,7 +441,7 @@ export class Belief {
       if (!base || seen.has(base)) continue
       seen.add(base)
 
-      for (const b of base.bases) {
+      for (const b of base._bases) {
         if (b instanceof Archetype) {
           edge_archetypes.push(b)
         } else if (b instanceof Belief) {
@@ -335,7 +473,7 @@ export class Belief {
   }
 
   toJSON() {
-    const about_trait = this.traits.get('@about')
+    const about_trait = this._traits.get('@about')
     return {
       _type: 'Belief',
       _id: this._id,
@@ -343,27 +481,28 @@ export class Belief {
       label: this.get_label(),
       about: about_trait?.toJSON() ?? null,
       archetypes: [...this.get_archetypes()].map(a => a.label),
-      bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
+      bases: [...this._bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
-        [...this.traits].map(([k, v]) => [k, Traittype.serializeTraitValue(v)])
+        [...this._traits].map(([k, v]) => [k, Traittype.serializeTraitValue(v)])
       )
     }
   }
 
   /**
-   * Create shallow inspection view of this belief
+   * Create shallow inspection view of this belief for the inspect UI
    * @param {State} state - State context for resolving trait sids
    * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], bases: (string|number)[], traits: any, locked?: boolean}} Shallow representation with references
    */
-  inspect(state) {
+  to_inspect_view(state) {
+    assert(state instanceof State, "should be State", state);
     const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], bases: (string|number)[], traits: any, locked?: boolean}} */ ({
       _type: 'Belief',
       _id: this._id,
       label: this.get_label(),
       archetypes: [...this.get_archetypes()].map(a => a.label),
-      bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
+      bases: [...this._bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
-        [...this.traits].map(([k, v]) => {
+        [...this._traits].map(([k, v]) => {
           const traittype = DB.get_traittype_by_label(k)
           assert(traittype != null, `Traittype '${k}' not found`)
           return [k, traittype.inspect(state, v)]
@@ -538,13 +677,6 @@ export class Belief {
     return belief
   }
 
-  get bases() {
-    return this._bases
-  }
-
-  get traits() {
-    return this._traits
-  }
 }
 
 /**

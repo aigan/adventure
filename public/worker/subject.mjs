@@ -39,11 +39,11 @@ export class Subject {
   }
 
   /**
-   * Shallow inspection for debugging
+   * Shallow inspection view for the inspect UI
    * @param {State} state
    * @returns {object}
    */
-  inspect(state) {
+  to_inspect_view(state) {
     let belief = state.get_belief_by_subject(this)
 
     // Fallback to global registry if not found in state

@@ -30,7 +30,7 @@ describe('Belief', () => {
         traits: { color: 'blue' }
       });
 
-      const inspected = ball_v2.inspect(state);
+      const inspected = ball_v2.to_inspect_view(state);
       expect(inspected.bases).to.include(ball._id);
       expect(inspected.traits.color).to.equal('blue');
 
@@ -51,7 +51,7 @@ describe('Belief', () => {
         traits: { color: 'black' }
       });
 
-      const inspected = hammer_v2.inspect(state);
+      const inspected = hammer_v2.to_inspect_view(state);
       // hammer_v2 doesn't directly have archetypes in bases, inherits from base belief
       expect(inspected.bases).to.include(hammer._id);
 
@@ -100,7 +100,7 @@ describe('Belief', () => {
       });
 
       // item is a version of workshop_a, so it shares the same sid and label
-      expect(item.bases.has(workshop_a)).to.be.true;
+      expect(item._bases.has(workshop_a)).to.be.true;
       expect(item.subject.sid).to.equal(workshop_a.subject.sid);
       expect(item.get_label()).to.equal('workshop');
     });
@@ -220,7 +220,7 @@ describe('Belief', () => {
       });
 
       // Trait should store a Subject wrapping the sid
-      const location_value = hammer.traits.get('location');
+      const location_value = hammer._traits.get('location');
       expect(location_value).to.be.instanceOf(Subject);
       expect(location_value).to.equal(workshop.subject);
     });
@@ -237,7 +237,7 @@ describe('Belief', () => {
       });
 
       // Primitives should be stored as-is
-      expect(ball.traits.get('color')).to.equal('red');
+      expect(ball._traits.get('color')).to.equal('red');
     });
 
     it('associates label with sid, not _id', () => {
@@ -278,6 +278,218 @@ describe('Belief', () => {
       // Then resolve in state context
       const resolved = state.get_belief_by_subject(room.subject);
       expect(resolved).to.equal(room);
+    });
+  });
+
+  describe('get_timestamp()', () => {
+    it('returns timestamp from origin_state for regular beliefs', () => {
+      const mind = new Mind('test');
+      const state = mind.create_state(100);
+
+      const hammer = Belief.from_template(mind, {
+        label: 'hammer',
+        bases: ['PortableObject']
+      }, state);
+
+      expect(hammer.get_timestamp()).to.equal(100);
+    });
+
+    it('returns @timestamp meta-trait for shared beliefs (null ownership)', () => {
+      // Create a shared belief with null ownership and @timestamp meta-trait
+      const archetype = DB.get_archetype_by_label('Temporal');
+      const belief = new Belief(null, {
+        bases: [archetype]
+      }, null);
+
+      belief.add_trait('@timestamp', 110);
+
+      expect(belief.get_timestamp()).to.equal(110);
+    });
+
+    it('prefers @timestamp meta-trait over origin_state.timestamp', () => {
+      const mind = new Mind('test');
+      const state = mind.create_state(100);
+
+      const belief = Belief.from_template(mind, {
+        bases: ['PortableObject', 'Temporal']
+      }, state);
+
+      // Add @timestamp that differs from origin_state.timestamp
+      belief.add_trait('@timestamp', 200);
+
+      // Should return @timestamp, not origin_state.timestamp
+      expect(belief.get_timestamp()).to.equal(200);
+    });
+
+    it('returns 0 for beliefs without origin_state or @timestamp', () => {
+      const belief = new Belief(null, {
+        bases: []
+      }, null);
+
+      expect(belief.get_timestamp()).to.equal(0);
+    });
+
+    it('handles undefined vs 0 correctly', () => {
+      const mind = new Mind('test');
+      const archetype = DB.get_archetype_by_label('Temporal');
+      const belief = new Belief(mind, {
+        bases: [archetype]
+      }, null);
+
+      // No origin_state, no @timestamp -> returns 0
+      expect(belief.get_timestamp()).to.equal(0);
+
+      // Add explicit @timestamp of 0
+      belief.add_trait('@timestamp', 0);
+
+      // Should return 0 from @timestamp (not fall through to origin_state)
+      expect(belief.get_timestamp()).to.equal(0);
+    });
+  });
+
+  describe('Trait Value Inheritance', () => {
+    it('returns trait from own _traits', () => {
+      const mind = new Mind('test');
+      const state = mind.create_state(100);
+
+      const workshop = state.add_belief({
+        label: 'workshop',
+        bases: ['Location']
+      });
+
+      const hammer = state.add_belief({
+        label: 'hammer',
+        bases: ['PortableObject'],
+        traits: {
+          location: workshop.subject,
+          color: 'grey'
+        }
+      });
+
+      const location_value = hammer.get_trait('location');
+      expect(location_value).to.be.instanceOf(Subject);
+      expect(location_value.sid).to.equal(workshop.subject.sid);
+      expect(hammer.get_trait('color')).to.equal('grey');
+    });
+
+    it('inherits trait value from base belief', () => {
+      const mind = new Mind('test');
+      const state1 = mind.create_state(100);
+
+      const workshop = state1.add_belief({
+        label: 'workshop',
+        bases: ['Location']
+      });
+
+      const hammer_v1 = state1.add_belief({
+        label: 'hammer',
+        bases: ['PortableObject'],
+        traits: {
+          location: workshop.subject,
+          color: 'grey'
+        }
+      });
+
+      state1.lock();
+
+      // Create v2 with only color changed
+      const state2 = state1.tick({});
+      const hammer_v2 = Belief.from_template(mind, {
+        sid: hammer_v1.subject.sid,
+        bases: [hammer_v1],
+        traits: {
+          color: 'blue'
+        }
+      }, state2);
+
+      // v2 should have color in _traits, but location inherited from v1
+      expect(hammer_v2._traits.has('color')).to.be.true;
+      expect(hammer_v2._traits.has('location')).to.be.false;
+
+      // get_trait should find both
+      expect(hammer_v2.get_trait('color')).to.equal('blue');
+      const location_value = hammer_v2.get_trait('location');
+      expect(location_value).to.be.instanceOf(Subject);
+      expect(location_value.sid).to.equal(workshop.subject.sid);
+    });
+
+    it('own trait shadows inherited trait', () => {
+      const mind = new Mind('test');
+      const state = mind.create_state(100);
+
+      const hammer_v1 = Belief.from_template(mind, {
+        label: 'hammer',
+        bases: ['PortableObject'],
+        traits: {
+          color: 'grey'
+        }
+      }, state);
+
+      const hammer_v2 = Belief.from_template(mind, {
+        sid: hammer_v1.subject.sid,
+        bases: [hammer_v1],
+        traits: {
+          color: 'blue'  // Shadows v1's grey
+        }
+      }, state);
+
+      expect(hammer_v2.get_trait('color')).to.equal('blue');
+    });
+
+    it('multi-level inheritance works', () => {
+      const mind = new Mind('test');
+      const state = mind.create_state(100);
+
+      const workshop = Belief.from_template(mind, {
+        label: 'workshop',
+        bases: ['Location']
+      }, state);
+
+      const hammer_v1 = Belief.from_template(mind, {
+        label: 'hammer',
+        bases: ['PortableObject'],
+        traits: {
+          location: workshop.subject,
+          color: 'grey'
+        }
+      }, state);
+
+      const hammer_v2 = Belief.from_template(mind, {
+        sid: hammer_v1.subject.sid,
+        bases: [hammer_v1],
+        traits: {
+          color: 'blue'
+        }
+      }, state);
+
+      const hammer_v3 = Belief.from_template(mind, {
+        sid: hammer_v1.subject.sid,
+        bases: [hammer_v2],
+        traits: {
+          color: 'red'
+        }
+      }, state);
+
+      // v3 should find location all the way back in v1
+      const location_value = hammer_v3.get_trait('location');
+      expect(location_value).to.be.instanceOf(Subject);
+      expect(location_value.sid).to.equal(workshop.subject.sid);
+      expect(hammer_v3.get_trait('color')).to.equal('red');
+    });
+
+    it('returns undefined for trait not in chain', () => {
+      const mind = new Mind('test');
+      const state = mind.create_state(100);
+
+      const hammer = Belief.from_template(mind, {
+        label: 'hammer',
+        bases: ['PortableObject'],
+        traits: {
+          color: 'grey'
+        }
+      }, state);
+
+      expect(hammer.get_trait('nonexistent')).to.be.null;
     });
   });
 });

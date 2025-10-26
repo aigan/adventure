@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-10-26
+
+### Trait Value Inheritance
+- `get_trait(name)` - Returns raw trait values (Subject, not Belief) with prototype-style inheritance through bases chain
+- `get_traits()` generator - Iterates all traits including inherited (own traits shadow inherited)
+- `get_slots()` generator - Shows available trait slots from archetype composition
+- `learn_about()` now copies inherited trait values, not just own traits
+- Enables incremental knowledge accumulation via belief versioning
+
+### Temporal Tracking
+- `get_timestamp()` - Unified interface checks `@timestamp` meta-trait, falls back to `origin_state.timestamp`
+- `Temporal` archetype added for ontological modeling
+
 ## 2025-10-24
 
 ### Cosmos Cleanup

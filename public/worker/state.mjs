@@ -177,7 +177,7 @@ export class State {
   replace_beliefs(...beliefs) {
     for (const belief of beliefs) {
       // Only remove Belief bases (version chains), not Archetypes
-      const belief_bases = /** @type {Belief[]} */ ([...belief.bases].filter(b => b instanceof Belief))
+      const belief_bases = /** @type {Belief[]} */ ([...belief._bases].filter(b => b instanceof Belief))
       this.remove_beliefs(...belief_bases)
       this.insert_beliefs(belief)
     }
@@ -319,12 +319,13 @@ export class State {
       const archetype_bases = [...belief.get_archetypes()]
 
       // Copy traits, dereferencing belief references to this mind
+      // Use get_trait() to find inherited values (returns raw Subjects, not Beliefs)
       /** @type {Record<string, any>} */
       const copied_traits = {}
       for (const name of trait_names) {
-        if (belief.traits.has(name)) {
-          const value = belief.traits.get(name)
-          copied_traits[name] = this._dereference_trait_value(source_state, value)
+        const value = belief.get_trait(name)
+        if (value !== null) {
+          copied_traits[name] = this._recursively_learn_trait_value(source_state, value)
         }
       }
 
@@ -344,12 +345,13 @@ export class State {
       const existing_belief = existing_beliefs[0]
 
       // Copy new traits, dereferencing belief references
+      // Use get_trait() to find inherited values (returns raw Subjects, not Beliefs)
       /** @type {Record<string, any>} */
       const new_traits = {}
       for (const name of trait_names) {
-        if (belief.traits.has(name)) {
-          const value = belief.traits.get(name)
-          new_traits[name] = this._dereference_trait_value(source_state, value)
+        const value = belief.get_trait(name)
+        if (value !== null) {
+          new_traits[name] = this._recursively_learn_trait_value(source_state, value)
         }
       }
 
@@ -391,28 +393,32 @@ export class State {
   }
 
   /**
-   * Handles primitives, Beliefs, sids, and arrays recursively
-   * @param {State} source_state - State to resolve sids in
-   * @param {*} value
-   * @returns {*}
+   * Recursively learn about Subject references in trait values
+   * Ensures that beliefs referenced in traits also exist in this mind
+   * @param {State} source_state - State to resolve Subjects in
+   * @param {*} value - Trait value (Subject, primitive, or array)
+   * @returns {*} Value with Subjects learned (returns Subject of learned belief, not Belief)
    */
-  _dereference_trait_value(source_state, value) {
+  _recursively_learn_trait_value(source_state, value) {
     if (Array.isArray(value)) {
-      return value.map(item => this._dereference_trait_value(source_state, item))
+      return value.map(item => this._recursively_learn_trait_value(source_state, item))
     } else if (value instanceof Subject) {
-      // Resolve Subject to belief, then learn_about it (which calls recognize → integrate)
-      return this.learn_about(value.get_belief_by_state(source_state), [], source_state)
+      // Learn about the referenced belief (creates belief in this mind)
+      // Then return its Subject (traits store Subjects, not Beliefs)
+      const source_belief = value.get_belief_by_state(source_state)
+      const learned_belief = this.learn_about(source_belief, [], source_state)
+      return learned_belief.subject  // Return Subject, not Belief
     } else {
-      return value
+      return value  // Primitives, State, Mind pass through as-is
     }
   }
 
   /**
-   * Shallow inspection for debugging
+   * Shallow inspection view for the inspect UI
    * @param {State} state
    * @returns {object}
    */
-  inspect(state) {
+  to_inspect_view(state) {
     return {_ref: this._id, _type: 'State'}
   }
 

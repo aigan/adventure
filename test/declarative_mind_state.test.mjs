@@ -82,7 +82,7 @@ describe('Mind Trait', () => {
     }, world_state);
 
     // Verify mind trait returns Mind instance
-    const player_mind = player.traits.get('mind');
+    const player_mind = player._traits.get('mind');
     expect(player_mind).to.be.instanceOf(Mind);
     expect(player_mind.label).to.be.null;
 
@@ -103,15 +103,16 @@ describe('Mind Trait', () => {
     // Find workshop belief
     const workshop_belief = beliefs.find(b => b.get_about(state) === workshop);
     expect(workshop_belief).to.exist;
-    expect(workshop_belief.traits.has('location')).to.be.true;
+    expect(workshop_belief._traits.has('location')).to.be.true;
 
     // Find player belief
     const player_belief = beliefs.find(b => b.get_about(state) === player_body);
     expect(player_belief).to.exist;
-    expect(player_belief.traits.has('location')).to.be.true;
+    expect(player_belief._traits.has('location')).to.be.true;
 
     // Verify location dereferencing
-    const player_location = player_belief.get_trait(state, 'location');
+    const player_location = player_belief.get_trait_as_belief(state, 'location');
+    //console.log('player_location', player_location);
     expect(player_location).to.equal(workshop_belief);
 
     // Verify main_area was also dereferenced from workshop's location
@@ -182,7 +183,7 @@ describe('Mind Trait', () => {
       }
     });
 
-    const entity_mind = entity.traits.get('mind');
+    const entity_mind = entity._traits.get('mind');
     const states = [...entity_mind.state];
     const state = states[0];
     const beliefs = [...state.get_beliefs()];
@@ -190,7 +191,7 @@ describe('Mind Trait', () => {
     // Should have learned about location1 from prototype
     const loc1_belief = beliefs.find(b => b.get_about(state) === location1);
     expect(loc1_belief).to.exist;
-    expect(loc1_belief.traits.has('location')).to.be.true;
+    expect(loc1_belief._traits.has('location')).to.be.true;
   });
 
   it.skip('merges prototype and custom learning', () => {
@@ -255,7 +256,7 @@ describe('Mind Trait', () => {
       }
     });
 
-    const entity_mind = entity.traits.get('mind');
+    const entity_mind = entity._traits.get('mind');
     const states = [...entity_mind.state];
     const state = states[0];
     const beliefs = [...state.get_beliefs()];
@@ -320,7 +321,7 @@ describe('Mind Trait', () => {
       }
     }, world_state);
 
-    const entity_mind = entity.traits.get('mind');
+    const entity_mind = entity._traits.get('mind');
     expect(entity_mind).to.be.instanceOf(Mind);
 
     const states = [...entity_mind.state];

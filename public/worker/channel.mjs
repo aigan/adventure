@@ -163,11 +163,11 @@ export const dispatch = {
 			client_id,
 			state_id: state._id,
 			data: {
-				data: belief_obj.inspect(state),
+				data: belief_obj.to_inspect_view(state),
 			},
 			desig: belief_obj.sysdesig(state),
 			mind: {id: belief_obj.in_mind._id, label: belief_obj.in_mind.label},
-			bases: [...belief_obj.bases].map(b => ({
+			bases: [...belief_obj._bases].map(b => ({
 				id: b instanceof Belief ? b._id : null,
 				label: b instanceof Belief ? b.get_label() : b.label,
 				type: b instanceof Archetype ? 'Archetype' : 'Belief'
@@ -201,7 +201,7 @@ export const dispatch = {
 			},
 			desig: belief.sysdesig(session.state),
 			mind: {id: belief.in_mind._id, label: belief.in_mind.label},
-			bases: [...belief.bases].map(b => ({
+			bases: [...belief._bases].map(b => ({
 				id: b instanceof Belief ? b._id : null,
 				label: b instanceof Belief ? b.get_label() : b.label,
 				type: b instanceof Archetype ? 'Archetype' : 'Belief'

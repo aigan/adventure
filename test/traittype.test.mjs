@@ -66,7 +66,7 @@ describe('Traittype', () => {
         traits: { color: 'blue' }
       });
 
-      expect(obj.traits.get('color')).to.equal('blue');
+      expect(obj._traits.get('color')).to.equal('blue');
     });
 
     it('resolves number type', () => {
@@ -77,7 +77,7 @@ describe('Traittype', () => {
         traits: { count: 42 }
       });
 
-      expect(obj.traits.get('count')).to.equal(42);
+      expect(obj._traits.get('count')).to.equal(42);
     });
 
     it('resolves boolean type', () => {
@@ -88,7 +88,7 @@ describe('Traittype', () => {
         traits: { active: true }
       });
 
-      expect(obj.traits.get('active')).to.equal(true);
+      expect(obj._traits.get('active')).to.equal(true);
     });
 
     it('resolves State type', () => {
@@ -100,7 +100,7 @@ describe('Traittype', () => {
         traits: { mind_states: [state] }
       });
 
-      expect(obj.traits.get('mind_states')[0]).to.equal(state);
+      expect(obj._traits.get('mind_states')[0]).to.equal(state);
     });
   });
 
@@ -116,7 +116,7 @@ describe('Traittype', () => {
         traits: { states_array: [state1, state2] }
       });
 
-      const states = obj.traits.get('states_array');
+      const states = obj._traits.get('states_array');
       expect(Array.isArray(states)).to.be.true;
       expect(states).to.have.lengthOf(2);
       expect(states[0]).to.equal(state1);
@@ -131,7 +131,7 @@ describe('Traittype', () => {
         traits: { colors_array: ['red', 'blue', 'green'] }
       });
 
-      const colors = obj.traits.get('colors_array');
+      const colors = obj._traits.get('colors_array');
       expect(Array.isArray(colors)).to.be.true;
       expect(colors).to.have.lengthOf(3);
       expect(colors).to.deep.equal(['red', 'blue', 'green']);
@@ -213,7 +213,7 @@ describe('Traittype', () => {
         traits: { tags: [] }
       });
 
-      const tags = obj.traits.get('tags');
+      const tags = obj._traits.get('tags');
       expect(Array.isArray(tags)).to.be.true;
       expect(tags).to.have.lengthOf(0);
     });
@@ -247,7 +247,7 @@ describe('Traittype', () => {
         traits: { states_array: [state1, state2] }
       });
 
-      const inspected = obj.inspect(state1);
+      const inspected = obj.to_inspect_view(state1);
       expect(inspected.traits.states_array).to.be.an('array');
       expect(inspected.traits.states_array).to.have.lengthOf(2);
       expect(inspected.traits.states_array[0]).to.have.property('_ref', state1._id);
