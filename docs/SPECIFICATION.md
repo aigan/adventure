@@ -159,7 +159,7 @@ This structure supports:
 * **Time progression** - States are indexed by tick number
 * **Differential updates** - States track `insert`/`remove` rather than full belief lists
 * **Label uniqueness** - Labels are globally unique across beliefs and archetypes
-* **Cultural beliefs** - Beliefs with null ownership can be shared across all minds
+* **Shared cultural knowledge** - Beliefs in template/cultural minds that other minds reference via `bases` inheritance
 * **Identity-based references** - Traits store subject IDs (integers) not object references, enabling temporal queries and state branching at scale
 
 ## **Identity and Temporal Versioning**
@@ -248,113 +248,6 @@ npc.hammer_belief:
 - `about = 100` means "my concept is about that actual thing"
 
 Each mind maintains its own subject space, with `about` creating traceable links from belief → ground truth.
-
-## **Schema**
-
-### **Registry Structure**
-
-All entities are stored in global registries for efficient lookup:
-
-```yaml
-registries:
-  mind_by_id: [id → mind]
-  mind_by_label: [label → mind]
-  belief_by_id: [id → belief]       # Version-based lookup (get specific version)
-  belief_by_sid: [sid → beliefs]     # Subject-based lookup (get all versions of subject)
-  label_by_sid: [sid → label]        # Labels belong to subjects, not versions
-  sid_by_label: [label → sid]        # Reverse lookup from label to subject
-  archetype_by_label: [label → archetype]
-```
-
-**Design constraint**: Labels are globally unique across subjects and archetypes to prevent naming conflicts.
-
-**Label semantics**: Labels identify subjects (stable identity), not versions (temporal variants). All versions of the same subject share the label. To lookup by label: `sid_by_label["hammer"]` → `sid = 100`, then `resolve_subject(state, 100)` → latest version.
-
-**Indexing strategy**: `belief_by_sid` enables efficient resolution queries like "find latest version of subject S in state T" without scanning all beliefs.
-
-### **Mind Structure**
-
-```yaml
-mind:
-  id: [unique identifier]
-  label: [optional string for lookup]
-  states: [collection of state snapshots]
-```
-
-**Key design decision**: Beliefs are NOT stored in minds. All beliefs live in the global registry, with each belief maintaining an `in_mind` reference for ownership. This enables:
-- Direct belief lookup without knowing which mind owns it
-- Efficient queries across all beliefs (e.g., "find all beliefs about entity X")
-- Consistent access patterns for all entity types
-
-### **State Structure**
-
-```yaml
-state:
-  id: [unique identifier]
-  in_mind: [reference to owning mind]
-  base: [reference to previous state, or null]
-  ground_state: [reference to state in outer mind, or null]
-  timestamp: [tick number]
-  insert: [beliefs added in this state]
-  remove: [beliefs removed in this state]
-  branches: [collection of states created from this state]
-```
-
-**Validation**: States can only contain beliefs from their owning mind, except for "cultural beliefs" (beliefs with null ownership) which are shared.
-
-**Query pattern**: To get all beliefs in a state, walk the `base` chain accumulating `insert` lists while tracking `remove` lists.
-
-**Grounding**: When a nested mind creates states (e.g., NPC's model of another NPC's mind), the `ground_state` links back to the parent mind's state that created it. This tracks which version of reality the nested reasoning is based on.
-
-**Branching**: The `branches` collection tracks forward links to all states created from this state, enabling navigation of possibility trees and planning scenarios.
-
-### **Belief Structure**
-
-```yaml
-belief:
-  sid: [subject identifier - stable across versions]
-  id: [version identifier - unique for this temporal instance]
-  in_mind: [owning mind reference, or null for cultural beliefs]
-  about: [integer sid referencing subject in outer mind]
-  bases: [inheritance from archetypes or other beliefs]
-  traits: [properties - stores integer sids for references, primitives for values]
-```
-
-**Identity semantics**:
-- `sid` identifies the subject (what entity this is)
-- `id` identifies the version (when/how this belief exists)
-- Labels are stored separately: `label_by_sid[sid] = "hammer"`
-- All versions of the same subject share the same `sid` and label
-
-**Ownership semantics**:
-- Normal beliefs: `in_mind` points to owning mind
-- Cultural beliefs: `in_mind` is null, can be referenced by any mind
-- Beliefs auto-register in global registry on creation
-
-**Reference semantics**:
-- `about` stores integer `sid` (not object reference)
-- Trait values store integer `sid` for entity references (e.g., `location: 50`)
-- Resolution happens at query time: `state.resolve_subject(sid)` → latest belief
-
-**Versioning**: Creating modified versions uses immutable pattern - new belief with same `sid`, new `id`, and `base` reference to previous version.
-
-### **Archetype Structure**
-
-```yaml
-archetype:
-  label: [unique identifier]
-  bases: [parent archetypes for inheritance]
-  traits_template: [available trait definitions]
-```
-
-Archetypes define the "types" of beliefs (Object, Event, Location, etc.) and what traits they can have.
-
-### **Key Properties**
-
-* **bases** - Inherited beliefs, prototypes or archetypes
-* **about** - Links a belief to the corresponding belief in an outer mind. Used by system to track correspondence, not accessible to the mind itself.
-* **target** - Points to other beliefs within the same mind (used in observations, references).
-* **source** - Points to the belief that originated this belief (observation event, testimony, inference).
 
 ## **Example: The Missing Hammer Mystery**
 
@@ -551,11 +444,20 @@ npc1_mind:
 
 ### **Inheritance Chain**
 
-Properties flow through `base` references:
+Properties flow through `bases` references:
 
-hammer_1 → hammer_1_v2 → hammer_1_v3  
-         ↓  
+```
+# Linear version chain
+hammer_1 → hammer_1_v2 → hammer_1_v3
+         ↓
     location: workshop → npc1_inventory → npc2_inventory
+
+# Branching version chain
+country_culture_v1 (autumn)
+  ↓ branches
+  ├─→ country_v2 (winter, @T110)
+  └─→ country_v3 (spring, @T150)
+```
 
 ### **Correspondence Chain**
 
@@ -624,6 +526,242 @@ belief_x:
 * `npc1_mind` has references to `npc1_model_npc2`, `facade_for_player` (nested mind beliefs)
 * Each mind is isolated from siblings and parent, but can introspect children
 * All beliefs (including those "belonging to" a mind) exist in the global registry with `in_mind` references
+
+### **Belief Version Branching**
+
+Beliefs can have child versions (branches) representing alternative states:
+
+```
+country_culture_v1 (autumn)
+  ↓ branches: [v2, v3]
+  ├─→ country_culture_v2 (winter, @T110)
+  └─→ country_culture_v3 (spring, @T150)
+```
+
+Query resolution selects appropriate child based on context:
+- Query @T90  → v1 (autumn) - no children yet
+- Query @T110 → v2 (winter) - temporal match
+- Query @T150 → v3 (spring) - temporal match
+
+Inherited beliefs see updates without creating new versions:
+
+```
+npc_belief (bases: [city_belief → country_v1])
+  Query @T110:
+    → country_v1.branches → v2
+    → Result: winter trait from v2
+
+  No npc_belief_v2 created until explicitly needed
+```
+
+**Branch types**:
+- **Temporal**: Different time periods (seasons, news events)
+- **Probability**: Multiple possible states (king alive 60%, dead 40%)
+- **Spatial**: Regional variations in knowledge
+- **Perspective**: Different beliefs held by different minds
+
+### **Lazy Propagation Pattern**
+
+When shared beliefs update, new versions propagate lazily through inheritance chains:
+
+```yaml
+# Tick 100: Initial state
+country_culture_v1:
+  traits: {season: 'autumn'}
+  branches: []
+
+city_paris:
+  bases: [country_culture_v1]
+
+npc_knowledge:
+  bases: [city_paris]
+
+# Query: npc → city → country_v1 → season = 'autumn'
+```
+
+```yaml
+# Tick 110: Country updates (1 new belief)
+country_culture_v2:
+  bases: [country_culture_v1]
+  traits: {season: 'winter'}
+
+country_culture_v1:
+  branches: [country_culture_v2]  # Child added
+
+# City and NPC beliefs UNCHANGED
+city_paris:
+  bases: [country_culture_v1]  # Still points to v1
+
+npc_knowledge:
+  bases: [city_paris]  # Still points to city
+
+# Query @T110:
+# npc → city → country_v1
+# Detect: country_v1.branches = [v2]
+# Resolve: v2 created @T110, query @T110
+# Result: season = 'winter' from v2
+#
+# No new city or NPC beliefs created!
+```
+
+**Materialization on demand**:
+
+```yaml
+# First NPC creates explicit version @T110
+npc1_knowledge_v2:
+  bases: [npc1_knowledge_v1]
+  traits: {opinion: 'I hate winter'}
+
+# Materialization process:
+# Walk: npc1_v1 → city → country_v1 (has branches)
+# Resolve: country_v2 selected @T110
+# Create: city_paris_v2 {bases: [country_v2]}
+# Result: npc1_v2 {bases: [city_v2]}
+
+# Second NPC reuses materialized city:
+npc2_knowledge_v2:
+  bases: [city_paris_v2]  # Reuses city_v2
+
+# Result: 1000 NPCs share 1 city_v2
+```
+
+**Benefits**:
+- Shared knowledge updates: O(1) new beliefs
+- Query resolution: O(inheritance depth)
+- Materialization: Only when explicitly creating versions
+- Memory: O(changes) not O(NPCs)
+
+## **Example: Winter Arrives (Shared Knowledge)**
+
+### **Initial State (Tick 100)**
+
+```yaml
+country_mind:
+  state_100:
+    insert: [country_culture_v1]
+
+  beliefs:
+    country_culture_v1:
+      subject_id: 100
+      bases: [Culture]
+      traits: {season: 'autumn'}
+      branches: []
+
+city_paris_mind:
+  state_100:
+    insert: [city_paris_v1]
+
+  beliefs:
+    city_paris_v1:
+      subject_id: 200
+      bases: [country_culture_v1]
+      traits: {city_name: 'Paris'}
+
+npc1_mind:
+  state_100:
+    insert: [npc1_knowledge_v1]
+
+  beliefs:
+    npc1_knowledge_v1:
+      subject_id: 300
+      bases: [city_paris_v1]
+      traits: {}
+```
+
+**Query**: What season does NPC1 know?
+```
+npc1_knowledge_v1
+  → bases: city_paris_v1
+    → bases: country_culture_v1
+      → traits.season = 'autumn'
+```
+
+### **Winter Arrives (Tick 110)**
+
+```yaml
+country_mind:
+  state_110:
+    base: state_100
+    insert: [country_culture_v2]
+
+  beliefs:
+    country_culture_v1:
+      branches: [country_culture_v2]  # Child version added
+
+    country_culture_v2:
+      subject_id: 100  # Same subject as v1
+      bases: [country_culture_v1]
+      origin_state: state_110
+      traits: {season: 'winter'}
+      branches: []
+
+# City and NPC beliefs unchanged
+city_paris_v1:
+  bases: [country_culture_v1]  # Still points to v1
+
+npc1_knowledge_v1:
+  bases: [city_paris_v1]  # Still points to city_v1
+```
+
+**Query @T110**: What season does NPC1 know?
+```
+npc1_knowledge_v1
+  → bases: city_paris_v1
+    → bases: country_culture_v1
+      → branches: [country_v2]
+      → Resolve @T110: v2 (created @T110)
+      → traits.season = 'winter'
+```
+
+**Result**: NPC1 knows 'winter' without creating npc1_v2 or city_v2
+
+### **NPC Forms Opinion (Tick 115)**
+
+```yaml
+npc1_mind:
+  state_115:
+    base: state_100
+    insert: [npc1_knowledge_v2]
+
+  beliefs:
+    npc1_knowledge_v2:
+      subject_id: 300  # Same subject
+      bases: [city_paris_v2]  # Now points to materialized city_v2
+      origin_state: state_115
+      traits: {opinion: 'I hate winter'}
+
+# Materialization created city_v2:
+city_paris_v2:
+  subject_id: 200
+  bases: [city_paris_v1, country_culture_v2]
+  origin_state: state_115
+  traits: {city_name: 'Paris'}  # Inherited from v1
+```
+
+**Materialization process**:
+1. Create npc1_knowledge_v2 with new trait
+2. Walk bases: npc1_v1 → city_v1 → country_v1
+3. Detect country_v1.branches = [country_v2]
+4. Resolve @T115: select country_v2
+5. Create city_paris_v2 inheriting from country_v2
+6. Update npc1_knowledge_v2 to inherit from city_v2
+
+### **Second NPC Forms Opinion (Tick 120)**
+
+```yaml
+npc2_mind:
+  state_120:
+    insert: [npc2_knowledge_v2]
+
+  beliefs:
+    npc2_knowledge_v2:
+      bases: [city_paris_v2]  # Reuses existing city_v2!
+      traits: {opinion: 'I love winter'}
+```
+
+**No new city version created** - city_paris_v2 already materialized by NPC1.
+
+**Scaling**: 1000 NPCs forming opinions → 1 country_v2 + 1 city_v2 + 1000 npc versions
 
 ### **Template Matching**
 

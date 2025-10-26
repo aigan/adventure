@@ -1,5 +1,8 @@
 import { log, assert } from "../lib/debug.mjs";
-import * as Cosmos from './cosmos.mjs';
+import * as DB from './db.mjs';
+import { Mind } from './mind.mjs';
+import { Belief } from './belief.mjs';
+import { Archetype } from './archetype.mjs';
 //log('Loading Channel');
 
 /**
@@ -57,13 +60,13 @@ export const dispatch = {
 		// Accept mind id (numeric string) or label (string)
 		const mind_str = String(mind);
 		const mind_obj = /^\d+$/.test(mind_str)
-			? Cosmos.Mind.get_by_id(Number(mind_str))
-			: Cosmos.Mind.get_by_label(mind_str);
+			? Mind.get_by_id(Number(mind_str))
+			: Mind.get_by_label(mind_str);
 
 		assert(mind_obj != null, `Mind not found: ${mind}`);
 
 		// Get specified state
-		const state = Cosmos.DB.get_state(Number(state_id));
+		const state = DB.get_state(Number(state_id));
 
 		assert(state != null, `State not found: ${state_id}`);
 		assert(state.in_mind === mind_obj, `State ${state_id} does not belong to mind ${mind}`);
@@ -104,7 +107,7 @@ export const dispatch = {
 		const state_id = Number(state);
 
 		// Get state from registry
-		const state_obj = Cosmos.DB.get_state(state_id);
+		const state_obj = DB.get_state(state_id);
 
 		assert(state_obj != null, `State not found: ${state_id}`);
 
@@ -144,13 +147,13 @@ export const dispatch = {
 		const belief_id = Number(belief);
 
 		// Find belief by id in global registry
-		const belief_obj = Cosmos.DB.get_belief(belief_id);
+		const belief_obj = DB.get_belief(belief_id);
 
 		assert(belief_obj != null, `Belief not found: ${belief_id}`);
 
 		// Get specified state for resolving sids
 		const state_id_num = Number(state_id);
-		const state = Cosmos.DB.get_state(state_id_num);
+		const state = DB.get_state(state_id_num);
 
 		assert(state != null, `State not found: ${state_id}`);
 
@@ -165,9 +168,9 @@ export const dispatch = {
 			desig: belief_obj.sysdesig(state),
 			mind: {id: belief_obj.in_mind._id, label: belief_obj.in_mind.label},
 			bases: [...belief_obj.bases].map(b => ({
-				id: b instanceof Cosmos.Belief ? b._id : null,
-				label: b instanceof Cosmos.Belief ? b.get_label() : b.label,
-				type: b instanceof Cosmos.Archetype ? 'Archetype' : 'Belief'
+				id: b instanceof Belief ? b._id : null,
+				label: b instanceof Belief ? b.get_label() : b.label,
+				type: b instanceof Archetype ? 'Archetype' : 'Belief'
 			})),
 		});
 	},
@@ -199,9 +202,9 @@ export const dispatch = {
 			desig: belief.sysdesig(session.state),
 			mind: {id: belief.in_mind._id, label: belief.in_mind.label},
 			bases: [...belief.bases].map(b => ({
-				id: b instanceof Cosmos.Belief ? b._id : null,
-				label: b instanceof Cosmos.Belief ? b.get_label() : b.label,
-				type: b instanceof Cosmos.Archetype ? 'Archetype' : 'Belief'
+				id: b instanceof Belief ? b._id : null,
+				label: b instanceof Belief ? b.get_label() : b.label,
+				type: b instanceof Archetype ? 'Archetype' : 'Belief'
 			})),
 		});
 	},

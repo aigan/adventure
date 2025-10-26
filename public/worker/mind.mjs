@@ -22,11 +22,10 @@
 
 import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
-import * as Cosmos from './cosmos.mjs'
 import { State } from './state.mjs'
+import { Belief } from './belief.mjs'
 
 /**
- * @typedef {import('./belief.mjs').Belief} Belief
  * @typedef {import('./belief.mjs').BeliefJSON} BeliefJSON
  * @typedef {import('./state.mjs').StateJSON} StateJSON
  * @typedef {import('./subject.mjs').Subject} Subject
@@ -177,12 +176,12 @@ export class Mind {
 
     // Create belief shells
     for (const belief_data of data.belief) {
-      Cosmos.Belief.from_json(mind, belief_data)
+      Belief.from_json(mind, belief_data)
     }
 
     // Create state shells and add to their respective minds
     for (const state_data of data.state) {
-      const state = Cosmos.State.from_json(mind, state_data)
+      const state = State.from_json(mind, state_data)
       // Add to the state's in_mind (which might be different from mind if nested)
       state.in_mind.state.add(state)
     }

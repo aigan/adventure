@@ -17,6 +17,14 @@ Current priority: TBD - assessing areas that need attention
 ## Recently Completed
 
 ## Backlog
+- [ ] **Validate and correct traits for the belief** - Validate trait values by walking the inheritance chain
+- [ ] **Lazy Version Propagation** - Enable efficient shared belief updates without version cascades ([plan](docs/plans/lazy-version-propagation.md))
+  - Add branch tracking to beliefs (branches set, metadata)
+  - Implement state resolver interface for branch evaluation
+  - Update trait resolution to walk branches lazily
+  - Materialization on explicit version creation
+  - Superposition handling for probability branches
+  - Enables scaling to millions of NPCs inheriting cultural knowledge
 - [ ] **Document all indexes and enforce encapsulation** - Make all internal data structures private
   - Document all indexes (DB registries, Mind.states_by_ground_state, etc.)
   - Make all Sets/Maps private (prefix with `_`)

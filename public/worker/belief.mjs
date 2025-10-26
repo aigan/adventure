@@ -17,13 +17,12 @@ import { assert } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
-import * as Cosmos from './cosmos.mjs'
 import { Subject } from './subject.mjs'
+import { Traittype } from './traittype.mjs'
 
 /**
  * @typedef {import('./state.mjs').State} State
  * @typedef {import('./mind.mjs').Mind} Mind
- * @typedef {import('./traittype.mjs').Traittype} Traittype
  */
 
 /**
@@ -346,7 +345,7 @@ export class Belief {
       archetypes: [...this.get_archetypes()].map(a => a.label),
       bases: [...this.bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
-        [...this.traits].map(([k, v]) => [k, Cosmos.Traittype.serializeTraitValue(v)])
+        [...this.traits].map(([k, v]) => [k, Traittype.serializeTraitValue(v)])
       )
     }
   }
@@ -533,8 +532,7 @@ export class Belief {
     }, creator_state)
 
     for (const [trait_label, trait_data] of Object.entries(traits)) {
-      // TODO: replace with belief.add_trait()
-      belief.resolve_and_add_trait(trait_label, trait_data, creator_state)
+      belief.add_trait(trait_label, trait_data, creator_state)
     }
 
     return belief

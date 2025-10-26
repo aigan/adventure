@@ -114,7 +114,7 @@ state.add_beliefs(world_belief);
 const player = DB.get_first_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
 const player_mind = player.get_trait(state, 'mind');
-let player_state = [...player_mind.state][0];
+let player_state = [...player_mind.state][0]; // FIXME: iteration anti-pattern
 player_state = player_state.branch_state(state);
 player_state.learn_about(DB.get_first_belief_by_label('hammer'), ['location']);
 

@@ -200,7 +200,7 @@ export class Traittype {
         !data._type &&
         !(data.state instanceof Set)) {
       // It's a learn spec (plain object without Mind's state Set) - call Mind.resolve_template
-      return /** @type {any} */ (Cosmos.Mind).resolve_template(
+      return Mind.resolve_template(
         owner_belief.in_mind,
         data,
         owner_belief.subject ?? null,
@@ -210,8 +210,7 @@ export class Traittype {
 
     // Check for template construction with _type field (Mind only)
     if (data?._type === 'Mind') {
-      // TypeScript: Call resolve_template as any to avoid type check on static method
-      return /** @type {any} */ (Cosmos.Mind).resolve_template(owner_belief.in_mind, data, owner_belief, creator_state)
+      return Mind.resolve_template(owner_belief.in_mind, data, owner_belief.subject, creator_state)
     }
 
     return this._resolver(owner_belief, data, creator_state)
