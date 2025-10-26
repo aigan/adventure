@@ -30,11 +30,10 @@ import * as DB from './db.mjs'
 export class Archetype {
   /**
    * @param {string} label
-   * @param {object} param1
-   * @param {string[]} [param1.bases]
-   * @param {object} [param1.traits]
+   * @param {string[]} [bases]
+   * @param {object} [traits]
    */
-  constructor(label, {bases=[], traits={}}) {
+  constructor(label, bases = [], traits = {}) {
     this.label = label
 
     /** @type {Set<Archetype>} */ this._bases = new Set()

@@ -152,21 +152,6 @@ export function get_belief(id) {
   return belief_by_id.get(id)
 }
 
-/**
- * Get first Belief by label (resolves via sid)
- * @param {string} label
- * @returns {Belief|null}
- */
-export function get_first_belief_by_label(label) { // TODO: REMOVE ALL USES!
-  const sid = sid_by_label.get(label)
-  if (sid === undefined) return null
-
-  const subject = get_or_create_subject(sid)
-  const beliefs = belief_by_subject.get(subject)
-  if (!beliefs || beliefs.size === 0) return null
-
-  return beliefs.values().next().value ?? null
-}
 
 /**
  * Get Archetype by label
@@ -415,6 +400,6 @@ export function register( archetypes, traittypes ) {
     if (sid_by_label.has(label)) {
       throw new Error(`Label '${label}' is already used by a belief`)
     }
-    archetype_by_label[label] = new Archetype(label, def)
+    archetype_by_label[label] = new Archetype(label, def.bases ?? [], def.traits ?? {})
   }
 }

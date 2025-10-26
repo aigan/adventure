@@ -29,6 +29,12 @@ None - ready for next task
   - No code should directly access Sets/Maps except in their owning class
   - All access must go through getter methods with proper indexed lookups
   - Example: `Mind._states` (private), access via `mind.get_states_by_ground_state(state)`
+- [ ] **Traittype delegation pattern** - Move type-specific resolution logic to owning classes ([plan](docs/plans/traittype-delegation.md))
+  - Add Mind.resolve_trait_value_from_template() static method
+  - Update Traittype to delegate to type classes
+  - Rename _resolver to _compiled_resolver
+  - Remove Mind-specific conditionals from Traittype
+  - Follows toJSON/from_json pattern: each class owns its logic
 - [ ] **Clarify shared belief architecture** - Implement template minds for shared cultural/template beliefs ([plan](docs/plans/shared-belief-architecture.md))
   - Add parent mind tracking to Mind class
   - Create template mind pattern (sibling to NPC minds under parent)

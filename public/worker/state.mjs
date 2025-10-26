@@ -322,14 +322,14 @@ export class State {
 
   /**
    * Find existing beliefs about a subject in this state's mind
-   * @param {Belief} belief - Belief to find matches for
+   * @param {Belief} source_belief - Belief to find matches for
    * @returns {Array<Belief>} Ranked list of matching beliefs (max 3)
    */
-  recognize(belief) {
+  recognize(source_belief) {
     // Query DB for all beliefs in this mind about the same subject
     const beliefs_about_subject = DB.find_beliefs_about_subject(
       this.in_mind,
-      belief.subject,
+      source_belief.subject,
       this
     )
 
@@ -341,12 +341,12 @@ export class State {
   /**
    * Integrate new knowledge with existing beliefs
    * @param {State} source_state - State context for resolving trait references
-   * @param {Belief} belief - Belief to integrate
+   * @param {Belief} source_belief - Belief to integrate
    * @param {string[]} trait_names - Traits to copy/update
    * @param {Array<Belief>} existing_beliefs - Beliefs from recognize()
    * @returns {Belief} Updated or new belief
    */
-  integrate(source_state, belief, trait_names, existing_beliefs) {
+  integrate(source_state, source_belief, trait_names, existing_beliefs) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     // TODO: Reconciliation logic - try options to minimize contradictions
@@ -357,25 +357,22 @@ export class State {
 
     if (existing_beliefs.length === 0) {
       // No existing knowledge - create new belief
-      const archetype_bases = [...belief.get_archetypes()]
+      const archetype_bases = [...source_belief.get_archetypes()]
 
       // Copy traits, dereferencing belief references to this mind
       // Use get_trait() to find inherited values (returns raw Subjects, not Beliefs)
       /** @type {Record<string, any>} */
       const copied_traits = {}
       for (const name of trait_names) {
-        const value = belief.get_trait(name)
+        const value = source_belief.get_trait(name)
         if (value !== null) {
           copied_traits[name] = this._recursively_learn_trait_value(source_state, value)
         }
       }
 
-      const new_belief = Belief.from(this, {
-        bases: archetype_bases,
-        traits: {
-          '@about': DB.get_or_create_subject(belief.subject.sid),  // Shared canonical Subject
-          ...copied_traits
-        }
+      const new_belief = Belief.from(this, archetype_bases, {
+        '@about': DB.get_or_create_subject(source_belief.subject.sid),  // Shared canonical Subject
+        ...copied_traits
       })
 
       this.insert.push(new_belief)
@@ -390,7 +387,7 @@ export class State {
       /** @type {Record<string, any>} */
       const new_traits = {}
       for (const name of trait_names) {
-        const value = belief.get_trait(name)
+        const value = source_belief.get_trait(name)
         if (value !== null) {
           new_traits[name] = this._recursively_learn_trait_value(source_state, value)
         }
@@ -415,22 +412,27 @@ export class State {
 
   /**
    * Learn about a belief from another mind, copying it into this state's mind
-   * @param {Belief} belief - Belief from another mind/state to learn about
+   *
+   * Typically source_state is this.ground_state (learning from observable world state).
+   * However, source_state may differ from ground_state when learning from another mind's
+   * perspective within the same parent (e.g., NPC testimony about what they believe).
+   *
+   * @param {Belief} source_belief - Belief from another mind/state to learn about
    * @param {string[]} [trait_names] - Traits to copy (empty = copy no traits, just archetypes)
    * @param {State|null} [source_state] - State where the belief exists (defaults to this.ground_state)
    * @returns {Belief}
    */
-  learn_about(belief, trait_names = [], source_state = null) {
+  learn_about(source_belief, trait_names = [], source_state = null) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
-    const resolved_source = source_state ?? this.ground_state
-    assert(resolved_source instanceof State, 'source_state required: either pass explicitly or set ground_state')
+    source_state ??= this.ground_state
+    assert(source_state instanceof State, 'source_state required: either pass explicitly or set ground_state')
 
     // Step 1: Recognize existing knowledge
-    const existing_beliefs = this.recognize(belief)
+    const existing_beliefs = this.recognize(source_belief)
 
     // Step 2: Integrate new knowledge
-    return this.integrate(resolved_source, belief, trait_names, existing_beliefs)
+    return this.integrate(source_state, source_belief, trait_names, existing_beliefs)
   }
 
   /**

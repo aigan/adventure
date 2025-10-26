@@ -2,6 +2,14 @@
 
 Use this document as a checklist after implementation to ensure code quality.
 
+## Quick Reference - Common Mistakes to Avoid
+
+**JSDoc**: ✓ Import types at top • ✗ Inline imports (`import('./foo.mjs').Bar`)
+**Assertions**: ✓ Check type (`instanceof State`) • ✗ Check null (`!== null`)
+**Scalability**: ✗ Iterate over DB registries • ✓ Indexed lookups only
+**Missing lookup?**: ✗ Work around by iterating • ✓ Ask about design changes
+**Beliefs**: ✗ Access without state context • ✓ Always use state.get_belief_by_*()
+
 ## Philosophy
 
 Write short, readable code using modern JavaScript features. Prefer clarity over cleverness.
@@ -115,6 +123,31 @@ for (const belief of beliefs) {  // Don't comment obvious things
 - ✓ Use `assert()` from `lib/debug.mjs` for preconditions
 - ✓ Validate inputs early (fail fast)
 - ✓ Document error conditions in JSDoc
+
+### Assertion Patterns
+
+Always assert the **expected type or class**, not just truthiness or null-checks:
+
+✓ **Good** - Assert expected type:
+```javascript
+assert(state instanceof State, 'Expected State instance', {state})
+assert(belief.in_mind instanceof Mind, 'Belief must belong to a mind', {belief})
+assert(typeof label === 'string', 'Label must be a string', {label})
+```
+
+✗ **Bad** - Only check for null:
+```javascript
+assert(state !== null, 'State required', {state})  // ✗ Could be wrong type
+assert(state, 'State required', {state})           // ✗ Could be wrong type
+```
+
+**Rationale**: Type-specific assertions catch more bugs and provide better error messages. They verify not just presence but correctness.
+
+**TypeScript compatibility**: After asserting, add type cast for TypeScript when needed:
+```javascript
+assert(belief.origin_state instanceof State, 'belief must have origin_state', belief)
+const state = /** @type {State} */ (belief.origin_state)
+```
 
 ## Testing Requirements
 

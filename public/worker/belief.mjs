@@ -115,9 +115,8 @@ export class Belief {
   /**
    * @param {string} label
    * @param {Record<string, any>} data
-   * @param {State|null} [creator_state] - State creating this belief (for inferring ground_state)
    */
-  add_trait(label, data, creator_state = null) {
+  add_trait(label, data) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
     const traittype = DB.get_traittype_by_label(label)
@@ -604,7 +603,7 @@ export class Belief {
     const resolved_bases = bases.map(base => {
       if (typeof base === 'string') {
         const resolved = state.get_belief_by_label(base) ?? DB.get_archetype_by_label(base)
-        assert(resolved != null, `Base '${base}' not found as belief label or archetype`, {base})
+        assert(resolved instanceof Belief || resolved instanceof Archetype, `Base '${base}' not found as belief label or archetype`, {base})
         return /** @type {Belief|Archetype} */ (resolved)
       }
       return base
@@ -633,14 +632,15 @@ export class Belief {
   /**
    * Create belief without template
    * @param {State} state - State creating this belief
-   * @param {{bases?: Array<Belief|Archetype>, traits?: Record<string, any>}} options
+   * @param {Array<Belief|Archetype>} [bases] - Base beliefs/archetypes
+   * @param {Record<string, any>} [traits] - Trait values (already resolved, not template data)
    * @returns {Belief}
    */
-  static from(state, {bases=[], traits={}}) {
+  static from(state, bases = [], traits = {}) {
     const belief = new Belief(state, null, bases)
 
     for (const [trait_label, trait_data] of Object.entries(traits)) {
-      belief.add_trait(trait_label, trait_data, state)
+      belief.add_trait(trait_label, trait_data)
     }
 
     return belief

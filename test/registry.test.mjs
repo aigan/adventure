@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { setupMinimalArchetypes } from './helpers.mjs';
+import { setupMinimalArchetypes, get_first_belief_by_label } from './helpers.mjs';
 
 describe('Registry', () => {
   beforeEach(() => {
@@ -20,10 +20,10 @@ describe('Registry', () => {
       const workshop_b = Belief.from_template(state_b, {traits: {'@label': 'workshop_unique_b'}, bases: ['Location']});
 
       // Labels are globally unique now
-      expect(DB.get_first_belief_by_label('workshop_unique_a')).to.exist;
-      expect(DB.get_first_belief_by_label('workshop_unique_b')).to.exist;
-      expect(DB.get_first_belief_by_label('workshop_unique_a')).to.not.equal(
-        DB.get_first_belief_by_label('workshop_unique_b')
+      expect(get_first_belief_by_label('workshop_unique_a')).to.exist;
+      expect(get_first_belief_by_label('workshop_unique_b')).to.exist;
+      expect(get_first_belief_by_label('workshop_unique_a')).to.not.equal(
+        get_first_belief_by_label('workshop_unique_b')
       );
     });
 

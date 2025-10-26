@@ -106,3 +106,27 @@ export function setupMinimalArchetypes() {
 
   DB.register(archetypes, traittypes);
 }
+
+/**
+ * Get first belief by label - FOR TESTING ONLY
+ *
+ * WARNING: This function is non-deterministic and only works reliably when called
+ * immediately after creating a belief with a label. It returns an arbitrary belief
+ * from the set of beliefs with the given label. Do not use in production code.
+ *
+ * Use state.get_belief_by_label(label) instead for deterministic lookups within
+ * a specific state context.
+ *
+ * @param {string} label
+ * @returns {Belief|null}
+ */
+export function get_first_belief_by_label(label) {
+  const sid = DB._reflect().sid_by_label.get(label)
+  if (sid === undefined) return null
+
+  const subject = DB.get_or_create_subject(sid)
+  const beliefs = DB._reflect().belief_by_subject.get(subject)
+  if (!beliefs || beliefs.size === 0) return null
+
+  return beliefs.values().next().value ?? null
+}

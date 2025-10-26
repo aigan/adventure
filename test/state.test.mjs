@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { Mind, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as Cosmos from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { createMindWithBeliefs, setupMinimalArchetypes, setupStandardArchetypes } from './helpers.mjs';
+import { createMindWithBeliefs, setupMinimalArchetypes, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
 
 describe('State', () => {
   beforeEach(() => {
@@ -22,7 +22,7 @@ describe('State', () => {
       });
 
       expect([...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind).length).to.equal(2);
-      expect([...DB._reflect().belief_by_id.values()].some(b => b.in_mind === mind && b === DB.get_first_belief_by_label('workshop'))).to.be.true;
+      expect([...DB._reflect().belief_by_id.values()].some(b => b.in_mind === mind && b === get_first_belief_by_label('workshop'))).to.be.true;
       expect([...DB._reflect().belief_by_id.values()].some(b => b.in_mind === mind && b === hammer)).to.be.true;
     });
 
@@ -48,8 +48,8 @@ describe('State', () => {
       const state = mind.create_state(1);
       Belief.from_template(state, {traits: {'@label': 'workshop'}, bases: ['Location']});
 
-      expect(DB.get_first_belief_by_label('workshop')).to.exist;
-      expect(DB.get_first_belief_by_label('workshop').get_label()).to.equal('workshop');
+      expect(get_first_belief_by_label('workshop')).to.exist;
+      expect(get_first_belief_by_label('workshop').get_label()).to.equal('workshop');
     });
   });
 
@@ -105,7 +105,7 @@ describe('State', () => {
       const state1 = mind.create_state(1);
       Belief.from_template(state1, {traits: {'@label': 'hammer_v1'}, bases: ['PortableObject']});
 
-      const hammer_v1 = DB.get_first_belief_by_label('hammer_v1');
+      const hammer_v1 = get_first_belief_by_label('hammer_v1');
       const hammer_v2 = Belief.from_template(state1, {
         bases: [hammer_v1],
         traits: { color: 'red' }
@@ -129,14 +129,14 @@ describe('State', () => {
       Belief.from_template(state_b1, {traits: {'@label': 'item_in_b'}, bases: ['PortableObject']});
 
       // Add different beliefs to each mind
-      const item_a = DB.get_first_belief_by_label('item_in_a');
+      const item_a = get_first_belief_by_label('item_in_a');
       const item_a2 = Belief.from_template(state_a1, {
         bases: [item_a],
         traits: { color: 'red' }
       });
       const state_a2 = state_a1.tick({ replace: [item_a2] });
 
-      const item_b = DB.get_first_belief_by_label('item_in_b');
+      const item_b = get_first_belief_by_label('item_in_b');
       const item_b2 = Belief.from_template(state_b1, {
         bases: [item_b],
         traits: { color: 'blue' }

@@ -128,7 +128,8 @@ export class Traittype {
    */
   _resolve_item(belief, data) {
     const type_label = this.data_type
-    const creator_state = belief.origin_state
+    assert(belief.origin_state instanceof State, "belief must have origin_state", belief)
+    const creator_state = /** @type {State} */ (belief.origin_state)
 
     // Check if it's an Archetype reference
     if (DB.get_archetype_by_label(type_label)) {
@@ -136,8 +137,7 @@ export class Traittype {
 
       // Handle different input types
       if (typeof data === 'string') {
-        // String label - lookup in creator_state if available, otherwise global
-        const belief = creator_state?.get_belief_by_label(data) ?? DB.get_first_belief_by_label(data)
+        const belief = creator_state.get_belief_by_label(data);
         if (belief == null) {
           throw new Error(`Belief not found for trait '${this.label}': ${data}`)
         }
@@ -185,7 +185,8 @@ export class Traittype {
    * @returns {*}
    */
   resolve_trait_value_from_template(belief, data) {
-    const creator_state = belief.origin_state
+    assert(belief.origin_state instanceof State, "belief must have origin_state", belief);
+    const creator_state =  /** @type {State} */ (belief.origin_state)
 
     // Check for Mind template (plain object learn spec)
     if (this.data_type === 'Mind' &&
@@ -194,19 +195,13 @@ export class Traittype {
         !data._type &&
         !(data.state instanceof Set)) {
       // It's a learn spec (plain object without Mind's state Set) - call Mind.create_from_template
-      assert(belief.in_mind !== null, 'Shared beliefs cannot have Mind traits', {belief})
-      assert(creator_state !== null, 'Mind trait requires belief to have origin_state', {belief})
-      return Mind.create_from_template(
-        creator_state,
-        data,
-        belief.subject ?? null
-      )
+      assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
+      return Mind.create_from_template(creator_state, data, belief.subject ?? null)
     }
 
     // Check for template construction with _type field (Mind only)
     if (data?._type === 'Mind') {
-      assert(belief.in_mind !== null, 'Shared beliefs cannot have Mind traits', {belief})
-      assert(creator_state !== null, 'Mind trait requires belief to have origin_state', {belief})
+      assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
       return Mind.create_from_template(creator_state, data, belief.subject)
     }
 

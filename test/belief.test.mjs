@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { createMindWithBeliefs, setupStandardArchetypes } from './helpers.mjs';
+import { createMindWithBeliefs, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
 
 describe('Belief', () => {
   beforeEach(() => {
@@ -68,7 +68,7 @@ describe('Belief', () => {
       const state = mind.create_state(1);
       Belief.from_template(state, {traits: {'@label': 'workshop'}, bases: ['Location']});
 
-      const workshop = DB.get_first_belief_by_label('workshop');
+      const workshop = get_first_belief_by_label('workshop');
       expect(workshop.in_mind).to.equal(mind);
     });
 
@@ -98,7 +98,7 @@ describe('Belief', () => {
       const state_b = mind_b.create_state(1);
 
       // Currently this works - mind_b can reference mind_a's belief
-      const workshop_a = DB.get_first_belief_by_label('workshop');
+      const workshop_a = get_first_belief_by_label('workshop');
       const item = new Belief(state_b, workshop_a.subject, [workshop_a]);
 
       // item is a version of workshop_a, so it shares the same sid and label

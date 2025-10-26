@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { createMindWithBeliefs, setupStandardArchetypes } from './helpers.mjs';
+import { createMindWithBeliefs, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
 
 describe('Integration', () => {
   beforeEach(() => {
@@ -51,7 +51,7 @@ describe('Integration', () => {
       expect([...ball.get_archetypes()].map(a => a.label)).to.include('PortableObject');
 
       // Verify player
-      let player = DB.get_first_belief_by_label('player');
+      let player = get_first_belief_by_label('player');
       const player_mind = new Mind('player_mind');
       const player_mind_state = player_mind.create_state(1);
       player = Belief.from_template(world_state, {
@@ -63,7 +63,7 @@ describe('Integration', () => {
       expect(player_inspected.traits.mind._ref).to.equal(player_mind._id);
 
       // Verify learn_about
-      const workshop = DB.get_first_belief_by_label('workshop');
+      const workshop = get_first_belief_by_label('workshop');
       const workshop_knowledge = player_mind_state.learn_about(workshop, [], world_state);
 
       const workshop_inspected = workshop_knowledge.to_inspect_view(player_mind_state);
