@@ -157,7 +157,7 @@ export function get_belief(id) {
  * @param {string} label
  * @returns {Belief|null}
  */
-export function get_first_belief_by_label(label) {
+export function get_first_belief_by_label(label) { // TODO: REMOVE ALL USES!
   const sid = sid_by_label.get(label)
   if (sid === undefined) return null
 

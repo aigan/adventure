@@ -166,7 +166,7 @@ describe('Locking Constraints', () => {
       expect(base_states[0].locked).to.be.true
 
       // Create a versioned belief that inherits from base_player
-      const versioned_player = Belief.from_template(world_mind, {
+      const versioned_player = Belief.from_template(world_state, {
         bases: [base_player],
         traits: { color: 'blue' }  // Add a new trait
       })

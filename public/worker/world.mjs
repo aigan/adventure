@@ -130,12 +130,12 @@ const world_belief = {
 
 state.add_beliefs(world_belief);
 
-const player = DB.get_first_belief_by_label('player');
+const player = state.get_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
 const player_mind = player.get_trait('mind');
 let player_state = [...player_mind.states_valid_at(1)][0];
 player_state = player_state.branch_state(state);
-player_state.learn_about(DB.get_first_belief_by_label('hammer'), ['location']);
+player_state.learn_about(state.get_belief_by_label('hammer'), ['location']);
 
 state.lock();
 //log(player_state);

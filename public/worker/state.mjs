@@ -110,12 +110,24 @@ export class State {
   }
 
   /**
-   * @param {object} template - Belief template
+   * @param {object} template - Belief template (supports legacy 'label' parameter or traits['@label'])
    * @returns {Belief}
    */
   add_belief(template) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
-    const belief = Belief.from_template(this.in_mind, template, this)
+
+    // Handle legacy 'label' parameter for backward compatibility
+    let normalized_template = template
+    if ('label' in template && template.label != null) {
+      const {label, ...rest} = /** @type {any} */ (template)
+      const existing_traits = /** @type {Record<string, any>} */ ('traits' in rest ? rest.traits : {})
+      normalized_template = {
+        ...rest,
+        traits: {...existing_traits, '@label': label}
+      }
+    }
+
+    const belief = Belief.from_template(this, normalized_template)
     this.insert.push(belief)
     return belief
   }
@@ -127,7 +139,11 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     for (const [label, def] of Object.entries(beliefs)) {
-      const belief = Belief.from_template(this.in_mind, {...def, label}, this)
+      const existing_traits = /** @type {Record<string, any>} */ ('traits' in def ? def.traits : {})
+      const belief = Belief.from_template(this, {
+        ...def,
+        traits: {...existing_traits, '@label': label}
+      })
       this.insert.push(belief)
     }
   }
@@ -217,7 +233,7 @@ export class State {
    * @returns {State}
    */
   tick_with_traits(belief, traits) {
-    const new_belief = Belief.from_template(this.in_mind, {sid: belief.subject.sid, bases: [belief], traits}, this)
+    const new_belief = Belief.from_template(this, {sid: belief.subject.sid, bases: [belief], traits})
     return this.tick({ replace: [new_belief] })
   }
 
@@ -280,6 +296,31 @@ export class State {
   }
 
   /**
+   * Get belief by label (state-scoped lookup)
+   * @param {string} label - Label to look up
+   * @returns {Belief|null} The belief with this label in this state, or null if not found
+   */
+  get_belief_by_label(label) {
+    const subject = DB.get_subject_by_label(label)
+    if (!subject) return null
+
+    // Find all beliefs in this state with this subject
+    const matching_beliefs = []
+    for (const belief of this.get_beliefs()) {
+      if (belief.subject === subject) {
+        matching_beliefs.push(belief)
+      }
+    }
+
+    // Assert there's at most one belief with this label
+    assert(matching_beliefs.length <= 1,
+      `Multiple beliefs found with label '${label}' in state`,
+      {label, count: matching_beliefs.length, state_id: this._id})
+
+    return matching_beliefs[0] ?? null
+  }
+
+  /**
    * Find existing beliefs about a subject in this state's mind
    * @param {Belief} belief - Belief to find matches for
    * @returns {Array<Belief>} Ranked list of matching beliefs (max 3)
@@ -329,7 +370,7 @@ export class State {
         }
       }
 
-      const new_belief = Belief.from(this.in_mind, {
+      const new_belief = Belief.from(this, {
         bases: archetype_bases,
         traits: {
           '@about': DB.get_or_create_subject(belief.subject.sid),  // Shared canonical Subject
@@ -361,7 +402,7 @@ export class State {
       }
 
       // Create updated belief - keeps all old traits, updates specified ones
-      const updated_belief = Belief.from_template(this.in_mind, {
+      const updated_belief = Belief.from_template(this, {
         bases: [existing_belief],
         traits: new_traits
       })

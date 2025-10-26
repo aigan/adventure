@@ -17,9 +17,9 @@ describe('Subject', () => {
       const state3 = mind.create_state(300);
 
       // Create linear version chain: v1 ← v2 ← v3
-      const hammer_v1 = Belief.from_template(mind, {label: 'hammer', bases: ['PortableObject']}, state1);
-      const hammer_v2 = Belief.from_template(mind, {sid: hammer_v1.subject.sid, bases: [hammer_v1]}, state2);
-      const hammer_v3 = Belief.from_template(mind, {sid: hammer_v1.subject.sid, bases: [hammer_v2]}, state3);
+      const hammer_v1 = Belief.from_template(state1, {traits: {'@label': 'hammer'}, bases: ['PortableObject']});
+      const hammer_v2 = Belief.from_template(state2, {sid: hammer_v1.subject.sid, bases: [hammer_v1]});
+      const hammer_v3 = Belief.from_template(state3, {sid: hammer_v1.subject.sid, bases: [hammer_v2]});
 
       const subject = hammer_v1.subject;
 
@@ -45,11 +45,11 @@ describe('Subject', () => {
       // v1(t=100) ← v2(t=200) ← v4(t=300)   [Branch A]
       //     ↑
       //    v3(t=150) ← v5(t=175)            [Branch B]
-      const hammer_v1 = Belief.from_template(mind, {label: 'hammer', bases: ['PortableObject']}, state1);
-      const hammer_v2 = Belief.from_template(mind, {sid: hammer_v1.subject.sid, bases: [hammer_v1]}, state2);  // Branch A from v1
-      const hammer_v3 = Belief.from_template(mind, {sid: hammer_v1.subject.sid, bases: [hammer_v1]}, state3);  // Branch B from v1
-      const hammer_v4 = Belief.from_template(mind, {sid: hammer_v1.subject.sid, bases: [hammer_v2]}, state4);  // Continue branch A
-      const hammer_v5 = Belief.from_template(mind, {sid: hammer_v1.subject.sid, bases: [hammer_v3]}, state5);  // Continue branch B
+      const hammer_v1 = Belief.from_template(state1, {traits: {'@label': 'hammer'}, bases: ['PortableObject']});
+      const hammer_v2 = Belief.from_template(state2, {sid: hammer_v1.subject.sid, bases: [hammer_v1]});  // Branch A from v1
+      const hammer_v3 = Belief.from_template(state3, {sid: hammer_v1.subject.sid, bases: [hammer_v1]});  // Branch B from v1
+      const hammer_v4 = Belief.from_template(state4, {sid: hammer_v1.subject.sid, bases: [hammer_v2]});  // Continue branch A
+      const hammer_v5 = Belief.from_template(state5, {sid: hammer_v1.subject.sid, bases: [hammer_v3]});  // Continue branch B
 
       const subject = hammer_v1.subject;
 

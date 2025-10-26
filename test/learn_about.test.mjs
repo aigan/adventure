@@ -61,7 +61,7 @@ describe('learn_about', () => {
       const hammer_v1_belief = world_mind_state.add_belief({label: 'hammer_v1', bases: ['PortableObject']});
 
       const hammer_v1 = DB.get_first_belief_by_label('hammer_v1');
-      const hammer_v2 = Belief.from_template(hammer_v1.in_mind, {
+      const hammer_v2 = Belief.from_template(world_mind_state, {
         bases: [hammer_v1],
         traits: { color: 'red' }
       });
@@ -145,7 +145,7 @@ describe('learn_about', () => {
       );
 
       // Expected behavior: trait references should be dereferenced to npc_mind
-      const location_ref = hammer_knowledge.get_trait_as_belief(npc_mind_state, 'location');
+      const location_ref = hammer_knowledge.get_trait('location')?.get_belief_by_state(npc_mind_state);
 
       // Should be a belief in npc_mind, not world_mind
       expect(location_ref.in_mind).to.equal(npc_mind);
@@ -186,7 +186,7 @@ describe('learn_about', () => {
       );
 
       // Should reuse existing belief about the workshop
-      const location_ref = hammer_knowledge.get_trait_as_belief(npc_mind_state, 'location');
+      const location_ref = hammer_knowledge.get_trait('location')?.get_belief_by_state(npc_mind_state);
       expect(location_ref).to.equal(existing_workshop);
     });
 
@@ -230,7 +230,7 @@ describe('learn_about', () => {
       );
 
       // Should have created hammer knowledge with location reference
-      const location_ref = hammer_knowledge.get_trait_as_belief(new_state, 'location');
+      const location_ref = hammer_knowledge.get_trait('location')?.get_belief_by_state(new_state);
       expect(location_ref).to.exist;
       expect(location_ref.in_mind).to.equal(npc_mind);
     });
@@ -266,7 +266,7 @@ describe('learn_about', () => {
       world_mind_state.add_belief({label: 'hammer_v1', bases: ['PortableObject']});
 
       const hammer_v1 = DB.get_first_belief_by_label('hammer_v1');
-      const hammer_v2 = Belief.from_template(hammer_v1.in_mind, {
+      const hammer_v2 = Belief.from_template(world_mind_state, {
         bases: [hammer_v1],
         traits: { color: 'red' }
       });
@@ -371,7 +371,10 @@ describe('learn_about', () => {
       const chest_knowledge = npc_mind_state.learn_about(chest, ['items'], world_mind_state);
 
       // Array should be dereferenced - each item copied to npc_mind
-      const items = chest_knowledge.get_trait_as_belief(npc_mind_state, 'items');
+      const items_raw = chest_knowledge.get_trait('items');
+      const items = items_raw?.map(item =>
+        item instanceof Subject ? item.get_belief_by_state(npc_mind_state) : item
+      );
       expect(Array.isArray(items)).to.be.true;
       expect(items).to.have.lengthOf(2);
 
@@ -406,13 +409,13 @@ describe('learn_about', () => {
 
       // Hammer gets repainted - only color in _traits, location inherited
       const world_state2 = world_state.tick({});
-      const hammer_v2 = Belief.from_template(world_mind, {
+      const hammer_v2 = Belief.from_template(world_state2, {
         sid: hammer_v1.subject.sid,
         bases: [hammer_v1],
         traits: {
           color: 'blue'
         }
-      }, world_state2);
+      });
 
       world_state2.lock();
 

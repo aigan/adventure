@@ -13,10 +13,11 @@ describe('State', () => {
   describe('Iteration Patterns', () => {
     it('mind.belief Set contains all beliefs for that mind', () => {
       const mind = new Mind('test');
-      Belief.from_template(mind, {label: 'workshop', bases: ['Location']});
+      const state = mind.create_state(1);
+      Belief.from_template(state, {traits: {'@label': 'workshop'}, bases: ['Location']});
 
-      const hammer = Belief.from_template(mind, {
-        label: 'hammer',
+      const hammer = Belief.from_template(state, {
+        traits: {'@label': 'hammer'},
         bases: ['PortableObject']
       });
 
@@ -44,7 +45,8 @@ describe('State', () => {
 
     it('mind.belief_by_label provides fast label lookup', () => {
       const mind = new Mind('test');
-      Belief.from_template(mind, {label: 'workshop', bases: ['Location']});
+      const state = mind.create_state(1);
+      Belief.from_template(state, {traits: {'@label': 'workshop'}, bases: ['Location']});
 
       expect(DB.get_first_belief_by_label('workshop')).to.exist;
       expect(DB.get_first_belief_by_label('workshop').get_label()).to.equal('workshop');
@@ -54,14 +56,14 @@ describe('State', () => {
   describe('Cross-Mind Visibility', () => {
     it('state.get_beliefs only returns beliefs from that state\'s mind', () => {
       const mind_a = new Mind('mind_a');
-      Belief.from_template(mind_a, {label: 'item_a', bases: ['PortableObject']});
       const state_a = mind_a.create_state(1);
+      Belief.from_template(state_a, {traits: {'@label': 'item_a'}, bases: ['PortableObject']});
       const beliefs_for_a = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_a);
       state_a.insert.push(...beliefs_for_a);
 
       const mind_b = new Mind('mind_b');
-      Belief.from_template(mind_b, {label: 'item_b', bases: ['PortableObject']});
       const state_b = mind_b.create_state(1);
+      Belief.from_template(state_b, {traits: {'@label': 'item_b'}, bases: ['PortableObject']});
       const beliefs_for_b = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_b);
       state_b.insert.push(...beliefs_for_b);
 
@@ -77,15 +79,15 @@ describe('State', () => {
 
     it('beliefs from different minds don\'t mix in states', () => {
       const mind_a = new Mind('mind_a');
-      Belief.from_template(mind_a, {label: 'workshop_a', bases: ['Location']});
+      const state_a = mind_a.create_state(1);
+      Belief.from_template(state_a, {traits: {'@label': 'workshop_a'}, bases: ['Location']});
 
       const mind_b = new Mind('mind_b');
-      Belief.from_template(mind_b, {label: 'workshop_b', bases: ['Location']});
+      const state_b = mind_b.create_state(1);
+      Belief.from_template(state_b, {traits: {'@label': 'workshop_b'}, bases: ['Location']});
 
-      const state_a = mind_a.create_state(1);
       const beliefs_a = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_a);
       state_a.insert.push(...beliefs_a);
-      const state_b = mind_b.create_state(1);
       const beliefs_b = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_b);
       state_b.insert.push(...beliefs_b);
 
@@ -100,11 +102,11 @@ describe('State', () => {
   describe('State Operations', () => {
     it('state.tick with replace removes correct belief', () => {
       const mind = new Mind('test');
-      Belief.from_template(mind, {label: 'hammer_v1', bases: ['PortableObject']});
-
       const state1 = mind.create_state(1);
+      Belief.from_template(state1, {traits: {'@label': 'hammer_v1'}, bases: ['PortableObject']});
+
       const hammer_v1 = DB.get_first_belief_by_label('hammer_v1');
-      const hammer_v2 = Belief.from_template(hammer_v1.in_mind, {
+      const hammer_v2 = Belief.from_template(state1, {
         bases: [hammer_v1],
         traits: { color: 'red' }
       });
@@ -119,23 +121,23 @@ describe('State', () => {
 
     it('multiple minds can have states without interference', () => {
       const mind_a = new Mind('mind_a');
-      Belief.from_template(mind_a, {label: 'item_in_a', bases: ['PortableObject']});
       const state_a1 = mind_a.create_state(1);
+      Belief.from_template(state_a1, {traits: {'@label': 'item_in_a'}, bases: ['PortableObject']});
 
       const mind_b = new Mind('mind_b');
-      Belief.from_template(mind_b, {label: 'item_in_b', bases: ['PortableObject']});
       const state_b1 = mind_b.create_state(1);
+      Belief.from_template(state_b1, {traits: {'@label': 'item_in_b'}, bases: ['PortableObject']});
 
       // Add different beliefs to each mind
       const item_a = DB.get_first_belief_by_label('item_in_a');
-      const item_a2 = Belief.from_template(item_a.in_mind, {
+      const item_a2 = Belief.from_template(state_a1, {
         bases: [item_a],
         traits: { color: 'red' }
       });
       const state_a2 = state_a1.tick({ replace: [item_a2] });
 
       const item_b = DB.get_first_belief_by_label('item_in_b');
-      const item_b2 = Belief.from_template(item_b.in_mind, {
+      const item_b2 = Belief.from_template(state_b1, {
         bases: [item_b],
         traits: { color: 'blue' }
       });
@@ -156,7 +158,7 @@ describe('State', () => {
       });
       const mind = state1.in_mind;
 
-      const item3 = Belief.from_template(mind, { label: 'item3', bases: ['PortableObject'] });
+      const item3 = Belief.from_template(state1, {traits: {'@label': 'item3'}, bases: ['PortableObject']});
       const state2 = state1.tick({ insert: [item3] });
 
       // state2 should have all three items
@@ -262,7 +264,7 @@ describe('State', () => {
       });
 
       // Create v2 and add to state2
-      const room_v2 = Belief.from_template(world_mind, {
+      const room_v2 = Belief.from_template(state1, {
         sid: room_v1.subject.sid,
         bases: [room_v1],
         traits: { color: 'red' },
@@ -321,7 +323,7 @@ describe('State', () => {
       });
 
       // Now update room1 to be inside room2
-      const room1_v2 = Belief.from_template(world_mind, {
+      const room1_v2 = Belief.from_template(state1, {
         sid: room1.subject.sid,
         bases: [room1],
         traits: {
@@ -363,17 +365,18 @@ describe('State', () => {
 
     it('creates state with self reference', () => {
       const mind = new Mind('test');
+      const temp_state = mind.create_state(1);
 
       // Create a belief to be self
-      const body = Belief.from_template(mind, {
-        label: 'body',
+      const body = Belief.from_template(temp_state, {
+        traits: {'@label': 'body'},
         bases: ['Actor']
       });
 
       // Create state with self
       const state = new State(
         mind,
-        1,
+        2,
         null,
         null,
         body.subject
@@ -384,12 +387,13 @@ describe('State', () => {
 
     it('branch_state inherits self from parent', () => {
       const mind = new Mind('test');
-      const body = Belief.from_template(mind, {
-        label: 'body',
+      const temp_state = mind.create_state(1);
+      const body = Belief.from_template(temp_state, {
+        traits: {'@label': 'body'},
         bases: ['Actor']
       });
 
-      const state1 = new State(mind, 1, null, null, body.subject);
+      const state1 = new State(mind, 2, null, null, body.subject);
       state1.lock();
 
       const state2 = state1.branch_state(null);
@@ -400,12 +404,13 @@ describe('State', () => {
 
     it('tick inherits self from parent', () => {
       const mind = new Mind('test');
-      const body = Belief.from_template(mind, {
-        label: 'body',
+      const temp_state = mind.create_state(1);
+      const body = Belief.from_template(temp_state, {
+        traits: {'@label': 'body'},
         bases: ['Actor']
       });
 
-      const state1 = new State(mind, 1, null, null, body.subject);
+      const state1 = new State(mind, 2, null, null, body.subject);
       const state2 = state1.tick({ insert: [] });
 
       expect(state2.self).to.equal(body.subject);
@@ -414,12 +419,13 @@ describe('State', () => {
 
     it('serializes and deserializes self', () => {
       const mind = new Mind('test');
-      const body = Belief.from_template(mind, {
-        label: 'body',
+      const temp_state = mind.create_state(1);
+      const body = Belief.from_template(temp_state, {
+        traits: {'@label': 'body'},
         bases: ['Actor']
       });
 
-      const state = new State(mind, 1, null, null, body.subject);
+      const state = new State(mind, 2, null, null, body.subject);
 
       const json = state.toJSON();
       expect(json.self).to.equal(body.subject.sid);
@@ -432,32 +438,32 @@ describe('State', () => {
       expect(state.self).to.be.null;
     });
 
-    it('Mind.resolve_template sets state.self from owner_belief subject', () => {
+    it('Mind.create_from_template sets state.self from owner_belief subject', () => {
       DB.reset_registries();
       setupStandardArchetypes();
 
       const world_mind = new Mind('world');
       const world_state = world_mind.create_state(1);
 
-      const player_body = Belief.from_template(world_mind, {
-        label: 'player_body',
+      const player_body = Belief.from_template(world_state, {
+        traits: {'@label': 'player_body'},
         bases: ['Actor']
       });
 
       world_state.insert_beliefs(player_body);
       world_state.lock();
 
-      // Create player with mind trait using resolve_template
+      // Create player with mind trait using create_from_template
       // Person archetype has Mental which has mind trait
-      const player = Belief.from_template(world_mind, {
-        label: 'player',
-        bases: ['Person'],
+      const player = Belief.from_template(world_state, {
         traits: {
+          '@label': 'player',
           mind: {
             // empty learn spec
           }
-        }
-      }, world_state);
+        },
+        bases: ['Person']
+      });
 
       const player_mind = player._traits.get('mind');
       expect(player_mind).to.be.instanceOf(Mind);

@@ -64,26 +64,28 @@ import { State } from './state.mjs'
 export class Belief {
 
   /**
-   * @param {Mind|null} mind - Mind this belief belongs to (null for shared beliefs)
-   * @param {object} param1
-   * @param {Subject|null} [param1.subject] - Subject (provide to create version of existing subject)
-   * @param {Array<Archetype|Belief>} [param1.bases] - Archetype or Belief objects (no strings)
-   * @param {State|null} [origin_state] - State that's creating this belief
+   * @param {State|null} state - State creating this belief (null for shared beliefs)
+   * @param {Subject|null} [subject] - Subject (provide to create version of existing subject)
+   * @param {Array<Archetype|Belief>} [bases] - Archetype or Belief objects (no strings)
    */
-  constructor(mind, {subject=null, bases=[]}, origin_state = null) {
+  constructor(state, subject = null, bases = []) {
     for (const base of bases) {
       assert(typeof base !== 'string',
         'Constructor received string base - use Belief.from_template() instead',
         {base})
     }
 
+    /** @type {Mind|null} */
+    const mind = state?.in_mind ?? null
+
     /** @type {Set<Belief|Archetype>} */ this._bases = new Set(bases)
     this.subject = subject ?? DB.get_or_create_subject(next_id())
     this._id = next_id()
+    /** @type {Mind|null} */
     this.in_mind = mind
     this._traits = new Map()
     this.locked = false
-    this.origin_state = origin_state
+    this.origin_state = state
 
     DB.register_belief_by_id(this)
     DB.register_belief_by_subject(this)
@@ -92,17 +94,18 @@ export class Belief {
   }
 
   /**
-   * @param {string} label
+   * Add trait from template data (resolves via traittype)
+   * @param {State} state - State context for resolution
+   * @param {string} label - Trait label
    * @param {*} data - Raw data to be resolved by traittype
-   * @param {State|null} [creator_state] - State creating this belief (for inferring ground_state)
    */
-  resolve_and_add_trait(label, data, creator_state = null) {
+  add_trait_from_template(state, label, data) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
     const traittype = DB.get_traittype_by_label(label)
     assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
 
-    const value = /** @type {Traittype} */ (traittype).resolve(this, data, creator_state)
+    const value = /** @type {Traittype} */ (traittype).resolve_trait_value_from_template(this, data)
 
     assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.get_label(), value, archetypes: [...this.get_archetypes()].map(a => a.label)})
 
@@ -228,47 +231,6 @@ export class Belief {
   }
 
   /**
-   * Get a trait value with Subjects converted to Beliefs
-   * Walks the bases chain to find inherited trait values (prototype pattern)
-   * @deprecated Use get_trait() for raw values, then convert Subjects yourself if needed
-   * @param {State} state - State context for looking up Beliefs from Subjects
-   * @param {string} trait_name - Name of the trait to get
-   * @returns {*} Trait value with Subjects converted to Beliefs, or null if not found
-   */
-  get_trait_as_belief(state, trait_name) {
-    //console.log('get_trait_as_belief', trait_name, this._traits);
-
-    // Check own traits first
-    if (this._traits.has(trait_name)) {
-      const raw_value = this._traits.get(trait_name)
-      return this._convert_subjects_to_beliefs(raw_value, state)
-    }
-
-    // Walk bases chain breadth-first to find inherited value
-    const queue = [...this._bases]
-    const seen = new Set()
-
-    while (queue.length > 0) {
-      const base = queue.shift()
-      if (!base || seen.has(base)) continue
-      seen.add(base)
-
-      // Only check Belief bases (Archetypes have definitions, not values)
-      if (base instanceof Belief) {
-        if (base._traits.has(trait_name)) {
-          const raw_value = base._traits.get(trait_name)
-          return this._convert_subjects_to_beliefs(raw_value, state)
-        }
-        // Add this belief's bases to search queue
-        queue.push(...base._bases)
-      }
-    }
-
-    // Not found in chain
-    return null
-  }
-
-  /**
    * Get the belief this is about (resolves `@about` trait)
    * @param {State} state - State context for resolving Subject
    * @returns {Belief|null} The belief this is about, or null
@@ -309,26 +271,6 @@ export class Belief {
 
     // Fall back to origin_state (for regular beliefs)
     return this.origin_state?.timestamp ?? 0
-  }
-
-  /**
-   * Convert Subject references in trait values to Belief objects
-   * @private
-   * @param {*} value - Raw trait value (may contain Subjects, States, Minds, primitives, arrays)
-   * @param {State} state - State context for looking up Beliefs from Subjects
-   * @returns {*} Value with Subjects converted to Beliefs
-   */
-  _convert_subjects_to_beliefs(value, state) {
-    if (Array.isArray(value)) {
-      return value.map(item => this._convert_subjects_to_beliefs(item, state))
-    } else if (value instanceof Subject) {
-      return value.get_belief_by_state(state)
-    } else if (value && typeof value === 'object' && value._type) {
-      // State/Mind reference object from JSON - deserialize it
-      return deserialize_trait_value(value)
-    } else {
-      return value
-    }
   }
 
   /**
@@ -649,19 +591,19 @@ export class Belief {
 
   /**
    * Create belief from template with string resolution and trait templates
-   * @param {Mind} mind
+   * @param {State} state - State context (provides mind and creator_state)
    * @param {object} template
    * @param {number|null} [template.sid] - Subject ID (optional, for explicit versioning)
-   * @param {string|null} [template.label]
    * @param {Array<string|Belief|Archetype>} [template.bases]
-   * @param {Object<string, any>} [template.traits]
-   * @param {State|null} [creator_state]
+   * @param {Object<string, any>} [template.traits] - Traits (including optional @label)
    * @returns {Belief}
    */
-  static from_template(mind, {sid=null, label=null, bases=[], traits={}}, creator_state = null) {
+  static from_template(state, {sid=null, bases=[], traits={}}) {
+    assert(state instanceof State, 'from_template requires State as first argument', {state})
+
     const resolved_bases = bases.map(base => {
       if (typeof base === 'string') {
-        const resolved = DB.get_first_belief_by_label(base) ?? DB.get_archetype_by_label(base)
+        const resolved = state.get_belief_by_label(base) ?? DB.get_archetype_by_label(base)
         assert(resolved != null, `Base '${base}' not found as belief label or archetype`, {base})
         return /** @type {Belief|Archetype} */ (resolved)
       }
@@ -670,17 +612,19 @@ export class Belief {
 
     const subject = sid ? DB.get_or_create_subject(sid) : null
 
-    const belief = new Belief(mind, {
-      subject,
-      bases: resolved_bases
-    }, creator_state)
+    const belief = new Belief(state, subject, resolved_bases)
 
-    if (label) {
+    // Extract @label from traits (same pattern as create_shared_from_template)
+    const label = traits['@label']
+    if (label != null) {
+      assert(typeof label === 'string', '@label must be a string', {label})
       belief.set_label(label)
     }
 
+    // Add traits, skipping @label (already handled)
     for (const [trait_label, trait_data] of Object.entries(traits)) {
-      belief.resolve_and_add_trait(trait_label, trait_data, creator_state)
+      if (trait_label === '@label') continue
+      belief.add_trait_from_template(state, trait_label, trait_data)
     }
 
     return belief
@@ -688,18 +632,15 @@ export class Belief {
 
   /**
    * Create belief without template
-   * @param {Mind} mind
+   * @param {State} state - State creating this belief
    * @param {{bases?: Array<Belief|Archetype>, traits?: Record<string, any>}} options
-   * @param {State|null} [creator_state]
    * @returns {Belief}
    */
-  static from(mind, {bases=[], traits={}}, creator_state = null) {
-    const belief = new Belief(mind, {
-      bases,
-    }, creator_state)
+  static from(state, {bases=[], traits={}}) {
+    const belief = new Belief(state, null, bases)
 
     for (const [trait_label, trait_data] of Object.entries(traits)) {
-      belief.add_trait(trait_label, trait_data, creator_state)
+      belief.add_trait(trait_label, trait_data, state)
     }
 
     return belief
@@ -726,23 +667,18 @@ export class Belief {
 
         // Use decider to get appropriate belief
         assert(typeof decider === 'function', `Decider required for string base '${base}'`, {base})
-        const resolved = decider(subject)
-        assert(resolved instanceof Belief || resolved instanceof Archetype, `Decider returned invalid type for base '${base}'`, {base, subject, resolved})
+        const belief= decider(subject)
+        assert(belief instanceof Belief, `Decider returned invalid type for base '${base}'`, {base, subject, belief})
 
-        // If decider returned a Belief, verify it's a shared belief
-        if (resolved instanceof Belief) {
-          assert(resolved.in_mind === null && resolved.origin_state === null, `Decider must return a shared belief (in_mind and origin_state must be null) for base '${base}'`, {base, subject, resolved, in_mind: resolved.in_mind, origin_state: resolved.origin_state})
-        }
+        assert(belief.in_mind === null && belief.origin_state === null, `Decider must return a shared belief (in_mind and origin_state must be null) for base '${base}'`, {base, subject, belief, in_mind: belief.in_mind, origin_state: belief.origin_state})
 
-        return resolved
+        return belief
       }
       return base
     })
 
     // Create belief with null ownership (limbo)
-    const belief = new Belief(null, {
-      bases: resolved_bases
-    }, null)
+    const belief = new Belief(null, null, resolved_bases)
 
     // Register label if present
     const label = traits['@label']

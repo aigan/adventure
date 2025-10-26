@@ -71,7 +71,7 @@ describe('Mind Trait', () => {
     world_state.lock();
 
     // Create player with mind trait
-    const player = Belief.from_template(player_body.in_mind, {
+    const player = Belief.from_template(world_state, {
       bases: [player_body],
       traits: {
         mind: {
@@ -79,7 +79,7 @@ describe('Mind Trait', () => {
           player_body: ['location']
         }
       }
-    }, world_state);
+    });
 
     // Verify mind trait returns Mind instance
     const player_mind = player._traits.get('mind');
@@ -111,9 +111,9 @@ describe('Mind Trait', () => {
     expect(player_belief._traits.has('location')).to.be.true;
 
     // Verify location dereferencing
-    const player_location = player_belief.get_trait_as_belief(state, 'location');
+    const player_location = player_belief.get_trait('location');
     //console.log('player_location', player_location);
-    expect(player_location).to.equal(workshop_belief);
+    expect(player_location).to.equal(workshop_belief.subject);
 
     // Verify main_area was also dereferenced from workshop's location
     const main_area_belief = beliefs.find(b => b.get_about(state) === main_area);
@@ -311,15 +311,15 @@ describe('Mind Trait', () => {
 
     world_state.lock();
 
-    const entity = Belief.from_template(world_mind, {
-      label: 'entity',
+    const entity = Belief.from_template(world_state, {
       bases: [entity_body],
       traits: {
+        '@label': 'entity',
         mind: {
           location1: []  // Empty array = learn nothing
         }
       }
-    }, world_state);
+    });
 
     const entity_mind = entity._traits.get('mind');
     expect(entity_mind).to.be.instanceOf(Mind);
@@ -360,15 +360,15 @@ describe('Mind Trait', () => {
     world_state.lock();
 
     expect(() => {
-      Belief.from_template(world_mind, {
-        label: 'entity',
-        bases: [entity_body],
+      Belief.from_template(world_state, {
         traits: {
+          '@label': 'entity',
           mind: {
             non_existent: ['some_trait']
           }
-        }
-      }, world_state);
+        },
+        bases: [entity_body]
+      });
     }).to.throw("Cannot learn about 'non_existent': belief not found");
   });
 });

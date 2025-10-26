@@ -66,6 +66,7 @@ export class Mind {
       const data = /** @type {MindJSON} */ (label)
       this._id = data._id
       this.label = data.label
+      /** @type {Belief|null} */
       this.self = null
       this.state = new Set()
       /** @type {Map<State, Set<State>>} */
@@ -77,6 +78,7 @@ export class Mind {
 
     this._id = next_id()
     this.label = /** @type {string|null} */ (label)
+    /** @type {Belief|null} */
     this.self = self
     /** @type {Set<State>} */ this.state = new Set()
     /** @type {Map<State, Set<State>>} */
@@ -232,16 +234,17 @@ export class Mind {
 
   /**
    * Create Mind with initial state from declarative template
-   * @param {Mind} parent_mind - Mind creating this (context for belief resolution)
-   * @param {Object<string, string[]>} learn_spec - {belief_label: [trait_names]}
+   * @param {State} ground_state - State context for belief resolution and ground_state
+   * @param {Object<string, string[]>} traits - {belief_label: [trait_names]} to learn
    * @param {Subject|null} self_subject - Subject that becomes state.self
-   * @param {State|null} creator_state - State creating this (provides ground_state)
    * @returns {Mind}
    */
-  static resolve_template(parent_mind, learn_spec, self_subject, creator_state) {
+  static create_from_template(ground_state, traits, self_subject) {
     const assert = (/** @type {any} */ condition, /** @type {string} */ message, /** @type {any} */ context) => {
       if (!condition) throw new Error(message + (context ? ': ' + JSON.stringify(context) : ''))
     }
+
+    assert(ground_state instanceof State, `create_from_template requires State for ground_state`, null)
 
     // Create the mind (no self property - that's on State now)
     const entity_mind = new Mind(null)
@@ -251,19 +254,18 @@ export class Mind {
       entity_mind,
       1,  // timestamp
       null,  // no base
-      creator_state,  // ground_state (where body exists)
+      ground_state,  // ground_state (where body exists)
       self_subject  // self (WHO is experiencing this)
     )
 
     // Execute learning
-    for (const [label, trait_names] of Object.entries(learn_spec)) {
-      const belief = DB.get_first_belief_by_label(label)
+    for (const [label, trait_names] of Object.entries(traits)) {
+      const belief = ground_state.get_belief_by_label(label)
       if (!belief) {
         throw new Error(`Cannot learn about '${label}': belief not found`)
       }
       if (trait_names.length > 0) {
-        assert(creator_state instanceof State, `Cannot learn about beliefs without ground_state context`, null)
-        state.learn_about(belief, trait_names, creator_state)
+        state.learn_about(belief, trait_names, ground_state)
       }
     }
 

@@ -40,7 +40,7 @@ describe('Integration', () => {
         },
       });
 
-      ball = Belief.from_template(ball.in_mind, {
+      ball = Belief.from_template(world_state, {
         bases: [ball],
         traits: { color: 'blue' }
       });
@@ -54,7 +54,7 @@ describe('Integration', () => {
       let player = DB.get_first_belief_by_label('player');
       const player_mind = new Mind('player_mind');
       const player_mind_state = player_mind.create_state(1);
-      player = Belief.from_template(player.in_mind, {
+      player = Belief.from_template(world_state, {
         bases: [player],
         traits: { mind: player_mind }
       });

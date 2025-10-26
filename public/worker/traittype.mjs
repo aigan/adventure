@@ -98,7 +98,7 @@ export class Traittype {
    */
   _build_resolver() {
     if (this.container === Array) {
-      return (/** @type {Belief} */ owner_belief, /** @type {any} */ data, /** @type {State|null} */ creator_state) => {
+      return (/** @type {Belief} */ belief, /** @type {any} */ data) => {
         if (!Array.isArray(data)) {
           throw new Error(`Expected array for trait '${this.label}', got ${typeof data}`)
         }
@@ -112,25 +112,23 @@ export class Traittype {
         }
 
         // Resolve each item
-        return data.map(item => this._resolve_item(owner_belief, item, creator_state))
+        return data.map(item => this._resolve_item(belief, item))
       }
     } else {
       // No container - single value
-      return (/** @type {Belief} */ owner_belief, /** @type {any} */ data, /** @type {State|null} */ creator_state) => this._resolve_item(owner_belief, data, creator_state)
+      return (/** @type {Belief} */ belief, /** @type {any} */ data) => this._resolve_item(belief, data)
     }
   }
 
   /**
    * Resolve a single item (not an array)
-   * @param {Belief} owner_belief
+   * @param {Belief} belief
    * @param {*} data
-   * @param {State|null} creator_state
    * @returns {*}
    */
-  _resolve_item(owner_belief, data, creator_state) {
+  _resolve_item(belief, data) {
     const type_label = this.data_type
-
-    //creator_state ??= owner_belief.origin_state
+    const creator_state = belief.origin_state
 
     // Check if it's an Archetype reference
     if (DB.get_archetype_by_label(type_label)) {
@@ -138,14 +136,8 @@ export class Traittype {
 
       // Handle different input types
       if (typeof data === 'string') {
-
-        // TODO: Get archtypes either from shared subject directly, or provided creator_State
-
-        //const subject = DB.get_subject_by_label(data);
-        //const belief = creator_state.resolve_subject(sid);
-
-        // String label - lookup and validate
-        const belief = DB.get_first_belief_by_label(data)
+        // String label - lookup in creator_state if available, otherwise global
+        const belief = creator_state?.get_belief_by_label(data) ?? DB.get_first_belief_by_label(data)
         if (belief == null) {
           throw new Error(`Belief not found for trait '${this.label}': ${data}`)
         }
@@ -187,35 +179,38 @@ export class Traittype {
   }
 
   /**
-   * @param {Belief} owner_belief - Belief being constructed
+   * Resolve trait value from template data
+   * @param {Belief} belief - Belief being constructed
    * @param {*} data - Raw data to resolve
-   * @param {State|null} [creator_state] - State creating the belief
    * @returns {*}
    */
-  resolve(owner_belief, data, creator_state = null) {
+  resolve_trait_value_from_template(belief, data) {
+    const creator_state = belief.origin_state
+
     // Check for Mind template (plain object learn spec)
     if (this.data_type === 'Mind' &&
         data &&
         typeof data === 'object' &&
         !data._type &&
         !(data.state instanceof Set)) {
-      // It's a learn spec (plain object without Mind's state Set) - call Mind.resolve_template
-      assert(owner_belief.in_mind !== null, 'Shared beliefs cannot have Mind traits', {owner_belief})
-      return Mind.resolve_template(
-        owner_belief.in_mind,
+      // It's a learn spec (plain object without Mind's state Set) - call Mind.create_from_template
+      assert(belief.in_mind !== null, 'Shared beliefs cannot have Mind traits', {belief})
+      assert(creator_state !== null, 'Mind trait requires belief to have origin_state', {belief})
+      return Mind.create_from_template(
+        creator_state,
         data,
-        owner_belief.subject ?? null,
-        creator_state
+        belief.subject ?? null
       )
     }
 
     // Check for template construction with _type field (Mind only)
     if (data?._type === 'Mind') {
-      assert(owner_belief.in_mind !== null, 'Shared beliefs cannot have Mind traits', {owner_belief})
-      return Mind.resolve_template(owner_belief.in_mind, data, owner_belief.subject, creator_state)
+      assert(belief.in_mind !== null, 'Shared beliefs cannot have Mind traits', {belief})
+      assert(creator_state !== null, 'Mind trait requires belief to have origin_state', {belief})
+      return Mind.create_from_template(creator_state, data, belief.subject)
     }
 
-    return this._resolver(owner_belief, data, creator_state)
+    return this._resolver(belief, data)
   }
 
   /**

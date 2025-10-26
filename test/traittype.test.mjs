@@ -60,10 +60,10 @@ describe('Traittype', () => {
   describe('Simple types (backward compatibility)', () => {
     it('resolves string type', () => {
       const mind = new Mind('test_mind');
-      const obj = Belief.from_template(mind, {
-        label: 'test_obj',
-        bases: ['ObjectPhysical'],
-        traits: { color: 'blue' }
+      const state = mind.create_state(1);
+      const obj = Belief.from_template(state, {
+        traits: { '@label': 'test_obj', color: 'blue' },
+        bases: ['ObjectPhysical']
       });
 
       expect(obj._traits.get('color')).to.equal('blue');
@@ -71,10 +71,10 @@ describe('Traittype', () => {
 
     it('resolves number type', () => {
       const mind = new Mind('test_mind');
-      const obj = Belief.from_template(mind, {
-        label: 'test_obj',
-        bases: ['TestObject'],
-        traits: { count: 42 }
+      const state = mind.create_state(1);
+      const obj = Belief.from_template(state, {
+        traits: { '@label': 'test_obj', count: 42 },
+        bases: ['TestObject']
       });
 
       expect(obj._traits.get('count')).to.equal(42);
@@ -82,10 +82,10 @@ describe('Traittype', () => {
 
     it('resolves boolean type', () => {
       const mind = new Mind('test_mind');
-      const obj = Belief.from_template(mind, {
-        label: 'test_obj',
-        bases: ['TestObject'],
-        traits: { active: true }
+      const state = mind.create_state(1);
+      const obj = Belief.from_template(state, {
+        traits: { '@label': 'test_obj', active: true },
+        bases: ['TestObject']
       });
 
       expect(obj._traits.get('active')).to.equal(true);
@@ -94,10 +94,9 @@ describe('Traittype', () => {
     it('resolves State type', () => {
       const mind = new Mind('test_mind');
       const state = mind.create_state(1);
-      const obj = Belief.from_template(mind, {
-        label: 'test_obj',
-        bases: ['Mental'],
-        traits: { mind_states: [state] }
+      const obj = Belief.from_template(state, {
+        traits: { '@label': 'test_obj', mind_states: [state] },
+        bases: ['Mental']
       });
 
       expect(obj._traits.get('mind_states')[0]).to.equal(state);
@@ -110,10 +109,9 @@ describe('Traittype', () => {
       const state1 = mind.create_state(1);
       const state2 = mind.create_state(2);
 
-      const obj = Belief.from_template(mind, {
-        label: 'test_obj',
-        bases: ['Mental'],
-        traits: { states_array: [state1, state2] }
+      const obj = Belief.from_template(state1, {
+        traits: { '@label': 'test_obj', states_array: [state1, state2] },
+        bases: ['Mental']
       });
 
       const states = obj._traits.get('states_array');
@@ -125,10 +123,10 @@ describe('Traittype', () => {
 
     it('resolves array of strings with valid min/max constraints', () => {
       const mind = new Mind('test_mind');
-      const obj = Belief.from_template(mind, {
-        label: 'test_obj',
-        bases: ['TestObject'],
-        traits: { colors_array: ['red', 'blue', 'green'] }
+      const state = mind.create_state(1);
+      const obj = Belief.from_template(state, {
+        traits: { '@label': 'test_obj', colors_array: ['red', 'blue', 'green'] },
+        bases: ['TestObject']
       });
 
       const colors = obj._traits.get('colors_array');
@@ -139,24 +137,24 @@ describe('Traittype', () => {
 
     it('throws error when array length is below min constraint', () => {
       const mind = new Mind('test_mind');
+      const state = mind.create_state(1);
 
       expect(() => {
-        Belief.from_template(mind, {
-          label: 'test_obj',
-          bases: ['TestObject'],
-          traits: { colors_array: ['red'] }  // min is 2
+        Belief.from_template(state, {
+          traits: { '@label': 'test_obj', colors_array: ['red'] },  // min is 2
+          bases: ['TestObject']
         });
       }).to.throw(/min is 2/);
     });
 
     it('throws error when array length is above max constraint', () => {
       const mind = new Mind('test_mind');
+      const state = mind.create_state(1);
 
       expect(() => {
-        Belief.from_template(mind, {
-          label: 'test_obj',
-          bases: ['TestObject'],
-          traits: { colors_array: ['red', 'blue', 'green', 'yellow', 'purple', 'orange'] }  // max is 5
+        Belief.from_template(state, {
+          traits: { '@label': 'test_obj', colors_array: ['red', 'blue', 'green', 'yellow', 'purple', 'orange'] },  // max is 5
+          bases: ['TestObject']
         });
       }).to.throw(/max is 5/);
     });
@@ -166,22 +164,21 @@ describe('Traittype', () => {
       const state = mind.create_state(1);
 
       expect(() => {
-        Belief.from_template(mind, {
-          label: 'test_obj',
-          bases: ['Mental'],
-          traits: { states_array: state }  // Should be an array
+        Belief.from_template(state, {
+          traits: { '@label': 'test_obj', states_array: state },  // Should be an array
+          bases: ['Mental']
         });
       }).to.throw(/Expected array/);
     });
 
     it('throws error when array contains wrong type', () => {
       const mind = new Mind('test_mind');
+      const state = mind.create_state(1);
 
       expect(() => {
-        Belief.from_template(mind, {
-          label: 'test_obj',
-          bases: ['TestObject'],
-          traits: { colors_array: ['red', 42, 'blue'] }  // 42 is not a string
+        Belief.from_template(state, {
+          traits: { '@label': 'test_obj', colors_array: ['red', 42, 'blue'] },  // 42 is not a string
+          bases: ['TestObject']
         });
       }).to.throw(/Expected string/);
     });
@@ -207,10 +204,10 @@ describe('Traittype', () => {
       DB.register(archetypes, traittypes);
 
       const mind = new Mind('test_mind');
-      const obj = Belief.from_template(mind, {
-        label: 'test_obj',
-        bases: ['Tagged'],
-        traits: { tags: [] }
+      const state = mind.create_state(1);
+      const obj = Belief.from_template(state, {
+        traits: { '@label': 'test_obj', tags: [] },
+        bases: ['Tagged']
       });
 
       const tags = obj._traits.get('tags');
@@ -225,10 +222,9 @@ describe('Traittype', () => {
       const state1 = mind.create_state(1);
       const state2 = mind.create_state(2);
 
-      const obj = Belief.from_template(mind, {
-        label: 'test_obj',
-        bases: ['Mental'],
-        traits: { states_array: [state1, state2] }
+      const obj = Belief.from_template(state1, {
+        traits: { '@label': 'test_obj', states_array: [state1, state2] },
+        bases: ['Mental']
       });
 
       const json = obj.toJSON();
@@ -241,10 +237,9 @@ describe('Traittype', () => {
       const state1 = mind.create_state(1);
       const state2 = mind.create_state(2);
 
-      const obj = Belief.from_template(mind, {
-        label: 'test_obj',
-        bases: ['Mental'],
-        traits: { states_array: [state1, state2] }
+      const obj = Belief.from_template(state1, {
+        traits: { '@label': 'test_obj', states_array: [state1, state2] },
+        bases: ['Mental']
       });
 
       const inspected = obj.to_inspect_view(state1);
@@ -258,16 +253,21 @@ describe('Traittype', () => {
   describe('Resolver pattern efficiency', () => {
     it('uses pre-built resolver function', () => {
       const mind = new Mind('test_mind');
+      const state = mind.create_state(1);
       const traittype = DB._reflect().traittype_by_label['states_array'];
 
       // Verify resolver function exists and is callable
       expect(traittype._resolver).to.be.a('function');
 
-      const state1 = mind.create_state(1);
-      const result = traittype.resolve(mind, [state1]);
+      const belief = Belief.from_template(state, {
+        traits: {'@label': 'test'},
+        bases: ['Mental']
+      });
+
+      const result = traittype.resolve_trait_value_from_template(belief, [state]);
 
       expect(result).to.be.an('array');
-      expect(result[0]).to.equal(state1);
+      expect(result[0]).to.equal(state);
     });
 
     it('resolver is created during construction', () => {

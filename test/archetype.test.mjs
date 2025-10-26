@@ -13,8 +13,8 @@ describe('Archetype', () => {
     it('single archetype has correct structure', () => {
       const mind = new Mind('test');
       const state = mind.create_state(1);
-      const workshop = Belief.from_template(mind, {
-        label: 'workshop',
+      const workshop = Belief.from_template(state, {
+        traits: {'@label': 'workshop'},
         bases: ['Location']
       });
 
@@ -25,12 +25,13 @@ describe('Archetype', () => {
 
     it('archetype with base inherits traits from parent', () => {
       const mind = new Mind('test');
-      const hammer = Belief.from_template(mind, {
-        label: 'hammer',
-        bases: ['PortableObject'],
+      const state = mind.create_state(1);
+      const hammer = Belief.from_template(state, {
         traits: {
+          '@label': 'hammer',
           color: 'black'
-        }
+        },
+        bases: ['PortableObject']
       });
 
       // PortableObject → ObjectPhysical, so should have color trait
@@ -41,8 +42,8 @@ describe('Archetype', () => {
     it('Person archetype inherits from multiple bases', () => {
       const mind = new Mind('test');
       const state = mind.create_state(1);
-      const player = Belief.from_template(mind, {
-        label: 'player',
+      const player = Belief.from_template(state, {
+        traits: {'@label': 'player'},
         bases: ['Person']
       });
 
@@ -57,8 +58,9 @@ describe('Archetype', () => {
 
     it('get_archetypes walks full inheritance chain', () => {
       const mind = new Mind('test');
-      const player = Belief.from_template(mind, {
-        label: 'player',
+      const state = mind.create_state(1);
+      const player = Belief.from_template(state, {
+        traits: {'@label': 'player'},
         bases: ['Person']
       });
 
