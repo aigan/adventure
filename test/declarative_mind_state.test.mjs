@@ -44,7 +44,7 @@ describe('Mind Trait', () => {
     DB.register(archetypes, traittypes);
 
     // Create world beliefs
-    const world_mind = new Mind('world');
+    const world_mind = new Mind(null, 'world');
     const world_state = world_mind.create_state(1);
 
     const main_area = world_state.add_belief({
@@ -87,7 +87,7 @@ describe('Mind Trait', () => {
     expect(player_mind.label).to.be.null;
 
     // Verify mind has exactly one state
-    const states = [...player_mind.state];
+    const states = [...player_mind._states];
     expect(states).to.have.lengthOf(1);
 
     const state = states[0];
@@ -151,7 +151,7 @@ describe('Mind Trait', () => {
 
     DB.register(archetypes, traittypes);
 
-    const world_mind = new Mind('world');
+    const world_mind = new Mind(null, 'world');
     const world_state = world_mind.create_state(1);
 
     const base_location = world_state.add_belief({ label: 'base_location', bases: ['Location'] });
@@ -184,7 +184,7 @@ describe('Mind Trait', () => {
     });
 
     const entity_mind = entity._traits.get('mind');
-    const states = [...entity_mind.state];
+    const states = [...entity_mind._states];
     const state = states[0];
     const beliefs = [...state.get_beliefs()];
 
@@ -222,7 +222,7 @@ describe('Mind Trait', () => {
 
     DB.register(archetypes, traittypes);
 
-    const world_mind = new Mind('world');
+    const world_mind = new Mind(null, 'world');
     const world_state = world_mind.create_state(1);
 
     const base_location = world_state.add_belief({ label: 'base_location', bases: ['Location'] });
@@ -257,7 +257,7 @@ describe('Mind Trait', () => {
     });
 
     const entity_mind = entity._traits.get('mind');
-    const states = [...entity_mind.state];
+    const states = [...entity_mind._states];
     const state = states[0];
     const beliefs = [...state.get_beliefs()];
 
@@ -299,7 +299,7 @@ describe('Mind Trait', () => {
 
     DB.register(archetypes, traittypes);
 
-    const world_mind = new Mind('world');
+    const world_mind = new Mind(null, 'world');
     const world_state = world_mind.create_state(1);
 
     const location1 = world_state.add_belief({ label: 'location1', bases: ['Location'] });
@@ -324,7 +324,7 @@ describe('Mind Trait', () => {
     const entity_mind = entity._traits.get('mind');
     expect(entity_mind).to.be.instanceOf(Mind);
 
-    const states = [...entity_mind.state];
+    const states = [...entity_mind._states];
     const state = states[0];
     const beliefs = [...state.get_beliefs()];
 
@@ -349,7 +349,7 @@ describe('Mind Trait', () => {
 
     DB.register(archetypes, traittypes);
 
-    const world_mind = new Mind('world');
+    const world_mind = new Mind(null, 'world');
     const world_state = world_mind.create_state(1);
 
     const entity_body = world_state.add_belief({

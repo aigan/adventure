@@ -11,7 +11,7 @@ describe('Archetype', () => {
 
   describe('Archetype Composition', () => {
     it('single archetype has correct structure', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
       const workshop = Belief.from_template(state, {
         traits: {'@label': 'workshop'},
@@ -24,7 +24,7 @@ describe('Archetype', () => {
     });
 
     it('archetype with base inherits traits from parent', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
       const hammer = Belief.from_template(state, {
         traits: {
@@ -40,7 +40,7 @@ describe('Archetype', () => {
     });
 
     it('Person archetype inherits from multiple bases', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
       const player = Belief.from_template(state, {
         traits: {'@label': 'player'},
@@ -57,7 +57,7 @@ describe('Archetype', () => {
     });
 
     it('get_archetypes walks full inheritance chain', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
       const player = Belief.from_template(state, {
         traits: {'@label': 'player'},

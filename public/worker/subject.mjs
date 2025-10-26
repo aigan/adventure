@@ -1,5 +1,6 @@
 import * as DB from './db.mjs'
 import { Belief } from './belief.mjs'
+import { assert } from '../lib/debug.mjs'
 
 /**
  * @typedef {import('./state.mjs').State} State
@@ -40,23 +41,15 @@ export class Subject {
 
   /**
    * Shallow inspection view for the inspect UI
-   * @param {State} state
-   * @returns {object}
+   * Resolves subject to belief in the given state context
+   * @param {State} state - State where this subject should be resolved
+   * @returns {object} Belief reference
    */
   to_inspect_view(state) {
-    let belief = state.get_belief_by_subject(this)
+    const belief = state.get_belief_by_subject(this)
 
-    // Fallback to global registry if not found in state
-    if (!belief) {
-      const beliefs = DB.get_beliefs_by_subject(this)
-      if (beliefs?.size) {
-        belief = beliefs.values().next().value ?? null
-      }
-    }
+    assert(belief instanceof Belief, 'Subject must have belief in inspection state', {sid: this.sid, state_id: state._id, mind: state.in_mind.label})
 
-    if (!belief) {
-      return {_ref: this.sid, _type: 'Subject'}
-    }
     return {
       _ref: belief._id,
       _type: 'Belief',

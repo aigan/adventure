@@ -12,7 +12,7 @@ describe('Save/Load functionality', () => {
   describe('save_mind() and load()', () => {
     it('saves and loads a simple mind', () => {
       // Create simple world
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
       const workshop = world_state.add_belief({
@@ -34,7 +34,7 @@ describe('Save/Load functionality', () => {
       expect(loaded_mind).to.be.instanceOf(Mind);
       expect(loaded_mind.label).to.equal('world');
       expect(loaded_mind._id).to.equal(world_mind._id);
-      expect(loaded_mind.state.size).to.equal(1);
+      expect(loaded_mind._states.size).to.equal(1);
 
       // Verify belief exists (lazy)
       const loaded_workshop = get_first_belief_by_label('workshop');
@@ -44,7 +44,7 @@ describe('Save/Load functionality', () => {
 
     it('handles belief trait references after save/load', () => {
       // Create world with location relationship
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
       const workshop = world_state.add_belief({
@@ -69,7 +69,7 @@ describe('Save/Load functionality', () => {
       // Get loaded beliefs
       const loaded_hammer = get_first_belief_by_label('hammer');
       const loaded_workshop = get_first_belief_by_label('workshop');
-      const loaded_state = [...loaded_mind.state][0];
+      const loaded_state = [...loaded_mind._states][0];
 
       // Trait reference should be resolved correctly after load
       const location_trait = loaded_hammer.get_trait('location');
@@ -80,7 +80,7 @@ describe('Save/Load functionality', () => {
       // This test verifies the SID system fixes the "time-travel" bug where
       // circular trait references would point to old versions from previous states
 
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const state1 = world_mind.create_state(1);
 
       const room1 = state1.add_belief({
@@ -114,7 +114,7 @@ describe('Save/Load functionality', () => {
       const loaded_mind = load(json);
 
       // Get state2 (the one with the circular reference)
-      const loaded_state2 = [...loaded_mind.state].find(s => s.timestamp === 2);
+      const loaded_state2 = [...loaded_mind._states].find(s => s.timestamp === 2);
       expect(loaded_state2).to.exist;
 
       // Get the beliefs
@@ -146,7 +146,7 @@ describe('Save/Load functionality', () => {
     });
 
     it('loads state chains with base references', () => {
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const state1 = world_mind.create_state(1);
       const ball = state1.add_belief({
         label: 'ball',
@@ -163,7 +163,7 @@ describe('Save/Load functionality', () => {
       const loaded_mind = load(json);
 
       // Get states
-      const states = [...loaded_mind.state];
+      const states = [...loaded_mind._states];
       expect(states).to.have.lengthOf(3);
 
       // Verify state chain via base references
@@ -199,7 +199,7 @@ describe('Save/Load functionality', () => {
         },
       };
 
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       let state = world_mind.create_state(1);
       state.add_beliefs(world_belief);
 
@@ -234,7 +234,7 @@ describe('Save/Load functionality', () => {
       const loaded_player = get_first_belief_by_label('player');
       const player_mind = loaded_player._traits.get('mind');
       expect(player_mind).to.be.instanceOf(Mind);
-      const states = [...player_mind.state];
+      const states = [...player_mind._states];
       expect(states.length).to.be.at.least(1);
       expect(states[0]).to.be.instanceOf(State);
 
@@ -245,7 +245,7 @@ describe('Save/Load functionality', () => {
     });
 
     it('preserves and continues id_sequence', () => {
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const state = world_mind.create_state(1);
       const workshop = state.add_belief({
         label: 'workshop',
@@ -261,12 +261,12 @@ describe('Save/Load functionality', () => {
       load(json);
 
       // Create new object - should have higher ID
-      const new_mind = new Mind('test');
+      const new_mind = new Mind(null, 'test');
       expect(new_mind._id).to.be.greaterThan(max_id);
     });
 
     it('handles state ground_state references', () => {
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
       const workshop = world_state.add_belief({
@@ -275,7 +275,7 @@ describe('Save/Load functionality', () => {
       });
 
       // Create player mind with ground_state
-      const player_mind = new Mind('player_mind');
+      const player_mind = new Mind(world_mind, 'player_mind');
       const player_state = player_mind.create_state(1, world_state);
 
       // Save and reload both minds
@@ -289,8 +289,8 @@ describe('Save/Load functionality', () => {
       const loaded_player = load(player_json);
 
       // Verify ground_state reference
-      const loaded_world_state = [...loaded_world.state][0];
-      const loaded_player_state = [...loaded_player.state][0];
+      const loaded_world_state = [...loaded_world._states][0];
+      const loaded_player_state = [...loaded_player._states][0];
 
       expect(loaded_player_state.ground_state).to.equal(loaded_world_state);
     });
@@ -322,7 +322,7 @@ describe('Save/Load functionality', () => {
         },
       };
 
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       let state = world_mind.create_state(1);
       state.add_beliefs(world_belief);
 

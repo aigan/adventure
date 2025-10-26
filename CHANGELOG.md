@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-10-27
+
+### Mind Hierarchy Enforcement
+- Mind constructor now requires parent_mind as mandatory first parameter with parent/child tracking
+
 ## 2025-10-26
 
 ### Shared Beliefs as Prototypes

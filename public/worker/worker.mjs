@@ -23,7 +23,7 @@ async function init(){
   postMessage(['main_add', 'Whirling...' ]);
 }
 
-/** @type {{[key: string]: Function}} */
+/** @type {{[key: string]: (...args: any[]) => void|Promise<void>}} */
 const dispatch = {
   ping(){
     postMessage('pong');
@@ -39,7 +39,7 @@ const dispatch = {
 
 /**
  * @param {string} label
- * @param {Function} handler
+ * @param {(...args: any[]) => void|Promise<void>} handler
  */
 export function handler_register( label, handler ){
   // log('register handler', label);

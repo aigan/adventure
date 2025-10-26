@@ -231,29 +231,19 @@ export class Belief {
 
   /**
    * Get the belief this is about (resolves `@about` trait)
-   * @param {State} state - State context for resolving Subject
+   * @param {State} belief_state - The state where this belief exists (must have ground_state)
    * @returns {Belief|null} The belief this is about, or null
    */
-  get_about(state) {
+  get_about(belief_state) {
     const about_trait = this._traits.get('@about')
-    if (about_trait instanceof Subject) {
-      // Check if @about traittype specifies mind scope
-      let resolve_state = state
-      if (DB.get_traittype_by_label('@about')?.mind_scope === 'parent' && state?.ground_state) {
-        resolve_state = state.ground_state
-      }
+    if (!(about_trait instanceof Subject)) return null
 
-      // Try to resolve in the determined state
-      const belief = resolve_state?.get_belief_by_subject?.(about_trait)
-      if (belief) return belief
+    assert(belief_state instanceof State, 'get_about requires State where belief exists', {belief_state})
+    assert(belief_state.ground_state instanceof State, 'belief_state must have ground_state', {belief_state})
 
-      // Fallback to global registry (cross-mind reference)
-      const beliefs = DB.get_beliefs_by_subject(about_trait)
-      if (beliefs?.size) return beliefs.values().next().value ?? null
-      return null
-    }
-    // No @about trait set
-    return null
+    const belief = belief_state.ground_state.get_belief_by_subject(about_trait)
+    assert(belief instanceof Belief, 'Belief referenced by @about must exist in ground_state', {about_trait, ground_state: belief_state.ground_state})
+    return belief
   }
 
   /**

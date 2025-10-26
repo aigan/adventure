@@ -97,8 +97,7 @@ export class State {
     /** @type {State[]} */ this.branches = []
     this.locked = false
 
-    this.in_mind.state.add(this)
-    this.in_mind._register_state_by_ground_state(this)
+    this.in_mind.register_state(this)
     DB.register_state(this)
   }
 
@@ -411,22 +410,25 @@ export class State {
   }
 
   /**
-   * Learn about a belief from another mind, copying it into this state's mind
+   * Learn about a belief from the parent mind (ground_state), copying it into this state's mind
    *
-   * Typically source_state is this.ground_state (learning from observable world state).
-   * However, source_state may differ from ground_state when learning from another mind's
-   * perspective within the same parent (e.g., NPC testimony about what they believe).
+   * The source_belief must exist in this.ground_state (the parent universe).
+   * This enforces that you can only learn about beliefs observable from your parent context.
    *
-   * @param {Belief} source_belief - Belief from another mind/state to learn about
+   * @param {Belief} source_belief - Belief from parent mind to learn about
    * @param {string[]} [trait_names] - Traits to copy (empty = copy no traits, just archetypes)
-   * @param {State|null} [source_state] - State where the belief exists (defaults to this.ground_state)
    * @returns {Belief}
    */
-  learn_about(source_belief, trait_names = [], source_state = null) {
+  learn_about(source_belief, trait_names = []) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
+    assert(this.ground_state instanceof State, 'learn_about requires ground_state', {state_id: this._id})
 
-    source_state ??= this.ground_state
-    assert(source_state instanceof State, 'source_state required: either pass explicitly or set ground_state')
+    const source_state = this.ground_state
+
+    // Verify source_belief exists in ground_state
+    const belief_in_ground = source_state.get_belief_by_subject(source_belief.subject)
+    assert(belief_in_ground === source_belief, 'source_belief must exist in ground_state',
+      {source_belief_id: source_belief._id, ground_state_id: source_state._id})
 
     // Step 1: Recognize existing knowledge
     const existing_beliefs = this.recognize(source_belief)
@@ -449,7 +451,7 @@ export class State {
       // Learn about the referenced belief (creates belief in this mind)
       // Then return its Subject (traits store Subjects, not Beliefs)
       const source_belief = value.get_belief_by_state(source_state)
-      const learned_belief = this.learn_about(source_belief, [], source_state)
+      const learned_belief = this.learn_about(source_belief, [])
       return learned_belief.subject  // Return Subject, not Belief
     } else {
       return value  // Primitives, State, Mind pass through as-is

@@ -355,7 +355,7 @@ export function reset_all_registries() {
 /**
  * @typedef {object} TraitTypeSchema
  * @property {string} type - Base type (e.g., "State", "Location", "string")
- * @property {Function} [container] - Container constructor (e.g., Array)
+ * @property {ArrayConstructor} [container] - Container constructor (e.g., Array)
  * @property {number} [min] - Minimum array length
  * @property {number} [max] - Maximum array length
  * @property {string} [mind] - Mind scope for Subject resolution ('parent', 'current', 'any')

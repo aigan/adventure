@@ -193,8 +193,8 @@ export class Traittype {
         data &&
         typeof data === 'object' &&
         !data._type &&
-        !(data.state instanceof Set)) {
-      // It's a learn spec (plain object without Mind's state Set) - call Mind.create_from_template
+        !(data._states instanceof Set)) {
+      // It's a learn spec (plain object without Mind's _states Set) - call Mind.create_from_template
       assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
       return Mind.create_from_template(creator_state, data, belief.subject ?? null)
     }

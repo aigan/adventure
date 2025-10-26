@@ -9,13 +9,6 @@ None - ready for next task
 (See CHANGELOG.md for completed work)
 
 ## Backlog
-- [ ] **Code Quality Cleanup** - Refactoring, cleanup, and quality improvements across the codebase
-  - Code consistency and style compliance (docs/STYLE.md)
-  - Test coverage and quality
-  - Documentation accuracy
-  - Naming conventions and clarity
-  - Reducing complexity where possible
-  - Removing dead code or TODOs
 - [ ] **Lazy Version Propagation** - Enable efficient shared belief updates without version cascades ([plan](docs/plans/lazy-version-propagation.md))
   - Add branch tracking to beliefs (branches set, metadata)
   - Implement state resolver interface for branch evaluation

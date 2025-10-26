@@ -12,7 +12,7 @@ describe('State', () => {
 
   describe('Iteration Patterns', () => {
     it('mind.belief Set contains all beliefs for that mind', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
       Belief.from_template(state, {traits: {'@label': 'workshop'}, bases: ['Location']});
 
@@ -44,7 +44,7 @@ describe('State', () => {
     });
 
     it('mind.belief_by_label provides fast label lookup', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
       Belief.from_template(state, {traits: {'@label': 'workshop'}, bases: ['Location']});
 
@@ -55,13 +55,13 @@ describe('State', () => {
 
   describe('Cross-Mind Visibility', () => {
     it('state.get_beliefs only returns beliefs from that state\'s mind', () => {
-      const mind_a = new Mind('mind_a');
+      const mind_a = new Mind(null, 'mind_a');
       const state_a = mind_a.create_state(1);
       Belief.from_template(state_a, {traits: {'@label': 'item_a'}, bases: ['PortableObject']});
       const beliefs_for_a = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_a);
       state_a.insert.push(...beliefs_for_a);
 
-      const mind_b = new Mind('mind_b');
+      const mind_b = new Mind(null, 'mind_b');
       const state_b = mind_b.create_state(1);
       Belief.from_template(state_b, {traits: {'@label': 'item_b'}, bases: ['PortableObject']});
       const beliefs_for_b = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_b);
@@ -78,11 +78,11 @@ describe('State', () => {
     });
 
     it('beliefs from different minds don\'t mix in states', () => {
-      const mind_a = new Mind('mind_a');
+      const mind_a = new Mind(null, 'mind_a');
       const state_a = mind_a.create_state(1);
       Belief.from_template(state_a, {traits: {'@label': 'workshop_a'}, bases: ['Location']});
 
-      const mind_b = new Mind('mind_b');
+      const mind_b = new Mind(null, 'mind_b');
       const state_b = mind_b.create_state(1);
       Belief.from_template(state_b, {traits: {'@label': 'workshop_b'}, bases: ['Location']});
 
@@ -101,7 +101,7 @@ describe('State', () => {
 
   describe('State Operations', () => {
     it('state.tick with replace removes correct belief', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state1 = mind.create_state(1);
       Belief.from_template(state1, {traits: {'@label': 'hammer_v1'}, bases: ['PortableObject']});
 
@@ -120,11 +120,11 @@ describe('State', () => {
     });
 
     it('multiple minds can have states without interference', () => {
-      const mind_a = new Mind('mind_a');
+      const mind_a = new Mind(null, 'mind_a');
       const state_a1 = mind_a.create_state(1);
       Belief.from_template(state_a1, {traits: {'@label': 'item_in_a'}, bases: ['PortableObject']});
 
-      const mind_b = new Mind('mind_b');
+      const mind_b = new Mind(null, 'mind_b');
       const state_b1 = mind_b.create_state(1);
       Belief.from_template(state_b1, {traits: {'@label': 'item_in_b'}, bases: ['PortableObject']});
 
@@ -172,27 +172,27 @@ describe('State', () => {
 
   describe('Ground State and Branches', () => {
     it('creates root state with null ground_state', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
 
       expect(state.ground_state).to.be.null;
     });
 
     it('creates nested mind state with ground_state', () => {
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
-      const npc_mind = new Mind('npc');
+      const npc_mind = new Mind(world_mind, 'npc');
       const npc_state = npc_mind.create_state(1, world_state);
 
       expect(npc_state.ground_state).to.equal(world_state);
     });
 
     it('tick() inherits ground_state from parent', () => {
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
-      const npc_mind = new Mind('npc');
+      const npc_mind = new Mind(world_mind, 'npc');
       const npc_state1 = npc_mind.create_state(1, world_state);
       const npc_state2 = npc_state1.tick({insert: []});
 
@@ -200,11 +200,11 @@ describe('State', () => {
     });
 
     it('tick() can override ground_state', () => {
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const world_state1 = world_mind.create_state(1);
       const world_state2 = world_state1.tick({insert: []});
 
-      const npc_mind = new Mind('npc');
+      const npc_mind = new Mind(world_mind, 'npc');
       const npc_state1 = npc_mind.create_state(1, world_state1);
       const npc_state2 = npc_state1.tick({insert: [], ground_state: world_state2});
 
@@ -212,7 +212,7 @@ describe('State', () => {
     });
 
     it('tracks branches forward from parent state', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state1 = mind.create_state(1);
       const state2 = state1.tick({insert: []});
       const state3 = state1.tick({insert: []});
@@ -223,10 +223,10 @@ describe('State', () => {
     });
 
     it('serializes ground_state in toJSON', () => {
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
-      const npc_mind = new Mind('npc');
+      const npc_mind = new Mind(world_mind, 'npc');
       const npc_state = npc_mind.create_state(1, world_state);
 
       const json = npc_state.toJSON();
@@ -241,7 +241,7 @@ describe('State', () => {
     });
 
     it('resolves sid to appropriate belief version in state', () => {
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const state1 = world_mind.create_state(1);
 
       const room = state1.add_belief({
@@ -255,7 +255,7 @@ describe('State', () => {
     });
 
     it('resolves to latest version visible in state', () => {
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const state1 = world_mind.create_state(1);
 
       const room_v1 = state1.add_belief({
@@ -279,7 +279,7 @@ describe('State', () => {
     });
 
     it('builds sid index on-demand for efficient lookups', () => {
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const state = world_mind.create_state(1);
 
       const room1 = state.add_belief({ label: 'room1', bases: ['Location'] });
@@ -305,7 +305,7 @@ describe('State', () => {
     });
 
     it('fixes circular reference problem - traits point to subject, not version', () => {
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const state1 = world_mind.create_state(1);
 
       // Create two rooms with circular reference
@@ -364,7 +364,7 @@ describe('State', () => {
     });
 
     it('creates state with self reference', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const temp_state = mind.create_state(1);
 
       // Create a belief to be self
@@ -386,7 +386,7 @@ describe('State', () => {
     });
 
     it('branch_state inherits self from parent', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const temp_state = mind.create_state(1);
       const body = Belief.from_template(temp_state, {
         traits: {'@label': 'body'},
@@ -403,7 +403,7 @@ describe('State', () => {
     });
 
     it('tick inherits self from parent', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const temp_state = mind.create_state(1);
       const body = Belief.from_template(temp_state, {
         traits: {'@label': 'body'},
@@ -418,7 +418,7 @@ describe('State', () => {
     });
 
     it('serializes and deserializes self', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const temp_state = mind.create_state(1);
       const body = Belief.from_template(temp_state, {
         traits: {'@label': 'body'},
@@ -432,7 +432,7 @@ describe('State', () => {
     });
 
     it('allows null self for root minds', () => {
-      const mind = new Mind('world');
+      const mind = new Mind(null, 'world');
       const state = mind.create_state(1);
 
       expect(state.self).to.be.null;
@@ -442,7 +442,7 @@ describe('State', () => {
       DB.reset_registries();
       setupStandardArchetypes();
 
-      const world_mind = new Mind('world');
+      const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
       const player_body = Belief.from_template(world_state, {
@@ -468,7 +468,7 @@ describe('State', () => {
       const player_mind = player._traits.get('mind');
       expect(player_mind).to.be.instanceOf(Mind);
 
-      const states = [...player_mind.state];
+      const states = [...player_mind._states];
       const player_state = states[0];
 
       expect(player_state.self).to.equal(player.subject);

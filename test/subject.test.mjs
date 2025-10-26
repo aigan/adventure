@@ -11,7 +11,7 @@ describe('Subject', () => {
 
   describe('beliefs_valid_at()', () => {
     it('should return outermost belief on linear version chain', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state1 = mind.create_state(100);
       const state2 = mind.create_state(200);
       const state3 = mind.create_state(300);
@@ -34,7 +34,7 @@ describe('Subject', () => {
     });
 
     it('should return outermost beliefs on each branch', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state1 = mind.create_state(100);
       const state2 = mind.create_state(200);
       const state3 = mind.create_state(150);
@@ -81,7 +81,7 @@ describe('Subject', () => {
     });
 
     it('should return empty iterable for non-existent subject', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const nonexistent_subject = DB.get_or_create_subject(999);
 
       expect([...nonexistent_subject.beliefs_valid_at(100)]).to.deep.equal([]);

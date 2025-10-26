@@ -12,10 +12,11 @@ import * as DB from '../public/worker/db.mjs';
  * Helper to create a mind with initial beliefs and return a state containing them
  * @param {string} label - Mind label
  * @param {Object} beliefs - Belief definitions
+ * @param {Mind|null} parent_mind - Parent mind (null for root minds)
  * @returns {State} State containing the beliefs (access mind via state.in_mind)
  */
-export function createMindWithBeliefs(label, beliefs = {}) {
-  const mind = new Mind(label);
+export function createMindWithBeliefs(label, beliefs = {}, parent_mind = null) {
+  const mind = new Mind(parent_mind, label);
   const state = mind.create_state(1);
 
   for (const [belief_label, def] of Object.entries(beliefs)) {

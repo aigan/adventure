@@ -52,8 +52,8 @@ describe('Integration', () => {
 
       // Verify player
       let player = get_first_belief_by_label('player');
-      const player_mind = new Mind('player_mind');
-      const player_mind_state = player_mind.create_state(1);
+      const player_mind = new Mind(world_state.in_mind, 'player_mind');
+      const player_mind_state = player_mind.create_state(1, world_state);
       player = Belief.from_template(world_state, {
         bases: [player],
         traits: { mind: player_mind }
@@ -64,7 +64,7 @@ describe('Integration', () => {
 
       // Verify learn_about
       const workshop = get_first_belief_by_label('workshop');
-      const workshop_knowledge = player_mind_state.learn_about(workshop, [], world_state);
+      const workshop_knowledge = player_mind_state.learn_about(workshop, []);
 
       const workshop_inspected = workshop_knowledge.to_inspect_view(player_mind_state);
       expect(workshop_inspected.traits['@about']._ref).to.equal(workshop._id);

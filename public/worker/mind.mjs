@@ -24,6 +24,7 @@ import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
+import { assert } from '../lib/debug.mjs'
 
 /**
  * @typedef {import('./belief.mjs').BeliefJSON} BeliefJSON
@@ -58,17 +59,24 @@ import { Belief } from './belief.mjs'
 export class Mind {
 
   /**
-   * @param {string|null|MindJSON} label - Mind identifier or JSON data
+   * @param {Mind|null|MindJSON} parent_mind - Parent mind (null for root minds like world) or JSON data for deserialization
+   * @param {string|null} label - Mind identifier
    * @param {Belief|null} self - What this mind considers "self" (can be null, can change)
    */
-  constructor(label = null, self = null) {
-    if (label && typeof label === 'object' && label._type === 'Mind') {
-      const data = /** @type {MindJSON} */ (label)
+  constructor(parent_mind, label = null, self = null) {
+    // Handle from_json special case (MindJSON object passed as first param)
+    if (parent_mind && typeof parent_mind === 'object' && '_type' in parent_mind && parent_mind._type === 'Mind') {
+      const data = /** @type {MindJSON} */ (parent_mind)
       this._id = data._id
       this.label = data.label
       /** @type {Belief|null} */
       this.self = null
-      this.state = new Set()
+      /** @type {Mind|null} */
+      this.parent = null  // Set later during deserialization
+      /** @type {Set<Mind>} */
+      this._child_minds = new Set()
+      /** @type {Set<State>} */
+      this._states = new Set()
       /** @type {Map<State, Set<State>>} */
       this._states_by_ground_state = new Map()
 
@@ -76,13 +84,28 @@ export class Mind {
       return
     }
 
+    // Normal construction - parent_mind must be null or Mind instance
+    assert(parent_mind === null || parent_mind instanceof Mind,
+      'parent_mind must be null or Mind instance',
+      {label, parent_mind})
+
     this._id = next_id()
-    this.label = /** @type {string|null} */ (label)
+    /** @type {Mind|null} */
+    this.parent = parent_mind
+    this.label = label
     /** @type {Belief|null} */
     this.self = self
-    /** @type {Set<State>} */ this.state = new Set()
+    /** @type {Set<Mind>} */
+    this._child_minds = new Set()
+    /** @type {Set<State>} */
+    this._states = new Set()
     /** @type {Map<State, Set<State>>} */
     this._states_by_ground_state = new Map()
+
+    // Register as child in parent
+    if (this.parent) {
+      this.parent._child_minds.add(this)
+    }
 
     DB.register_mind(this)
   }
@@ -120,10 +143,10 @@ export class Mind {
    * @yields {State} Outermost states on each branch at timestamp
    */
   *states_valid_at(timestamp) {
-    if (this.state.size === 0) return
+    if (this._states.size === 0) return
 
     // Get all states with timestamp <= target
-    const valid_states = [...this.state].filter(s => s.timestamp <= timestamp)
+    const valid_states = [...this._states].filter(s => s.timestamp <= timestamp)
 
     // Yield states that have no descendants in the valid set
     for (const state of valid_states) {
@@ -138,10 +161,13 @@ export class Mind {
   }
 
   /**
-   * Register a state in the ground_state index
+   * Register a state in this mind (called by State constructor)
+   * Adds to both _states Set and _states_by_ground_state index
    * @param {State} state
    */
-  _register_state_by_ground_state(state) {
+  register_state(state) {
+    this._states.add(state)
+
     if (state.ground_state) {
       if (!this._states_by_ground_state.has(state.ground_state)) {
         this._states_by_ground_state.set(state.ground_state, new Set())
@@ -157,6 +183,12 @@ export class Mind {
    * @returns {State}
    */
   create_state(timestamp, ground_state = null) {
+    assert(
+      !ground_state || ground_state.in_mind === this.parent,
+      'ground_state must be in parent mind',
+      {mind: this.label, parent: this.parent?.label, ground_state_mind: ground_state?.in_mind?.label}
+    )
+
     const state = new State(this, timestamp, null, ground_state)
     return state
   }
@@ -171,7 +203,7 @@ export class Mind {
       _ref: this._id,
       _type: 'Mind',
       label: this.label,
-      states: [...this.state].map(s => ({_ref: s._id, _type: 'State'}))
+      states: [...this._states].map(s => ({_ref: s._id, _type: 'State'}))
     }
   }
 
@@ -188,7 +220,7 @@ export class Mind {
       _id: this._id,
       label: this.label,
       belief: mind_beliefs,
-      state: [...this.state].map(s => s.toJSON())
+      state: [...this._states].map(s => s.toJSON())
     }
   }
 
@@ -210,7 +242,7 @@ export class Mind {
     for (const state_data of data.state) {
       const state = State.from_json(mind, state_data)
       // Add to the state's in_mind (which might be different from mind if nested)
-      state.in_mind.state.add(state)
+      state.in_mind.register_state(state)
     }
 
     // Load nested minds AFTER parent states (so ground_state references can be resolved)
@@ -246,8 +278,9 @@ export class Mind {
 
     assert(ground_state instanceof State, `create_from_template requires State for ground_state`, null)
 
-    // Create the mind (no self property - that's on State now)
-    const entity_mind = new Mind(null)
+    // Create the mind (parent is the mind that contains ground_state)
+    const parent_mind = ground_state.in_mind
+    const entity_mind = new Mind(parent_mind)
 
     // Create initial state with self reference
     const state = new State(
@@ -265,7 +298,7 @@ export class Mind {
         throw new Error(`Cannot learn about '${label}': belief not found`)
       }
       if (trait_names.length > 0) {
-        state.learn_about(belief, trait_names, ground_state)
+        state.learn_about(belief, trait_names)
       }
     }
 

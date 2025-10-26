@@ -15,7 +15,7 @@ let server_id = null;
 /** @type {Session|null} */
 let session = null;
 
-/** @type {{[key: string]: Function}} */
+/** @type {{[key: string]: (...args: any[]) => void}} */
 export const dispatch = {
 	/** @param {any} _dat */
 	connect(_dat){

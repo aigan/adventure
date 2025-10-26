@@ -8,20 +8,20 @@ describe('Mind', () => {
   });
 
   it('creates mind with unique ID', () => {
-    const mind = new Mind('test_mind');
+    const mind = new Mind(null, 'test_mind');
     expect(mind._id).to.be.a('number');
     expect(mind.label).to.equal('test_mind');
   });
 
   it('registers mind by id and label', () => {
-    const mind = new Mind('registered');
+    const mind = new Mind(null, 'registered');
     expect(Mind.get_by_id(mind._id)).to.equal(mind);
     expect(Mind.get_by_label('registered')).to.equal(mind);
   });
 
   describe('states_valid_at()', () => {
     it('should return outermost state on linear state chain', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state1 = mind.create_state(100);
       state1.lock();
       const state2 = state1.tick({});
@@ -42,7 +42,7 @@ describe('Mind', () => {
     });
 
     it('should return outermost states on each branch', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       const state1 = mind.create_state(100);
       state1.lock();
 
@@ -94,7 +94,7 @@ describe('Mind', () => {
     });
 
     it('should return empty iterable for empty mind', () => {
-      const mind = new Mind('test');
+      const mind = new Mind(null, 'test');
       expect([...mind.states_valid_at(100)]).to.deep.equal([]);
     });
   });

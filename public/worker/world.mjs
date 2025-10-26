@@ -87,7 +87,7 @@ Cosmos.Belief.create_shared_from_template(['Actor', 'Mental'], {
 }, decider);
 
 // Create world mind and initial state
-const world_mind = new Cosmos.Mind('world');
+const world_mind = new Cosmos.Mind(null, 'world');
 const state = world_mind.create_state(1);
 
 // Create world beliefs (entities in the world)
