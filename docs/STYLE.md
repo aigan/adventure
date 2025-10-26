@@ -65,9 +65,13 @@ Write short, readable code using modern JavaScript features. Prefer clarity over
 - ✓ Only comment when "why" isn't obvious from code
 - ✓ Document complex algorithms or non-obvious design decisions
 - ✓ **Fewer lines = more code visible on screen**
+- ✓ **Never inline imports in type declarations** - always import types at the top of the file
 
 Example of good JSDoc:
 ```javascript
+import { Mind } from './mind.mjs'
+import { Belief } from './belief.mjs'
+
 /**
  * @param {Mind} mind
  * @param {string} label
@@ -75,6 +79,18 @@ Example of good JSDoc:
  */
 function find_belief(mind, label) {
   // Implementation speaks for itself
+}
+```
+
+Example of bad JSDoc (inlined imports):
+```javascript
+/**
+ * @param {import('./mind.mjs').Mind} mind  // ✗ Don't inline imports
+ * @param {string} label
+ * @returns {import('./belief.mjs').Belief|undefined}  // ✗ Don't inline imports
+ */
+function find_belief(mind, label) {
+  // ...
 }
 ```
 
@@ -155,6 +171,7 @@ After implementing a feature, verify:
 - ✗ Clever one-liners that sacrifice clarity
 - ✗ Premature abstraction - wait for patterns to emerge
 - ✗ Comments explaining what code does (code should be obvious)
+- ✗ **Inlined imports in type declarations** - import types at top of file instead
 - ✗ **Iterating over DB registries** - use indexed lookups instead
 - ✗ **Workarounds for missing lookups** - ask about design changes instead
 - ✗ **Accessing beliefs without state context** - means the design needs clarification

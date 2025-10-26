@@ -383,7 +383,7 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     const resolved_source = source_state ?? this.ground_state
-    assert(resolved_source != null, 'source_state required: either pass explicitly or set ground_state')
+    assert(resolved_source instanceof State, 'source_state required: either pass explicitly or set ground_state')
 
     // Step 1: Recognize existing knowledge
     const existing_beliefs = this.recognize(belief)

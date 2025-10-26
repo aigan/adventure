@@ -13,7 +13,7 @@
  * See docs/ALPHA-1.md for how beliefs are used in gameplay
  */
 
-import { assert } from '../lib/debug.mjs'
+import { log, assert } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
@@ -100,7 +100,7 @@ export class Belief {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
     const traittype = DB.get_traittype_by_label(label)
-    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
+    assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
 
     const value = /** @type {Traittype} */ (traittype).resolve(this, data, creator_state)
 
@@ -118,7 +118,7 @@ export class Belief {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
     const traittype = DB.get_traittype_by_label(label)
-    assert(traittype != null, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
+    assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
 
     assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
 
@@ -241,7 +241,6 @@ export class Belief {
     // Check own traits first
     if (this._traits.has(trait_name)) {
       const raw_value = this._traits.get(trait_name)
-      //console.log("val", raw_value);
       return this._convert_subjects_to_beliefs(raw_value, state)
     }
 
@@ -533,7 +532,7 @@ export class Belief {
       traits: Object.fromEntries(
         [...this._traits].map(([k, v]) => {
           const traittype = DB.get_traittype_by_label(k)
-          assert(traittype != null, `Traittype '${k}' not found`)
+          assert(traittype instanceof Traittype, `Traittype '${k}' not found`)
           return [k, traittype.inspect(state, v)]
         })
       )
@@ -726,7 +725,7 @@ export class Belief {
         assert(subject instanceof Subject, `Base '${base}' not found as archetype or subject label`, {base})
 
         // Use decider to get appropriate belief
-        assert(decider != null, `Decider required for string base '${base}'`, {base})
+        assert(typeof decider === 'function', `Decider required for string base '${base}'`, {base})
         const resolved = decider(subject)
         assert(resolved instanceof Belief || resolved instanceof Archetype, `Decider returned invalid type for base '${base}'`, {base, subject, resolved})
 

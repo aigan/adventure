@@ -9,7 +9,8 @@
 import * as Cosmos from "./cosmos.mjs";
 import * as DB from "./db.mjs";
 import { Session } from "./session.mjs";
-import { log } from "../lib/debug.mjs";
+import { Subject } from "./subject.mjs";
+import { log, assert } from "../lib/debug.mjs";
 //import {observation,observation_text} from "./observation.mjs";
 //import Time from "./time.mjs";
 //import * as Ponder from "./ponder.mjs";
@@ -67,16 +68,23 @@ export function setupStandardArchetypes() {
 
 setupStandardArchetypes();
 
+/** @param {Subject} subject */
+const decider = (subject)=>{
+  const beliefs = [...subject.beliefs_valid_at(1)];
+  assert(beliefs.length === 1, 'Found more than one valid belief', beliefs);
+  return beliefs[0];
+}
+
 // Create shared beliefs (before world mind/state)
 Cosmos.Belief.create_shared_from_template(['ObjectPhysical'], {
   '@timestamp': 1,
   '@label': 'Actor'
-}, (subject)=>DB.valid_at(subject,1));
+}, decider);
 
 Cosmos.Belief.create_shared_from_template(['Actor', 'Mental'], {
   '@timestamp': 1,
   '@label': 'Person'
-}, (subject)=>DB.valid_at(subject,1));
+}, decider);
 
 // Create world mind and initial state
 const world_mind = new Cosmos.Mind('world');
@@ -124,8 +132,8 @@ state.add_beliefs(world_belief);
 
 const player = DB.get_first_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
-const player_mind = player.get_trait_as_belief(state, 'mind');
-let player_state = [...player_mind.state][0]; // FIXME: iteration anti-pattern
+const player_mind = player.get_trait('mind');
+let player_state = [...player_mind.states_valid_at(1)][0];
 player_state = player_state.branch_state(state);
 player_state.learn_about(DB.get_first_belief_by_label('hammer'), ['location']);
 

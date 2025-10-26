@@ -44,36 +44,4 @@ describe('Registry', () => {
       }).to.throw(/Label 'PortableObject' is already used by an archetype/);
     });
   });
-
-  describe('Temporal Queries', () => {
-    it('should return most recent belief valid at timestamp', () => {
-      const mind = new Mind('test');
-      const state1 = mind.create_state(100);
-      const state2 = mind.create_state(200);
-      const state3 = mind.create_state(300);
-
-      // Create belief versions at different times
-      const hammer_v1 = Belief.from_template(mind, {label: 'hammer', bases: ['PortableObject']}, state1);
-      const hammer_v2 = Belief.from_template(mind, {sid: hammer_v1.subject.sid, bases: ['PortableObject']}, state2);
-      const hammer_v3 = Belief.from_template(mind, {sid: hammer_v1.subject.sid, bases: ['PortableObject']}, state3);
-
-      const subject = hammer_v1.subject;
-
-      // Query at different times
-      expect(DB.valid_at(subject, 50)).to.be.null;  // Before any version
-      expect(DB.valid_at(subject, 100)).to.equal(hammer_v1);
-      expect(DB.valid_at(subject, 150)).to.equal(hammer_v1);
-      expect(DB.valid_at(subject, 200)).to.equal(hammer_v2);
-      expect(DB.valid_at(subject, 250)).to.equal(hammer_v2);
-      expect(DB.valid_at(subject, 300)).to.equal(hammer_v3);
-      expect(DB.valid_at(subject, 999)).to.equal(hammer_v3);
-    });
-
-    it('should return null for non-existent subject', () => {
-      const mind = new Mind('test');
-      const nonexistent_subject = DB.get_or_create_subject(999);
-
-      expect(DB.valid_at(nonexistent_subject, 100)).to.be.null;
-    });
-  });
 });

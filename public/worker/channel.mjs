@@ -1,13 +1,11 @@
 import { log, assert } from "../lib/debug.mjs";
 import * as DB from './db.mjs';
 import { Mind } from './mind.mjs';
+import { State } from './state.mjs';
 import { Belief } from './belief.mjs';
 import { Archetype } from './archetype.mjs';
+import { Session } from './session.mjs';
 //log('Loading Channel');
-
-/**
- * @typedef {import('./session.mjs').Session} Session
- */
 
 /** @type {BroadcastChannel|null} */
 let channel = null;
@@ -36,7 +34,7 @@ export const dispatch = {
 
 	/** @param {{client_id: number}} param0 */
 	query_adventure({client_id}){
-		assert(session != null, 'session not initialized');
+		assert(session instanceof Session, 'session not initialized');
 		// Return current session state info
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "adventure_info",
@@ -63,12 +61,12 @@ export const dispatch = {
 			? Mind.get_by_id(Number(mind_str))
 			: Mind.get_by_label(mind_str);
 
-		assert(mind_obj != null, `Mind not found: ${mind}`);
+		assert(mind_obj instanceof Mind, `Mind not found: ${mind}`);
 
 		// Get specified state
 		const state = DB.get_state(Number(state_id));
 
-		assert(state != null, `State not found: ${state_id}`);
+		assert(state instanceof State, `State not found: ${state_id}`);
 		assert(state.in_mind === mind_obj, `State ${state_id} does not belong to mind ${mind}`);
 
 		const data = [];
@@ -109,7 +107,7 @@ export const dispatch = {
 		// Get state from registry
 		const state_obj = DB.get_state(state_id);
 
-		assert(state_obj != null, `State not found: ${state_id}`);
+		assert(state_obj instanceof State, `State not found: ${state_id}`);
 
 		const data = [];
 		for (const belief of state_obj.get_beliefs()) {
@@ -149,13 +147,13 @@ export const dispatch = {
 		// Find belief by id in global registry
 		const belief_obj = DB.get_belief(belief_id);
 
-		assert(belief_obj != null, `Belief not found: ${belief_id}`);
+		assert(belief_obj instanceof Belief, `Belief not found: ${belief_id}`);
 
 		// Get specified state for resolving sids
 		const state_id_num = Number(state_id);
 		const state = DB.get_state(state_id_num);
 
-		assert(state != null, `State not found: ${state_id}`);
+		assert(state instanceof State, `State not found: ${state_id}`);
 
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity",
@@ -177,7 +175,7 @@ export const dispatch = {
 
 	/** @param {{id: string|number, client_id: number}} param0 */
 	query_entity({id, client_id}){
-		assert(session != null, 'session not initialized');
+		assert(session instanceof Session, 'session not initialized');
 		id = Number(id);
 		//log("query_entity", id);
 
@@ -190,7 +188,7 @@ export const dispatch = {
 			}
 		}
 
-		assert(belief != null, `Belief ${id} not found in Session.state`);
+		assert(belief instanceof Belief, `Belief ${id} not found in Session.state`);
 
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity",

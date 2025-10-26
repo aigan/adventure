@@ -1,8 +1,8 @@
 import * as DB from './db.mjs'
+import { Belief } from './belief.mjs'
 
 /**
  * @typedef {import('./state.mjs').State} State
- * @typedef {import('./belief.mjs').Belief} Belief
  */
 
 /**
@@ -65,4 +65,57 @@ export class Subject {
       mind_label: belief.in_mind?.label ?? null
     }
   }
+
+  /**
+   * Get all beliefs for this subject that were valid at a specific timestamp
+   * Yields the outermost belief on each branch at or before the given timestamp
+   * (beliefs that have no descendants also at or before the timestamp)
+   * @param {number} timestamp - Timestamp to query at
+   * @yields {Belief} Outermost beliefs on each branch at timestamp
+   */
+  *beliefs_valid_at(timestamp) {
+    const beliefs = DB.get_beliefs_by_subject(this)
+    if (!beliefs || beliefs.size === 0) return
+
+    // Get all beliefs with timestamp <= target
+    const valid_beliefs = [...beliefs].filter(b => b.get_timestamp() <= timestamp)
+
+    // Yield beliefs that have no descendants in the valid set
+    for (const belief of valid_beliefs) {
+      const has_descendant = valid_beliefs.some(other =>
+        other !== belief && _has_base_in_chain(other, belief)
+      )
+
+      if (!has_descendant) {
+        yield belief
+      }
+    }
+  }
+}
+
+/**
+ * Check if a belief has another belief in its base chain
+ * @param {Belief} descendant - Belief to check
+ * @param {Belief} ancestor - Potential ancestor to find
+ * @returns {boolean} True if ancestor is in descendant's base chain
+ */
+function _has_base_in_chain(descendant, ancestor) {
+  const visited = new Set()
+  const queue = [descendant]
+
+  while (queue.length > 0) {
+    const current = /** @type {Belief} */ (queue.shift())
+
+    if (visited.has(current)) continue
+    visited.add(current)
+
+    for (const base of current._bases) {
+      if (base === ancestor) return true
+      if (base instanceof Belief) {
+        queue.push(base)
+      }
+    }
+  }
+
+  return false
 }

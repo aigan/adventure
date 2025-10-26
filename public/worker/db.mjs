@@ -10,11 +10,11 @@ import { reset_id_sequence } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import { Traittype } from './traittype.mjs'
 import { Subject } from './subject.mjs'
+import { Belief } from './belief.mjs'
 
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
  * @typedef {import('./state.mjs').State} State
- * @typedef {import('./belief.mjs').Belief} Belief
  */
 
 // ============================================================================
@@ -293,30 +293,6 @@ export function find_beliefs_about_subject(mind, about_subject, state) {
   return results
 }
 
-/**
- * Get the belief for a subject that was valid at a specific timestamp
- * Returns the most recent belief version at or before the given timestamp
- * @param {Subject} subject - Subject to query
- * @param {number} timestamp - Timestamp to query at
- * @returns {Belief|null} Most recent belief at timestamp, or null if none
- */
-export function valid_at(subject, timestamp) {
-  const beliefs = belief_by_subject.get(subject)
-  if (!beliefs || beliefs.size === 0) return null
-
-  let valid_belief = null
-  let latest_timestamp = -Infinity
-
-  for (const belief of beliefs) {
-    const t = belief.get_timestamp()
-    if (t <= timestamp && t > latest_timestamp) {
-      valid_belief = belief
-      latest_timestamp = t
-    }
-  }
-
-  return valid_belief
-}
 
 /**
  * Register state in registries

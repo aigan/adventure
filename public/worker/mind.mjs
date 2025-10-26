@@ -111,6 +111,31 @@ export class Mind {
   }
 
   /**
+   * Get all states in this mind that were valid at a specific timestamp
+   * Yields the outermost state on each branch at or before the given timestamp
+   * (states that have no descendants also at or before the timestamp)
+   * @param {number} timestamp - Timestamp to query at
+   * @yields {State} Outermost states on each branch at timestamp
+   */
+  *states_valid_at(timestamp) {
+    if (this.state.size === 0) return
+
+    // Get all states with timestamp <= target
+    const valid_states = [...this.state].filter(s => s.timestamp <= timestamp)
+
+    // Yield states that have no descendants in the valid set
+    for (const state of valid_states) {
+      const has_descendant = valid_states.some(other =>
+        other !== state && _has_base_in_chain(other, state)
+      )
+
+      if (!has_descendant) {
+        yield state
+      }
+    }
+  }
+
+  /**
    * Register a state in the ground_state index
    * @param {State} state
    */
@@ -237,7 +262,7 @@ export class Mind {
         throw new Error(`Cannot learn about '${label}': belief not found`)
       }
       if (trait_names.length > 0) {
-        assert(creator_state != null, `Cannot learn about beliefs without ground_state context`, null)
+        assert(creator_state instanceof State, `Cannot learn about beliefs without ground_state context`, null)
         state.learn_about(belief, trait_names, creator_state)
       }
     }
@@ -245,4 +270,25 @@ export class Mind {
     state.lock()
     return entity_mind  // Return Mind, not State
   }
+}
+
+/**
+ * Check if a state has another state in its base chain
+ * @param {State} descendant - State to check
+ * @param {State} ancestor - Potential ancestor to find
+ * @returns {boolean} True if ancestor is in descendant's base chain
+ */
+function _has_base_in_chain(descendant, ancestor) {
+  const visited = new Set()
+  let current = descendant.base
+
+  while (current !== null) {
+    if (visited.has(current)) break
+    visited.add(current)
+
+    if (current === ancestor) return true
+    current = current.base
+  }
+
+  return false
 }

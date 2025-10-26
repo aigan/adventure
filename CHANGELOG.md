@@ -11,10 +11,12 @@ All notable changes to this project will be documented in this file.
 - Displays both Archetypes and shared prototype Beliefs in order
 - Enables prototype-based inheritance: traits resolve through archetype bases, then shared belief prototypes
 
-### Temporal Queries
-- `DB.valid_at(subject, timestamp)` - Bitemporal query returning most recent belief version at or before given timestamp
-- Returns null if no version exists before timestamp
-- Enables "as of" queries for subject history
+### Temporal Queries with Branch Support
+- `subject.beliefs_valid_at(timestamp)` - Generator yielding outermost beliefs on each branch at or before timestamp (moved from DB.valid_at)
+- `mind.states_valid_at(timestamp)` - Generator yielding outermost states on each branch at or before timestamp
+- Handles branching version histories correctly (filters out beliefs/states with descendants at same timestamp)
+- Returns empty iterable if no versions exist before timestamp
+- Enables "as of" queries across multiple parallel belief/state branches
 
 ## 2025-10-26
 

@@ -40,7 +40,7 @@ export class Archetype {
     /** @type {Set<Archetype>} */ this._bases = new Set()
     for (const base_label of bases) {
       const base = DB.get_archetype_by_label(base_label)
-      assert(base != null, `Archetype '${base_label}' not found in archetype registry`, {base_label})
+      assert(base instanceof Archetype, `Archetype '${base_label}' not found in archetype registry`, {base_label})
       this._bases.add(base)
     }
 
