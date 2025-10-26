@@ -200,6 +200,7 @@ export class Traittype {
         !data._type &&
         !(data.state instanceof Set)) {
       // It's a learn spec (plain object without Mind's state Set) - call Mind.resolve_template
+      assert(owner_belief.in_mind !== null, 'Shared beliefs cannot have Mind traits', {owner_belief})
       return Mind.resolve_template(
         owner_belief.in_mind,
         data,
@@ -210,6 +211,7 @@ export class Traittype {
 
     // Check for template construction with _type field (Mind only)
     if (data?._type === 'Mind') {
+      assert(owner_belief.in_mind !== null, 'Shared beliefs cannot have Mind traits', {owner_belief})
       return Mind.resolve_template(owner_belief.in_mind, data, owner_belief.subject, creator_state)
     }
 

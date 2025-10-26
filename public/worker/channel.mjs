@@ -166,7 +166,7 @@ export const dispatch = {
 				data: belief_obj.to_inspect_view(state),
 			},
 			desig: belief_obj.sysdesig(state),
-			mind: {id: belief_obj.in_mind._id, label: belief_obj.in_mind.label},
+			mind: belief_obj.in_mind ? {id: belief_obj.in_mind._id, label: belief_obj.in_mind.label} : null,
 			bases: [...belief_obj._bases].map(b => ({
 				id: b instanceof Belief ? b._id : null,
 				label: b instanceof Belief ? b.get_label() : b.label,
@@ -200,7 +200,7 @@ export const dispatch = {
 				data: belief.toJSON(),
 			},
 			desig: belief.sysdesig(session.state),
-			mind: {id: belief.in_mind._id, label: belief.in_mind.label},
+			mind: belief.in_mind ? {id: belief.in_mind._id, label: belief.in_mind.label} : null,
 			bases: [...belief._bases].map(b => ({
 				id: b instanceof Belief ? b._id : null,
 				label: b instanceof Belief ? b.get_label() : b.label,

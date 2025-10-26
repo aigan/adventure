@@ -9,6 +9,7 @@
 import * as Cosmos from "./cosmos.mjs";
 import * as DB from "./db.mjs";
 import { Session } from "./session.mjs";
+import { log } from "../lib/debug.mjs";
 //import {observation,observation_text} from "./observation.mjs";
 //import Time from "./time.mjs";
 //import * as Ponder from "./ponder.mjs";
@@ -18,8 +19,6 @@ import { Session } from "./session.mjs";
  * @typedef {import('./db.mjs').TraitTypeSchema} TraitTypeSchema
  */
 
-const log = console.log.bind(console);
-
 
 export function setupStandardArchetypes() {
   /** @type {Record<string, string|TraitTypeSchema>} */
@@ -28,6 +27,7 @@ export function setupStandardArchetypes() {
       type: 'Subject',
       mind: 'parent'  // Resolve in parent mind's ground state
     },
+    '@timestamp': 'number',
     location: 'Location',
     mind: 'Mind',  // Singular Mind reference
     color: 'string',
@@ -35,9 +35,16 @@ export function setupStandardArchetypes() {
 
   /** @type {Record<string, ArchetypeDefinition>} */
   const archetypes = {
-    ObjectPhysical: {
+    Thing: {
       traits: {
         '@about': null,
+        '@timestamp': null,
+      },
+    },
+
+    ObjectPhysical: {
+      bases: ['Thing'],
+      traits: {
         location: null,
         color: null,
       },
@@ -60,7 +67,22 @@ export function setupStandardArchetypes() {
 
 setupStandardArchetypes();
 
+// Create shared beliefs (before world mind/state)
+Cosmos.Belief.create_shared_from_template(['ObjectPhysical'], {
+  '@timestamp': 1,
+  '@label': 'Actor'
+}, (subject)=>DB.valid_at(subject,1));
 
+Cosmos.Belief.create_shared_from_template(['Actor', 'Mental'], {
+  '@timestamp': 1,
+  '@label': 'Person'
+}, (subject)=>DB.valid_at(subject,1));
+
+// Create world mind and initial state
+const world_mind = new Cosmos.Mind('world');
+const state = world_mind.create_state(1);
+
+// Create world beliefs (entities in the world)
 const world_belief = {
   workshop: {
     bases: ['Location'],
@@ -75,14 +97,6 @@ const world_belief = {
     traits: {
       location: 'workshop',
     },
-  },
-
-  Actor: {
-    bases: ['ObjectPhysical'],
-  },
-
-  Person: {
-    bases: ['Actor', 'Mental'],
   },
 
   npc1: {
@@ -106,9 +120,6 @@ const world_belief = {
   },
 }
 
-// Create world mind and initial state
-const world_mind = new Cosmos.Mind('world');
-const state = world_mind.create_state(1);
 state.add_beliefs(world_belief);
 
 const player = DB.get_first_belief_by_label('player');
@@ -119,7 +130,7 @@ player_state = player_state.branch_state(state);
 player_state.learn_about(DB.get_first_belief_by_label('hammer'), ['location']);
 
 state.lock();
-log(player_state);
+//log(player_state);
 
 //const ball = state.add_belief({
 //  label: 'ball',

@@ -1,4 +1,4 @@
-const log = console.log.bind(console);
+import { log } from "./debug.mjs";
 // import {worker} from "./boot.mjs";
 //## Firefox do not support worker modules yet!
 // URL relative to containing HTML page.

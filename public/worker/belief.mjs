@@ -56,7 +56,7 @@ import { State } from './state.mjs'
  * @property {number} _id - Unique version identifier
  * @property {Subject} subject - Canonical Subject (identity holder)
  * @property {string|null} label - Optional label for lookup
- * @property {Mind} in_mind - Mind this belief belongs to
+ * @property {Mind|null} in_mind - Mind this belief belongs to (null for shared beliefs)
  * @property {Set<Belief|Archetype>} _bases - Base archetypes/beliefs for inheritance
  * @property {Map<string, *>} _traits - Trait values (sids, primitives, State/Mind refs)
  * @property {boolean} locked - Whether belief can be modified
@@ -64,7 +64,7 @@ import { State } from './state.mjs'
 export class Belief {
 
   /**
-   * @param {Mind} mind
+   * @param {Mind|null} mind - Mind this belief belongs to (null for shared beliefs)
    * @param {object} param1
    * @param {Subject|null} [param1.subject] - Subject (provide to create version of existing subject)
    * @param {Array<Archetype|Belief>} [param1.bases] - Archetype or Belief objects (no strings)
@@ -353,6 +353,34 @@ export class Belief {
   }
 
   /**
+   * Get prototype chain (both Archetypes and shared Beliefs with labels)
+   * Walks the bases chain breadth-first, yielding labeled prototypes
+   * @param {Set<Belief|Archetype>} [seen]
+   * @returns {Generator<{label: string, type: 'Archetype'|'Belief'}>}
+   */
+  *get_prototypes(seen = new Set()) {
+    /** @type {(Belief|Archetype)[]} */ const bases = [this]
+    while (bases.length > 0) {
+      const base = bases.shift()
+      if (!base || seen.has(base)) continue
+
+      if (base instanceof Archetype) {
+        seen.add(base)
+        yield {label: base.label, type: 'Archetype'}
+        bases.push(...base._bases)
+      } else {
+        seen.add(base)
+        // Only include shared beliefs (prototypes) with labels
+        const label = base.get_label()
+        if (base.in_mind === null && label !== null) {
+          yield {label, type: 'Belief'}
+        }
+        bases.push(...base._bases)
+      }
+    }
+  }
+
+  /**
    * Lock this belief and cascade to child mind states
    * @param {State} state - State context being locked
    */
@@ -491,15 +519,16 @@ export class Belief {
   /**
    * Create shallow inspection view of this belief for the inspect UI
    * @param {State} state - State context for resolving trait sids
-   * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], bases: (string|number)[], traits: any, locked?: boolean}} Shallow representation with references
+   * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string, type: string}>, bases: (string|number)[], traits: any, locked?: boolean}} Shallow representation with references
    */
   to_inspect_view(state) {
     assert(state instanceof State, "should be State", state);
-    const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], bases: (string|number)[], traits: any, locked?: boolean}} */ ({
+    const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string, type: string}>, bases: (string|number)[], traits: any, locked?: boolean}} */ ({
       _type: 'Belief',
       _id: this._id,
       label: this.get_label(),
       archetypes: [...this.get_archetypes()].map(a => a.label),
+      prototypes: [...this.get_prototypes()],
       bases: [...this._bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
         [...this._traits].map(([k, v]) => {
@@ -672,6 +701,61 @@ export class Belief {
 
     for (const [trait_label, trait_data] of Object.entries(traits)) {
       belief.add_trait(trait_label, trait_data, creator_state)
+    }
+
+    return belief
+  }
+
+  /**
+   * Create shared belief from template (limbo - no mind/state ownership)
+   * @param {Array<string|Belief|Archetype>} bases - Base archetypes/beliefs (can be strings)
+   * @param {Object<string, any>} traits - Traits (including optional @timestamp and @label)
+   * @param {((subject: Subject) => Belief|Archetype|null)|null} [decider] - Function to decide which belief to use for a subject
+   * @returns {Belief}
+   */
+  static create_shared_from_template(bases, traits, decider = null) {
+    // Resolve bases from strings
+    const resolved_bases = bases.map(base => {
+      if (typeof base === 'string') {
+        // Try archetype first
+        const archetype = DB.get_archetype_by_label(base)
+        if (archetype) return archetype
+
+        // Get subject by label
+        const subject = DB.get_subject_by_label(base)
+        assert(subject instanceof Subject, `Base '${base}' not found as archetype or subject label`, {base})
+
+        // Use decider to get appropriate belief
+        assert(decider != null, `Decider required for string base '${base}'`, {base})
+        const resolved = decider(subject)
+        assert(resolved instanceof Belief || resolved instanceof Archetype, `Decider returned invalid type for base '${base}'`, {base, subject, resolved})
+
+        // If decider returned a Belief, verify it's a shared belief
+        if (resolved instanceof Belief) {
+          assert(resolved.in_mind === null && resolved.origin_state === null, `Decider must return a shared belief (in_mind and origin_state must be null) for base '${base}'`, {base, subject, resolved, in_mind: resolved.in_mind, origin_state: resolved.origin_state})
+        }
+
+        return resolved
+      }
+      return base
+    })
+
+    // Create belief with null ownership (limbo)
+    const belief = new Belief(null, {
+      bases: resolved_bases
+    }, null)
+
+    // Register label if present
+    const label = traits['@label']
+    if (label != null) {
+      assert(typeof label === 'string', '@label must be a string', {label})
+      belief.set_label(label)
+    }
+
+    // Add all traits
+    for (const [trait_label, trait_data] of Object.entries(traits)) {
+      if (trait_label === '@label') continue  // Already handled
+      belief.add_trait(trait_label, trait_data)
     }
 
     return belief

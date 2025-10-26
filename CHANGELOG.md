@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## 2025-10-26
 
+### Shared Beliefs as Prototypes
+- Shared beliefs now work as prototypes in the inheritance chain
+- `get_prototypes()` - Returns full prototype chain (both Archetypes and shared Beliefs with labels)
+- Inspector now shows "Prototypes" heading instead of "Archetypes"
+- Displays both Archetypes and shared prototype Beliefs in order
+- Enables prototype-based inheritance: traits resolve through archetype bases, then shared belief prototypes
+
+### Temporal Queries
+- `DB.valid_at(subject, timestamp)` - Bitemporal query returning most recent belief version at or before given timestamp
+- Returns null if no version exists before timestamp
+- Enables "as of" queries for subject history
+
+## 2025-10-26
+
 ### Trait Value Inheritance
 - `get_trait(name)` - Returns raw trait values (Subject, not Belief) with prototype-style inheritance through bases chain
 - `get_traits()` generator - Iterates all traits including inherited (own traits shadow inherited)

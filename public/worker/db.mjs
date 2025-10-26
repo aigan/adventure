@@ -249,11 +249,13 @@ export function register_belief_by_subject(belief) {
   // Add to belief_by_subject (Set already initialized by get_or_create_subject)
   /** @type {Set<Belief>} */ (belief_by_subject.get(belief.subject)).add(belief)
 
-  // Register by mind
-  if (!belief_by_mind.has(belief.in_mind)) {
-    belief_by_mind.set(belief.in_mind, new Set())
+  // Register by mind (skip for shared beliefs with null mind)
+  if (belief.in_mind !== null) {
+    if (!belief_by_mind.has(belief.in_mind)) {
+      belief_by_mind.set(belief.in_mind, new Set())
+    }
+    /** @type {Set<Belief>} */ (belief_by_mind.get(belief.in_mind)).add(belief)
   }
-  /** @type {Set<Belief>} */ (belief_by_mind.get(belief.in_mind)).add(belief)
 }
 
 /**
@@ -289,6 +291,31 @@ export function find_beliefs_about_subject(mind, about_subject, state) {
     }
   }
   return results
+}
+
+/**
+ * Get the belief for a subject that was valid at a specific timestamp
+ * Returns the most recent belief version at or before the given timestamp
+ * @param {Subject} subject - Subject to query
+ * @param {number} timestamp - Timestamp to query at
+ * @returns {Belief|null} Most recent belief at timestamp, or null if none
+ */
+export function valid_at(subject, timestamp) {
+  const beliefs = belief_by_subject.get(subject)
+  if (!beliefs || beliefs.size === 0) return null
+
+  let valid_belief = null
+  let latest_timestamp = -Infinity
+
+  for (const belief of beliefs) {
+    const t = belief.get_timestamp()
+    if (t <= timestamp && t > latest_timestamp) {
+      valid_belief = belief
+      latest_timestamp = t
+    }
+  }
+
+  return valid_belief
 }
 
 /**

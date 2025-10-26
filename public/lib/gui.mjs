@@ -1,4 +1,4 @@
-const log = console.log.bind(console);
+import { log } from "./debug.mjs";
 // log('Loading GUI');
 
 // import {cssP} from "./lib/load.mjs";

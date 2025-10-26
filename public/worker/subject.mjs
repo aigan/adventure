@@ -61,8 +61,8 @@ export class Subject {
       _ref: belief._id,
       _type: 'Belief',
       label: belief.get_label(),
-      mind_id: belief.in_mind._id,
-      mind_label: belief.in_mind.label
+      mind_id: belief.in_mind?._id ?? null,
+      mind_label: belief.in_mind?.label ?? null
     }
   }
 }

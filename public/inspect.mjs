@@ -1,4 +1,4 @@
-const log = console.log.bind(console);
+import { log } from "./lib/debug.mjs";
 
 // Browser-specific initialization
 let channel, $header, $main, client_id, server_id, query;
@@ -152,9 +152,10 @@ function render_entity(a, target = $main){
     hout += `<dt>Label</dt><dd>${belief_data.label}</dd>`;
   }
 
-  // Display archetypes
-  if (belief_data.archetypes?.length > 0) {
-    hout += `<dt>Archetypes</dt><dd>${belief_data.archetypes.join(', ')}</dd>`;
+  // Display prototypes (Archetypes and shared Beliefs with labels)
+  if (belief_data.prototypes?.length > 0) {
+    const prototype_labels = belief_data.prototypes.map(p => p.label).join(', ');
+    hout += `<dt>Prototypes</dt><dd>${prototype_labels}</dd>`;
   }
 
   // Display bases

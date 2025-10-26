@@ -1,6 +1,6 @@
 //import {world} from "world.mjs";
+import { log } from "../lib/debug.mjs";
 
-const log = console.log.bind(console);
 //log('Loading Worker');
 
 //let DEBUG = true;
