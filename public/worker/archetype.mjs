@@ -19,7 +19,6 @@
  */
 
 import { assert } from '../lib/debug.mjs'
-import * as DB from './db.mjs'
 
 /**
  * Archetype definition for beliefs
@@ -28,6 +27,36 @@ import * as DB from './db.mjs'
  * @property {object} traits_template - Trait definitions
  */
 export class Archetype {
+  /** @type {Record<string, Archetype>} */
+  static _registry = {}
+
+  /**
+   * Get archetype by label
+   * @param {string} label
+   * @returns {Archetype|undefined}
+   */
+  static get_by_label(label) {
+    return Archetype._registry[label]
+  }
+
+  /**
+   * Register archetype in registry
+   * @param {string} label
+   * @param {Archetype} archetype
+   */
+  static register(label, archetype) {
+    Archetype._registry[label] = archetype
+  }
+
+  /**
+   * Clear registry (for testing)
+   */
+  static reset_registry() {
+    for (const key in Archetype._registry) {
+      delete Archetype._registry[key]
+    }
+  }
+
   /**
    * @param {string} label
    * @param {string[]} [bases]
@@ -38,7 +67,7 @@ export class Archetype {
 
     /** @type {Set<Archetype>} */ this._bases = new Set()
     for (const base_label of bases) {
-      const base = DB.get_archetype_by_label(base_label)
+      const base = Archetype.get_by_label(base_label)
       assert(base instanceof Archetype, `Archetype '${base_label}' not found in archetype registry`, {base_label})
       this._bases.add(base)
     }
@@ -79,7 +108,7 @@ export class Archetype {
       }
 
       // Validate archetype
-      const required_archetype = DB.get_archetype_by_label(traittype.data_type)
+      const required_archetype = Archetype.get_by_label(traittype.data_type)
       for (const a of found_belief.get_archetypes()) {
         if (a === required_archetype) {
           return found_belief.subject

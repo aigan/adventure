@@ -132,7 +132,7 @@ describe('Mind', () => {
         workshop: ['name']
       };
 
-      const mind_traittype = DB.get_traittype_by_label('mind');
+      const mind_traittype = Traittype.get_by_label('mind');
       const result = Mind.resolve_trait_value_from_template(mind_traittype, npc_belief, template_data);
 
       world_state.lock();
@@ -162,7 +162,7 @@ describe('Mind', () => {
         workshop: ['name']
       };
 
-      const mind_traittype = DB.get_traittype_by_label('mind');
+      const mind_traittype = Traittype.get_by_label('mind');
       const result = Mind.resolve_trait_value_from_template(mind_traittype, npc_belief, template_data);
 
       world_state.lock();
@@ -182,7 +182,7 @@ describe('Mind', () => {
 
       const existing_mind = new Mind(world_mind, 'existing');
 
-      const mind_traittype = DB.get_traittype_by_label('mind');
+      const mind_traittype = Traittype.get_by_label('mind');
       const result = Mind.resolve_trait_value_from_template(mind_traittype, npc_belief, existing_mind);
 
       expect(result).to.equal(existing_mind);
@@ -197,7 +197,7 @@ describe('Mind', () => {
       });
       world_state.lock();
 
-      const mind_traittype = DB.get_traittype_by_label('mind');
+      const mind_traittype = Traittype.get_by_label('mind');
       const result = Mind.resolve_trait_value_from_template(mind_traittype, npc_belief, null);
 
       expect(result).to.be.null;
@@ -212,7 +212,7 @@ describe('Mind', () => {
       });
       world_state.lock();
 
-      const mind_traittype = DB.get_traittype_by_label('mind');
+      const mind_traittype = Traittype.get_by_label('mind');
       const result = Mind.resolve_trait_value_from_template(mind_traittype, npc_belief, undefined);
 
       expect(result).to.be.undefined;
@@ -220,7 +220,7 @@ describe('Mind', () => {
 
     it('should throw if belief has no origin_state', () => {
       const belief = new Belief(null);
-      const mind_traittype = DB.get_traittype_by_label('mind');
+      const mind_traittype = Traittype.get_by_label('mind');
 
       expect(() => {
         Mind.resolve_trait_value_from_template(mind_traittype, belief, {workshop: []});

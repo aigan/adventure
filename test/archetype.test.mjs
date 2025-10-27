@@ -96,7 +96,7 @@ describe('Archetype', () => {
         traits: { color: 'brown' }
       });
 
-      const traittype = DB._reflect().traittype_by_label['location'];
+      const traittype = Traittype.get_by_label('location');
       const test_belief = Belief.from_template(state, {
         traits: {'@label': 'test'},
         bases: ['ObjectPhysical']
@@ -115,7 +115,7 @@ describe('Archetype', () => {
         bases: ['Location']
       });
 
-      const traittype = DB._reflect().traittype_by_label['location'];
+      const traittype = Traittype.get_by_label('location');
       const test_belief = Belief.from_template(state, {
         traits: {'@label': 'test'},
         bases: ['ObjectPhysical']
@@ -134,7 +134,7 @@ describe('Archetype', () => {
         bases: ['Location']
       });
 
-      const traittype = DB._reflect().traittype_by_label['location'];
+      const traittype = Traittype.get_by_label('location');
       const test_belief = Belief.from_template(state, {
         traits: {'@label': 'test'},
         bases: ['ObjectPhysical']
@@ -149,7 +149,7 @@ describe('Archetype', () => {
       const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
 
-      const traittype = DB._reflect().traittype_by_label['location'];
+      const traittype = Traittype.get_by_label('location');
       const test_belief = Belief.from_template(state, {
         traits: {'@label': 'test'},
         bases: ['ObjectPhysical']
@@ -168,7 +168,7 @@ describe('Archetype', () => {
         bases: ['PortableObject']
       });
 
-      const traittype = DB._reflect().traittype_by_label['location'];
+      const traittype = Traittype.get_by_label('location');
       const test_belief = Belief.from_template(state, {
         traits: {'@label': 'test'},
         bases: ['ObjectPhysical']

@@ -64,20 +64,6 @@ const label_by_sid = new Map()
 const subject_by_sid = new Map()
 
 // ============================================================================
-// Archetype Registries
-// ============================================================================
-
-/** @type {Record<string, Archetype>} */
-const archetype_by_label = {}
-
-// ============================================================================
-// Traittype Registries
-// ============================================================================
-
-/** @type {Record<string, Traittype>} */
-const traittype_by_label = {}
-
-// ============================================================================
 // Reflection (for testing/debugging)
 // ============================================================================
 
@@ -97,8 +83,8 @@ export function _reflect() {
     sid_by_label,
     label_by_sid,
     subject_by_sid,
-    archetype_by_label,
-    traittype_by_label
+    archetype_by_label: Archetype._registry,
+    traittype_by_label: Traittype._registry
   }
 }
 
@@ -152,24 +138,6 @@ export function get_belief(id) {
   return belief_by_id.get(id)
 }
 
-
-/**
- * Get Archetype by label
- * @param {string} label
- * @returns {Archetype|undefined}
- */
-export function get_archetype_by_label(label) {
-  return archetype_by_label[label]
-}
-
-/**
- * Get Traittype by label
- * @param {string} label
- * @returns {Traittype|undefined}
- */
-export function get_traittype_by_label(label) {
-  return traittype_by_label[label]
-}
 
 /**
  * Get SID by label
@@ -331,8 +299,8 @@ export function reset_all_registries() {
   subject_by_sid.clear()
 
   for (const key in state_by_label) delete state_by_label[key]
-  for (const key in archetype_by_label) delete archetype_by_label[key]
-  for (const key in traittype_by_label) delete traittype_by_label[key]
+  Archetype.reset_registry()
+  Traittype.reset_registry()
 }
 
 // ============================================================================
@@ -367,7 +335,7 @@ export function reset_all_registries() {
  */
 export function get_mind_trait_names() {
   const mind_traits = []
-  for (const [label, traittype] of Object.entries(traittype_by_label)) {
+  for (const [label, traittype] of Object.entries(Traittype._registry)) {
     if (traittype.data_type === 'Mind') {
       mind_traits.push(label)
     }
@@ -390,16 +358,18 @@ export function reset_registries() {
  */
 export function register( archetypes, traittypes ) {
   for (const [label, def] of Object.entries(traittypes)) {
-    traittype_by_label[label] = new Traittype(label, def)
+    const traittype = new Traittype(label, def)
+    Traittype.register(label, traittype)
   }
 
   for (const [label, def] of Object.entries(archetypes)) {
-    if (archetype_by_label[label]) {
+    if (Archetype.get_by_label(label)) {
       throw new Error(`Label '${label}' is already used by another archetype`)
     }
     if (sid_by_label.has(label)) {
       throw new Error(`Label '${label}' is already used by a belief`)
     }
-    archetype_by_label[label] = new Archetype(label, def.bases ?? [], def.traits ?? {})
+    const archetype = new Archetype(label, def.bases ?? [], def.traits ?? {})
+    Archetype.register(label, archetype)
   }
 }

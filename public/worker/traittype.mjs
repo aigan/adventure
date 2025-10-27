@@ -71,6 +71,36 @@ export class Traittype {
     'Subject': Subject
   }
 
+  /** @type {Record<string, Traittype>} */
+  static _registry = {}
+
+  /**
+   * Get traittype by label
+   * @param {string} label
+   * @returns {Traittype|undefined}
+   */
+  static get_by_label(label) {
+    return Traittype._registry[label]
+  }
+
+  /**
+   * Register traittype in registry
+   * @param {string} label
+   * @param {Traittype} traittype
+   */
+  static register(label, traittype) {
+    Traittype._registry[label] = traittype
+  }
+
+  /**
+   * Clear registry (for testing)
+   */
+  static reset_registry() {
+    for (const key in Traittype._registry) {
+      delete Traittype._registry[key]
+    }
+  }
+
   /**
    * Resolve trait value from template data
    * NOTE: This method is constructed during initialization.
@@ -139,7 +169,7 @@ export class Traittype {
     else {
       item_resolver = (/** @type {Belief} */ belief, /** @type {any} */ data) => {
         // Runtime archetype lookup (handles registration order and late additions)
-        const archetype = DB.get_archetype_by_label(this.data_type)
+        const archetype = Archetype.get_by_label(this.data_type)
         if (archetype) {
           return Archetype.resolve_trait_value_from_template(this, belief, data)
         }

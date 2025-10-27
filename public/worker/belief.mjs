@@ -102,7 +102,7 @@ export class Belief {
   add_trait_from_template(state, label, data) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
-    const traittype = DB.get_traittype_by_label(label)
+    const traittype = Traittype.get_by_label(label)
     assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
 
     const value = /** @type {Traittype} */ (traittype).resolve_trait_value_from_template(this, data)
@@ -119,7 +119,7 @@ export class Belief {
   add_trait(label, data) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
-    const traittype = DB.get_traittype_by_label(label)
+    const traittype = Traittype.get_by_label(label)
     assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
 
     assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
@@ -370,7 +370,7 @@ export class Belief {
     if (DB.has_label(label)) {
       throw new Error(`Label '${label}' is already used by another belief`)
     }
-    if (DB.get_archetype_by_label(label)) {
+    if (Archetype.get_by_label(label)) {
       throw new Error(`Label '${label}' is already used by an archetype`)
     }
 
@@ -462,7 +462,7 @@ export class Belief {
       bases: [...this._bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
         [...this._traits].map(([k, v]) => {
-          const traittype = DB.get_traittype_by_label(k)
+          const traittype = Traittype.get_by_label(k)
           assert(traittype instanceof Traittype, `Traittype '${k}' not found`)
           return [k, traittype.to_inspect_view(state, v)]
         })
@@ -499,9 +499,9 @@ export class Belief {
       return deserialize_trait_value(value)
     } else if (typeof value === 'number') {
       // Check if this trait type is a Belief reference or Subject
-      const traittype = DB.get_traittype_by_label(trait_name)
+      const traittype = Traittype.get_by_label(trait_name)
       if (traittype) {
-        if (DB.get_archetype_by_label(traittype.data_type) || traittype.data_type === 'Subject') {
+        if (Archetype.get_by_label(traittype.data_type) || traittype.data_type === 'Subject') {
           // It's a Belief/Subject reference - get canonical Subject
           return DB.get_or_create_subject(value)
         }
@@ -533,7 +533,7 @@ export class Belief {
     belief._bases = new Set()
     for (const base_ref of data.bases) {
       if (typeof base_ref === 'string') {
-        const archetype = DB.get_archetype_by_label(base_ref)
+        const archetype = Archetype.get_by_label(base_ref)
         if (!archetype) {
           throw new Error(`Archetype '${base_ref}' not found for belief ${belief._id}`)
         }
@@ -568,7 +568,7 @@ export class Belief {
     // Register label-sid mappings (for first belief with this label loaded)
     if (data.label) {
       if (!DB.has_label(data.label)) {
-        if (DB.get_archetype_by_label(data.label)) {
+        if (Archetype.get_by_label(data.label)) {
           throw new Error(`Label '${data.label}' is already used by an archetype`)
         }
         DB.register_label(data.label, belief.subject.sid)
@@ -592,7 +592,7 @@ export class Belief {
 
     const resolved_bases = bases.map(base => {
       if (typeof base === 'string') {
-        const resolved = state.get_belief_by_label(base) ?? DB.get_archetype_by_label(base)
+        const resolved = state.get_belief_by_label(base) ?? Archetype.get_by_label(base)
         assert(resolved instanceof Belief || resolved instanceof Archetype, `Base '${base}' not found as belief label or archetype`, {base})
         return /** @type {Belief|Archetype} */ (resolved)
       }
@@ -648,7 +648,7 @@ export class Belief {
     const resolved_bases = bases.map(base => {
       if (typeof base === 'string') {
         // Try archetype first
-        const archetype = DB.get_archetype_by_label(base)
+        const archetype = Archetype.get_by_label(base)
         if (archetype) return archetype
 
         // Get subject by label

@@ -305,7 +305,7 @@ describe('Belief', () => {
 
     it('returns @timestamp meta-trait for shared beliefs (null ownership)', () => {
       // Create a shared belief with null ownership and @timestamp meta-trait
-      const archetype = DB.get_archetype_by_label('Temporal');
+      const archetype = Archetype.get_by_label('Temporal');
       const belief = new Belief(null, null, [archetype]);
 
       belief.add_trait('@timestamp', 110);
@@ -335,7 +335,7 @@ describe('Belief', () => {
     });
 
     it('handles undefined vs 0 correctly', () => {
-      const archetype = DB.get_archetype_by_label('Temporal');
+      const archetype = Archetype.get_by_label('Temporal');
       const belief = new Belief(null, null, [archetype]);
 
       // No origin_state, no @timestamp -> returns 0
