@@ -59,8 +59,8 @@ import { Serialize } from './serialize.mjs'
  * @property {State|null} ground_state - External world state this references
  * @property {Belief[]} insert - Beliefs added/present in this state
  * @property {Belief[]} remove - Beliefs removed in this state
- * @property {State[]} branches - Child states branching from this one
  * @property {boolean} locked - Whether state can be modified
+ * @property {State[]} _branches - Child states branching from this one (access via get_branches())
  * @property {Map<Subject, Belief>|null} _subject_index - Cached subject→belief lookup (lazy, only on locked states)
  */
 export class State {
@@ -94,8 +94,30 @@ export class State {
     /** @type {Belief[]} */ this.remove = []
     /** @type {State|null} */ this.ground_state = ground_state
     /** @type {Subject|null} */ this.self = self
-    /** @type {State[]} */ this.branches = []
     this.locked = false
+
+    /**
+     * Forward links to child states branching from this one
+     * Query: O(1) enumeration for possibility tree navigation
+     * Maintained by: branch_state(), tick() - adds child to parent's branches
+     * Scale: Essential - enables navigation of branching timelines and planning scenarios
+     * @type {State[]}
+     */
+    this._branches = []
+
+    /**
+     * Lazy cache: subject → belief lookup (only built on locked states)
+     * Query: O(1) cached lookup after first access, O(n) on first access where n = beliefs in state
+     * Maintained by: get_belief_by_subject() - progressively populated during queries
+     * Scale: Smart optimization - avoids precomputing index for all states
+     *   - Only created on locked states (immutable historical states)
+     *   - Built incrementally as beliefs are accessed (not all at once)
+     *   - Caches both found beliefs AND null results (avoids rescanning)
+     *   - Unlocked states skip caching (transient, will change)
+     * Alternative considered: Pre-build index on lock() → rejected (wastes memory for unused states)
+     * @type {Map<Subject, Belief|null>|null}
+     */
+    this._subject_index = null
 
     this.in_mind.register_state(this)
     DB.register_state(this)
@@ -106,6 +128,14 @@ export class State {
     for (const belief of this.insert) {
       belief.lock(this)
     }
+  }
+
+  /**
+   * Get child states branching from this state
+   * @returns {State[]} Array of child states
+   */
+  get_branches() {
+    return this._branches
   }
 
   /**
@@ -154,7 +184,7 @@ export class State {
    */
   branch_state(ground_state) {
     const state = new State(this.in_mind, this.timestamp + 1, this, ground_state ?? this.ground_state, this.self)
-    this.branches.push(state)
+    this._branches.push(state)
     return state
   }
 
@@ -253,15 +283,16 @@ export class State {
   }
 
   /**
-   * Get Belief for a Subject in this state
+   * Get Belief for a Subject in this state (with shared belief support)
    * Progressively builds cache as beliefs are accessed (locked states only)
    * @param {Subject} subject - Subject to find belief for
-   * @returns {Belief|null} The belief for this subject visible in this state, or null if not found
+   * @returns {Belief|null} The belief for this subject visible in this state, or shared belief if not found
    */
   get_belief_by_subject(subject) {
     // Check cache first (only on locked states)
     if (this.locked && this._subject_index?.has(subject)) {
-      return this._subject_index.get(subject)
+      // TypeScript: .has() check guarantees .get() returns Belief|null, not undefined
+      return /** @type {Belief|null} */ (this._subject_index.get(subject))
     }
 
     // If unlocked, don't cache - just search with early termination
@@ -269,7 +300,17 @@ export class State {
       for (const belief of this.get_beliefs()) {
         if (belief.subject === subject) return belief
       }
-      return null
+
+      // Not found in state - check for shared beliefs
+      const shared_beliefs = [...subject.beliefs_valid_at(this.timestamp)].filter(
+        b => b.in_mind === null && b.origin_state === null
+      )
+
+      assert(shared_beliefs.length <= 1,
+        `Multiple shared beliefs found for subject at timestamp ${this.timestamp}`,
+        {sid: subject.sid, count: shared_beliefs.length, timestamp: this.timestamp})
+
+      return shared_beliefs[0] ?? null
     }
 
     // Locked state - search and cache as we go (progressive indexing)
@@ -289,34 +330,31 @@ export class State {
       }
     }
 
-    // Not found - cache the null result to avoid re-scanning
-    this._subject_index.set(subject, null)
-    return null
+    // Not found in state - check for shared beliefs. TODO: cache
+    const shared_beliefs = [...subject.beliefs_valid_at(this.timestamp)].filter(
+      b => b.in_mind === null && b.origin_state === null
+    )
+
+    assert(shared_beliefs.length <= 1,
+      `Multiple shared beliefs found for subject at timestamp ${this.timestamp}`,
+      {sid: subject.sid, count: shared_beliefs.length, timestamp: this.timestamp})
+
+    const shared_belief = shared_beliefs[0] ?? null
+
+    // Cache the result (shared belief or null) to avoid re-scanning
+    this._subject_index.set(subject, shared_belief)
+    return shared_belief
   }
 
   /**
-   * Get belief by label (state-scoped lookup)
+   * Get belief by label (delegates to get_belief_by_subject)
    * @param {string} label - Label to look up
-   * @returns {Belief|null} The belief with this label in this state, or null if not found
+   * @returns {Belief|null} The belief with this label in this state, or shared belief if not found
    */
   get_belief_by_label(label) {
     const subject = DB.get_subject_by_label(label)
     if (!subject) return null
-
-    // Find all beliefs in this state with this subject
-    const matching_beliefs = []
-    for (const belief of this.get_beliefs()) {
-      if (belief.subject === subject) {
-        matching_beliefs.push(belief)
-      }
-    }
-
-    // Assert there's at most one belief with this label
-    assert(matching_beliefs.length <= 1,
-      `Multiple beliefs found with label '${label}' in state`,
-      {label, count: matching_beliefs.length, state_id: this._id})
-
-    return matching_beliefs[0] ?? null
+    return this.get_belief_by_subject(subject)
   }
 
   /**
@@ -326,7 +364,7 @@ export class State {
    */
   recognize(source_belief) {
     // Query DB for all beliefs in this mind about the same subject
-    const beliefs_about_subject = DB.find_beliefs_about_subject(
+    const beliefs_about_subject = DB.find_beliefs_about_subject_in_state(
       this.in_mind,
       source_belief.subject,
       this
@@ -556,15 +594,16 @@ export class State {
     state.remove = remove
     state.ground_state = ground_state
     state.self = self
-    state.branches = []
+    state._branches = []
     state.locked = false
+    state._subject_index = null
 
     // Register in global registry
     DB.register_state(state)
 
     // Update branches
     if (base) {
-      base.branches.push(state)
+      base._branches.push(state)
     }
 
     return state

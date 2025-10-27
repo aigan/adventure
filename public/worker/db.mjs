@@ -1,9 +1,9 @@
 /**
  * Centralized registry for all database entities
- * This is the data storage layer - classes use these registries to store/lookup instances
  *
- * See docs/SPECIFICATION.md for data model design
- * See .CONTEXT.md for module documentation
+ * All indexes below are designed for external DB scalability (billions of items).
+ * See inline comments on each index for query patterns and scale justification.
+ * See .CONTEXT.md for instance-specific indexes (Mind, State classes).
  */
 
 import { reset_id_sequence } from './id_sequence.mjs'
@@ -21,46 +21,111 @@ import { Belief } from './belief.mjs'
 // Mind Registries
 // ============================================================================
 
-/** @type {Map<number, Mind>} */
+/**
+ * Primary key index for minds
+ * Query: O(1) lookup by unique ID
+ * Maintained by: register_mind()
+ * Scale: Essential - enables direct mind access without scanning
+ * @type {Map<number, Mind>}
+ */
 const mind_by_id = new Map()
 
-/** @type {Map<string, Mind>} */
+/**
+ * Label-based mind lookup
+ * Query: O(1) lookup by human-readable label (e.g., "world", "player", "npc_guard_1")
+ * Maintained by: register_mind()
+ * Scale: Essential - frequently used for named mind access (world_mind, player_mind, NPCs)
+ * @type {Map<string, Mind>}
+ */
 const mind_by_label = new Map()
 
 // ============================================================================
 // State Registries
 // ============================================================================
 
-/** @type {Map<number, State>} */
+/**
+ * Primary key index for states
+ * Query: O(1) lookup by unique ID
+ * Maintained by: register_state()
+ * Scale: Essential - enables direct state access for deserialization and references
+ * @type {Map<number, State>}
+ */
 const state_by_id = new Map()
 
-/** @type {Record<string, object>} */
+/**
+ * Prototype state templates (currently unused - planned feature)
+ * Future use: Share belief lists across many similar nodes (e.g., "generic_room")
+ * Query: O(1) lookup by template label
+ * Scale: Optimization for memory efficiency with millions of similar states
+ * @type {Record<string, object>}
+ */
 const state_by_label = {}
 
 // ============================================================================
 // Belief Registries
 // ============================================================================
 
-/** @type {Map<number, Belief>} */
+/**
+ * Primary key index for beliefs (individual versions)
+ * Query: O(1) lookup by unique belief version ID
+ * Maintained by: register_belief_by_id()
+ * Scale: Essential - enables direct belief access for references and deserialization
+ * @type {Map<number, Belief>}
+ */
 const belief_by_id = new Map()
 
-/** @type {Map<Subject, Set<Belief>>} */
+/**
+ * Subject-based belief index (tracks all versions of same entity)
+ * Query: O(1) to get Set<Belief> containing all versions of a subject across time
+ * Maintained by: register_belief_by_subject() - populated during belief creation
+ * Scale: Essential - enables version queries without scanning all beliefs
+ *   Example: Get all versions of "hammer" entity → O(versions) not O(all beliefs)
+ * @type {Map<Subject, Set<Belief>>}
+ */
 const belief_by_subject = new Map()
 
-/** @type {Map<Mind, Set<Belief>>} */
+/**
+ * Mind-based belief index (tracks which beliefs belong to which mind)
+ * Query: O(1) to get Set<Belief> containing all beliefs in a mind
+ * Maintained by: register_belief_by_subject() - populated during belief creation
+ * Scale: Essential - enables mind-scoped queries without scanning all beliefs
+ *   Example: find_beliefs_about_subject() → O(beliefs in mind) not O(all beliefs)
+ *   Without this index, queries would be O(billions) instead of O(thousands)
+ * @type {Map<Mind, Set<Belief>>}
+ */
 const belief_by_mind = new Map()
 
-/** @type {Map<string, number>} */
+/**
+ * Label-to-SID index (bidirectional mapping, part 1)
+ * Query: O(1) label → sid lookup (e.g., "hammer" → 42)
+ * Maintained by: register_label() - keeps both directions in sync
+ * Scale: Essential - enables label-based queries without scanning subjects
+ * @type {Map<string, number>}
+ */
 const sid_by_label = new Map()
 
-/** @type {Map<number, string>} */
+/**
+ * SID-to-label index (bidirectional mapping, part 2)
+ * Query: O(1) sid → label lookup (e.g., 42 → "hammer")
+ * Maintained by: register_label() - keeps both directions in sync
+ * Scale: Essential - enables display/serialization without scanning label mappings
+ * Note: Both directions needed - not redundant (forward vs reverse lookup)
+ * @type {Map<number, string>}
+ */
 const label_by_sid = new Map()
 
 // ============================================================================
 // Subject Registries
 // ============================================================================
 
-/** @type {Map<number, Subject>} */
+/**
+ * Canonical subject instances by SID
+ * Query: O(1) lookup by subject ID
+ * Maintained by: get_or_create_subject() - ensures single Subject instance per sid
+ * Scale: Essential - guarantees subject identity (prevents duplicate Subject objects)
+ *   Critical for === comparisons and Map/Set usage
+ * @type {Map<number, Subject>}
+ */
 const subject_by_sid = new Map()
 
 // ============================================================================
@@ -227,12 +292,16 @@ export function get_or_create_subject(sid) {
 
 /**
  * Find beliefs in a mind that are about a specific subject
+ * NOTE: O(n) iteration over beliefs in mind - candidate for compound index
+ * With external DB, would use: SELECT * FROM beliefs WHERE mind_id = ? AND about_subject = ?
+ * Compound index: belief_by_mind_and_about: Map<Mind, Map<Subject, Set<Belief>>>
+ *
  * @param {Mind} mind - Mind to search in
  * @param {Subject} about_subject - Subject to find beliefs about
  * @param {State} state - State context for resolving @about trait
  * @returns {Array<Belief>} Array of beliefs about the subject (may be empty)
  */
-export function find_beliefs_about_subject(mind, about_subject, state) {
+export function find_beliefs_about_subject_in_state(mind, about_subject, state) {
   const mind_beliefs = belief_by_mind.get(mind)
   if (!mind_beliefs) return []
 

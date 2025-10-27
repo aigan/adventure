@@ -217,9 +217,9 @@ describe('State', () => {
       const state2 = state1.tick({insert: []});
       const state3 = state1.tick({insert: []});
 
-      expect(state1.branches).to.have.lengthOf(2);
-      expect(state1.branches).to.include(state2);
-      expect(state1.branches).to.include(state3);
+      expect(state1.get_branches()).to.have.lengthOf(2);
+      expect(state1.get_branches()).to.include(state2);
+      expect(state1.get_branches()).to.include(state3);
     });
 
     it('serializes ground_state in toJSON', () => {

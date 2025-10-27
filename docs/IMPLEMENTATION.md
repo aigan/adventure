@@ -73,131 +73,51 @@ The application uses a **Web Worker architecture** to separate game logic from U
 - `toJSON()`: Deep serialization for complete data dumps (nested Mind/State/Belief expansion)
 - `inspect()`: Shallow serialization with references (returns `{_ref, _type, label}` for relationships)
 
-### Data Schema
+### Index Architecture
 
-**Registry Structure** (`public/worker/cosmos.mjs`):
+All indexes are designed for scalability to billions of items with external DB (PostgreSQL, etc.). The system uses two-tier indexing:
 
-All entities are stored in global registries for efficient lookup:
+- **Global registries** (`public/worker/db.mjs`): Primary keys, label lookups, and relationship indexes
+- **Instance indexes** (`Mind`, `State` classes): Scoped indexes for hierarchy and caching
 
-```javascript
-{
-  mind_by_id: Map<number, Mind>,
-  mind_by_label: Map<string, Mind>,
-  belief_by_id: Map<number, Belief>,        // Version-based lookup
-  belief_by_sid: Map<number, Set<Belief>>,  // Subject-based lookup (all versions)
-  label_by_sid: Map<number, string>,         // Labels belong to subjects
-  sid_by_label: Map<string, number>,         // Reverse lookup
-  archetype_by_label: Map<string, Archetype>
-}
-```
+All current indexes are necessary and non-redundant - each serves distinct query patterns at O(1) or O(n) where n is the result size.
 
-**Design constraint**: Labels are globally unique across subjects and archetypes to prevent naming conflicts.
+**Design constraints**:
+- Labels are globally unique across subjects and archetypes to prevent naming conflicts
+- Labels identify subjects (stable identity), not versions (temporal variants)
+- All versions of same subject share the label
 
-**Label semantics**: Labels identify subjects (stable identity), not versions (temporal variants). All versions of the same subject share the label. To lookup by label: `sid_by_label["hammer"]` → `sid = 100`, then `state.get_belief_by_subject(subject)` → appropriate version.
+**For detailed index documentation**, see inline comments in:
+- `public/worker/db.mjs` - Global registry indexes
+- `public/worker/mind.mjs` - Mind instance indexes
+- `public/worker/state.mjs` - State lazy caching
+- `public/worker/.CONTEXT.md` - Index architecture overview
 
-**Indexing strategy**: `belief_by_sid` enables efficient resolution queries like "find all versions of subject S" without scanning all beliefs.
+**Core Data Structures**:
 
-**Mind Structure** (`public/worker/mind.mjs`):
+**Mind** - Container for beliefs representing an entity's knowledge/perspective
+- Nested hierarchy: world_mind contains npc_minds for theory of mind
+- States track belief evolution over time
+- **Key design**: Beliefs stored globally, not in minds (enables cross-mind queries)
 
-```javascript
-class Mind {
-  _id: number                    // Unique identifier
-  label: string|null             // Optional label for lookup
-  state: Set<State>              // All states in this mind
-  _states_by_ground_state: Map   // Index for ground_state lookups
-}
-```
+**State** - Immutable snapshot of beliefs at specific time/tick
+- Differential updates: tracks `insert`, `remove` operations via `base` chain
+- Grounding: `ground_state` links nested mind states to parent reality
+- Branching: Supports possibility trees and planning scenarios
+- Lazy caching: `_subject_index` built progressively on locked states
 
-**Key design decision**: Beliefs are NOT stored in minds. All beliefs live in the global registry (`belief_by_id`), with each belief maintaining an `in_mind` reference for ownership. This enables:
-- Direct belief lookup without knowing which mind owns it
-- Efficient queries across all beliefs (e.g., "find all beliefs about entity X")
-- Consistent access patterns for all entity types
+**Belief** - Represents game entities with versioning
+- **Identity**: `subject.sid` stable across versions, `_id` unique per version
+- **Inheritance**: Multiple bases via `bases` array (Archetypes + previous versions)
+- **Versioning**: Immutable - changes create new version with same subject
+- **Branch tracking**: Parent tracks child versions for lazy propagation
+- **Traits**: Type-validated properties resolved at query time via state context
 
-**State Structure** (`public/worker/state.mjs`):
+**Archetype** - Defines trait structure for entity types
+- Multiple inheritance: Compose traits from multiple parents
+- Example: Player = Actor + Mental → ObjectPhysical
 
-```javascript
-class State {
-  _id: number                // Unique identifier
-  in_mind: Mind              // Mind this state belongs to
-  base: State|null           // Previous state (inheritance)
-  ground_state: State|null   // External world state reference
-  timestamp: number          // Tick number
-  insert: Belief[]           // Beliefs added
-  remove: Belief[]           // Beliefs removed
-  branches: State[]          // Forward links to child states
-  locked: boolean            // Whether state can be modified
-  self: Subject|null         // Subject this state represents (for nested minds)
-}
-```
-
-**Validation**: States can only contain beliefs from their owning mind.
-
-**Query pattern**: To get all beliefs in a state, walk the `base` chain accumulating `insert` lists while tracking `remove` lists.
-
-**Grounding**: When a nested mind creates states (e.g., NPC's model of another NPC's mind), the `ground_state` links back to the parent mind's state that created it. This tracks which version of reality the nested reasoning is based on.
-
-**Branching**: The `branches` collection tracks forward links to all states created from this state, enabling navigation of possibility trees and planning scenarios.
-
-**Belief Structure** (`public/worker/belief.mjs`):
-
-```javascript
-class Belief {
-  _id: number                     // Version identifier (unique)
-  subject: Subject                // Identity object (shared across versions)
-  in_mind: Mind                   // Owning mind
-  origin_state: State|null        // State that created this belief
-  _bases: Set<Belief|Archetype>   // Inheritance
-  branches: Set<Belief>           // Child belief versions
-  branch_metadata: {              // Why this branch exists
-    origin_state: State,
-    probability: number|null,
-    constraints: object
-  }
-  _traits: Map<string, any>       // Properties
-  locked: boolean                 // Whether belief can be modified
-  _resolved_cache: Map            // Cached trait resolutions
-}
-```
-
-**Identity semantics**:
-- `subject.sid` (subject ID) - stable integer identifier across versions
-- `_id` - unique integer for this specific version
-- Labels stored separately in global registry: `label_by_sid[sid] = "hammer"`
-- All versions of same subject share same `sid` and label
-
-**Ownership semantics**:
-- `in_mind` points to owning mind
-- `origin_state` determines when/how belief was created
-- Shared cultural knowledge lives in template minds, referenced via `bases`
-
-**Reference semantics**:
-- Meta-traits (prefix `@`): `@about` stores Subject for cross-mind references
-- Domain traits: store Subject for entity references, primitives for data
-- Resolution happens at query time via state context
-
-**Versioning**:
-- Creating modified versions uses immutable pattern
-- New belief with same `subject`, new `_id`
-- Parent belief adds child to `branches`
-- Child belief includes parent in `bases`
-
-**Branch tracking**:
-- `branches`: Set of child belief versions (same subject, different data)
-- Used for temporal progression, probability distributions, spatial variations
-- Enables lazy propagation through inheritance chains
-
-**Archetype Structure** (`public/worker/archetype.mjs`):
-
-```javascript
-class Archetype {
-  label: string                    // Unique identifier
-  bases: Set<Archetype>            // Parent archetypes
-  traits_template: Object          // Available trait definitions
-  meta: Object                     // Archetype metadata
-}
-```
-
-Archetypes define the "types" of beliefs (Object, Event, Location, etc.) and what traits they can have.
+For structure details, see source files in `public/worker/`
 
 ### Possibility Spaces
 

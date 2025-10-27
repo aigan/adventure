@@ -27,7 +27,15 @@ import { assert } from '../lib/debug.mjs'
  * @property {object} traits_template - Trait definitions
  */
 export class Archetype {
-  /** @type {Record<string, Archetype>} */
+  /**
+   * Static registry: archetype definitions by label
+   * Query: O(1) lookup by label (e.g., "Actor", "ObjectPhysical")
+   * Maintained by: register() - called during world setup
+   * Scale: Small, bounded - typically dozens of archetypes, not billions
+   *   Archetypes define entity types/templates, not entity instances
+   *   Plain object (not Map) acceptable due to small size and static nature
+   * @type {Record<string, Archetype>}
+   */
   static _registry = {}
 
   /**

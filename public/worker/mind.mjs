@@ -74,11 +74,11 @@ export class Mind {
       this.self = null
       /** @type {Mind|null} */
       this.parent = null  // Set later during deserialization
-      /** @type {Set<Mind>} */
+      /** @type {Set<Mind>} - See constructor for index documentation */
       this._child_minds = new Set()
-      /** @type {Set<State>} */
+      /** @type {Set<State>} - See constructor for index documentation */
       this._states = new Set()
-      /** @type {Map<State, Set<State>>} */
+      /** @type {Map<State, Set<State>>} - See constructor for index documentation */
       this._states_by_ground_state = new Map()
 
       DB.register_mind(this)
@@ -96,11 +96,34 @@ export class Mind {
     this.label = label
     /** @type {Belief|null} */
     this.self = self
-    /** @type {Set<Mind>} */
+
+    /**
+     * Direct child minds (nested minds)
+     * Query: O(1) enumeration of children for hierarchy traversal
+     * Maintained by: Mind constructor (parent._child_minds.add)
+     * Scale: Essential - enables mind hierarchy navigation
+     * @type {Set<Mind>}
+     */
     this._child_minds = new Set()
-    /** @type {Set<State>} */
+
+    /**
+     * All states belonging to this mind
+     * Query: O(n) enumeration for states_valid_at(), state iteration
+     * Maintained by: register_state() - called by State constructor
+     * Scale: Essential - without this, would need to scan global state_by_id registry
+     * @type {Set<State>}
+     */
     this._states = new Set()
-    /** @type {Map<State, Set<State>>} */
+
+    /**
+     * Index: states by their ground_state reference
+     * Query: O(1) to get Set<State> of child mind states linked to parent mind state
+     * Maintained by: register_state() - populated when state has ground_state
+     * Scale: Essential - critical for cascading lock operations and nested mind queries
+     *   Example: When parent mind state changes, find all child mind states that reference it
+     *   Without this: O(all states in mind), with this: O(matching states)
+     * @type {Map<State, Set<State>>}
+     */
     this._states_by_ground_state = new Map()
 
     // Register as child in parent
@@ -140,6 +163,12 @@ export class Mind {
    * Get all states in this mind that were valid at a specific timestamp
    * Yields the outermost state on each branch at or before the given timestamp
    * (states that have no descendants also at or before the timestamp)
+   *
+   * TODO: Refactor to walk tree from starting state instead of scanning all states
+   * Current: O(n²) over all states in mind - doesn't scale to millions of states
+   * Future approach: Walk from branch tips or given starting state
+   * Future: Event saving with time/space-based archival for billions of states
+   *
    * @param {number} timestamp - Timestamp to query at
    * @yields {State} Outermost states on each branch at timestamp
    */

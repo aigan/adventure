@@ -71,7 +71,15 @@ export class Traittype {
     'Subject': Subject
   }
 
-  /** @type {Record<string, Traittype>} */
+  /**
+   * Static registry: trait type definitions by label
+   * Query: O(1) lookup by label (e.g., "@label", "@about", "location")
+   * Maintained by: register() - called during world setup
+   * Scale: Small, bounded - typically dozens to hundreds of trait types, not billions
+   *   Trait types define property schemas, not property instances
+   *   Plain object (not Map) acceptable due to small size and static nature
+   * @type {Record<string, Traittype>}
+   */
   static _registry = {}
 
   /**

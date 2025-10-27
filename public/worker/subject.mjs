@@ -63,6 +63,12 @@ export class Subject {
    * Get all beliefs for this subject that were valid at a specific timestamp
    * Yields the outermost belief on each branch at or before the given timestamp
    * (beliefs that have no descendants also at or before the timestamp)
+   *
+   * TODO: Refactor to walk tree from starting belief instead of scanning all versions
+   * Current: O(n²) over all belief versions - doesn't scale to millions of versions per subject
+   * Future approach: Walk from branch tips or given starting belief
+   * Future: Event saving with time/space-based archival for billions of belief versions
+   *
    * @param {number} timestamp - Timestamp to query at
    * @yields {Belief} Outermost beliefs on each branch at timestamp
    */
