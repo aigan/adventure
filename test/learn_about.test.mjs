@@ -24,8 +24,8 @@ describe('learn_about', () => {
 
       const inspected = workshop_knowledge.to_inspect_view(player_mind_state);
       expect(inspected.traits['@about']._ref).to.equal(workshop._id);
-      // Location inherits from ObjectPhysical
-      expect(inspected.archetypes).to.deep.equal(['Location', 'ObjectPhysical']);
+      // Location inherits from ObjectPhysical, which inherits from Thing
+      expect(inspected.archetypes).to.deep.equal(['Location', 'ObjectPhysical', 'Thing']);
     });
 
     it('learned belief can use traits from archetype chain', () => {

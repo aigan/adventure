@@ -16,12 +16,6 @@ None - ready for next task
   - Materialization on explicit version creation
   - Superposition handling for probability branches
   - Enables scaling to millions of NPCs inheriting cultural knowledge
-- [ ] **Document all indexes and enforce encapsulation** - Make all internal data structures private
-  - Document all indexes (DB registries, Mind.states_by_ground_state, etc.)
-  - Make all Sets/Maps private (prefix with `_`)
-  - No code should directly access Sets/Maps except in their owning class
-  - All access must go through getter methods with proper indexed lookups
-  - Example: `Mind._states` (private), access via `mind.get_states_by_ground_state(state)`
 - [ ] **Clarify shared belief architecture** - Implement template minds for shared cultural/template beliefs ([plan](docs/plans/shared-belief-architecture.md))
   - Add parent mind tracking to Mind class
   - Create template mind pattern (sibling to NPC minds under parent)
@@ -30,8 +24,18 @@ None - ready for next task
   - Migrate existing shared beliefs to template minds
   - Remove all code handling null mind/state cases
   - Enables proper scoping: shared only among siblings of same parent
-- [ ] Create documentation for data traversal patterns - Document all navigation patterns (state_by_belief, belief_by_state, subject_by_label, etc.) showing how to traverse the data model
-- [ ] Create test case for shared beliefs - Test how trait resolution works when multiple beliefs reference the same shared subject
+- [ ] **Shared States** - Implement shared mind states for cultural knowledge templates
+  - Mind templates define what to learn: `{tavern: ['location'], mayor: ['occupation']}`
+  - Multiple NPCs can base their initial state on same template
+  - Enables shared cultural knowledge without duplicating learning specifications
+  - Related to template minds in shared-belief-architecture.md
+  - Currently: Each NPC must enumerate individual shared beliefs they learn about
+  - Future: Define reusable mind templates for cultural groups (village guards, merchants, etc.)
+- [ ] **Mind Template Syntax: Support Bases** - Enable specifying belief bases in declarative mind templates
+  - Current limitation: `mind: {tavern: ['location']}` only supports labeled subjects
+  - Need: Way to specify bases for beliefs created during learning
+  - Options: Use same format as beliefs (with bases/traits) OR add `@bases` meta-trait
+  - Goal: Avoid deep nesting in template syntax while supporting full belief construction
 
 ## Next Up
 

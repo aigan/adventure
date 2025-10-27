@@ -120,19 +120,39 @@ describe('Mind Trait', () => {
     expect(main_area_belief).to.exist;
   });
 
-  // TODO: Prototype support can be added later with '@base' syntax
-  // See docs/plans/mind-self-refactor-phase2.md for details
-
-  it.skip('applies prototype template', () => {
+  it('multiple NPCs learn about same shared beliefs', () => {
+    // Setup archetypes
     const archetypes = {
+      Thing: {
+        traits: {
+          '@label': null,
+          '@timestamp': null,
+          '@about': null,  // All beliefs can be "about" something
+        },
+      },
       ObjectPhysical: {
-        traits: { '@about': null, location: null },
+        bases: ['Thing'],
+        traits: {
+          location: null,
+        },
       },
       Location: {
         bases: ['ObjectPhysical'],
+        traits: {
+          coordinates: null,
+          size: null,
+        },
+      },
+      Actor: {
+        bases: ['ObjectPhysical'],
       },
       Mental: {
-        traits: { mind_states: null },
+        traits: {
+          mind: null,
+        },
+      },
+      Person: {
+        bases: ['Actor', 'Mental'],
       },
     };
 
@@ -141,69 +161,190 @@ describe('Mind Trait', () => {
         type: 'Subject',
         mind: 'parent'
       },
+      '@label': 'string',
+      '@timestamp': 'number',
       location: 'Location',
-      mind_states: {
-        type: 'State',
-        container: Array,
-        min: 1
-      },
+      mind: 'Mind',
+      coordinates: 'string',
+      size: 'string',
     };
 
     DB.register(archetypes, traittypes);
 
+    // Create shared belief prototypes (templates for Location types)
+    const tavern_proto = Belief.create_shared_from_template(['Location'], {
+      '@timestamp': 100,
+      '@label': 'TavernPrototype',
+      size: 'large'  // Default size for taverns
+    });
+
+    const square_proto = Belief.create_shared_from_template(['Location'], {
+      '@timestamp': 100,
+      '@label': 'SquarePrototype',
+      size: 'huge'  // Default size for squares
+    });
+
+    // Create world with two NPC bodies
     const world_mind = new Mind(null, 'world');
-    const world_state = world_mind.create_state(1);
+    const world_state = world_mind.create_state(200);
 
-    const base_location = world_state.add_belief({ label: 'base_location', bases: ['Location'] });
-    const location1 = world_state.add_belief({
-      label: 'location1',
-      bases: ['Location'],
-      traits: { location: base_location }
-    });
-    const location2 = world_state.add_belief({
-      label: 'location2',
-      bases: ['Location'],
-      traits: { location: base_location }
-    });
-
-    // Define prototype
-    DB.state_by_label.test_prototype = {
-      learn: {
-        location1: ['location']
-      }
-    };
-
-    const entity = world_state.add_belief({
-      label: 'entity',
-      bases: ['Mental'],
+    // World beliefs inherit from shared prototypes
+    const blacksmith_tavern = world_state.add_belief({
+      label: 'blacksmith_tavern',
+      bases: [tavern_proto],
       traits: {
+        coordinates: '50,30'  // Specific location
+      }
+    });
+
+    const town_square = world_state.add_belief({
+      label: 'town_square',
+      bases: [square_proto],
+      traits: {
+        coordinates: '100,100'  // Specific location
+      }
+    });
+
+    const npc1_body = world_state.add_belief({
+      label: 'npc1_body',
+      bases: ['Person']
+    });
+
+    const npc2_body = world_state.add_belief({
+      label: 'npc2_body',
+      bases: ['Person']
+    });
+
+    world_state.lock();
+
+    // NPC1 learns about world entities (not prototypes)
+    const npc1 = Belief.from_template(world_state, {
+      bases: [npc1_body],
+      traits: {
+        '@label': 'npc1',
         mind: {
-          // TODO: Add prototype support - base: 'test_prototype'
+          blacksmith_tavern: ['coordinates'],
+          town_square: ['size']
         }
       }
     });
 
-    const entity_mind = entity._traits.get('mind');
-    const states = [...entity_mind._states];
-    const state = states[0];
-    const beliefs = [...state.get_beliefs()];
+    // NPC2 learns about same world entities (different trait selections)
+    const npc2 = Belief.from_template(world_state, {
+      bases: [npc2_body],
+      traits: {
+        '@label': 'npc2',
+        mind: {
+          blacksmith_tavern: ['coordinates', 'size'],
+          town_square: ['coordinates']
+        }
+      }
+    });
 
-    // Should have learned about location1 from prototype
-    const loc1_belief = beliefs.find(b => b.get_about(state) === location1);
-    expect(loc1_belief).to.exist;
-    expect(loc1_belief._traits.has('location')).to.be.true;
+    // Get both minds and their states
+    const npc1_mind = npc1._traits.get('mind');
+    const npc1_state = [...npc1_mind._states][0];
+
+    const npc2_mind = npc2._traits.get('mind');
+    const npc2_state = [...npc2_mind._states][0];
+
+    // Find beliefs in NPC1's mind (about world entities)
+    const npc1_beliefs = [...npc1_state.get_beliefs()];
+    const npc1_tavern = npc1_beliefs.find(b => b.get_about(npc1_state) === blacksmith_tavern);
+    const npc1_square = npc1_beliefs.find(b => b.get_about(npc1_state) === town_square);
+
+    // Find beliefs in NPC2's mind (about same world entities)
+    const npc2_beliefs = [...npc2_state.get_beliefs()];
+    const npc2_tavern = npc2_beliefs.find(b => b.get_about(npc2_state) === blacksmith_tavern);
+    const npc2_square = npc2_beliefs.find(b => b.get_about(npc2_state) === town_square);
+
+    // Verify both NPCs have beliefs about the same world entities
+    expect(npc1_tavern).to.exist;
+    expect(npc1_square).to.exist;
+    expect(npc2_tavern).to.exist;
+    expect(npc2_square).to.exist;
+
+    // Verify beliefs are ABOUT the world entities (via @about)
+    expect(npc1_tavern.get_about(npc1_state)).to.equal(blacksmith_tavern);
+    expect(npc1_square.get_about(npc1_state)).to.equal(town_square);
+    expect(npc2_tavern.get_about(npc2_state)).to.equal(blacksmith_tavern);
+    expect(npc2_square.get_about(npc2_state)).to.equal(town_square);
+
+    // Verify requested traits were copied from world beliefs
+    // NPC1 requested blacksmith_tavern:['coordinates'] and town_square:['size']
+    expect(npc1_tavern._traits.has('coordinates')).to.be.true;
+    expect(npc1_tavern.get_trait('coordinates')).to.equal('50,30');
+    expect(npc1_tavern._traits.has('size')).to.be.false;  // Not requested
+
+    expect(npc1_square._traits.has('size')).to.be.true;
+    expect(npc1_square.get_trait('size')).to.equal('huge');  // Inherited from prototype
+    expect(npc1_square._traits.has('coordinates')).to.be.false;  // Not requested
+
+    // NPC2 requested blacksmith_tavern:['coordinates', 'size'] and town_square:['coordinates']
+    expect(npc2_tavern._traits.has('coordinates')).to.be.true;
+    expect(npc2_tavern._traits.has('size')).to.be.true;
+    expect(npc2_tavern.get_trait('coordinates')).to.equal('50,30');
+    expect(npc2_tavern.get_trait('size')).to.equal('large');  // Inherited from prototype
+
+    expect(npc2_square._traits.has('coordinates')).to.be.true;
+    expect(npc2_square.get_trait('coordinates')).to.equal('100,100');
+    expect(npc2_square._traits.has('size')).to.be.false;  // Not requested
+
+    // Both NPCs' beliefs are separate instances
+    expect(npc1_tavern).to.not.equal(npc2_tavern);
+    expect(npc1_square).to.not.equal(npc2_square);
+
+    // Verify archetypes were copied from world beliefs (which inherit from prototypes)
+    const npc1_tavern_archetypes = [...npc1_tavern.get_archetypes()].map(a => a.label);
+    expect(npc1_tavern_archetypes).to.include('Location');
+
+    // Verify world beliefs still reference shared prototypes
+    expect(blacksmith_tavern._bases.has(tavern_proto)).to.be.true;
+    expect(town_square._bases.has(square_proto)).to.be.true;
   });
 
-  it.skip('merges prototype and custom learning', () => {
+  it('NPCs learn new traits about entities they already know from cultural knowledge', () => {
+    // Setup archetypes
     const archetypes = {
+      Thing: {
+        traits: {
+          '@label': null,
+          '@timestamp': null,
+          '@about': null,  // All beliefs can be "about" something
+        },
+      },
       ObjectPhysical: {
-        traits: { '@about': null, location: null },
+        bases: ['Thing'],
+        traits: {
+          location: null,
+        },
       },
       Location: {
         bases: ['ObjectPhysical'],
+        traits: {
+          coordinates: null,
+          size: null,
+          owner: null,
+        },
+      },
+      Actor: {
+        bases: ['ObjectPhysical'],
       },
       Mental: {
-        traits: { mind_states: null },
+        traits: {
+          mind: null,
+        },
+      },
+      Person: {
+        bases: ['Actor', 'Mental'],
+      },
+      CulturalKnowledge: {
+        bases: ['Thing'],
+        traits: {
+          size: null,
+          owner: null,
+          coordinates: null,  // Added so updated beliefs can have observed spatial traits
+        },
       },
     };
 
@@ -212,67 +353,111 @@ describe('Mind Trait', () => {
         type: 'Subject',
         mind: 'parent'
       },
+      '@label': 'string',
+      '@timestamp': 'number',
       location: 'Location',
-      mind_states: {
-        type: 'State',
-        container: Array,
-        min: 1
-      },
+      mind: 'Mind',
+      coordinates: 'string',
+      size: 'string',
+      owner: 'string',
     };
 
     DB.register(archetypes, traittypes);
 
+    // Create shared prototype
+    const tavern_proto = Belief.create_shared_from_template(['Location'], {
+      '@timestamp': 100,
+      '@label': 'TavernPrototype',
+      size: 'large'
+    });
+
+    // Create world entity
     const world_mind = new Mind(null, 'world');
-    const world_state = world_mind.create_state(1);
+    const world_state = world_mind.create_state(200);
 
-    const base_location = world_state.add_belief({ label: 'base_location', bases: ['Location'] });
-    const location1 = world_state.add_belief({
-      label: 'location1',
-      bases: ['Location'],
-      traits: { location: base_location }
-    });
-    const location2 = world_state.add_belief({
-      label: 'location2',
-      bases: ['Location'],
-      traits: { location: base_location }
-    });
-
-    // Prototype learns location1
-    DB.state_by_label.test_prototype = {
-      learn: {
-        location1: ['location']
-      }
-    };
-
-    // Custom adds location2
-    const entity = world_state.add_belief({
-      label: 'entity',
-      bases: ['Mental'],
+    const blacksmith_tavern = world_state.add_belief({
+      label: 'blacksmith_tavern',
+      bases: [tavern_proto],
       traits: {
-        mind: {
-          // TODO: Add prototype support - base: 'test_prototype'
-          location2: ['location']
-        }
+        coordinates: '50,30',
+        owner: 'blacksmith_guild'
       }
     });
 
-    const entity_mind = entity._traits.get('mind');
-    const states = [...entity_mind._states];
-    const state = states[0];
-    const beliefs = [...state.get_beliefs()];
+    world_state.lock();
 
-    // Should have both from prototype and custom (plus dereferenced base_location)
-    expect(beliefs.length).to.be.at.least(2);
+    // Create shared cultural knowledge (what villagers know about the tavern)
+    // NOTE: Uses CulturalKnowledge archetype (non-spatial), not Location (spatial)
+    // It's a template containing only the culturally known traits
+    const cultural_knowledge = Belief.create_shared_from_template(['CulturalKnowledge'], {
+      '@timestamp': 200,
+      '@label': 'CulturalKnowledge_Tavern',
+      size: 'large',  // Everyone knows it's large
+      owner: 'blacksmith_guild'  // Everyone knows who owns it
+      // NOTE: coordinates are NOT in cultural knowledge - must be observed
+    });
 
-    const loc1_belief = beliefs.find(b => b.get_about(state) === location1);
-    expect(loc1_belief).to.exist;
+    // Create NPC1 with initial cultural knowledge (manual setup, not via mind template)
+    const npc1_mind = new Mind(world_mind, 'npc1');
+    const npc1_state = npc1_mind.create_state(200, null, world_state, null);
 
-    const loc2_belief = beliefs.find(b => b.get_about(state) === location2);
-    expect(loc2_belief).to.exist;
+    // NPC1 starts with belief based on cultural knowledge
+    // This belief is ABOUT blacksmith_tavern and inherits cultural traits
+    const npc1_initial_belief = Belief.from_template(npc1_state, {
+      bases: [cultural_knowledge],
+      traits: {
+        '@about': blacksmith_tavern.subject  // What this belief is about
+      }
+    });
+    npc1_state.insert_beliefs(npc1_initial_belief);
+    npc1_state.lock();
 
-    // Verify base_location was dereferenced
-    const base_belief = beliefs.find(b => b.get_about(state) === base_location);
-    expect(base_belief).to.exist;
+    // Create NPC2 with same cultural knowledge
+    const npc2_mind = new Mind(world_mind, 'npc2');
+    const npc2_state = npc2_mind.create_state(200, null, world_state, null);
+
+    const npc2_initial_belief = Belief.from_template(npc2_state, {
+      bases: [cultural_knowledge],
+      traits: {
+        '@about': blacksmith_tavern.subject  // Same as NPC1
+      }
+    });
+    npc2_state.insert_beliefs(npc2_initial_belief);
+    npc2_state.lock();
+
+    // Verify both NPCs have cultural knowledge
+    expect(npc1_initial_belief.get_trait('size')).to.equal('large');
+    expect(npc1_initial_belief.get_trait('owner')).to.equal('blacksmith_guild');
+    expect(npc2_initial_belief.get_trait('size')).to.equal('large');
+    expect(npc2_initial_belief.get_trait('owner')).to.equal('blacksmith_guild');
+
+    // Both inherit from same shared cultural knowledge
+    expect(npc1_initial_belief._bases.has(cultural_knowledge)).to.be.true;
+    expect(npc2_initial_belief._bases.has(cultural_knowledge)).to.be.true;
+
+    // NOW: NPC1 visits the tavern and observes the coordinates (new information)
+    const npc1_state_after = npc1_state.branch_state(world_state);
+    const npc1_updated_belief = npc1_state_after.learn_about(blacksmith_tavern, ['coordinates']);
+
+    // Verify learn_about returned an updated belief
+    expect(npc1_updated_belief).to.exist;
+    expect(npc1_updated_belief).to.be.instanceOf(Belief);
+    expect(npc1_updated_belief).to.not.equal(npc1_initial_belief);  // New version
+
+    npc1_state_after.lock();
+
+    // Verify it has BOTH cultural knowledge AND newly observed trait
+    expect(npc1_updated_belief.get_trait('coordinates')).to.equal('50,30');  // NEW: observed
+    expect(npc1_updated_belief.get_trait('size')).to.equal('large');  // OLD: from culture
+    expect(npc1_updated_belief.get_trait('owner')).to.equal('blacksmith_guild');  // OLD: from culture
+
+    // Verify belief chain: updated → initial → cultural_knowledge
+    expect(npc1_updated_belief._bases.has(npc1_initial_belief)).to.be.true;
+    expect(npc1_initial_belief._bases.has(cultural_knowledge)).to.be.true;
+
+    // Verify NPC2 still has only cultural knowledge (didn't visit)
+    expect(npc2_initial_belief.get_trait('coordinates')).to.be.null;  // Hasn't learned this yet
+    expect(npc2_initial_belief.get_trait('size')).to.equal('large');  // Still has cultural knowledge
   });
 
   it('empty trait array learns nothing', () => {

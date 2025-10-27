@@ -31,20 +31,35 @@ export function createMindWithBeliefs(label, beliefs = {}, parent_mind = null) {
  */
 export function setupStandardArchetypes() {
   const traittypes = {
+    '@label': 'string',
+    '@timestamp': 'number',
     '@about': {
       type: 'Subject',
       mind: 'parent'
     },
-    '@timestamp': 'number',
     location: 'Location',
     mind: 'Mind',
     color: 'string',
+    // Semantic test traits
+    damage: 'number',
+    weight: 'number',
+    durability: 'number',
+    sharpness: 'number',
+    bonus: 'number',
+    value: 'number',
   };
 
   const archetypes = {
-    ObjectPhysical: {
+    Thing: {
       traits: {
+        '@label': null,
+        '@timestamp': null,
         '@about': null,
+      },
+    },
+    ObjectPhysical: {
+      bases: ['Thing'],
+      traits: {
         location: null,
         color: null,
       },
@@ -71,6 +86,34 @@ export function setupStandardArchetypes() {
     Person: {
       bases: ['Actor', 'Mental'],
     },
+    // Semantic archetypes for testing shared beliefs
+    MeleeWeapon: {
+      bases: ['ObjectPhysical'],
+      traits: {
+        damage: null,
+        sharpness: null,
+        weight: null,
+      },
+    },
+    Tool: {
+      bases: ['ObjectPhysical'],
+      traits: {
+        durability: null,
+        weight: null,
+      },
+    },
+    Item: {
+      bases: ['ObjectPhysical'],
+      traits: {
+        value: null,
+      },
+    },
+    Effect: {
+      bases: ['Thing'],  // Non-physical, just temporal
+      traits: {
+        bonus: null,
+      },
+    },
   };
 
   DB.register(archetypes, traittypes);
@@ -81,6 +124,8 @@ export function setupStandardArchetypes() {
  */
 export function setupMinimalArchetypes() {
   const traittypes = {
+    '@label': 'string',
+    '@timestamp': 'number',
     '@about': {
       type: 'Subject',
       mind: 'parent'
@@ -90,9 +135,16 @@ export function setupMinimalArchetypes() {
   };
 
   const archetypes = {
-    ObjectPhysical: {
+    Thing: {
       traits: {
+        '@label': null,
+        '@timestamp': null,
         '@about': null,
+      },
+    },
+    ObjectPhysical: {
+      bases: ['Thing'],
+      traits: {
         location: null,
         color: null,
       },

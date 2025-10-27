@@ -494,4 +494,244 @@ describe('Belief', () => {
       expect(hammer.get_trait('nonexistent')).to.be.null;
     });
   });
+
+  describe('Shared Belief Resolution', () => {
+    it('inherits traits from shared belief prototype', () => {
+      // Create shared belief "GenericSword" with damage: 10, weight: 5
+      const generic_sword = Belief.create_shared_from_template(['MeleeWeapon'], {
+        '@timestamp': 100,
+        '@label': 'GenericSword',
+        damage: 10,
+        weight: 5
+      });
+
+      expect(generic_sword.in_mind).to.be.null;
+      expect(generic_sword.origin_state).to.be.null;
+
+      // Create regular belief inheriting from GenericSword
+      const mind = new Mind(null, 'player');
+      const state = mind.create_state(200);
+
+      const player_sword = Belief.from_template(state, {
+        traits: {
+          '@label': 'player_sword'
+        },
+        bases: [generic_sword]
+      });
+
+      // Should inherit traits from shared belief
+      expect(player_sword.get_trait('damage')).to.equal(10);
+      expect(player_sword.get_trait('weight')).to.equal(5);
+
+      // Can override inherited traits
+      player_sword.add_trait('damage', 15);
+      expect(player_sword.get_trait('damage')).to.equal(15);
+      expect(player_sword.get_trait('weight')).to.equal(5); // Still inherited
+    });
+
+    it('multiple beliefs reference same shared subject', () => {
+      // Create shared belief "StandardSword" with damage: 10
+      const standard_sword = Belief.create_shared_from_template(['MeleeWeapon'], {
+        '@timestamp': 100,
+        '@label': 'StandardSword',
+        damage: 10,
+        weight: 3
+      });
+
+      // Create two different minds with beliefs inheriting from same shared belief
+      const mind1 = new Mind(null, 'player1');
+      const state1 = mind1.create_state(200);
+
+      const sword_1 = Belief.from_template(state1, {
+        traits: {
+          '@label': 'sword_1',
+          sharpness: 7
+        },
+        bases: [standard_sword]
+      });
+
+      const mind2 = new Mind(null, 'player2');
+      const state2 = mind2.create_state(200);
+
+      const sword_2 = Belief.from_template(state2, {
+        traits: {
+          '@label': 'sword_2',
+          sharpness: 9
+        },
+        bases: [standard_sword]
+      });
+
+      // Both should inherit from same shared belief
+      expect(sword_1.get_trait('damage')).to.equal(10);
+      expect(sword_2.get_trait('damage')).to.equal(10);
+      expect(sword_1.get_trait('weight')).to.equal(3);
+      expect(sword_2.get_trait('weight')).to.equal(3);
+
+      // Each has its own sharpness value (overrides shared belief's implicit null)
+      expect(sword_1.get_trait('sharpness')).to.equal(7);
+      expect(sword_2.get_trait('sharpness')).to.equal(9);
+
+      // Both reference the same shared belief in their bases
+      expect(sword_1._bases.has(standard_sword)).to.be.true;
+      expect(sword_2._bases.has(standard_sword)).to.be.true;
+    });
+
+    it('resolves correct version at different timestamps', () => {
+      // Create shared belief v1 at timestamp 100
+      const seasonal_v1 = Belief.create_shared_from_template(['Effect'], {
+        '@timestamp': 100,
+        '@label': 'SeasonalBonus',
+        bonus: 5
+      });
+
+      // Create shared belief v2 at timestamp 200 (newer version)
+      const seasonal_v2 = new Belief(null, seasonal_v1.subject, [seasonal_v1]);
+      seasonal_v2.add_trait('@timestamp', 200);
+      seasonal_v2.add_trait('bonus', 10);
+
+      // Query at timestamp 150 -> should find v1
+      const at_150 = [...seasonal_v1.subject.beliefs_valid_at(150)];
+      expect(at_150).to.have.lengthOf(1);
+      expect(at_150[0].get_trait('bonus')).to.equal(5);
+
+      // Query at timestamp 250 -> should find v2
+      const at_250 = [...seasonal_v1.subject.beliefs_valid_at(250)];
+      expect(at_250).to.have.lengthOf(1);
+      expect(at_250[0].get_trait('bonus')).to.equal(10);
+
+      // Query at timestamp 50 (before v1) -> should find nothing
+      const at_50 = [...seasonal_v1.subject.beliefs_valid_at(50)];
+      expect(at_50).to.have.lengthOf(0);
+    });
+
+    it('resolves traits through shared belief chain', () => {
+      // Create shared belief chain: Weapon (base damage) → Sword (adds sharpness)
+      const weapon = Belief.create_shared_from_template(['MeleeWeapon'], {
+        '@timestamp': 100,
+        '@label': 'Weapon',
+        damage: 5,
+        weight: 2
+      });
+
+      const sword = Belief.create_shared_from_template([weapon], {
+        '@timestamp': 100,
+        '@label': 'Sword',
+        sharpness: 8
+      });
+
+      // Create regular belief inheriting from Sword
+      const mind = new Mind(null, 'player');
+      const state = mind.create_state(200);
+
+      const magic_sword = Belief.from_template(state, {
+        traits: {
+          '@label': 'magic_sword',
+          weight: 1  // Override weight to be lighter
+        },
+        bases: [sword]
+      });
+
+      // Should resolve traits through entire chain
+      expect(magic_sword.get_trait('weight')).to.equal(1);       // Own trait (overridden)
+      expect(magic_sword.get_trait('sharpness')).to.equal(8);    // From Sword
+      expect(magic_sword.get_trait('damage')).to.equal(5);       // From Weapon
+
+      // Verify the chain structure
+      expect(magic_sword._bases.has(sword)).to.be.true;
+      expect(sword._bases.has(weapon)).to.be.true;
+    });
+
+    it('inherits from shared belief through regular belief chain', () => {
+      // Create shared belief "Tool" with durability
+      const tool = Belief.create_shared_from_template(['Tool'], {
+        '@timestamp': 100,
+        '@label': 'GenericTool',
+        durability: 100
+      });
+
+      const mind = new Mind(null, 'player');
+      const state = mind.create_state(200);
+
+      // Create regular belief inheriting from shared belief
+      const hammer_v1 = Belief.from_template(state, {
+        traits: {
+          '@label': 'hammer',
+          weight: 10
+        },
+        bases: [tool]
+      });
+
+      // Create version 2 inheriting from v1
+      const hammer_v2 = Belief.from_template(state, {
+        bases: [hammer_v1],
+        traits: {
+          weight: 12
+        }
+      });
+
+      // v2 should inherit durability from shared belief through v1
+      expect(hammer_v2.get_trait('weight')).to.equal(12);       // Own trait
+      expect(hammer_v2.get_trait('durability')).to.equal(100);  // From shared Tool via hammer_v1
+
+      // Verify chain: hammer_v2 → hammer_v1 → Tool (shared)
+      expect(hammer_v2._bases.has(hammer_v1)).to.be.true;
+      expect(hammer_v1._bases.has(tool)).to.be.true;
+      expect(tool.in_mind).to.be.null;
+    });
+
+    it('get_belief_by_subject falls back to shared belief', () => {
+      // Create shared belief for a subject
+      const default_item = Belief.create_shared_from_template(['Item'], {
+        '@timestamp': 100,
+        '@label': 'default_item',
+        value: 50
+      });
+
+      // Create state in mind (no belief for default_item in this mind)
+      const mind = new Mind(null, 'player');
+      const state = mind.create_state(150);
+
+      // get_belief_by_subject should find the shared belief as fallback
+      const found = state.get_belief_by_subject(default_item.subject);
+
+      expect(found).to.not.be.null;
+      expect(found).to.equal(default_item);
+      expect(found.in_mind).to.be.null;  // Confirms it's the shared belief
+      expect(found.get_trait('value')).to.equal(50);
+    });
+
+    it('shared beliefs not registered in belief_by_mind', () => {
+      // Create shared belief
+      const prototype = Belief.create_shared_from_template(['Item'], {
+        '@timestamp': 100,
+        '@label': 'prototype_1',
+        value: 42
+      });
+
+      // Shared belief should be in belief_by_subject
+      const beliefs_by_subject = DB.get_beliefs_by_subject(prototype.subject);
+      expect(beliefs_by_subject).to.not.be.undefined;
+      expect(beliefs_by_subject.has(prototype)).to.be.true;
+
+      // Shared belief should NOT be in belief_by_mind (no mind to index under)
+      // We can't directly check belief_by_mind, but we can verify it has null mind
+      expect(prototype.in_mind).to.be.null;
+
+      // Create regular belief in a mind
+      const mind = new Mind(null, 'player');
+      const state = mind.create_state(200);
+      const regular_belief = Belief.from_template(state, {
+        traits: {
+          '@label': 'regular_item'
+        },
+        bases: ['Thing']
+      });
+
+      // Regular belief SHOULD be in belief_by_mind
+      const beliefs_in_mind = DB.get_beliefs_by_mind(mind);
+      expect(beliefs_in_mind).to.not.be.undefined;
+      expect(beliefs_in_mind.has(regular_belief)).to.be.true;
+      expect(regular_belief.in_mind).to.equal(mind);
+    });
+  });
 });

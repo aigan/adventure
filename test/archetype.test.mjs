@@ -19,8 +19,8 @@ describe('Archetype', () => {
       });
 
       const inspected = workshop.to_inspect_view(state);
-      // Location inherits from ObjectPhysical, so we get both
-      expect(inspected.archetypes).to.deep.equal(['Location', 'ObjectPhysical']);
+      // Location inherits from ObjectPhysical, which inherits from Thing
+      expect(inspected.archetypes).to.deep.equal(['Location', 'ObjectPhysical', 'Thing']);
     });
 
     it('archetype with base inherits traits from parent', () => {
@@ -48,9 +48,9 @@ describe('Archetype', () => {
       });
 
       const inspected = player.to_inspect_view(state);
-      expect(inspected.archetypes).to.deep.equal(['Person', 'Actor', 'Mental', 'ObjectPhysical']);
+      expect(inspected.archetypes).to.deep.equal(['Person', 'Actor', 'Mental', 'ObjectPhysical', 'Thing']);
 
-      // Person → Actor → ObjectPhysical (has location, color)
+      // Person → Actor → ObjectPhysical → Thing (has location, color)
       // Person → Mental (has mind)
       expect(player.can_have_trait('location')).to.be.true;
       expect(player.can_have_trait('mind')).to.be.true;

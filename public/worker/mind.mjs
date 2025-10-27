@@ -362,6 +362,10 @@ export class Mind {
       if (!belief) {
         throw new Error(`Cannot learn about '${label}': belief not found`)
       }
+      // Assert belief is in ground_state's mind, not a shared belief
+      assert(belief.in_mind === ground_state.in_mind,
+        `Cannot learn about belief '${label}': must be in ground_state's mind (not shared belief)`,
+        {belief_in_mind: belief.in_mind?.label ?? null, ground_state_mind: ground_state.in_mind?.label ?? null})
       if (trait_names.length > 0) {
         state.learn_about(belief, trait_names)
       }
