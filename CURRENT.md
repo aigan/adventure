@@ -22,12 +22,6 @@ None - ready for next task
   - No code should directly access Sets/Maps except in their owning class
   - All access must go through getter methods with proper indexed lookups
   - Example: `Mind._states` (private), access via `mind.get_states_by_ground_state(state)`
-- [ ] **Traittype delegation pattern** - Move type-specific resolution logic to owning classes ([plan](docs/plans/traittype-delegation.md))
-  - Add Mind.resolve_trait_value_from_template() static method
-  - Update Traittype to delegate to type classes
-  - Rename _resolver to _compiled_resolver
-  - Remove Mind-specific conditionals from Traittype
-  - Follows toJSON/from_json pattern: each class owns its logic
 - [ ] **Clarify shared belief architecture** - Implement template minds for shared cultural/template beliefs ([plan](docs/plans/shared-belief-architecture.md))
   - Add parent mind tracking to Mind class
   - Create template mind pattern (sibling to NPC minds under parent)
@@ -51,8 +45,13 @@ When working on features:
 2. **During**: Track progress with checkboxes in the plan file
 3. **Complete**: Mark plan complete, update CURRENT.md to next plan
 4. **Changelog**: Add BRIEF summary to CHANGELOG.md when feature is fully complete (for multi-phase work, wait until all phases done)
-   - Only include information valuable for updating old unimplemented plans
-   - Focus on WHAT changed, not HOW it was done
-   - Omit implementation details, file names, test counts
+   - **Focus on capabilities and APIs**: What can the system do now? What changed for users/implementers?
+   - **Skip refactoring details**: Don't mention code reorganization, delegation patterns, or internal structure changes
+   - **Skip implementation details**: No file names, test counts, or "how it works"
+   - **Examples**:
+     - ✅ "Mind constructor requires parent_mind parameter"
+     - ✅ "`get_prototypes()` returns full prototype chain"
+     - ❌ "Moved resolution logic to owning classes using delegation pattern"
+     - ❌ "Removed type-specific conditionals from Traittype infrastructure"
 
 See existing plans in `docs/plans/` for format examples.

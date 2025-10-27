@@ -24,6 +24,7 @@ import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
+import { Traittype } from './traittype.mjs'
 import { assert } from '../lib/debug.mjs'
 
 /**
@@ -262,6 +263,41 @@ export class Mind {
     }
 
     return mind
+  }
+
+  /**
+   * Resolve trait value from template data (delegation pattern)
+   * Called by Traittype to handle Mind-specific template resolution
+   * @param {Traittype} traittype - Traittype definition with metadata
+   * @param {Belief} belief - Belief being constructed
+   * @param {*} data - Raw template data or Mind instance
+   * @returns {Mind|*} Resolved Mind instance or data as-is
+   */
+  static resolve_trait_value_from_template(traittype, belief, data) {
+    assert(belief.origin_state instanceof State, "belief must have origin_state", belief)
+    const creator_state = /** @type {State} */ (belief.origin_state)
+
+    // Detect plain object Mind template (learn spec)
+    // Plain object: has properties but no _type field and no _states Set
+    if (data &&
+        typeof data === 'object' &&
+        !data._type &&
+        !(data._states instanceof Set)) {
+      // It's a learn spec - call create_from_template
+      assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
+      return Mind.create_from_template(creator_state, data, belief.subject ?? null)
+    }
+
+    // Detect explicit Mind template with _type field
+    if (data?._type === 'Mind') {
+      assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
+      // Strip _type from template before passing to create_from_template
+      const {_type, ...traits} = data
+      return Mind.create_from_template(creator_state, traits, belief.subject)
+    }
+
+    // Not a template - return as-is (Mind instance, null, undefined, etc.)
+    return data
   }
 
   /**

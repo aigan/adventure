@@ -345,7 +345,7 @@ describe('Save/Load functionality', () => {
         label: 'room2',
         bases: ['Location'],
         traits: {
-          location: room1,
+          location: 'room1',
         },
       });
 
@@ -354,7 +354,7 @@ describe('Save/Load functionality', () => {
       const room1_v2 = Belief.from_template(state, {
         bases: [room1],
         traits: {
-          location: room2,
+          location: 'room2',
         },
       });
       state = state.tick({ replace: [room1_v2] });

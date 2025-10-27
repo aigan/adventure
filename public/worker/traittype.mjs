@@ -63,6 +63,25 @@ export class Traittype {
     'boolean': Boolean,
   }
 
+  /** @type {Record<string, Function>} */
+  static type_class_by_name = {
+    'Mind': Mind,
+    'State': State,
+    'Belief': Belief,
+    'Subject': Subject
+  }
+
+  /**
+   * Resolve trait value from template data
+   * NOTE: This method is constructed during initialization.
+   * For type classes (Mind, State, etc.), delegates to Class.resolve_trait_value_from_template().
+   * For other types, uses a compiled resolver built from metadata.
+   * @param {Belief} belief - Belief being constructed
+   * @param {*} data - Raw data to resolve
+   * @returns {*}
+   */
+  // resolve_trait_value_from_template - assigned in constructor
+
   /**
    * @param {string} label
    * @param {string|TraitTypeSchema} def
@@ -88,15 +107,49 @@ export class Traittype {
       }
     }
 
-    // Build resolver function once during construction
-    this._resolver = this._build_resolver()
+    // Construct template resolver once during initialization
+    // This method is built once here and reused for all template resolutions
+    this.resolve_trait_value_from_template = this._build_trait_value_from_template_resolver()
   }
 
   /**
-   * Build the resolver function based on container type
+   * Build resolver function for converting template data to trait values
+   * Handles type class delegation and container/constraint resolution
    * @returns {Function}
    */
-  _build_resolver() {
+  _build_trait_value_from_template_resolver() {
+    // Build single-item resolver based on data_type
+    let item_resolver;
+
+    // Type class (Mind, State, Belief, Subject)
+    const type_class = /** @type {any} */ (Traittype.type_class_by_name[this.data_type] ?? null)
+    if (type_class?.resolve_trait_value_from_template) {
+      item_resolver = (/** @type {Belief} */ belief, /** @type {any} */ data) =>
+        type_class.resolve_trait_value_from_template(this, belief, data)
+    }
+    // Literal type (string, number, boolean)
+    else if (Traittype.literal_type_map[this.data_type]) {
+      const expected_type = this.data_type
+      item_resolver = (/** @type {Belief} */ belief, /** @type {any} */ data) => {
+        if (typeof data === expected_type) return data
+        throw new Error(`Expected ${expected_type} for trait '${this.label}', got ${typeof data}`)
+      }
+    }
+    // Archetype or other - check archetype at runtime (lightweight map lookup)
+    else {
+      item_resolver = (/** @type {Belief} */ belief, /** @type {any} */ data) => {
+        // Runtime archetype lookup (handles registration order and late additions)
+        const archetype = DB.get_archetype_by_label(this.data_type)
+        if (archetype) {
+          return Archetype.resolve_trait_value_from_template(this, belief, data)
+        }
+        // Fallback for unrecognized types - pass through as-is
+        // Caller is responsible for passing correct type
+        return data
+      }
+    }
+
+    // Wrap in array container handler if needed
     if (this.container === Array) {
       return (/** @type {Belief} */ belief, /** @type {any} */ data) => {
         if (!Array.isArray(data)) {
@@ -111,101 +164,13 @@ export class Traittype {
           throw new Error(`Array for trait '${this.label}' has length ${data.length}, max is ${this.constraints.max}`)
         }
 
-        // Resolve each item
-        return data.map(item => this._resolve_item(belief, item))
-      }
-    } else {
-      // No container - single value
-      return (/** @type {Belief} */ belief, /** @type {any} */ data) => this._resolve_item(belief, data)
-    }
-  }
-
-  /**
-   * Resolve a single item (not an array)
-   * @param {Belief} belief
-   * @param {*} data
-   * @returns {*}
-   */
-  _resolve_item(belief, data) {
-    const type_label = this.data_type
-    assert(belief.origin_state instanceof State, "belief must have origin_state", belief)
-    const creator_state = /** @type {State} */ (belief.origin_state)
-
-    // Check if it's an Archetype reference
-    if (DB.get_archetype_by_label(type_label)) {
-      const archetype = DB.get_archetype_by_label(type_label)
-
-      // Handle different input types
-      if (typeof data === 'string') {
-        const belief = creator_state.get_belief_by_label(data);
-        if (belief == null) {
-          throw new Error(`Belief not found for trait '${this.label}': ${data}`)
-        }
-
-        // Validate archetype
-        for (const a of belief.get_archetypes()) {
-          if (a === archetype) {
-            return belief.subject
-          }
-        }
-        throw new Error(`Belief '${data}' does not have required archetype '${type_label}' for trait '${this.label}'`)
-
-      } else if (data.subject) {
-        // Belief - validate and return subject
-        for (const a of data.get_archetypes()) {
-          if (a === archetype) {
-            return data.subject
-          }
-        }
-        throw new Error(`Belief does not have required archetype '${type_label}' for trait '${this.label}'`)
-
-      } else {
-        // Subject - already validated, return as-is
-        return data
+        // Resolve each item using the item resolver
+        return data.map(item => item_resolver(belief, item))
       }
     }
 
-    // Check if it's a literal type (string, number, boolean)
-    if (Traittype.literal_type_map[type_label]) {
-      if (typeof data === type_label) {
-        return data
-      }
-      throw new Error(`Expected ${type_label} for trait '${this.label}', got ${typeof data}`)
-    }
-
-    // For all other registered types (Mind, State, Subject, etc.), just return data as-is
-    // The caller is responsible for passing the correct type
-    return data
-  }
-
-  /**
-   * Resolve trait value from template data
-   * @param {Belief} belief - Belief being constructed
-   * @param {*} data - Raw data to resolve
-   * @returns {*}
-   */
-  resolve_trait_value_from_template(belief, data) {
-    assert(belief.origin_state instanceof State, "belief must have origin_state", belief);
-    const creator_state =  /** @type {State} */ (belief.origin_state)
-
-    // Check for Mind template (plain object learn spec)
-    if (this.data_type === 'Mind' &&
-        data &&
-        typeof data === 'object' &&
-        !data._type &&
-        !(data._states instanceof Set)) {
-      // It's a learn spec (plain object without Mind's _states Set) - call Mind.create_from_template
-      assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
-      return Mind.create_from_template(creator_state, data, belief.subject ?? null)
-    }
-
-    // Check for template construction with _type field (Mind only)
-    if (data?._type === 'Mind') {
-      assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
-      return Mind.create_from_template(creator_state, data, belief.subject)
-    }
-
-    return this._resolver(belief, data)
+    // No container - return single item resolver
+    return item_resolver
   }
 
   /**
@@ -223,15 +188,15 @@ export class Traittype {
   }
 
   /**
-   * Inspect trait value using this traittype's mind_scope
+   * Convert trait value to inspect view using this traittype's mind_scope
    * @param {State} state - State context for resolving sids
-   * @param {*} value - Value to inspect
+   * @param {*} value - Value to convert
    * @returns {*} Shallow representation with references
    */
-  inspect(state, value) {
+  to_inspect_view(state, value) {
     assert(state instanceof State, "should be State", state, value);
     if (Array.isArray(value)) {
-      return value.map(item => this.inspect(state, item))
+      return value.map(item => this.to_inspect_view(state, item))
     }
     if (typeof value === 'number' || typeof value === 'string') {
       return value

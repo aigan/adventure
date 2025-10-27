@@ -464,7 +464,7 @@ export class Belief {
         [...this._traits].map(([k, v]) => {
           const traittype = DB.get_traittype_by_label(k)
           assert(traittype instanceof Traittype, `Traittype '${k}' not found`)
-          return [k, traittype.inspect(state, v)]
+          return [k, traittype.to_inspect_view(state, v)]
         })
       )
     })

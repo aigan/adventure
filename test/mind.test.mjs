@@ -98,4 +98,133 @@ describe('Mind', () => {
       expect([...mind.states_valid_at(100)]).to.deep.equal([]);
     });
   });
+
+  describe('resolve_trait_value_from_template()', () => {
+    beforeEach(() => {
+      // Setup minimal archetypes for testing
+      DB.register({
+        Base: {traits: {name: null, '@about': null}}
+      }, {
+        mind: 'Mind',
+        name: 'string',
+        '@about': {type: 'Subject', mind: 'parent'}
+      });
+    });
+
+    it('should create Mind from plain object template (learn spec)', () => {
+      const world_mind = new Mind(null, 'world');
+      const world_state = world_mind.create_state(1);
+
+      // Create a belief that can be learned about
+      const workshop_belief = world_state.add_belief({
+        label: 'workshop',
+        bases: ['Base'],
+        traits: {name: 'Workshop'}
+      });
+
+      // Create NPC belief that will have a mind trait
+      const npc_belief = world_state.add_belief({
+        bases: ['Base']
+      });
+
+      // Plain object template (learn spec)
+      const template_data = {
+        workshop: ['name']
+      };
+
+      const mind_traittype = DB.get_traittype_by_label('mind');
+      const result = Mind.resolve_trait_value_from_template(mind_traittype, npc_belief, template_data);
+
+      world_state.lock();
+
+      expect(result).to.be.instanceof(Mind);
+      expect(result.parent).to.equal(world_mind);
+      expect(result._states.size).to.equal(1);
+    });
+
+    it('should create Mind from explicit template with _type field', () => {
+      const world_mind = new Mind(null, 'world');
+      const world_state = world_mind.create_state(1);
+
+      const workshop_belief = world_state.add_belief({
+        label: 'workshop',
+        bases: ['Base'],
+        traits: {name: 'Workshop'}
+      });
+
+      const npc_belief = world_state.add_belief({
+        bases: ['Base']
+      });
+
+      // Explicit template with _type
+      const template_data = {
+        _type: 'Mind',
+        workshop: ['name']
+      };
+
+      const mind_traittype = DB.get_traittype_by_label('mind');
+      const result = Mind.resolve_trait_value_from_template(mind_traittype, npc_belief, template_data);
+
+      world_state.lock();
+
+      expect(result).to.be.instanceof(Mind);
+      expect(result.parent).to.equal(world_mind);
+    });
+
+    it('should return Mind instance as-is (not a template)', () => {
+      const world_mind = new Mind(null, 'world');
+      const world_state = world_mind.create_state(1);
+
+      const npc_belief = world_state.add_belief({
+        bases: ['Base']
+      });
+      world_state.lock();
+
+      const existing_mind = new Mind(world_mind, 'existing');
+
+      const mind_traittype = DB.get_traittype_by_label('mind');
+      const result = Mind.resolve_trait_value_from_template(mind_traittype, npc_belief, existing_mind);
+
+      expect(result).to.equal(existing_mind);
+    });
+
+    it('should return null as-is', () => {
+      const world_mind = new Mind(null, 'world');
+      const world_state = world_mind.create_state(1);
+
+      const npc_belief = world_state.add_belief({
+        bases: ['Base']
+      });
+      world_state.lock();
+
+      const mind_traittype = DB.get_traittype_by_label('mind');
+      const result = Mind.resolve_trait_value_from_template(mind_traittype, npc_belief, null);
+
+      expect(result).to.be.null;
+    });
+
+    it('should return undefined as-is', () => {
+      const world_mind = new Mind(null, 'world');
+      const world_state = world_mind.create_state(1);
+
+      const npc_belief = world_state.add_belief({
+        bases: ['Base']
+      });
+      world_state.lock();
+
+      const mind_traittype = DB.get_traittype_by_label('mind');
+      const result = Mind.resolve_trait_value_from_template(mind_traittype, npc_belief, undefined);
+
+      expect(result).to.be.undefined;
+    });
+
+    it('should throw if belief has no origin_state', () => {
+      const belief = new Belief(null);
+      const mind_traittype = DB.get_traittype_by_label('mind');
+
+      expect(() => {
+        Mind.resolve_trait_value_from_template(mind_traittype, belief, {workshop: []});
+      }).to.throw('belief must have origin_state');
+    });
+  });
 });

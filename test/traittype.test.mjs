@@ -25,6 +25,15 @@ describe('Traittype', () => {
         container: Array,
         min: 2,
         max: 5
+      },
+      minds_array: {
+        type: 'Mind',
+        container: Array,
+        min: 1
+      },
+      '@about': {
+        type: 'Subject',
+        mind: 'parent'
       }
     };
 
@@ -33,12 +42,14 @@ describe('Traittype', () => {
         traits: {
           location: null,
           color: null,
+          '@about': null,
         },
       },
       Mental: {
         traits: {
           mind_states: null,
           states_array: null,
+          minds_array: null,
         },
       },
       Location: {
@@ -214,6 +225,59 @@ describe('Traittype', () => {
       expect(Array.isArray(tags)).to.be.true;
       expect(tags).to.have.lengthOf(0);
     });
+
+    it('resolves array of Minds from templates', () => {
+      // Setup world with beliefs to learn about
+      const world_mind = new Mind(null, 'world');
+      const world_state = world_mind.create_state(1);
+
+      const workshop = world_state.add_belief({
+        label: 'workshop',
+        bases: ['Location'],
+        traits: { color: 'brown' }
+      });
+
+      const main_area = world_state.add_belief({
+        label: 'main_area',
+        bases: ['Location'],
+        traits: { color: 'green' }
+      });
+
+      world_state.lock();
+
+      // Create belief with array of Mind templates
+      const npc = Belief.from_template(world_state, {
+        traits: {
+          '@label': 'npc',
+          minds_array: [
+            { workshop: ['color'] },  // Mind template 1
+            { main_area: ['color'] }  // Mind template 2
+          ]
+        },
+        bases: ['Mental']
+      });
+
+      const minds = npc._traits.get('minds_array');
+      expect(Array.isArray(minds)).to.be.true;
+      expect(minds).to.have.lengthOf(2);
+      expect(minds[0]).to.be.instanceof(Mind);
+      expect(minds[1]).to.be.instanceof(Mind);
+      expect(minds[0].parent).to.equal(world_mind);
+      expect(minds[1].parent).to.equal(world_mind);
+
+      // Verify each mind has learned the specified traits
+      const mind0_states = [...minds[0]._states];
+      expect(mind0_states).to.have.lengthOf(1);
+      const mind0_beliefs = [...mind0_states[0].get_beliefs()];
+      expect(mind0_beliefs).to.have.lengthOf(1);
+      expect(mind0_beliefs[0].get_trait('color')).to.equal('brown');
+
+      const mind1_states = [...minds[1]._states];
+      expect(mind1_states).to.have.lengthOf(1);
+      const mind1_beliefs = [...mind1_states[0].get_beliefs()];
+      expect(mind1_beliefs).to.have.lengthOf(1);
+      expect(mind1_beliefs[0].get_trait('color')).to.equal('green');
+    });
   });
 
   describe('Serialization with arrays', () => {
@@ -256,8 +320,8 @@ describe('Traittype', () => {
       const state = mind.create_state(1);
       const traittype = DB._reflect().traittype_by_label['states_array'];
 
-      // Verify resolver function exists and is callable
-      expect(traittype._resolver).to.be.a('function');
+      // Verify resolver function exists and is callable (constructed during initialization)
+      expect(traittype.resolve_trait_value_from_template).to.be.a('function');
 
       const belief = Belief.from_template(state, {
         traits: {'@label': 'test'},
@@ -277,7 +341,7 @@ describe('Traittype', () => {
       expect(traittype.data_type).to.equal('string');
       expect(traittype.container).to.equal(Array);
       expect(traittype.constraints).to.deep.equal({ min: 2, max: 5 });
-      expect(traittype._resolver).to.be.a('function');
+      expect(traittype.resolve_trait_value_from_template).to.be.a('function');
     });
   });
 });

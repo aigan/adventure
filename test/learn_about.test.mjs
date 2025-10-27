@@ -237,7 +237,7 @@ describe('learn_about', () => {
     // TODO: This test is skipped because learn_about() now requires source_belief to be in ground_state.
     // Cross-NPC observation (learning about sibling mind's beliefs) is not currently supported.
     // The @about trait has mind_scope='parent', so it only resolves in ground_state.
-    // May revisit if cross-sibling mind references are needed in the future.
+    // Future: Cross-NPC communication will work via communication events in the world that NPCs observe and learn from.
     it.skip('learn_about is not transitive - about points to the belief, not what it\'s about', () => {
       const world_mind = new Mind(null, 'world');
       const world_mind_state = world_mind.create_state(1);

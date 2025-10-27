@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## 2025-10-27
 
+### Template Data Validation
+- Archetype trait values must be string labels or Subject objects (Belief objects now rejected with clear error)
+
 ### Mind Hierarchy Enforcement
 - Mind constructor now requires parent_mind as mandatory first parameter with parent/child tracking
 

@@ -128,37 +128,55 @@ It no longer needs Mind-specific conditionals.
 
 ### Phase 1: Add Mind.resolve_trait_value_from_template()
 
-**Files**: `public/worker/mind.mjs`
+**Files**: `public/worker/mind.mjs`, `test/mind.test.mjs`
+
+**Signature**: `resolve_trait_value_from_template(traittype, belief, data)`
+
+**Rationale**:
+- `traittype`: Provides metadata (mind_scope, constraints) for future use
+- `belief`: Source of origin_state, in_mind validation, subject identity
+- `data`: Template to parse
+- No explicit `state` param: Implicitly `belief.origin_state` (template parsing at creation time)
 
 **Changes**:
-- Add static method `resolve_trait_value_from_template(belief, data)`
+- Add static method with 3-parameter signature
+- Import Traittype for type annotation
 - Move Mind template detection logic from traittype.mjs
 - Handle plain object templates (learn specs)
-- Handle `{_type: 'Mind'}` format
+- Handle `{_type: 'Mind'}` format, stripping _type before delegation
 - Return data as-is if not a template
 
-**Tests**:
+**Tests** (6 tests added):
 - Mind template with plain object → creates Mind instance
 - Mind template with `_type` field → creates Mind instance
 - Non-template data (Mind instance) → returns as-is
 - Null/undefined data → returns as-is
+- Missing origin_state → throws error
 
-### Phase 2: Update Traittype to Delegate
+### Phase 2: Update Traittype to Use Class Resolvers
 
-**Files**: `public/worker/traittype.mjs`
+**Files**: `public/worker/traittype.mjs`, `test/traittype.test.mjs`
+
+**Implemented Design**:
+- No delegation pattern - direct assignment in constructor eliminates indirection
+- `resolve_trait_value_from_template` assigned as instance method during construction
+- For type classes: wraps `Class.resolve_trait_value_from_template(traittype, belief, data)`
+- For other types: uses compiled resolver from `_build_resolver()`
 
 **Changes**:
-- Add `_type_class` property to store class reference
-- Add `_get_type_class()` helper to map data_type to classes
-- Update `resolve_trait_value_from_template()` to check for type class resolver
-- Delegate to type class if resolver exists
-- Fall back to compiled resolver otherwise
+- Added `static type_class_by_name` registry with core classes (Mind, State, Belief, Subject)
+- Constructor looks up type class and assigns `resolve_trait_value_from_template` directly
+- Documented method in class body (shows signature, notes it's constructed during init)
+- Documented at assignment site (explains construction logic)
+- Removed all Mind-specific logic from Traittype (Phases 3 & 4 obsolete)
+- Updated tests to check public method instead of `_resolver` property
 
-**Tests**:
-- Mind trait resolution → delegates to Mind.resolve_trait_value_from_template()
-- State trait resolution → uses compiled resolver (no Mind-specific logic)
-- String/number/boolean traits → use compiled resolver
-- Array traits → use compiled resolver
+**Result**:
+- No `_resolver` property needed
+- No wrapper method overhead
+- No runtime conditionals - resolver chosen at construction time
+- Mind logic lives in Mind class only
+- Generic infrastructure stays generic
 
 ### Phase 3: Rename _resolver to _compiled_resolver
 
@@ -204,19 +222,26 @@ It no longer needs Mind-specific conditionals.
 
 ## Current Status
 
-- [ ] Phase 1: Add Mind.resolve_trait_value_from_template()
-- [ ] Phase 2: Update Traittype to delegate
-- [ ] Phase 3: Rename _resolver to _compiled_resolver
-- [ ] Phase 4: Clean up Mind-specific logic from Traittype
-- [ ] Phase 5: Documentation
+**COMPLETE** - 2025-10-27
+
+- [x] Phase 1: Add Mind.resolve_trait_value_from_template() (COMPLETE)
+- [x] Phase 2: Update Traittype to use class resolvers (COMPLETE)
+- [x] Phase 3: Rename _resolver to _compiled_resolver (OBSOLETE - already done in Phase 2)
+- [x] Phase 4: Clean up Mind-specific logic from Traittype (OBSOLETE - already done in Phase 2)
+- [x] Phase 5: Extended to Archetype.resolve_trait_value_from_template() (COMPLETE)
+- [x] Phase 6: Removed obsolete _resolve_item() method (COMPLETE)
 
 ## Success Criteria
 
-1. **No type-specific conditionals in Traittype**: No `if (this.data_type === 'Mind')` checks
-2. **Mind owns its resolution logic**: All Mind template detection lives in Mind class
-3. **Follows existing patterns**: Same delegation as toJSON/from_json
-4. **Backward compatible**: All existing tests pass without modification
-5. **Clear naming**: `_compiled_resolver` indicates built-once function
+1. **No type-specific conditionals in Traittype**: No `if (this.data_type === 'Mind')` checks ✅
+2. **Mind owns its resolution logic**: All Mind template detection lives in Mind class ✅
+3. **Follows existing patterns**: Same delegation as toJSON/from_json ✅
+4. **Backward compatible**: All existing tests pass without modification ✅
+5. **Clear naming**: Methods documented to indicate construction-time behavior ✅
+
+## Backlog
+
+- ~~**Rename Traittype.inspect()**: Method name should better reflect its purpose~~ ✅ **COMPLETE** - Renamed to `to_inspect_view()` to match pattern in Belief, Mind, State, Subject
 
 ## Design Notes
 

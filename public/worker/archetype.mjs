@@ -62,4 +62,38 @@ export class Archetype {
       yield base
     }
   }
+
+  /**
+   * Resolve trait value from template data for archetype references
+   * @param {*} traittype - Traittype instance (for accessing label, constraints)
+   * @param {*} belief - Belief being constructed (provides origin_state for lookup)
+   * @param {*} data - Raw template data (string label, Subject, or invalid Belief)
+   * @returns {*} Resolved Subject
+   */
+  static resolve_trait_value_from_template(traittype, belief, data) {
+    // String input: lookup belief by label and return its subject
+    if (typeof data === 'string') {
+      const found_belief = belief.origin_state.get_belief_by_label(data)
+      if (found_belief == null) {
+        throw new Error(`Belief not found for trait '${traittype.label}': ${data}`)
+      }
+
+      // Validate archetype
+      const required_archetype = DB.get_archetype_by_label(traittype.data_type)
+      for (const a of found_belief.get_archetypes()) {
+        if (a === required_archetype) {
+          return found_belief.subject
+        }
+      }
+      throw new Error(`Belief '${data}' does not have required archetype '${traittype.data_type}' for trait '${traittype.label}'`)
+    }
+
+    // Belief input: reject - this is a programming error
+    if (data?.subject && typeof data.get_archetypes === 'function') {
+      throw new Error(`Template data for trait '${traittype.label}' should use belief labels (strings) or Subject objects, not Belief objects`)
+    }
+
+    // Subject input (or other): return as-is
+    return data
+  }
 }

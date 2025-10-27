@@ -85,4 +85,118 @@ describe('Archetype', () => {
       }).to.throw('NonExistentBase');
     });
   });
+
+  describe('resolve_trait_value_from_template', () => {
+    it('resolves string label to subject', () => {
+      const mind = new Mind(null, 'test');
+      const state = mind.create_state(1);
+      const workshop = state.add_belief({
+        label: 'workshop',
+        bases: ['Location'],
+        traits: { color: 'brown' }
+      });
+
+      const traittype = DB._reflect().traittype_by_label['location'];
+      const test_belief = Belief.from_template(state, {
+        traits: {'@label': 'test'},
+        bases: ['ObjectPhysical']
+      });
+
+      const result = Archetype.resolve_trait_value_from_template(traittype, test_belief, 'workshop');
+
+      expect(result).to.equal(workshop.subject);
+    });
+
+    it('returns Subject as-is', () => {
+      const mind = new Mind(null, 'test');
+      const state = mind.create_state(1);
+      const workshop = state.add_belief({
+        label: 'workshop',
+        bases: ['Location']
+      });
+
+      const traittype = DB._reflect().traittype_by_label['location'];
+      const test_belief = Belief.from_template(state, {
+        traits: {'@label': 'test'},
+        bases: ['ObjectPhysical']
+      });
+
+      const result = Archetype.resolve_trait_value_from_template(traittype, test_belief, workshop.subject);
+
+      expect(result).to.equal(workshop.subject);
+    });
+
+    it('throws error when Belief object is passed', () => {
+      const mind = new Mind(null, 'test');
+      const state = mind.create_state(1);
+      const workshop = state.add_belief({
+        label: 'workshop',
+        bases: ['Location']
+      });
+
+      const traittype = DB._reflect().traittype_by_label['location'];
+      const test_belief = Belief.from_template(state, {
+        traits: {'@label': 'test'},
+        bases: ['ObjectPhysical']
+      });
+
+      expect(() => {
+        Archetype.resolve_trait_value_from_template(traittype, test_belief, workshop);
+      }).to.throw(/should use belief labels.*or Subject objects.*not Belief objects/);
+    });
+
+    it('throws error when belief label not found', () => {
+      const mind = new Mind(null, 'test');
+      const state = mind.create_state(1);
+
+      const traittype = DB._reflect().traittype_by_label['location'];
+      const test_belief = Belief.from_template(state, {
+        traits: {'@label': 'test'},
+        bases: ['ObjectPhysical']
+      });
+
+      expect(() => {
+        Archetype.resolve_trait_value_from_template(traittype, test_belief, 'nonexistent');
+      }).to.throw(/Belief not found.*nonexistent/);
+    });
+
+    it('throws error when belief has wrong archetype', () => {
+      const mind = new Mind(null, 'test');
+      const state = mind.create_state(1);
+      const hammer = state.add_belief({
+        label: 'hammer',
+        bases: ['PortableObject']
+      });
+
+      const traittype = DB._reflect().traittype_by_label['location'];
+      const test_belief = Belief.from_template(state, {
+        traits: {'@label': 'test'},
+        bases: ['ObjectPhysical']
+      });
+
+      expect(() => {
+        Archetype.resolve_trait_value_from_template(traittype, test_belief, 'hammer');
+      }).to.throw(/does not have required archetype 'Location'/);
+    });
+
+    it('works in trait resolution during from_template', () => {
+      const mind = new Mind(null, 'test');
+      const state = mind.create_state(1);
+      const workshop = state.add_belief({
+        label: 'workshop',
+        bases: ['Location']
+      });
+
+      // This uses the traittype resolver which delegates to Archetype
+      const hammer = Belief.from_template(state, {
+        traits: {
+          '@label': 'hammer',
+          location: 'workshop'
+        },
+        bases: ['PortableObject']
+      });
+
+      expect(hammer.get_trait('location')).to.equal(workshop.subject);
+    });
+  });
 });
