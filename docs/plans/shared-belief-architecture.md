@@ -313,12 +313,18 @@ const country_v2 = Belief.create_shared(
 
 ## Current Status
 
-- [ ] Phase 1: Add get_timestamp() method to Belief
-- [ ] Phase 2: Add parent mind tracking
-- [ ] Phase 3: Update base resolution to include shared beliefs
-- [ ] Phase 4: Add shared belief creation helper
-- [ ] Phase 5: Update documentation
-- [ ] Phase 6: Integration with lazy version propagation
+- [x] Phase 1: Add get_timestamp() method to Belief
+- [x] Phase 2: Add parent mind tracking
+- [x] Phase 3: Update base resolution to include shared beliefs
+- [x] Phase 4: Add shared belief creation helper (create_shared_from_template exists)
+- [ ] Phase 5: Add @parent_mind scoping to shared beliefs (prevent cross-parent access)
+- [ ] Phase 6: Update documentation
+- [ ] Phase 7: Integration with lazy version propagation
+
+**Notes:**
+- Phases 1-4 implemented while plan was waiting
+- Still missing: @parent_mind trait for scoping (currently no enforcement of parent boundaries)
+- Base resolution works but doesn't filter by parent scope yet
 
 ## Success Criteria
 

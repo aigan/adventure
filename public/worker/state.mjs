@@ -283,10 +283,10 @@ export class State {
   }
 
   /**
-   * Get Belief for a Subject in this state (with shared belief support)
+   * Get Belief for a Subject in this state (state only, no shared beliefs)
    * Progressively builds cache as beliefs are accessed (locked states only)
    * @param {Subject} subject - Subject to find belief for
-   * @returns {Belief|null} The belief for this subject visible in this state, or shared belief if not found
+   * @returns {Belief|null} The belief for this subject visible in this state
    */
   get_belief_by_subject(subject) {
     // Check cache first (only on locked states)
@@ -300,17 +300,7 @@ export class State {
       for (const belief of this.get_beliefs()) {
         if (belief.subject === subject) return belief
       }
-
-      // Not found in state - check for shared beliefs
-      const shared_beliefs = [...subject.beliefs_valid_at(this.timestamp)].filter(
-        b => b.in_mind === null && b.origin_state === null
-      )
-
-      assert(shared_beliefs.length <= 1,
-        `Multiple shared beliefs found for subject at timestamp ${this.timestamp}`,
-        {sid: subject.sid, count: shared_beliefs.length, timestamp: this.timestamp})
-
-      return shared_beliefs[0] ?? null
+      return null
     }
 
     // Locked state - search and cache as we go (progressive indexing)
@@ -330,26 +320,13 @@ export class State {
       }
     }
 
-    // Not found in state - check for shared beliefs. TODO: cache
-    const shared_beliefs = [...subject.beliefs_valid_at(this.timestamp)].filter(
-      b => b.in_mind === null && b.origin_state === null
-    )
-
-    assert(shared_beliefs.length <= 1,
-      `Multiple shared beliefs found for subject at timestamp ${this.timestamp}`,
-      {sid: subject.sid, count: shared_beliefs.length, timestamp: this.timestamp})
-
-    const shared_belief = shared_beliefs[0] ?? null
-
-    // Cache the result (shared belief or null) to avoid re-scanning
-    this._subject_index.set(subject, shared_belief)
-    return shared_belief
+    return null
   }
 
   /**
    * Get belief by label (delegates to get_belief_by_subject)
    * @param {string} label - Label to look up
-   * @returns {Belief|null} The belief with this label in this state, or shared belief if not found
+   * @returns {Belief|null} The belief with this label in this state (state only, no shared beliefs)
    */
   get_belief_by_label(label) {
     const subject = DB.get_subject_by_label(label)
@@ -450,10 +427,11 @@ export class State {
   /**
    * Learn about a belief from the parent mind (ground_state), copying it into this state's mind
    *
-   * The source_belief must exist in this.ground_state (the parent universe).
-   * This enforces that you can only learn about beliefs observable from your parent context.
+   * Models observation: NPCs forming inner knowledge about entities in the outer world.
+   * The source_belief must exist in ground_state (observable entities with ownership).
+   * Shared beliefs (prototypes) cannot be learned about - they exist only for inheritance.
    *
-   * @param {Belief} source_belief - Belief from parent mind to learn about
+   * @param {Belief} source_belief - Belief from parent mind to learn about (must be in ground_state)
    * @param {string[]} [trait_names] - Traits to copy (empty = copy no traits, just archetypes)
    * @returns {Belief}
    */

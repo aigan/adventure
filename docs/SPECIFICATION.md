@@ -18,6 +18,40 @@
 
 ---
 
+# Conceptual Model
+
+## Idealist Philosophy
+
+The system follows an **idealist model**: reality exists as beliefs in minds, not as objective truth.
+
+**Nested Perspectives**:
+- **World mind** "dreams" reality - contains possibility distributions that collapse on observation
+- **NPC minds** model inner representations of the outer world (world mind)
+- **Nested recursively**: NPCs can model other NPCs' minds, who model other minds, etc.
+
+Each mind contains its own state sequence tracking what it believes over time.
+
+## Instances vs Prototypes
+
+**Instances** (beliefs in states):
+- Observable entities in the world: rocks, taverns, NPCs
+- Exist in specific states with ownership (`in_mind` is a Mind reference)
+- Can be learned about via `learn_about()` (copies traits from outer to inner mind)
+- Have `@about` linking inner beliefs to outer instances
+
+**Prototypes** (shared beliefs):
+- Inheritance templates: cultural knowledge, archetypes
+- Not observable - exist only for `bases` inheritance
+- No ownership (`in_mind = null`, `origin_state = null`)
+- Cannot be learned about - only inherited from
+- Tracked via `@timestamp` meta-trait instead of `origin_state`
+
+**Key distinction**: You observe and learn about instances. You inherit from prototypes.
+
+See IMPLEMENTATION.md "Core Philosophy" for implementation details.
+
+---
+
 # Data Structure
 
 ## Why This Structure?

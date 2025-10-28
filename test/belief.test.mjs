@@ -679,7 +679,7 @@ describe('Belief', () => {
       expect(tool.in_mind).to.be.null;
     });
 
-    it('get_belief_by_subject falls back to shared belief', () => {
+    it('get_belief_by_state_or_shared finds shared belief', () => {
       // Create shared belief for a subject
       const default_item = Belief.create_shared_from_template(['Item'], {
         '@timestamp': 100,
@@ -691,8 +691,8 @@ describe('Belief', () => {
       const mind = new Mind(null, 'player');
       const state = mind.create_state(150);
 
-      // get_belief_by_subject should find the shared belief as fallback
-      const found = state.get_belief_by_subject(default_item.subject);
+      // subject.get_belief_by_state_or_shared should find the shared belief
+      const found = default_item.subject.get_belief_by_state_or_shared(state);
 
       expect(found).to.not.be.null;
       expect(found).to.equal(default_item);

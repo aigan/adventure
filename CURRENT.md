@@ -2,7 +2,12 @@
 
 ## Active Plan
 
-None - ready for next task
+**Clarify shared belief architecture** - Implement template minds for shared cultural/template beliefs ([plan](docs/plans/shared-belief-architecture.md))
+
+Remaining phases:
+- [ ] Phase 5: Add @parent_mind scoping to shared beliefs (prevent cross-parent access)
+- [ ] Phase 6: Update documentation
+- [ ] Phase 7: Integration with lazy version propagation
 
 ## Recently Completed
 
@@ -16,14 +21,6 @@ None - ready for next task
   - Materialization on explicit version creation
   - Superposition handling for probability branches
   - Enables scaling to millions of NPCs inheriting cultural knowledge
-- [ ] **Clarify shared belief architecture** - Implement template minds for shared cultural/template beliefs ([plan](docs/plans/shared-belief-architecture.md))
-  - Add parent mind tracking to Mind class
-  - Create template mind pattern (sibling to NPC minds under parent)
-  - All beliefs MUST have `in_mind` and `origin_state` (no null values)
-  - Update base resolution to check parent's template mind
-  - Migrate existing shared beliefs to template minds
-  - Remove all code handling null mind/state cases
-  - Enables proper scoping: shared only among siblings of same parent
 - [ ] **Shared States** - Implement shared mind states for cultural knowledge templates
   - Mind templates define what to learn: `{tavern: ['location'], mayor: ['occupation']}`
   - Multiple NPCs can base their initial state on same template

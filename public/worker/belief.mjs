@@ -13,7 +13,7 @@
  * See docs/ALPHA-1.md for how beliefs are used in gameplay
  */
 
-import { log, assert } from '../lib/debug.mjs'
+import { assert } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
@@ -284,7 +284,11 @@ export class Belief {
 
   /**
    * Get prototype chain (both Archetypes and shared Beliefs with labels)
-   * Walks the bases chain breadth-first, yielding labeled prototypes
+   *
+   * Prototypes are inheritance templates: Archetypes (global) and shared Beliefs (cultural knowledge).
+   * Unlike observable beliefs in states, prototypes have no ownership (in_mind = null) and exist
+   * only for inheritance via bases. They cannot be learned about, only inherited from.
+   *
    * @param {Set<Belief|Archetype>} [seen]
    * @returns {Generator<{label: string, type: 'Archetype'|'Belief'}>}
    */
@@ -592,9 +596,17 @@ export class Belief {
 
     const resolved_bases = bases.map(base => {
       if (typeof base === 'string') {
-        const resolved = state.get_belief_by_label(base) ?? Archetype.get_by_label(base)
-        assert(resolved instanceof Belief || resolved instanceof Archetype, `Base '${base}' not found as belief label or archetype`, {base})
-        return /** @type {Belief|Archetype} */ (resolved)
+        // Try archetype first (lighter)
+        const archetype = Archetype.get_by_label(base)
+        if (archetype) return archetype
+
+        // Try belief (state or shared)
+        const subject = DB.get_subject_by_label(base)
+        const belief = subject?.get_belief_by_state_or_shared(state)
+        if (belief) return belief
+
+        // Not found
+        assert(false, `Base '${base}' not found as belief label or archetype`, {base})
       }
       return base
     })

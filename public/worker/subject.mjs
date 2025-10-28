@@ -32,6 +32,28 @@ export class Subject {
   }
 
   /**
+   * Get Belief for this Subject, checking state first then shared beliefs
+   * @param {State} state
+   * @returns {Belief|null}
+   */
+  get_belief_by_state_or_shared(state) {
+    // Try state first (private beliefs)
+    const belief = state.get_belief_by_subject(this)
+    if (belief) return belief
+
+    // Fall back to shared beliefs (prototypes)
+    const shared = [...this.beliefs_valid_at(state.timestamp)].filter(
+      b => b.in_mind === null && b.origin_state === null
+    )
+
+    assert(shared.length <= 1,
+      'Multiple shared beliefs found for subject at timestamp',
+      {sid: this.sid, timestamp: state.timestamp})
+
+    return shared[0] ?? null
+  }
+
+  /**
    * Serialize for JSON (backward compatible - returns sid)
    * @returns {number}
    */
