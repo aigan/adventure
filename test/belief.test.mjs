@@ -498,7 +498,7 @@ describe('Belief', () => {
   describe('Shared Belief Resolution', () => {
     it('inherits traits from shared belief prototype', () => {
       // Create shared belief "GenericSword" with damage: 10, weight: 5
-      const generic_sword = Belief.create_shared_from_template(['MeleeWeapon'], {
+      const generic_sword = Belief.create_shared_from_template(null, ['MeleeWeapon'], {
         '@timestamp': 100,
         '@label': 'GenericSword',
         damage: 10,
@@ -531,7 +531,7 @@ describe('Belief', () => {
 
     it('multiple beliefs reference same shared subject', () => {
       // Create shared belief "StandardSword" with damage: 10
-      const standard_sword = Belief.create_shared_from_template(['MeleeWeapon'], {
+      const standard_sword = Belief.create_shared_from_template(null, ['MeleeWeapon'], {
         '@timestamp': 100,
         '@label': 'StandardSword',
         damage: 10,
@@ -578,7 +578,7 @@ describe('Belief', () => {
 
     it('resolves correct version at different timestamps', () => {
       // Create shared belief v1 at timestamp 100
-      const seasonal_v1 = Belief.create_shared_from_template(['Effect'], {
+      const seasonal_v1 = Belief.create_shared_from_template(null, ['Effect'], {
         '@timestamp': 100,
         '@label': 'SeasonalBonus',
         bonus: 5
@@ -606,14 +606,14 @@ describe('Belief', () => {
 
     it('resolves traits through shared belief chain', () => {
       // Create shared belief chain: Weapon (base damage) → Sword (adds sharpness)
-      const weapon = Belief.create_shared_from_template(['MeleeWeapon'], {
+      const weapon = Belief.create_shared_from_template(null, ['MeleeWeapon'], {
         '@timestamp': 100,
         '@label': 'Weapon',
         damage: 5,
         weight: 2
       });
 
-      const sword = Belief.create_shared_from_template([weapon], {
+      const sword = Belief.create_shared_from_template(null, [weapon], {
         '@timestamp': 100,
         '@label': 'Sword',
         sharpness: 8
@@ -643,7 +643,7 @@ describe('Belief', () => {
 
     it('inherits from shared belief through regular belief chain', () => {
       // Create shared belief "Tool" with durability
-      const tool = Belief.create_shared_from_template(['Tool'], {
+      const tool = Belief.create_shared_from_template(null, ['Tool'], {
         '@timestamp': 100,
         '@label': 'GenericTool',
         durability: 100
@@ -681,7 +681,7 @@ describe('Belief', () => {
 
     it('get_belief_by_state_or_shared finds shared belief', () => {
       // Create shared belief for a subject
-      const default_item = Belief.create_shared_from_template(['Item'], {
+      const default_item = Belief.create_shared_from_template(null, ['Item'], {
         '@timestamp': 100,
         '@label': 'default_item',
         value: 50
@@ -702,7 +702,7 @@ describe('Belief', () => {
 
     it('shared beliefs not registered in belief_by_mind', () => {
       // Create shared belief
-      const prototype = Belief.create_shared_from_template(['Item'], {
+      const prototype = Belief.create_shared_from_template(null, ['Item'], {
         '@timestamp': 100,
         '@label': 'prototype_1',
         value: 42
@@ -732,6 +732,137 @@ describe('Belief', () => {
       expect(beliefs_in_mind).to.not.be.undefined;
       expect(beliefs_in_mind.has(regular_belief)).to.be.true;
       expect(regular_belief.in_mind).to.equal(mind);
+    });
+  });
+
+  describe('Shared Belief Scoping', () => {
+    it('shared belief scoped to parent mind is accessible from child minds', () => {
+      // Create parent mind with initial state
+      const world_mind = new Mind(null, 'world');
+      const world_state = world_mind.create_state(100);
+
+      // Create shared belief scoped to world_mind (use existing Thing archetype)
+      const cultural_knowledge = Belief.create_shared_from_template(world_mind, ['Thing'], {
+        '@timestamp': 100,
+        '@label': 'CityLore'
+      });
+
+      expect(cultural_knowledge.subject.ground_mind).to.equal(world_mind);
+
+      // Create child mind (NPC under world)
+      const npc_mind = new Mind(world_mind, 'npc1');
+      const npc_state = npc_mind.create_state(200, world_state);
+
+      // NPC should be able to access shared belief via from_template
+      const npc_belief = Belief.from_template(npc_state, {
+        bases: ['CityLore'],
+        traits: {
+          '@label': 'npc_knowledge'
+        }
+      });
+
+      expect(npc_belief._bases.has(cultural_knowledge)).to.be.true;
+    });
+
+    it('shared belief NOT accessible from different parent mind hierarchy', () => {
+      // Create first parent mind (world)
+      const world_mind = new Mind(null, 'world');
+      const world_state = world_mind.create_state(100);
+
+      // Create shared belief scoped to world_mind
+      const world_culture = Belief.create_shared_from_template(world_mind, ['Thing'], {
+        '@timestamp': 100,
+        '@label': 'WorldCulture'
+      });
+
+      // Create second parent mind (dream)
+      const dream_mind = new Mind(null, 'dream');
+      const dream_state = dream_mind.create_state(100);
+      const dream_child_mind = new Mind(dream_mind, 'dreamer');
+      const dream_child_state = dream_child_mind.create_state(200, dream_state);
+
+      // Dream hierarchy should NOT be able to access world's shared belief
+      expect(() => {
+        Belief.from_template(dream_child_state, {
+          bases: ['WorldCulture'],
+          traits: {'@label': 'dream_belief'}
+        });
+      }).to.throw(/Base 'WorldCulture' not found/);
+    });
+
+    it('multiple parents can create different shared beliefs with same subject label', () => {
+      // Create two parent minds with states
+      const world_mind = new Mind(null, 'world');
+      const world_parent_state = world_mind.create_state(100);
+      const dream_mind = new Mind(null, 'dream');
+      const dream_parent_state = dream_mind.create_state(100);
+
+      // Each creates shared belief (different labels since labels must be globally unique)
+      const world_tavern = Belief.create_shared_from_template(world_mind, ['Thing'], {
+        '@timestamp': 100,
+        '@label': 'WorldTavern'
+      });
+
+      const dream_tavern = Belief.create_shared_from_template(dream_mind, ['Thing'], {
+        '@timestamp': 100,
+        '@label': 'DreamTavern'
+      });
+
+      expect(world_tavern.subject.ground_mind).to.equal(world_mind);
+      expect(dream_tavern.subject.ground_mind).to.equal(dream_mind);
+      expect(world_tavern.subject).to.not.equal(dream_tavern.subject); // Different subjects
+
+      // World child sees world version
+      const world_child = new Mind(world_mind, 'world_npc');
+      const world_state = world_child.create_state(200, world_parent_state);
+      const world_belief = Belief.from_template(world_state, {
+        bases: ['WorldTavern'],
+        traits: {'@label': 'world_tavern_instance'}
+      });
+      expect(world_belief._bases.has(world_tavern)).to.be.true;
+
+      // Dream child sees dream version
+      const dream_child = new Mind(dream_mind, 'dreamer');
+      const dream_state = dream_child.create_state(200, dream_parent_state);
+      const dream_belief = Belief.from_template(dream_state, {
+        bases: ['DreamTavern'],
+        traits: {'@label': 'dream_tavern_instance'}
+      });
+      expect(dream_belief._bases.has(dream_tavern)).to.be.true;
+    });
+
+    it('global shared belief (ground_mind=null) accessible from any parent', () => {
+      // Create global shared belief (no scoping)
+      const generic_weapon = Belief.create_shared_from_template(null, ['Thing'], {
+        '@timestamp': 100,
+        '@label': 'GenericWeapon'
+      });
+
+      expect(generic_weapon.subject.ground_mind).to.be.null;
+
+      // Create two separate parent hierarchies
+      const world_mind = new Mind(null, 'world');
+      const world_parent_state = world_mind.create_state(100);
+      const world_npc = new Mind(world_mind, 'guard');
+      const world_state = world_npc.create_state(200, world_parent_state);
+
+      const dream_mind = new Mind(null, 'dream');
+      const dream_parent_state = dream_mind.create_state(100);
+      const dream_npc = new Mind(dream_mind, 'phantom');
+      const dream_state = dream_npc.create_state(200, dream_parent_state);
+
+      // Both should be able to access the global shared belief
+      const world_weapon = Belief.from_template(world_state, {
+        bases: ['GenericWeapon'],
+        traits: {'@label': 'guard_sword'}
+      });
+      expect(world_weapon._bases.has(generic_weapon)).to.be.true;
+
+      const dream_weapon = Belief.from_template(dream_state, {
+        bases: ['GenericWeapon'],
+        traits: {'@label': 'phantom_blade'}
+      });
+      expect(dream_weapon._bases.has(generic_weapon)).to.be.true;
     });
   });
 });

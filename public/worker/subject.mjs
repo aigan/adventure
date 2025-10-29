@@ -1,9 +1,11 @@
 import * as DB from './db.mjs'
 import { Belief } from './belief.mjs'
 import { assert } from '../lib/debug.mjs'
+import { next_id } from './id_sequence.mjs'
 
 /**
  * @typedef {import('./state.mjs').State} State
+ * @typedef {import('./mind.mjs').Mind} Mind
  */
 
 /**
@@ -12,10 +14,12 @@ import { assert } from '../lib/debug.mjs'
  */
 export class Subject {
   /**
-   * @param {number} sid - Subject identifier
+   * @param {Mind|null} ground_mind - Parent mind context (null for global subjects)
+   * @param {number|null} [sid] - Subject identifier (auto-generated if not provided)
    */
-  constructor(sid) {
-    this.sid = sid
+  constructor(ground_mind, sid = null) {
+    this.ground_mind = ground_mind
+    this.sid = sid ?? next_id()
   }
 
   /**
@@ -41,14 +45,17 @@ export class Subject {
     const belief = state.get_belief_by_subject(this)
     if (belief) return belief
 
-    // Fall back to shared beliefs (prototypes)
+    // Fall back to shared beliefs (prototypes) with scope filtering
+    const query_parent = state.in_mind.parent
     const shared = [...this.beliefs_valid_at(state.timestamp)].filter(
-      b => b.in_mind === null && b.origin_state === null
+      b => b.in_mind === null &&
+           b.origin_state === null &&
+           (b.subject.ground_mind === null || b.subject.ground_mind === query_parent)  // Global or matching parent
     )
 
     assert(shared.length <= 1,
       'Multiple shared beliefs found for subject at timestamp',
-      {sid: this.sid, timestamp: state.timestamp})
+      {sid: this.sid, timestamp: state.timestamp, parent: query_parent?._id})
 
     return shared[0] ?? null
   }

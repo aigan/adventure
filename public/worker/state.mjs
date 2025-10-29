@@ -385,7 +385,7 @@ export class State {
       }
 
       const new_belief = Belief.from(this, archetype_bases, {
-        '@about': DB.get_or_create_subject(source_belief.subject.sid),  // Shared canonical Subject
+        '@about': DB.get_or_create_subject(source_belief.subject.ground_mind, source_belief.subject.sid),  // Shared canonical Subject
         ...copied_traits
       })
 
@@ -540,7 +540,8 @@ export class State {
     // Resolve self reference
     let self = null
     if (data.self != null) {
-      self = DB.get_or_create_subject(data.self)
+      const ground_mind = mind.parent
+      self = DB.get_or_create_subject(ground_mind, data.self)
     }
 
     // Resolve insert/remove belief references

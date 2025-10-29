@@ -6,7 +6,7 @@
  * See .CONTEXT.md for instance-specific indexes (Mind, State classes).
  */
 
-import { reset_id_sequence } from './id_sequence.mjs'
+import { reset_id_sequence, next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import { Traittype } from './traittype.mjs'
 import { Subject } from './subject.mjs'
@@ -278,12 +278,14 @@ export function register_belief_by_subject(belief) {
 
 /**
  * Get or create the canonical Subject for a given SID
- * @param {number} sid - Subject ID
+ * @param {import('./mind.mjs').Mind|null} ground_mind - Parent mind context (null for global subjects)
+ * @param {number|null} [sid] - Subject ID (auto-generated if not provided)
  * @returns {Subject}
  */
-export function get_or_create_subject(sid) {
+export function get_or_create_subject(ground_mind, sid = null) {
+  sid ??= next_id()
   if (!subject_by_sid.has(sid)) {
-    const subject = new Subject(sid)
+    const subject = new Subject(ground_mind, sid)
     subject_by_sid.set(sid, subject)
     belief_by_subject.set(subject, new Set())
   }

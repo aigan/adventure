@@ -77,9 +77,10 @@ export class Belief {
 
     /** @type {Mind|null} */
     const mind = state?.in_mind ?? null
+    const ground_mind = mind?.parent ?? null
 
     /** @type {Set<Belief|Archetype>} */ this._bases = new Set(bases)
-    this.subject = subject ?? DB.get_or_create_subject(next_id())
+    this.subject = subject ?? DB.get_or_create_subject(ground_mind)
     this._id = next_id()
     /** @type {Mind|null} */
     this.in_mind = mind
@@ -507,7 +508,8 @@ export class Belief {
       if (traittype) {
         if (Archetype.get_by_label(traittype.data_type) || traittype.data_type === 'Subject') {
           // It's a Belief/Subject reference - get canonical Subject
-          return DB.get_or_create_subject(value)
+          const ground_mind = this.in_mind?.parent ?? null
+          return DB.get_or_create_subject(ground_mind, value)
         }
       }
       // Literal number
@@ -529,7 +531,8 @@ export class Belief {
     const belief = Object.create(Belief.prototype)
 
     belief._id = data._id
-    belief.subject = DB.get_or_create_subject(data.sid)
+    const ground_mind = mind?.parent ?? null
+    belief.subject = DB.get_or_create_subject(ground_mind, data.sid)
     belief.in_mind = mind
     belief.locked = false
 
@@ -611,7 +614,8 @@ export class Belief {
       return base
     })
 
-    const subject = sid ? DB.get_or_create_subject(sid) : null
+    const ground_mind = state.in_mind.parent
+    const subject = sid ? DB.get_or_create_subject(ground_mind, sid) : null
 
     const belief = new Belief(state, subject, resolved_bases)
 
@@ -650,12 +654,13 @@ export class Belief {
 
   /**
    * Create shared belief from template (limbo - no mind/state ownership)
+   * @param {import('./mind.mjs').Mind|null} parent_mind - Parent mind context for scoping
    * @param {Array<string|Belief|Archetype>} bases - Base archetypes/beliefs (can be strings)
    * @param {Object<string, any>} traits - Traits (including optional @timestamp and @label)
    * @param {((subject: Subject) => Belief|Archetype|null)|null} [decider] - Function to decide which belief to use for a subject
    * @returns {Belief}
    */
-  static create_shared_from_template(bases, traits, decider = null) {
+  static create_shared_from_template(parent_mind, bases, traits, decider = null) {
     // Resolve bases from strings
     const resolved_bases = bases.map(base => {
       if (typeof base === 'string') {
@@ -681,6 +686,9 @@ export class Belief {
 
     // Create belief with null ownership (limbo)
     const belief = new Belief(null, null, resolved_bases)
+
+    // Set ground_mind on auto-created subject for scoping
+    belief.subject.ground_mind = parent_mind
 
     // Register label if present
     const label = traits['@label']

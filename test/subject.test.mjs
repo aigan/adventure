@@ -82,7 +82,7 @@ describe('Subject', () => {
 
     it('should return empty iterable for non-existent subject', () => {
       const mind = new Mind(null, 'test');
-      const nonexistent_subject = DB.get_or_create_subject(999);
+      const nonexistent_subject = DB.get_or_create_subject(null, 999);  // Global subject for test
 
       expect([...nonexistent_subject.beliefs_valid_at(100)]).to.deep.equal([]);
     });

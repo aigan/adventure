@@ -76,12 +76,12 @@ const decider = (subject)=>{
 }
 
 // Create shared beliefs (before world mind/state)
-Cosmos.Belief.create_shared_from_template(['ObjectPhysical'], {
+Cosmos.Belief.create_shared_from_template(null, ['ObjectPhysical'], {
   '@timestamp': 1,
   '@label': 'Actor'
 }, decider);
 
-Cosmos.Belief.create_shared_from_template(['Actor', 'Mental'], {
+Cosmos.Belief.create_shared_from_template(null, ['Actor', 'Mental'], {
   '@timestamp': 1,
   '@label': 'Person'
 }, decider);

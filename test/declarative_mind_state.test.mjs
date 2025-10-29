@@ -172,13 +172,13 @@ describe('Mind Trait', () => {
     DB.register(archetypes, traittypes);
 
     // Create shared belief prototypes (templates for Location types)
-    const tavern_proto = Belief.create_shared_from_template(['Location'], {
+    const tavern_proto = Belief.create_shared_from_template(null, ['Location'], {
       '@timestamp': 100,
       '@label': 'TavernPrototype',
       size: 'large'  // Default size for taverns
     });
 
-    const square_proto = Belief.create_shared_from_template(['Location'], {
+    const square_proto = Belief.create_shared_from_template(null, ['Location'], {
       '@timestamp': 100,
       '@label': 'SquarePrototype',
       size: 'huge'  // Default size for squares
@@ -365,7 +365,7 @@ describe('Mind Trait', () => {
     DB.register(archetypes, traittypes);
 
     // Create shared prototype
-    const tavern_proto = Belief.create_shared_from_template(['Location'], {
+    const tavern_proto = Belief.create_shared_from_template(null, ['Location'], {
       '@timestamp': 100,
       '@label': 'TavernPrototype',
       size: 'large'
@@ -389,7 +389,7 @@ describe('Mind Trait', () => {
     // Create shared cultural knowledge (what villagers know about the tavern)
     // NOTE: Uses CulturalKnowledge archetype (non-spatial), not Location (spatial)
     // It's a template containing only the culturally known traits
-    const cultural_knowledge = Belief.create_shared_from_template(['CulturalKnowledge'], {
+    const cultural_knowledge = Belief.create_shared_from_template(null, ['CulturalKnowledge'], {
       '@timestamp': 200,
       '@label': 'CulturalKnowledge_Tavern',
       size: 'large',  // Everyone knows it's large
