@@ -43,7 +43,7 @@ describe('Subject.to_inspect_view()', () => {
     const workshop_knowledge = npc_state.learn_about(workshop, [])
 
     // The @about trait stores workshop.subject
-    const about_subject = workshop_knowledge.get_trait('@about')
+    const about_subject = workshop_knowledge.get_trait(npc_state, '@about')
     expect(about_subject).to.equal(workshop.subject)
 
     // When inspecting @about trait, traittype.inspect() will pass ground_state
@@ -94,7 +94,7 @@ describe('Subject.to_inspect_view()', () => {
       }
     })
 
-    const items = chest.get_trait('items')
+    const items = chest.get_trait(world_state, 'items')
 
     // Each subject in array should resolve
     const inspected_items = items.map(subject => subject.to_inspect_view(world_state))
@@ -128,7 +128,7 @@ describe('Subject.to_inspect_view()', () => {
     expect(hammer_knowledge.subject).to.not.equal(world_hammer.subject)
 
     // But it has @about pointing to world hammer's subject
-    expect(hammer_knowledge.get_trait('@about')).to.equal(world_hammer.subject)
+    expect(hammer_knowledge.get_trait(npc_state, '@about')).to.equal(world_hammer.subject)
 
     // When inspecting the learned belief's subject in NPC's state
     const inspected = hammer_knowledge.subject.to_inspect_view(npc_state)

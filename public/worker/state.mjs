@@ -378,7 +378,7 @@ export class State {
       /** @type {Record<string, any>} */
       const copied_traits = {}
       for (const name of trait_names) {
-        const value = source_belief.get_trait(name)
+        const value = source_belief.get_trait(source_state, name)
         if (value !== null) {
           copied_traits[name] = this._recursively_learn_trait_value(source_state, value)
         }
@@ -401,7 +401,7 @@ export class State {
       /** @type {Record<string, any>} */
       const new_traits = {}
       for (const name of trait_names) {
-        const value = source_belief.get_trait(name)
+        const value = source_belief.get_trait(source_state, name)
         if (value !== null) {
           new_traits[name] = this._recursively_learn_trait_value(source_state, value)
         }

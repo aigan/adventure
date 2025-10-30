@@ -31,6 +31,7 @@ import { assert } from '../lib/debug.mjs'
  * @typedef {import('./belief.mjs').BeliefJSON} BeliefJSON
  * @typedef {import('./state.mjs').StateJSON} StateJSON
  * @typedef {import('./subject.mjs').Subject} Subject
+ * @typedef {import('./archetype.mjs').Archetype} Archetype
  */
 
 /**
@@ -60,32 +61,12 @@ import { assert } from '../lib/debug.mjs'
 export class Mind {
 
   /**
-   * @param {Mind|null|MindJSON} parent_mind - Parent mind (null for root minds like world) or JSON data for deserialization
+   * @param {Mind|null} parent_mind - Parent mind (null for root minds like world)
    * @param {string|null} label - Mind identifier
    * @param {Belief|null} self - What this mind considers "self" (can be null, can change)
    */
   constructor(parent_mind, label = null, self = null) {
-    // Handle from_json special case (MindJSON object passed as first param)
-    if (parent_mind && typeof parent_mind === 'object' && '_type' in parent_mind && parent_mind._type === 'Mind') {
-      const data = /** @type {MindJSON} */ (parent_mind)
-      this._id = data._id
-      this.label = data.label
-      /** @type {Belief|null} */
-      this.self = null
-      /** @type {Mind|null} */
-      this.parent = null  // Set later during deserialization
-      /** @type {Set<Mind>} - See constructor for index documentation */
-      this._child_minds = new Set()
-      /** @type {Set<State>} - See constructor for index documentation */
-      this._states = new Set()
-      /** @type {Map<State, Set<State>>} - See constructor for index documentation */
-      this._states_by_ground_state = new Map()
-
-      DB.register_mind(this)
-      return
-    }
-
-    // Normal construction - parent_mind must be null or Mind instance
+    // parent_mind must be null or Mind instance
     assert(parent_mind === null || parent_mind instanceof Mind,
       'parent_mind must be null or Mind instance',
       {label, parent_mind})
@@ -257,11 +238,29 @@ export class Mind {
   /**
    * Create Mind from JSON data with lazy loading
    * @param {MindJSON} data - JSON data with _type: 'Mind'
+   * @param {Mind|null} [parent_mind] - Parent mind (null for root minds)
    * @returns {Mind}
    */
-  static from_json(data) {
-    // Create mind shell (constructor handles lazy setup)
-    const mind = new Mind(data)
+  static from_json(data, parent_mind = null) {
+    // Create mind shell manually (can't use constructor due to ID/registration requirements)
+    const mind = Object.create(Mind.prototype)
+
+    // Set properties from JSON
+    mind._id = data._id
+    mind.label = data.label
+    mind.self = null
+    mind.parent = parent_mind
+    mind._child_minds = new Set()
+    mind._states = new Set()
+    mind._states_by_ground_state = new Map()
+
+    // Register as child in parent
+    if (parent_mind) {
+      parent_mind._child_minds.add(mind)
+    }
+
+    // Register in DB
+    DB.register_mind(mind)
 
     // Create belief shells
     for (const belief_data of data.belief) {
@@ -278,7 +277,7 @@ export class Mind {
     // Load nested minds AFTER parent states (so ground_state references can be resolved)
     if (data.nested_minds) {
       for (const nested_mind_data of data.nested_minds) {
-        Mind.from_json(nested_mind_data)
+        Mind.from_json(nested_mind_data, mind)  // Pass current mind as parent
       }
     }
 
@@ -373,6 +372,51 @@ export class Mind {
 
     state.lock()
     return entity_mind  // Return Mind, not State
+  }
+
+  /**
+   * Apply trait operations to this mind (creates new state)
+   * Used by trait operations pattern to compose knowledge from multiple archetypes
+   * @param {State} ground_state - External world state to learn from
+   * @param {Array<{key: string, value: any, source: Belief|Archetype}>} operations - Operations to apply
+   * @returns {Mind} This mind (new state created as side effect)
+   */
+  state_data(ground_state, operations) {
+    assert(ground_state instanceof State, 'state_data requires State for ground_state', {ground_state})
+
+    // Find latest state in this mind
+    const latest_states = [...this.states_valid_at(ground_state.timestamp)]
+    const latest = latest_states[0]
+
+    if (!latest) {
+      throw new Error('Mind has no states - cannot apply operations')
+    }
+
+    // Create new state inheriting from latest
+    const new_state = new State(
+      this,
+      latest.timestamp + 1,  // Next tick
+      latest,                // Inherit from previous state
+      ground_state,          // Ground state for learning
+      latest.self            // Preserve self reference
+    )
+
+    // Process operations
+    for (const {key, value, source} of operations) {
+      if (key === 'append') {
+        // Append operations add knowledge
+        for (const [label, trait_names] of Object.entries(value)) {
+          const belief = ground_state.get_belief_by_label(label)
+          if (belief && trait_names.length > 0) {
+            new_state.learn_about(belief, trait_names)
+          }
+        }
+      }
+      // Future: Support 'remove', 'replace', etc.
+    }
+
+    new_state.lock()
+    return this  // Return Mind instance (new state created as side effect)
   }
 }
 

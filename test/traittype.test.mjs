@@ -270,13 +270,13 @@ describe('Traittype', () => {
       expect(mind0_states).to.have.lengthOf(1);
       const mind0_beliefs = [...mind0_states[0].get_beliefs()];
       expect(mind0_beliefs).to.have.lengthOf(1);
-      expect(mind0_beliefs[0].get_trait('color')).to.equal('brown');
+      expect(mind0_beliefs[0].get_trait(mind0_states[0], 'color')).to.equal('brown');
 
       const mind1_states = [...minds[1]._states];
       expect(mind1_states).to.have.lengthOf(1);
       const mind1_beliefs = [...mind1_states[0].get_beliefs()];
       expect(mind1_beliefs).to.have.lengthOf(1);
-      expect(mind1_beliefs[0].get_trait('color')).to.equal('green');
+      expect(mind1_beliefs[0].get_trait(mind1_states[0], 'color')).to.equal('green');
     });
   });
 

@@ -111,7 +111,7 @@ describe('Mind Trait', () => {
     expect(player_belief._traits.has('location')).to.be.true;
 
     // Verify location dereferencing
-    const player_location = player_belief.get_trait('location');
+    const player_location = player_belief.get_trait(state, 'location');
     //console.log('player_location', player_location);
     expect(player_location).to.equal(workshop_belief.subject);
 
@@ -273,21 +273,21 @@ describe('Mind Trait', () => {
     // Verify requested traits were copied from world beliefs
     // NPC1 requested blacksmith_tavern:['coordinates'] and town_square:['size']
     expect(npc1_tavern._traits.has('coordinates')).to.be.true;
-    expect(npc1_tavern.get_trait('coordinates')).to.equal('50,30');
+    expect(npc1_tavern.get_trait(npc1_state, 'coordinates')).to.equal('50,30');
     expect(npc1_tavern._traits.has('size')).to.be.false;  // Not requested
 
     expect(npc1_square._traits.has('size')).to.be.true;
-    expect(npc1_square.get_trait('size')).to.equal('huge');  // Inherited from prototype
+    expect(npc1_square.get_trait(npc1_state, 'size')).to.equal('huge');  // Inherited from prototype
     expect(npc1_square._traits.has('coordinates')).to.be.false;  // Not requested
 
     // NPC2 requested blacksmith_tavern:['coordinates', 'size'] and town_square:['coordinates']
     expect(npc2_tavern._traits.has('coordinates')).to.be.true;
     expect(npc2_tavern._traits.has('size')).to.be.true;
-    expect(npc2_tavern.get_trait('coordinates')).to.equal('50,30');
-    expect(npc2_tavern.get_trait('size')).to.equal('large');  // Inherited from prototype
+    expect(npc2_tavern.get_trait(npc2_state, 'coordinates')).to.equal('50,30');
+    expect(npc2_tavern.get_trait(npc2_state, 'size')).to.equal('large');  // Inherited from prototype
 
     expect(npc2_square._traits.has('coordinates')).to.be.true;
-    expect(npc2_square.get_trait('coordinates')).to.equal('100,100');
+    expect(npc2_square.get_trait(npc2_state, 'coordinates')).to.equal('100,100');
     expect(npc2_square._traits.has('size')).to.be.false;  // Not requested
 
     // Both NPCs' beliefs are separate instances
@@ -426,10 +426,10 @@ describe('Mind Trait', () => {
     npc2_state.lock();
 
     // Verify both NPCs have cultural knowledge
-    expect(npc1_initial_belief.get_trait('size')).to.equal('large');
-    expect(npc1_initial_belief.get_trait('owner')).to.equal('blacksmith_guild');
-    expect(npc2_initial_belief.get_trait('size')).to.equal('large');
-    expect(npc2_initial_belief.get_trait('owner')).to.equal('blacksmith_guild');
+    expect(npc1_initial_belief.get_trait(npc1_state, 'size')).to.equal('large');
+    expect(npc1_initial_belief.get_trait(npc1_state, 'owner')).to.equal('blacksmith_guild');
+    expect(npc2_initial_belief.get_trait(npc2_state, 'size')).to.equal('large');
+    expect(npc2_initial_belief.get_trait(npc2_state, 'owner')).to.equal('blacksmith_guild');
 
     // Both inherit from same shared cultural knowledge
     expect(npc1_initial_belief._bases.has(cultural_knowledge)).to.be.true;
@@ -447,17 +447,17 @@ describe('Mind Trait', () => {
     npc1_state_after.lock();
 
     // Verify it has BOTH cultural knowledge AND newly observed trait
-    expect(npc1_updated_belief.get_trait('coordinates')).to.equal('50,30');  // NEW: observed
-    expect(npc1_updated_belief.get_trait('size')).to.equal('large');  // OLD: from culture
-    expect(npc1_updated_belief.get_trait('owner')).to.equal('blacksmith_guild');  // OLD: from culture
+    expect(npc1_updated_belief.get_trait(npc1_state_after, 'coordinates')).to.equal('50,30');  // NEW: observed
+    expect(npc1_updated_belief.get_trait(npc1_state_after, 'size')).to.equal('large');  // OLD: from culture
+    expect(npc1_updated_belief.get_trait(npc1_state_after, 'owner')).to.equal('blacksmith_guild');  // OLD: from culture
 
     // Verify belief chain: updated → initial → cultural_knowledge
     expect(npc1_updated_belief._bases.has(npc1_initial_belief)).to.be.true;
     expect(npc1_initial_belief._bases.has(cultural_knowledge)).to.be.true;
 
     // Verify NPC2 still has only cultural knowledge (didn't visit)
-    expect(npc2_initial_belief.get_trait('coordinates')).to.be.null;  // Hasn't learned this yet
-    expect(npc2_initial_belief.get_trait('size')).to.equal('large');  // Still has cultural knowledge
+    expect(npc2_initial_belief.get_trait(npc2_state, 'coordinates')).to.be.null;  // Hasn't learned this yet
+    expect(npc2_initial_belief.get_trait(npc2_state, 'size')).to.equal('large');  // Still has cultural knowledge
   });
 
   it('empty trait array learns nothing', () => {

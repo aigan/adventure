@@ -196,7 +196,7 @@ describe('Archetype', () => {
         bases: ['PortableObject']
       });
 
-      expect(hammer.get_trait('location')).to.equal(workshop.subject);
+      expect(hammer.get_trait(state, 'location')).to.equal(workshop.subject);
     });
   });
 });

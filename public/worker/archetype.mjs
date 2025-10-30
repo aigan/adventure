@@ -23,8 +23,8 @@ import { assert } from '../lib/debug.mjs'
 /**
  * Archetype definition for beliefs
  * @property {string} label - Archetype identifier
- * @property {Set<Archetype>} bases - Base archetypes
- * @property {object} traits_template - Trait definitions
+ * @property {Set<Archetype>} _bases - Base archetypes
+ * @property {Record<string, any>} _traits_template - Trait definitions (name -> default value or null)
  */
 export class Archetype {
   /**
@@ -80,7 +80,46 @@ export class Archetype {
       this._bases.add(base)
     }
 
+    /** @type {Record<string, any>} */
     this._traits_template = traits
+  }
+
+  /**
+   * Check if this archetype defines a trait (does not check bases)
+   * @param {string} name - Trait name
+   * @returns {boolean}
+   */
+  has_trait(name) {
+    return name in this._traits_template
+  }
+
+  /**
+   * Get trait value from this archetype's template (does not check bases)
+   * Polymorphic interface - matches Belief.get_trait_value()
+   * @param {string} name - Trait name
+   * @returns {any} Trait template value or undefined if not found
+   */
+  get_trait_value(name) {
+    return this._traits_template[name]
+  }
+
+  /**
+   * Get iterable over trait entries (polymorphic interface)
+   * Returns iterable of [key, value] pairs for trait operations collection
+   * @returns {Array<[string, any]>} Array of trait entries
+   */
+  get_trait_entries() {
+    return Object.entries(this._traits_template)
+  }
+
+  /**
+   * Iterate over all traits in this archetype's template (does not check bases)
+   * @returns {Generator<[string, any]>} Yields [trait_name, value] pairs
+   */
+  *get_traits() {
+    for (const [name, value] of Object.entries(this._traits_template)) {
+      yield [name, value]
+    }
   }
 
   /**

@@ -45,7 +45,7 @@ describe('learn_about', () => {
 
       expect(hammer_belief.can_have_trait('color')).to.be.true;
       expect(hammer_belief.can_have_trait('location')).to.be.true;
-      expect(hammer_belief._traits.get('color')).to.equal('red');
+      expect(hammer_belief.get_trait(npc_mind_state, 'color')).to.equal('red');
     });
   });
 
@@ -145,7 +145,7 @@ describe('learn_about', () => {
       );
 
       // Expected behavior: trait references should be dereferenced to npc_mind
-      const location_ref = hammer_knowledge.get_trait('location')?.get_belief_by_state(npc_mind_state);
+      const location_ref = hammer_knowledge.get_trait(npc_mind_state, 'location')?.get_belief_by_state(npc_mind_state);
 
       // Should be a belief in npc_mind, not world_mind
       expect(location_ref.in_mind).to.equal(npc_mind);
@@ -185,7 +185,7 @@ describe('learn_about', () => {
       );
 
       // Should reuse existing belief about the workshop
-      const location_ref = hammer_knowledge.get_trait('location')?.get_belief_by_state(npc_mind_state);
+      const location_ref = hammer_knowledge.get_trait(npc_mind_state, 'location')?.get_belief_by_state(npc_mind_state);
       expect(location_ref).to.equal(existing_workshop);
     });
 
@@ -229,7 +229,7 @@ describe('learn_about', () => {
       );
 
       // Should have created hammer knowledge with location reference
-      const location_ref = hammer_knowledge.get_trait('location')?.get_belief_by_state(new_state);
+      const location_ref = hammer_knowledge.get_trait(new_state, 'location')?.get_belief_by_state(new_state);
       expect(location_ref).to.exist;
       expect(location_ref.in_mind).to.equal(npc_mind);
     });
@@ -303,7 +303,7 @@ describe('learn_about', () => {
       );
 
       // String trait should be copied as-is
-      expect(hammer_knowledge._traits.get('color')).to.equal('red');
+      expect(hammer_knowledge.get_trait(npc_mind_state, 'color')).to.equal('red');
     });
 
     it('learn_about should dereference arrays of beliefs', () => {
@@ -376,7 +376,7 @@ describe('learn_about', () => {
       const chest_knowledge = npc_mind_state.learn_about(chest, ['items']);
 
       // Array should be dereferenced - each item copied to npc_mind
-      const items_raw = chest_knowledge.get_trait('items');
+      const items_raw = chest_knowledge.get_trait(npc_mind_state, 'items');
       const items = items_raw?.map(item =>
         item instanceof Subject ? item.get_belief_by_state(npc_mind_state) : item
       );
@@ -433,7 +433,7 @@ describe('learn_about', () => {
 
       // Should have learned location (inherited from v1)
       expect(player_hammer._traits.has('location')).to.be.true;
-      const player_knowledge_of_location = player_hammer.get_trait('location');
+      const player_knowledge_of_location = player_hammer.get_trait(player_state, 'location');
       expect(player_knowledge_of_location).to.be.instanceOf(Subject);
 
       // Location should reference the player's knowledge ABOUT workshop (learned belief)
@@ -443,7 +443,7 @@ describe('learn_about', () => {
       // Verify it's a belief about the workshop
       const location_knowledge_belief = player_state.get_belief_by_subject(player_knowledge_of_location);
       expect(location_knowledge_belief).to.exist;
-      const about_subject = location_knowledge_belief.get_trait('@about');
+      const about_subject = location_knowledge_belief.get_trait(player_state, '@about');
       expect(about_subject).to.equal(workshop.subject);
 
       // Should NOT have color (we didn't learn about it)
@@ -478,7 +478,7 @@ describe('learn_about', () => {
 
       expect(player_hammer_v1._traits.has('color')).to.be.true;
       expect(player_hammer_v1._traits.has('location')).to.be.false;
-      expect(player_hammer_v1.get_trait('color')).to.equal('grey');
+      expect(player_hammer_v1.get_trait(player_state1, 'color')).to.equal('grey');
 
       // T2: Player learns location (new observation)
       // Create new state and learn additional trait
@@ -490,7 +490,7 @@ describe('learn_about', () => {
       expect(player_hammer_v2._traits.has('color')).to.be.false;  // not in _traits
 
       // But get_trait finds both
-      const player_knowledge_of_location_v2 = player_hammer_v2.get_trait('location');
+      const player_knowledge_of_location_v2 = player_hammer_v2.get_trait(player_state2, 'location');
       expect(player_knowledge_of_location_v2).to.be.instanceOf(Subject);
 
       // Should be player's knowledge about workshop, not original workshop
@@ -498,9 +498,9 @@ describe('learn_about', () => {
 
       // Verify it points to knowledge about workshop
       const location_belief = player_state2.get_belief_by_subject(player_knowledge_of_location_v2);
-      expect(location_belief.get_trait('@about')).to.equal(workshop.subject);
+      expect(location_belief.get_trait(player_state2, '@about')).to.equal(workshop.subject);
 
-      expect(player_hammer_v2.get_trait('color')).to.equal('grey');  // inherited!
+      expect(player_hammer_v2.get_trait(player_state2, 'color')).to.equal('grey');  // inherited!
     });
   });
 });

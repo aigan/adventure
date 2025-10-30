@@ -52,6 +52,47 @@ import { State } from './state.mjs'
  */
 
 /**
+ * Parse trait key into base trait and sub-property
+ * @param {string} key - Trait key (e.g., 'mind' or 'mind.append')
+ * @returns {{trait: string, subprop: string|null}} Parsed components
+ */
+function parse_trait_key(key) {
+  const parts = key.split('.')
+  return {
+    trait: parts[0],
+    subprop: parts.slice(1).join('.') || null
+  }
+}
+
+/**
+ * Get class constructor by data type name
+ * @param {string} data_type - Type name (e.g., 'Mind', 'State')
+ * @returns {Function|null} Class constructor or null
+ */
+function get_class_by_name(data_type) {
+  return Traittype.type_class_by_name[data_type] ?? null
+}
+
+/**
+ * Collect trait operations from iterator of [key, value] pairs
+ * Shared helper for both Belief and Archetype operation collection
+ * @param {string} trait_name - Base trait name (e.g., 'mind')
+ * @param {Iterable<[string, any]>} entries - Iterable of [key, value] pairs
+ * @param {Belief|Archetype} source - Source object for operation tracking
+ * @returns {Array<{key: string, value: any, source: Belief|Archetype}>} Operations
+ */
+function _collect_operations_from_entries(trait_name, entries, source) {
+  const operations = []
+  for (const [key, value] of entries) {
+    const {trait, subprop} = parse_trait_key(key)
+    if (trait === trait_name && subprop) {
+      operations.push({key: subprop, value, source})
+    }
+  }
+  return operations
+}
+
+/**
  * Represents a belief about an entity with versioning support
  * @property {number} _id - Unique version identifier
  * @property {Subject} subject - Canonical Subject (identity holder)
@@ -129,30 +170,60 @@ export class Belief {
   }
 
   /**
+   * Get trait value from this belief (does not check bases)
+   * Polymorphic interface - matches Archetype.get_trait_value()
+   * @param {string} name - Trait name
+   * @returns {any} Trait value or undefined if not found
+   */
+  get_trait_value(name) {
+    return this._traits.get(name)
+  }
+
+  /**
+   * Get iterable over trait entries (polymorphic interface)
+   * Returns iterable of [key, value] pairs for trait operations collection
+   * @returns {IterableIterator<[string, any]>} Iterable iterator of trait entries
+   */
+  get_trait_entries() {
+    return this._traits.entries()
+  }
+
+  /**
    * @param {string} label
    * @returns {boolean}
    */
   can_have_trait(label) {
+    // Parse dotted names (e.g., 'mind.append' -> check for 'mind')
+    const {trait} = parse_trait_key(label)
+
     for (const archetype of this.get_archetypes()) {
-      // @ts-ignore - generator always yields valid archetypes
-      if (label in archetype._traits_template) return true
+      if (archetype.has_trait(trait)) return true
     }
     return false
   }
 
   /**
-   * Get raw trait value (Subject/primitive/State/Mind/array) including inherited
-   * Walks the bases chain to find inherited trait values (prototype pattern)
+   * Collect trait value and operations from belief chain
+   * Walks bases breadth-first, stops at first value found, collects all operations
    * @param {string} trait_name - Name of the trait to get
-   * @returns {*} Raw trait value (Subject, not Belief), or null if not found
+   * @returns {{value: any, operations: Array<{key: string, value: any, source: Belief|Archetype}>}} Trait data
    */
-  get_trait(trait_name) {
-    // Check own traits first
+  get_trait_data(trait_name) {
+    const operations = []
+
+    // Collect own operations
+    operations.push(..._collect_operations_from_entries(
+      trait_name,
+      this.get_trait_entries(),
+      this
+    ))
+
+    // Check own value - early return if found
     if (this._traits.has(trait_name)) {
-      return this._traits.get(trait_name)
+      return {value: this._traits.get(trait_name), operations}
     }
 
-    // Walk bases chain breadth-first to find inherited value
+    // Walk bases queue (polymorphic - same for Belief and Archetype)
     const queue = [...this._bases]
     const seen = new Set()
 
@@ -161,18 +232,64 @@ export class Belief {
       if (!base || seen.has(base)) continue
       seen.add(base)
 
-      // Only check Belief bases (Archetypes have definitions, not values)
-      if (base instanceof Belief) {
-        if (base._traits.has(trait_name)) {
-          return base._traits.get(trait_name)
+      // Collect operations from this base
+      operations.push(..._collect_operations_from_entries(
+        trait_name,
+        base.get_trait_entries(),
+        base
+      ))
+
+      // Check for value - early return when found
+      const value = base.get_trait_value(trait_name)
+      if (value !== undefined) {
+        return {value, operations}
+      }
+
+      // Continue to next level
+      queue.push(...base._bases)
+    }
+
+    // Not found
+    return {value: undefined, operations}
+  }
+
+  /**
+   * Get raw trait value (Subject/primitive/State/Mind/array) including inherited
+   * Walks the bases chain to find inherited trait values (prototype pattern)
+   * Supports trait operations pattern for composable value construction
+   * @param {State} state - State context for trait resolution
+   * @param {string} trait_name - Name of the trait to get
+   * @returns {*} Raw trait value (Subject, not Belief), or null if not found
+   */
+  get_trait(state, trait_name) {
+    // Collect value and operations using polymorphic delegation
+    const {value, operations} = this.get_trait_data(trait_name)
+
+    // Return null if no value found
+    if (value === undefined) return null
+
+    let result = value
+
+    // Process constructor marker {_call: 'method_name'}
+    if (result && typeof result === 'object' && '_call' in result && !Array.isArray(result)) {
+      const {_call, ...props} = result
+      const traittype = Traittype.get_by_label(trait_name)
+      if (traittype) {
+        const ValueClass = get_class_by_name(traittype.data_type)
+        // @ts-ignore - Dynamic method call on class
+        if (ValueClass && typeof ValueClass[_call] === 'function') {
+          // @ts-ignore - Dynamic method call on class
+          result = ValueClass[_call](state, props, this.subject)
         }
-        // Add this belief's bases to search queue
-        queue.push(...base._bases)
       }
     }
 
-    // Not found in chain
-    return null
+    // Apply operations if value has state_data() method
+    if (operations.length > 0 && result && typeof result.state_data === 'function') {
+      result = result.state_data(state, operations)
+    }
+
+    return result
   }
 
   /**
