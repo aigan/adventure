@@ -313,7 +313,7 @@ export class Mind {
         !(data._states instanceof Set)) {
       // It's a learn spec - call create_from_template
       assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
-      return Mind.create_from_template(creator_state, data, belief.subject ?? null)
+      return Mind.create_from_template(creator_state, belief, data).lock().in_mind
     }
 
     // Detect explicit Mind template with _type field
@@ -321,7 +321,7 @@ export class Mind {
       assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
       // Strip _type from template before passing to create_from_template
       const {_type, ...traits} = data
-      return Mind.create_from_template(creator_state, traits, belief.subject)
+      return Mind.create_from_template(creator_state, belief, traits).lock().in_mind
     }
 
     // Not a template - return as-is (Mind instance, null, undefined, etc.)
@@ -329,18 +329,84 @@ export class Mind {
   }
 
   /**
-   * Create Mind with initial state from declarative template
-   * @param {State} ground_state - State context for belief resolution and ground_state
-   * @param {Object<string, string[]>} traits - {belief_label: [trait_names]} to learn
-   * @param {Subject|null} self_subject - Subject that becomes state.self
-   * @returns {Mind}
+   * Get or create an open (unlocked) state for the given ground context
+   * Determines whether to reuse existing state or create new based on ground_belief.locked
+   * @param {State} ground_state - External world state
+   * @param {Belief} ground_belief - The belief that owns this mind trait
+   * @returns {State} An unlocked state ready for modifications
    */
-  static create_from_template(ground_state, traits, self_subject) {
+  get_or_create_open_state_for_ground(ground_state, ground_belief) {
+    assert(ground_state instanceof State, 'ground_state must be State', {ground_state})
+    assert(ground_belief instanceof Belief, 'ground_belief must be Belief', {ground_belief})
+
+    // Check if ground_belief is locked
+    if (ground_belief.locked) {
+      // VERSIONING PATH: Belief is locked, need new state at new timestamp
+      // Find latest state valid at ground_state.timestamp
+      const latest_states = [...this.states_valid_at(ground_state.timestamp)]
+      const latest = latest_states[0]
+
+      if (!latest) {
+        throw new Error('No existing state found for versioning')
+      }
+
+      // Create new state at next timestamp
+      // TODO: Replace with proper time coordination system (see backlog: Time Progression)
+      const next_timestamp = latest.timestamp + 1  // PLACEHOLDER: Increment for versioning
+      const new_state = new State(
+        this,
+        next_timestamp,
+        latest,                // Inherit from previous
+        ground_state,
+        latest.self
+      )
+
+      return new_state  // Unlocked, ready for operations
+    } else {
+      // CONSTRUCTION PATH: Belief is unlocked, reuse or create at current timestamp
+      // Look for existing unlocked state for this ground_state
+      const existing_states = this._states_by_ground_state.get(ground_state)
+
+      if (existing_states) {
+        for (const state of existing_states) {
+          if (!state.locked) {
+            // Found unlocked state, reuse it
+            return state
+          }
+        }
+      }
+
+      // No unlocked state exists, create one at ground_state.timestamp
+      const new_state = new State(
+        this,
+        ground_state.timestamp,  // Same timestamp as ground
+        null,                    // No base (initial state)
+        ground_state,
+        ground_belief.subject    // self from ground_belief
+      )
+
+      return new_state  // Unlocked, ready for operations
+    }
+  }
+
+  /**
+   * Create Mind with initial state from declarative template
+   * Returns the unlocked state - caller is responsible for locking it
+   * @param {State} ground_state - State context for belief resolution and ground_state
+   * @param {Belief} ground_belief - The belief that owns this mind trait
+   * @param {Object<string, string[]>} traits - {belief_label: [trait_names]} to learn
+   * @returns {State} The unlocked initial state (access mind via state.in_mind)
+   */
+  static create_from_template(ground_state, ground_belief, traits) {
     const assert = (/** @type {any} */ condition, /** @type {string} */ message, /** @type {any} */ context) => {
       if (!condition) throw new Error(message + (context ? ': ' + JSON.stringify(context) : ''))
     }
 
     assert(ground_state instanceof State, `create_from_template requires State for ground_state`, null)
+    assert(ground_belief instanceof Belief, `create_from_template requires Belief for ground_belief`, null)
+
+    // Extract self_subject from ground_belief
+    const self_subject = ground_belief.subject
 
     // Create the mind (parent is the mind that contains ground_state)
     const parent_mind = ground_state.in_mind
@@ -349,7 +415,7 @@ export class Mind {
     // Create initial state with self reference
     const state = new State(
       entity_mind,
-      1,  // timestamp
+      ground_state.timestamp,  // Use ground_state's timestamp, not hardcoded 1
       null,  // no base
       ground_state,  // ground_state (where body exists)
       self_subject  // self (WHO is experiencing this)
@@ -370,36 +436,24 @@ export class Mind {
       }
     }
 
-    state.lock()
-    return entity_mind  // Return Mind, not State
+    // Return unlocked state - caller is responsible for locking
+    return state
   }
 
   /**
-   * Apply trait operations to this mind (creates new state)
+   * Apply trait operations to this mind
    * Used by trait operations pattern to compose knowledge from multiple archetypes
    * @param {State} ground_state - External world state to learn from
+   * @param {Belief} ground_belief - The belief that owns this mind trait
    * @param {Array<{key: string, value: any, source: Belief|Archetype}>} operations - Operations to apply
-   * @returns {Mind} This mind (new state created as side effect)
+   * @returns {Mind} This mind (state created/modified as side effect)
    */
-  state_data(ground_state, operations) {
+  state_data(ground_state, ground_belief, operations) {
     assert(ground_state instanceof State, 'state_data requires State for ground_state', {ground_state})
+    assert(ground_belief instanceof Belief, 'state_data requires Belief for ground_belief', {ground_belief})
 
-    // Find latest state in this mind
-    const latest_states = [...this.states_valid_at(ground_state.timestamp)]
-    const latest = latest_states[0]
-
-    if (!latest) {
-      throw new Error('Mind has no states - cannot apply operations')
-    }
-
-    // Create new state inheriting from latest
-    const new_state = new State(
-      this,
-      latest.timestamp + 1,  // Next tick
-      latest,                // Inherit from previous state
-      ground_state,          // Ground state for learning
-      latest.self            // Preserve self reference
-    )
+    // Get or create appropriate state (handles both construction and versioning)
+    const state = this.get_or_create_open_state_for_ground(ground_state, ground_belief)
 
     // Process operations
     for (const {key, value, source} of operations) {
@@ -408,15 +462,15 @@ export class Mind {
         for (const [label, trait_names] of Object.entries(value)) {
           const belief = ground_state.get_belief_by_label(label)
           if (belief && trait_names.length > 0) {
-            new_state.learn_about(belief, trait_names)
+            state.learn_about(belief, trait_names)
           }
         }
       }
       // Future: Support 'remove', 'replace', etc.
     }
 
-    new_state.lock()
-    return this  // Return Mind instance (new state created as side effect)
+    state.lock()
+    return this  // Return Mind instance (state created/modified as side effect)
   }
 }
 

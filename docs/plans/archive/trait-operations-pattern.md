@@ -467,29 +467,38 @@ state_data(state, operations)
 
 ## Implementation Phases
 
-### Phase 1: Basic Pattern (append only)
-- [ ] Update Traittype to parse sub-properties
-- [ ] Modify Belief.get_trait() to collect operations
-- [ ] Add Mind.create() static factory
-- [ ] Add Mind.state_data() modifier
-- [ ] Add constructor marker detection
-- [ ] Tests for basic composition
+### Phase 1: Foundation Infrastructure ✅ COMPLETE
+- [x] Add `parse_trait_key()` utility to parse dotted names
+- [x] Update `can_have_trait()` to support sub-properties
+- [x] Add `Mind.state_data()` method for applying operations
+- [x] Add proper encapsulation to Archetype (`get_trait_value()`, `get_trait_entries()`)
 
-### Phase 2: Operation Semantics
-- [ ] Define operation types (append, remove, replace)
-- [ ] Update Mind.state_data() to handle all types
-- [ ] Handle operation conflicts (same subject, different values)
-- [ ] Tests for each operation type
+### Phase 2: Signature Migration ✅ COMPLETE
+- [x] Change `get_trait(trait_name)` → `get_trait(state, trait_name)`
+- [x] Update all 69+ callsites across codebase
+- [x] Update all tests to pass state parameter
+- [x] All 173 tests passing
 
-### Phase 3: Other Value Classes
-- [ ] Document pattern for custom classes
-- [ ] Examples for non-Mind traits
-- [ ] Tests showing extensibility
+### Phase 3: Operations Collection & Polymorphism ✅ COMPLETE
+- [x] Add polymorphic interface to Belief and Archetype
+- [x] Implement `_collect_operations_from_entries()` shared helper
+- [x] Add `get_trait_data()` for collection with early return
+- [x] Refactor `get_trait()` to use `get_trait_data()`
+- [x] Add constructor marker detection and processing
+- [x] Wire up `state_data()` delegation
+- [x] Fix `Mind.from_json()` parent_mind handling
+- [x] Remove instanceof checks, use proper polymorphism
+- [x] All 173 tests passing
 
-### Phase 4: Integration
-- [ ] Update archetype definitions to use pattern
-- [ ] Update world.mjs examples
-- [ ] Performance testing (caching effectiveness)
+### Phase 4: Integration ✅ COMPLETE
+- [x] Add Mental archetype with `mind: {_call: 'create_from_template'}`
+- [x] Add Villager archetype with `'mind.append'` operations
+- [x] Add Blacksmith archetype with `'mind.append'` operations
+- [x] Update world.mjs to demonstrate composition
+- [x] Add integration tests for trait composition (3 passing tests)
+- [x] Update CHANGELOG.md
+- [x] Fixed timestamp synchronization via `get_or_create_open_state_for_ground()`
+- [x] Added `DB.get_belief_about_subject_in_state()` helper
 
 ## Success Criteria
 

@@ -279,14 +279,22 @@ export class Belief {
         // @ts-ignore - Dynamic method call on class
         if (ValueClass && typeof ValueClass[_call] === 'function') {
           // @ts-ignore - Dynamic method call on class
-          result = ValueClass[_call](state, props, this.subject)
+          // Pass ground_state, ground_belief, props
+          result = ValueClass[_call](state, this, props)
+
+          // If constructor returns a State (e.g., from Mind.create_from_template),
+          // extract the value (Mind) and let operations work with it
+          if (result instanceof State) {
+            result = result.in_mind
+          }
         }
       }
     }
 
     // Apply operations if value has state_data() method
     if (operations.length > 0 && result && typeof result.state_data === 'function') {
-      result = result.state_data(state, operations)
+      // Pass ground_state, ground_belief, operations
+      result = result.state_data(state, this, operations)
     }
 
     return result

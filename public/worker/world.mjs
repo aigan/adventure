@@ -32,6 +32,8 @@ export function setupStandardArchetypes() {
     location: 'Location',
     mind: 'Mind',  // Singular Mind reference
     color: 'string',
+    name: 'string',
+    inventory: 'PortableObject',
   };
 
   /** @type {Record<string, ArchetypeDefinition>} */
@@ -52,7 +54,25 @@ export function setupStandardArchetypes() {
     },
     Mental: {
       traits: {
-        mind: null,
+        mind: {_call: 'create_from_template'},
+      },
+    },
+    Villager: {
+      bases: ['Mental'],
+      traits: {
+        'mind.append': {
+          tavern: ['location'],
+          mayor: ['name']
+        }
+      },
+    },
+    Blacksmith: {
+      bases: ['Mental'],
+      traits: {
+        'mind.append': {
+          forge: ['location'],
+          tools: ['inventory']
+        }
       },
     },
     Location: {
@@ -100,10 +120,33 @@ const world_belief = {
     bases: ['Location'],
   },
 
+  tavern: {
+    bases: ['Location'],
+  },
+
+  forge: {
+    bases: ['Location'],
+  },
+
   hammer: {
     bases: ['PortableObject'],
     traits: {
       location: 'workshop',
+    },
+  },
+
+  tools: {
+    bases: ['PortableObject'],
+    traits: {
+      location: 'forge',
+    },
+  },
+
+  mayor: {
+    bases: ['Person'],
+    traits: {
+      location: 'tavern',
+      name: 'Aldric'
     },
   },
 
@@ -114,6 +157,15 @@ const world_belief = {
       mind: {
         workshop: ['location']
       }
+    },
+  },
+
+  // Demonstrates trait composition from multiple archetypes
+  blacksmith_villager: {
+    bases: ['Person', 'Villager', 'Blacksmith'],
+    traits: {
+      location: 'forge',
+      name: 'Gareth'
     },
   },
 

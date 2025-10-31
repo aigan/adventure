@@ -123,11 +123,16 @@ export class State {
     DB.register_state(this)
   }
 
+  /**
+   * Lock this state and cascade to contained beliefs
+   * @returns {State} this state (for chaining)
+   */
   lock() {
     this.locked = true
     for (const belief of this.insert) {
       belief.lock(this)
     }
+    return this
   }
 
   /**
@@ -183,7 +188,9 @@ export class State {
    * @returns {State} New unlocked state
    */
   branch_state(ground_state) {
-    const state = new State(this.in_mind, this.timestamp + 1, this, ground_state ?? this.ground_state, this.self)
+    // TODO: Replace with proper time coordination system (see backlog: Time Progression)
+    const next_timestamp = this.timestamp + 1  // PLACEHOLDER
+    const state = new State(this.in_mind, next_timestamp, this, ground_state ?? this.ground_state, this.self)
     this._branches.push(state)
     return state
   }

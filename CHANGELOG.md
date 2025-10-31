@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-10-31
+
+### Trait Operations Pattern
+- Archetypes support `trait.operation` syntax (e.g., `mind.append`) for composable operations
+- NPCs compose cultural knowledge from multiple archetype bases
+- `DB.get_belief_about_subject_in_state(state, about_subject)` - Query learned beliefs
+- `State.lock()` returns `this` for chaining
+
 ## 2025-10-27
 
 ### Template Data Validation

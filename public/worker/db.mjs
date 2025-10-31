@@ -317,6 +317,18 @@ export function find_beliefs_about_subject_in_state(mind, about_subject, state) 
   return results
 }
 
+/**
+ * Get the belief about a subject in a state
+ * Returns the belief in state.in_mind where @about points to about_subject
+ * @param {State} state - State to search in
+ * @param {Subject} about_subject - Subject that the belief is about
+ * @returns {Belief|null} The belief about the subject, or null
+ */
+export function get_belief_about_subject_in_state(state, about_subject) {
+  const results = find_beliefs_about_subject_in_state(state.in_mind, about_subject, state)
+  return results.length > 0 ? results[0] : null
+}
+
 
 /**
  * Register state in registries

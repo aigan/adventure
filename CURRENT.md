@@ -2,18 +2,32 @@
 
 ## Active Plan
 
-**Clarify shared belief architecture** - Implement template minds for shared cultural/template beliefs ([plan](docs/plans/shared-belief-architecture.md))
-
-Remaining phases:
-- [ ] Phase 5: Add @parent_mind scoping to shared beliefs (prevent cross-parent access)
-- [ ] Phase 6: Update documentation
-- [ ] Phase 7: Integration with lazy version propagation
+None - ready for next feature!
 
 ## Recently Completed
 
-(See CHANGELOG.md for completed work)
+- **Trait Operations Pattern Phase 4** - Completed integration of trait operations pattern ([plan](docs/plans/trait-operations-pattern.md))
+  - Added Mental, Villager, Blacksmith archetypes demonstrating mind.append composition
+  - Integration tests verify NPCs compose cultural knowledge from multiple bases
+  - Fixed timestamp synchronization: mind states created at ground_state.timestamp
+  - Added DB.get_belief_about_subject_in_state() helper for querying learned beliefs
+  - State.lock() now chainable for cleaner code
+
+- **Shared Belief Architecture Phase 5** - Added ground_mind scoping to prevent cross-parent belief access ([plan](docs/plans/shared-belief-architecture.md))
+  - Subject.ground_mind property scopes shared beliefs to parent mind hierarchies
+  - Global shared beliefs (ground_mind=null) accessible from any context
+  - Prevents unintended belief sharing across different world hierarchies
 
 ## Backlog
+- [ ] **Time Progression and Coordination** - Design proper time system for minds and ground states
+  - Problem: All `timestamp + 1` uses are placeholders (state.mjs:192, mind.mjs:355)
+  - Current: Simple increment with no coordination between mind states and ground states
+  - Need: Define how time flows when minds create new states
+  - Questions: Should mind states sync to ground_state time? Independent timelines? Event-based?
+  - Impact: Affects versioning, state branching, mind state creation
+- [ ] **Shared Belief Architecture - Documentation** - Complete remaining phases of shared belief plan
+  - Phase 6: Update documentation with scoping patterns
+  - Phase 7: Integration with lazy version propagation
 - [ ] **Lazy Version Propagation** - Enable efficient shared belief updates without version cascades ([plan](docs/plans/lazy-version-propagation.md))
   - Add branch tracking to beliefs (branches set, metadata)
   - Implement state resolver interface for branch evaluation
@@ -21,13 +35,6 @@ Remaining phases:
   - Materialization on explicit version creation
   - Superposition handling for probability branches
   - Enables scaling to millions of NPCs inheriting cultural knowledge
-- [ ] **Shared States** - Implement shared mind states for cultural knowledge templates
-  - Mind templates define what to learn: `{tavern: ['location'], mayor: ['occupation']}`
-  - Multiple NPCs can base their initial state on same template
-  - Enables shared cultural knowledge without duplicating learning specifications
-  - Related to template minds in shared-belief-architecture.md
-  - Currently: Each NPC must enumerate individual shared beliefs they learn about
-  - Future: Define reusable mind templates for cultural groups (village guards, merchants, etc.)
 - [ ] **Mind Template Syntax: Support Bases** - Enable specifying belief bases in declarative mind templates
   - Current limitation: `mind: {tavern: ['location']}` only supports labeled subjects
   - Need: Way to specify bases for beliefs created during learning
