@@ -313,12 +313,12 @@ describe('Trait Operations Pattern', () => {
     expect(npc_tavern).to.be.null
 
     // Tick to new state and add knowledge via mind.append operation
-    world_state = world_state.tick_with_traits(npc, {
+    world_state = world_state.tick_with_traits(npc, 2, {
       'mind.append': {
         tavern: ['location'],
         forge: ['location']
       }
-    }, 2)
+    })
     // FIXME: make sure this results in a new mind state in world state.
 
     // Get the updated npc belief from the new state

@@ -24,9 +24,9 @@ describe('Mind', () => {
       const mind = new Mind(null, 'test');
       const state1 = mind.create_state(100);
       state1.lock();
-      const state2 = state1.tick(null, 200);
+      const state2 = state1.branch_state(null, 200);
       state2.lock();
-      const state3 = state2.tick(null, 300);
+      const state3 = state2.branch_state(null, 300);
       state3.lock();
 
       // Query at different times - should return single outermost state
@@ -48,16 +48,16 @@ describe('Mind', () => {
       // s1(t=100) ← s2(t=200) ← s4(t=300)   [Branch A]
       //     ↑
       //    s3(t=150) ← s5(t=175)            [Branch B]
-      const state2 = state1.tick(null, 200);
+      const state2 = state1.branch_state(null, 200);
       state2.lock();
 
-      const state3 = state1.tick(null, 150);
+      const state3 = state1.branch_state(null, 150);
       state3.lock();
 
-      const state4 = state2.tick(null, 300);
+      const state4 = state2.branch_state(null, 300);
       state4.lock();
 
-      const state5 = state3.tick(null, 175);
+      const state5 = state3.branch_state(null, 175);
       state5.lock();
 
       // Before any state

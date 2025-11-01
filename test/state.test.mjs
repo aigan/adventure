@@ -58,14 +58,10 @@ describe('State', () => {
       const mind_a = new Mind(null, 'mind_a');
       const state_a = mind_a.create_state(1);
       Belief.from_template(state_a, {traits: {'@label': 'item_a'}, bases: ['PortableObject']});
-      const beliefs_for_a = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_a);
-      state_a.insert.push(...beliefs_for_a);
 
       const mind_b = new Mind(null, 'mind_b');
       const state_b = mind_b.create_state(1);
       Belief.from_template(state_b, {traits: {'@label': 'item_b'}, bases: ['PortableObject']});
-      const beliefs_for_b = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_b);
-      state_b.insert.push(...beliefs_for_b);
 
       const beliefs_a = [...state_a.get_beliefs()];
       const beliefs_b = [...state_b.get_beliefs()];
@@ -86,11 +82,6 @@ describe('State', () => {
       const state_b = mind_b.create_state(1);
       Belief.from_template(state_b, {traits: {'@label': 'workshop_b'}, bases: ['Location']});
 
-      const beliefs_a = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_a);
-      state_a.insert.push(...beliefs_a);
-      const beliefs_b = [...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind_b);
-      state_b.insert.push(...beliefs_b);
-
       const labels_a = [...state_a.get_beliefs()].map(b => b.get_label());
       const labels_b = [...state_b.get_beliefs()].map(b => b.get_label());
 
@@ -106,16 +97,11 @@ describe('State', () => {
       Belief.from_template(state1, {traits: {'@label': 'hammer_v1'}, bases: ['PortableObject']});
 
       const hammer_v1 = get_first_belief_by_label('hammer_v1');
-      const hammer_v2 = Belief.from_template(state1, {
-        bases: [hammer_v1],
-        traits: { color: 'red' }
-      });
 
-      const state2 = state1.tick(null, 2, { replace: [hammer_v2] });
+      const state2 = state1.tick_with_traits(hammer_v1, 2, {color: 'red'});
 
       const beliefs = [...state2.get_beliefs()];
       expect(beliefs).to.have.lengthOf(1);
-      expect(beliefs[0]).to.equal(hammer_v2);
       expect(beliefs[0]._traits.get('color')).to.equal('red');
     });
 
@@ -130,18 +116,10 @@ describe('State', () => {
 
       // Add different beliefs to each mind
       const item_a = get_first_belief_by_label('item_in_a');
-      const item_a2 = Belief.from_template(state_a1, {
-        bases: [item_a],
-        traits: { color: 'red' }
-      });
-      const state_a2 = state_a1.tick(null, 2, { replace: [item_a2] });
+      const state_a2 = state_a1.tick_with_traits(item_a, 2, {color: 'red'});
 
       const item_b = get_first_belief_by_label('item_in_b');
-      const item_b2 = Belief.from_template(state_b1, {
-        bases: [item_b],
-        traits: { color: 'blue' }
-      });
-      const state_b2 = state_b1.tick(null, 2, { replace: [item_b2] });
+      const state_b2 = state_b1.tick_with_traits(item_b, 2, {color: 'blue'});
 
       // Verify states are independent
       const beliefs_a = [...state_a2.get_beliefs()];
@@ -158,8 +136,9 @@ describe('State', () => {
       });
       const mind = state1.in_mind;
 
-      const item3 = Belief.from_template(state1, {traits: {'@label': 'item3'}, bases: ['PortableObject']});
-      const state2 = state1.tick(null, 2, { insert: [item3] });
+      state1.lock();
+      const state2 = state1.branch_state(null, 2);
+      const item3 = Belief.from_template(state2, {traits: {'@label': 'item3'}, bases: ['PortableObject']});
 
       // state2 should have all three items
       const beliefs = [...state2.get_beliefs()];
@@ -194,7 +173,9 @@ describe('State', () => {
 
       const npc_mind = new Mind(world_mind, 'npc');
       const npc_state1 = npc_mind.create_state(1, world_state);
-      const npc_state2 = npc_state1.tick(world_state);
+      npc_state1.lock();
+      const npc_state2 = npc_state1.branch_state(world_state);
+      npc_state2.lock();
 
       expect(npc_state2.ground_state).to.equal(world_state);
     });
@@ -202,11 +183,15 @@ describe('State', () => {
     it('tick() can override ground_state', () => {
       const world_mind = new Mind(null, 'world');
       const world_state1 = world_mind.create_state(1);
-      const world_state2 = world_state1.tick(null, 2);
+      world_state1.lock();
+      const world_state2 = world_state1.branch_state(null, 2);
+      world_state2.lock();
 
       const npc_mind = new Mind(world_mind, 'npc');
       const npc_state1 = npc_mind.create_state(1, world_state1);
-      const npc_state2 = npc_state1.tick(world_state2);
+      npc_state1.lock();
+      const npc_state2 = npc_state1.branch_state(world_state2);
+      npc_state2.lock();
 
       expect(npc_state2.ground_state).to.equal(world_state2);
     });
@@ -214,8 +199,9 @@ describe('State', () => {
     it('tracks branches forward from parent state', () => {
       const mind = new Mind(null, 'test');
       const state1 = mind.create_state(1);
-      const state2 = state1.tick(null, 2);
-      const state3 = state1.tick(null, 3);
+      state1.lock();
+      const state2 = state1.branch_state(null, 2);
+      const state3 = state1.branch_state(null, 3);
 
       expect(state1.get_branches()).to.have.lengthOf(2);
       expect(state1.get_branches()).to.include(state2);
@@ -264,18 +250,15 @@ describe('State', () => {
       });
 
       // Create v2 and add to state2
-      const room_v2 = Belief.from_template(state1, {
-        sid: room_v1.subject.sid,
-        bases: [room_v1],
-        traits: { color: 'red' },
-      });
-      const state2 = state1.tick(null, 2, { replace: [room_v2] });
+      const state2 = state1.tick_with_traits(room_v1, 2, {color: 'red'});
 
       // state1 should resolve to v1
       expect(state1.get_belief_by_subject(room_v1.subject)).to.equal(room_v1);
 
-      // state2 should resolve to v2
-      expect(state2.get_belief_by_subject(room_v1.subject)).to.equal(room_v2);
+      // state2 should resolve to v2 (the new versioned belief)
+      const room_v2 = state2.get_belief_by_subject(room_v1.subject);
+      expect(room_v2).to.not.equal(room_v1);
+      expect(room_v2._traits.get('color')).to.equal('red');
     });
 
     it('builds sid index on-demand for efficient lookups', () => {
@@ -320,14 +303,9 @@ describe('State', () => {
       });
 
       // Now update room1 to be inside room2
-      const room1_v2 = Belief.from_template(state1, {
-        sid: room1.subject.sid,
-        bases: [room1],
-        traits: {
-          location: room2.subject,  // room1 now inside room2
-        },
+      const state2 = state1.tick_with_traits(room1, 2, {
+        location: room2.subject  // room1 now inside room2
       });
-      const state2 = state1.tick(null, 2, { replace: [room1_v2] });
 
       // THE KEY TEST: room2's location trait stores a Subject
       const room2_location = room2._traits.get('location');
@@ -341,6 +319,7 @@ describe('State', () => {
 
       // In state2: room2.location resolves to room1_v2 (has location trait)
       const room2_location_in_state2 = room2_location.get_belief_by_state(state2);
+      const room1_v2 = state2.get_belief_by_subject(room1.subject);
       expect(room2_location_in_state2).to.equal(room1_v2);
 
       // And room1_v2's location points back to room2
@@ -408,7 +387,8 @@ describe('State', () => {
       });
 
       const state1 = new State(mind, 2, null, null, body.subject);
-      const state2 = state1.tick(null, 2);
+      state1.lock();
+      const state2 = state1.branch_state(null, 2);
 
       expect(state2.self).to.equal(body.subject);
       expect(state2.self).to.equal(state1.self);

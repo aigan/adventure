@@ -779,6 +779,9 @@ export class Belief {
       belief.add_trait_from_template(state, trait_label, trait_data)
     }
 
+    // Add belief to state's insert list
+    state.insert.push(belief)
+
     return belief
   }
 

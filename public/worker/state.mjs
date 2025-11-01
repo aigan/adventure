@@ -166,27 +166,25 @@ export class State {
    * @param {object} template - Belief template
    * @returns {Belief}
    */
-  add_belief(template) {
+  add_belief(template) { // FIXME: simplify
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     const belief = Belief.from_template(this, template)
-    this.insert.push(belief)
     return belief
   }
 
   /**
    * @param {Object<string, object>} beliefs - Object mapping labels to belief definitions
    */
-  add_beliefs(beliefs) {
+  add_beliefs(beliefs) { // FIXME: simplify
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     for (const [label, def] of Object.entries(beliefs)) {
       const existing_traits = /** @type {Record<string, any>} */ ('traits' in def ? def.traits : {})
-      const belief = Belief.from_template(this, {
+      Belief.from_template(this, {
         ...def,
         traits: {...existing_traits, '@label': label}
       })
-      this.insert.push(belief)
     }
   }
 
@@ -225,9 +223,10 @@ export class State {
 
     // Validate all beliefs belong to this mind or are cultural (null mind)
     for (const belief of beliefs) {
-      if (belief.in_mind !== this.in_mind && belief.in_mind !== null) {
-        throw new Error(`Belief ${belief._id} (in_mind: ${belief.in_mind?.label}) cannot be inserted into state for mind ${this.in_mind.label}`)
-      }
+      // Validate belief was created in this state
+      assert(belief.origin_state === this,
+        `Belief ${belief._id} origin_state mismatch: expected state ${this._id}, got ${belief.origin_state?._id}`,
+        {belief_id: belief._id, expected_state: this._id, actual_state: belief.origin_state?._id})
     }
     this.insert.push(...beliefs)
   }
@@ -257,43 +256,19 @@ export class State {
   }
 
   /**
-   * High-level convenience method: branch state and apply operations
-   * @param {State|null} ground_state - Ground state (required for child minds, null for world mind)
-   * @param {number|null} [vt] - Valid time (required for world mind, optional override for child minds)
-   * @param {object} [operations] - Operations to apply
-   * @param {Belief[]} [operations.insert]
-   * @param {Belief[]} [operations.remove]
-   * @param {Belief[]} [operations.replace]
-   * @returns {State} New locked state with operations applied
-   */
-  tick(ground_state, vt, {insert=[], remove=[], replace=[]}={}) {
-    this.lock()  // Lock this state before branching
-    const state = this.branch_state(ground_state, vt)
-
-    if (replace.length > 0) {
-      state.replace_beliefs(...replace)
-    }
-    if (insert.length > 0) {
-      state.insert_beliefs(...insert)
-    }
-    if (remove.length > 0) {
-      state.remove_beliefs(...remove)
-    }
-
-    state.lock()
-    return state
-  }
-
-  /**
    * Create new belief version with updated traits and add to new state
    * @param {Belief} belief - Belief to version
-   * @param {object} traits - New traits to add
    * @param {number} vt - Valid time for new state
+   * @param {object} traits - New traits to add
    * @returns {State}
    */
-  tick_with_traits(belief, traits, vt) { // TODO: reorder params
-    const new_belief = Belief.from_template(this, {sid: belief.subject.sid, bases: [belief], traits})
-    return this.tick(this.ground_state, vt, { replace: [new_belief] })
+  tick_with_traits(belief, vt, traits) {
+    this.lock()
+    const new_state = this.branch_state(this.ground_state, vt)
+    const new_belief = Belief.from_template(new_state, {sid: belief.subject.sid, bases: [belief], traits})
+    new_state.remove.push(belief)
+    new_state.lock()
+    return new_state
   }
 
   *get_beliefs() {
@@ -448,7 +423,6 @@ export class State {
         traits: new_traits
       })
 
-      this.insert.push(updated_belief)
       this.remove.push(existing_belief)
       return updated_belief
     }

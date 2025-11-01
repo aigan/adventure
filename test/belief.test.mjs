@@ -389,7 +389,7 @@ describe('Belief', () => {
       state1.lock();
 
       // Create v2 with only color changed
-      const state2 = state1.tick(null, 101);
+      const state2 = state1.branch_state(null, 101);
       const hammer_v2 = Belief.from_template(state2, {
         sid: hammer_v1.subject.sid,
         bases: [hammer_v1],

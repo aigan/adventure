@@ -394,7 +394,7 @@ describe('learn_about', () => {
       world_state.lock();
 
       // Hammer gets repainted - only color in _traits, location inherited
-      const world_state2 = world_state.tick(null, 101);
+      const world_state2 = world_state.branch_state(null, 101);
       const hammer_v2 = Belief.from_template(world_state2, {
         sid: hammer_v1.subject.sid,
         bases: [hammer_v1],

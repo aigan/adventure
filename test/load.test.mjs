@@ -91,15 +91,9 @@ describe('Save/Load functionality', () => {
       });
 
       // State 2: Update room1 to point back to room2 (creates circular reference)
-      const room1_v2 = Belief.from_template(state1, {
-        sid: room1.subject.sid,
-        bases: [room1],
-        traits: {
-          location: room2.subject,  // room1_v2 → room2 in state2
-        },
+      const state2 = state1.tick_with_traits(room1, 2, {
+        location: room2.subject  // room1_v2 → room2 in state2
       });
-
-      const state2 = state1.tick(null, 2, { replace: [room1_v2] });
 
       // Save and reload
       const json = save_mind(world_mind);
@@ -147,8 +141,10 @@ describe('Save/Load functionality', () => {
         bases: ['PortableObject'],
       });
 
-      const state2 = state1.tick(null, 2);
-      const state3 = state2.tick(null, 3);
+      state1.lock();
+      const state2 = state1.branch_state(null, 2);
+      state2.lock();
+      const state3 = state2.branch_state(null, 3);
 
       // Save and reload
       const json = save_mind(world_mind);
@@ -202,8 +198,10 @@ describe('Save/Load functionality', () => {
         traits: {'@label': 'ball', location: 'workshop',},
       });
 
-      state = state.tick(null, state.vt + 1);
-      state = state.tick_with_traits(ball, { color: 'blue' }, state.vt + 1);
+      state.lock();
+      const temp_state = state.branch_state(null, state.vt + 1);
+      temp_state.lock();
+      state = temp_state.tick_with_traits(ball, temp_state.vt + 1, { color: 'blue' });
 
       // Get versioned ball's ID before saving
       const ball_v2 = [...state.get_beliefs()].find(b => b.get_label() === 'ball');
@@ -334,15 +332,11 @@ describe('Save/Load functionality', () => {
         traits: {'@label': 'room2', location: 'room1',},
       });
 
-      state = state.tick_with_traits(ball, { color: 'blue' }, state.vt + 1);
+      state = state.tick_with_traits(ball, state.vt + 1, { color: 'blue' });
 
-      const room1_v2 = Belief.from_template(state, {
-        bases: [room1],
-        traits: {
-          location: 'room2',
-        },
+      state = state.tick_with_traits(room1, state.vt + 1, {
+        location: 'room2'
       });
-      state = state.tick(null, state.vt + 1, { replace: [room1_v2] });
 
       // First save
       const json1 = save_mind(world_mind);
