@@ -133,10 +133,8 @@ export class Belief {
     DB.register_belief_by_id(this)
     DB.register_belief_by_subject(this)
 
-/*
-
     // collect dynamic props
-    log("Resolve dynamic props from prototypes");
+    //log("Resolve dynamic props from prototypes");
 
     //const beliefs = []
     const queue = []
@@ -161,10 +159,10 @@ export class Belief {
       for (let [key, value_in] of base.get_trait_entries()) {
         const [trait, subprop] = key.split(/\.(.+)/)
         if (typeof subprop === 'string') {
-          log("Add op");
+          //log("Add op");
           ops.push({
             key: subprop,
-            value_in,
+            value: value_in,
             source: base,
           })
           targets.add(trait)
@@ -175,7 +173,7 @@ export class Belief {
 
         let value_out = value_in
         if (value_in._call) {
-          log ("resolve _call", value_in);
+          //log ("resolve _call", value_in);
           const {_call, ...props} = value_in
           const traittype = Traittype.get_by_label(trait)
           const ValueClass = Traittype.type_class_by_name[traittype.data_type]
@@ -184,8 +182,8 @@ export class Belief {
           value_out = (ValueClass[_call])(state, this, props)
         }
 
-        if(targets.has(trait)) {
-          log("Handle trait", value_out);
+        if(targets.has(trait) && (typeof value_out.state_data === 'function')) {
+          value_out = value_out.state_data(state, this, ops)
         }
 
         if (value_out !== value_in) {
@@ -195,7 +193,6 @@ export class Belief {
 
       queue.push(... base._bases);
     }
-*/
 
     /*
       TODO:

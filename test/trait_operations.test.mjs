@@ -3,7 +3,7 @@ import { Mind, State, Belief, Archetype, Traittype } from '../public/worker/cosm
 import * as DB from '../public/worker/db.mjs'
 import {log} from '../public/lib/debug.mjs'
 
-describe.skip('Trait Operations Pattern', () => {
+describe('Trait Operations Pattern', () => {
   beforeEach(() => {
     DB.reset_registries()
   })
@@ -59,17 +59,15 @@ describe.skip('Trait Operations Pattern', () => {
       }
     })
 
-    // Get the mind trait BEFORE locking - should be constructed by {_call: 'create_from_template'}
-    const mind = npc.get_trait(world_state, 'mind')
-
     world_state.lock()
+
+    const mind = npc.get_trait(world_state, 'mind')
     expect(mind).to.be.instanceOf(Mind)
     expect(mind.parent).to.equal(world_mind)
 
-    // Should have one state (unlocked since no operations were applied)
     const states = [...mind.states_at_tt(1)]
     expect(states).to.have.lengthOf(1)
-    expect(states[0].locked).to.be.false  // Unlocked - waiting for operations
+    expect(states[0].locked).to.be.true  // Locked from world_state.lock
 
     // Should have empty belief set (no knowledge yet)
     const beliefs = [...states[0].get_beliefs()]
@@ -132,17 +130,16 @@ describe.skip('Trait Operations Pattern', () => {
       bases: ['Person']
     })
 
-    // Get the mind trait BEFORE locking
-    const mind = npc.get_trait(world_state, 'mind')
-
     world_state.lock()
+
+    const mind = npc.get_trait(world_state, 'mind')
     expect(mind).to.be.instanceOf(Mind)
 
     // Get the mind's state
     const npc_state = [...mind.states_at_tt(1)][0]
 
     // Should have learned about world_tavern - find NPC's belief about it
-    const npc_tavern = DB.get_belief_about_subject_in_state(npc_state, world_tavern.subject)
+    const npc_tavern = DB.get_belief_for_state_subject(npc_state, world_tavern.subject)
     expect(npc_tavern).to.exist
 
     // Should know tavern's location trait
@@ -235,15 +232,15 @@ describe.skip('Trait Operations Pattern', () => {
     const npc_state = [...mind.states_at_tt(1)][0]
 
     // Should have knowledge from both Villager (tavern) and Blacksmith (forge, tools)
-    const npc_tavern = DB.get_belief_about_subject_in_state(npc_state, world_tavern.subject)
+    const npc_tavern = DB.get_belief_for_state_subject(npc_state, world_tavern.subject)
     expect(npc_tavern).to.exist
     expect(npc_tavern.can_have_trait('location')).to.be.true
 
-    const npc_forge = DB.get_belief_about_subject_in_state(npc_state, world_forge.subject)
+    const npc_forge = DB.get_belief_for_state_subject(npc_state, world_forge.subject)
     expect(npc_forge).to.exist
     expect(npc_forge.can_have_trait('location')).to.be.true
 
-    const npc_tools = DB.get_belief_about_subject_in_state(npc_state, world_tools.subject)
+    const npc_tools = DB.get_belief_for_state_subject(npc_state, world_tools.subject)
     expect(npc_tools).to.exist
     expect(npc_tools.can_have_trait('location')).to.be.true
   })
@@ -309,7 +306,7 @@ describe.skip('Trait Operations Pattern', () => {
     let npc_state = [...mind.states_at_tt(1)][0]
 
     // Initially no beliefs about world entities
-    let npc_tavern = DB.get_belief_about_subject_in_state(npc_state, world_tavern.subject)
+    let npc_tavern = DB.get_belief_for_state_subject(npc_state, world_tavern.subject)
     expect(npc_tavern).to.be.null
 
     // Tick to new state and add knowledge via mind.append operation
@@ -328,10 +325,10 @@ describe.skip('Trait Operations Pattern', () => {
     mind = npc.get_trait(world_state, 'mind')
     npc_state = [...mind.states_at_tt(2)][0]
 
-    npc_tavern = DB.get_belief_about_subject_in_state(npc_state, world_tavern.subject)
+    npc_tavern = DB.get_belief_for_state_subject(npc_state, world_tavern.subject)
     expect(npc_tavern).to.exist
 
-    const npc_forge = DB.get_belief_about_subject_in_state(npc_state, world_forge.subject)
+    const npc_forge = DB.get_belief_for_state_subject(npc_state, world_forge.subject)
     expect(npc_forge).to.exist
   })
 })
