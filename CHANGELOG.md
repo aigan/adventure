@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-11-01
+
+### State Constructor Validation
+- State constructor validates `ground_state` must be in parent mind
+- State constructor skips locked self check for versioned states (only checks initial states)
+
 ## 2025-10-31
 
 ### Trait Operations Pattern

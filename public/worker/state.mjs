@@ -83,8 +83,23 @@ export class State {
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
     assert(self === null || self instanceof Subject, 'self must be Subject or null')
 
-    // Check if self belief is unlocked
-    if (self !== null && ground_state !== null) {
+    // Validate ground_state is in parent mind
+    if (ground_state) {
+      /** @type {State} */
+      const gs = ground_state
+      assert(
+        gs.in_mind === mind.parent,
+        'ground_state must be in parent mind',
+        {
+          mind: mind.label,
+          parent: mind.parent?.label ?? null,
+          ground_state_mind: gs.in_mind.label
+        }
+      )
+    }
+
+    // Check if self belief is unlocked (only for initial states, not versioning)
+    if (self !== null && ground_state !== null && base === null) {
       const self_belief = ground_state.get_belief_by_subject(self)
       assert(self_belief === null || !self_belief.locked, 'Cannot create state for locked self')
     }

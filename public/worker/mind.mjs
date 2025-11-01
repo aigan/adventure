@@ -339,56 +339,34 @@ export class Mind {
     assert(ground_state instanceof State, 'ground_state must be State', {ground_state})
     assert(ground_belief instanceof Belief, 'ground_belief must be Belief', {ground_belief})
 
-    // FIXME: Only one new State
-
-    // Check if ground_belief is locked
-    if (ground_belief.locked) {
-      // VERSIONING PATH: Belief is locked, need new state at new tt
-      // Find latest state valid at ground_state.vt
-      const latest_states = [...this.states_at_tt(ground_state.vt)]
-      const latest = latest_states[0]
-
-      if (!latest) {
-        throw new Error('No existing state found for versioning')
-      }
-
-      // Create new state - fork invariant: child.tt = parent_state.vt
-      const new_state = new State(
-        this,
-        ground_state.vt,       // Fork invariant: child.tt = parent_state.vt
-        latest,                // Inherit from previous
-        ground_state,
-        latest.self,
-        ground_state.vt        // Inherit vt from ground_state
-      )
-
-      return new_state  // Unlocked, ready for operations
-    } else {
-      // CONSTRUCTION PATH: Belief is unlocked, reuse or create at current tt
-      // Look for existing unlocked state for this ground_state
+    // CONSTRUCTION PATH: If ground_belief unlocked, check for existing unlocked state to reuse
+    if (!ground_belief.locked) {
       const existing_states = this._states_by_ground_state.get(ground_state)
-
       if (existing_states) {
         for (const state of existing_states) {
-          if (!state.locked) {
-            // Found unlocked state, reuse it
-            return state
-          }
+          if (!state.locked) return state
         }
       }
-
-      // No unlocked state exists - fork invariant: child.tt = parent_state.vt
-      const new_state = new State(
-        this,
-        ground_state.vt,       // Fork invariant: child.tt = parent_state.vt
-        null,                  // No base (initial state)
-        ground_state,
-        ground_belief.subject, // self from ground_belief
-        ground_state.vt        // Inherit vt from ground_state
-      )
-
-      return new_state  // Unlocked, ready for operations
     }
+
+    // Create new state (either versioning or initial construction)
+    const latest_states = [...this.states_at_tt(ground_state.vt)]
+    const latest = latest_states[0]
+
+    // VERSIONING PATH: ground_belief locked requires existing state
+    if (ground_belief.locked && !latest) {
+      throw new Error('No existing state found for versioning')
+    }
+
+    // Fork invariant: child.tt = parent_state.vt
+    return new State(
+      this,
+      ground_state.vt,              // Fork invariant: child.tt = parent_state.vt
+      latest ?? null,               // Inherit from latest or null for initial
+      ground_state,
+      latest?.self ?? ground_belief.subject,  // self from latest or ground_belief
+      ground_state.vt               // Inherit vt from ground_state
+    )
   }
 
   /**
