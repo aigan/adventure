@@ -243,7 +243,7 @@
 
 ● Update(public/worker/subject.mjs)
   ⎿  Updated public/worker/subject.mjs with 1 addition and 1 removal                 
-       50        const shared = [...this.beliefs_valid_at(state.timestamp)].filter(
+       50        const shared = [...this.beliefs_at_tt(state.timestamp)].filter(
        51          b => b.in_mind === null &&
        52               b.origin_state === null &&
        53 -             b.subject.ground_mind === query_parent

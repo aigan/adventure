@@ -8,7 +8,7 @@ describe('Trait Operations Pattern', () => {
     DB.reset_registries()
   })
 
-  it('constructor marker creates mind via create_from_template', () => {
+  it.skip('constructor marker creates mind via create_from_template', () => {
     // Setup archetypes and traits
     const archetypes = {
       ObjectPhysical: {

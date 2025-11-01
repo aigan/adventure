@@ -47,7 +47,7 @@ export class Subject {
 
     // Fall back to shared beliefs (prototypes) with scope filtering
     const query_parent = state.in_mind.parent
-    const shared = [...this.beliefs_valid_at(state.tt)].filter(
+    const shared = [...this.beliefs_at_tt(state.tt)].filter(
       b => b.in_mind === null &&
            b.origin_state === null &&
            (b.subject.ground_mind === null || b.subject.ground_mind === query_parent)  // Global or matching parent
@@ -89,9 +89,11 @@ export class Subject {
   }
 
   /**
-   * Get all beliefs for this subject that were valid at a specific tt
+   * Get all beliefs for this subject that exist at a specific tt
    * Yields the outermost belief on each branch at or before the given tt
    * (beliefs that have no descendants also at or before the tt)
+   *
+   * Note: Shared beliefs without @tt have get_tt() === -Infinity, so they're always included
    *
    * TODO: Refactor to walk tree from starting belief instead of scanning all versions
    * Current: O(n²) over all belief versions - doesn't scale to millions of versions per subject
@@ -101,7 +103,7 @@ export class Subject {
    * @param {number} tt - Transaction time to query at
    * @yields {Belief} Outermost beliefs on each branch at tt
    */
-  *beliefs_valid_at(tt) {
+  *beliefs_at_tt(tt) {
     const beliefs = DB.get_beliefs_by_subject(this)
     if (!beliefs || beliefs.size === 0) return
 

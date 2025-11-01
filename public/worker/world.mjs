@@ -90,7 +90,7 @@ setupStandardArchetypes();
 
 /** @param {Subject} subject */
 const decider = (subject)=>{
-  const beliefs = [...subject.beliefs_valid_at(1)];
+  const beliefs = [...subject.beliefs_at_tt(1)];
   assert(beliefs.length === 1, 'Found more than one valid belief', beliefs);
   return beliefs[0];
 }

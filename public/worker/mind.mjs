@@ -460,15 +460,17 @@ export class Mind {
         // Append operations add knowledge
         for (const [label, trait_names] of Object.entries(value)) {
           const belief = ground_state.get_belief_by_label(label)
-          if (belief && trait_names.length > 0) {
-            state.learn_about(belief, trait_names)
-          }
+          assert(belief, `Cannot find belief with label '${label}' in ground_state for mind.append operation`, {label, ground_state_id: ground_state._id, available_labels: [...ground_state.get_beliefs()].map(b => b.get_label()).filter(Boolean)})
+          assert(trait_names.length > 0, `Empty trait_names array for mind.append operation on belief '${label}'`, {label, trait_names})
+          state.learn_about(belief, trait_names)
         }
+        continue
       }
+
+      throw new Error(`Unsupported operation '${key}' in mind trait composition (only 'append' is currently supported)`);
       // Future: Support 'remove', 'replace', etc.
     }
 
-    state.lock()
     return this  // Return Mind instance (state created/modified as side effect)
   }
 }

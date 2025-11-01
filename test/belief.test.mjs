@@ -328,18 +328,18 @@ describe('Belief', () => {
       expect(belief.get_tt()).to.equal(200);
     });
 
-    it('returns 0 for beliefs without origin_state or @timestamp', () => {
+    it('returns -Infinity for timeless shared beliefs (no origin_state or @tt)', () => {
       const belief = new Belief(null, null, []);
 
-      expect(belief.get_tt()).to.equal(0);
+      expect(belief.get_tt()).to.equal(-Infinity);
     });
 
-    it('handles undefined vs 0 correctly', () => {
+    it('handles undefined vs explicit @tt:0 correctly', () => {
       const archetype = Archetype.get_by_label('Temporal');
       const belief = new Belief(null, null, [archetype]);
 
-      // No origin_state, no @tt -> returns 0
-      expect(belief.get_tt()).to.equal(0);
+      // No origin_state, no @tt -> returns -Infinity (timeless)
+      expect(belief.get_tt()).to.equal(-Infinity);
 
       // Add explicit @tt of 0
       belief.add_trait('@tt', 0);
@@ -584,17 +584,17 @@ describe('Belief', () => {
       seasonal_v2.add_trait('bonus', 10);
 
       // Query at timestamp 150 -> should find v1
-      const at_150 = [...seasonal_v1.subject.beliefs_valid_at(150)];
+      const at_150 = [...seasonal_v1.subject.beliefs_at_tt(150)];
       expect(at_150).to.have.lengthOf(1);
       expect(at_150[0].get_trait(null, 'bonus')).to.equal(5);
 
       // Query at timestamp 250 -> should find v2
-      const at_250 = [...seasonal_v1.subject.beliefs_valid_at(250)];
+      const at_250 = [...seasonal_v1.subject.beliefs_at_tt(250)];
       expect(at_250).to.have.lengthOf(1);
       expect(at_250[0].get_trait(null, 'bonus')).to.equal(10);
 
       // Query at timestamp 50 (before v1) -> should find nothing
-      const at_50 = [...seasonal_v1.subject.beliefs_valid_at(50)];
+      const at_50 = [...seasonal_v1.subject.beliefs_at_tt(50)];
       expect(at_50).to.have.lengthOf(0);
     });
 

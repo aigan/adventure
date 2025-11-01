@@ -156,10 +156,10 @@ export class Belief {
 
       //log("Consider", base);
 
-      for (let [key, value_in] of base.get_trait_entries()) {
+      for (const [key, value_in] of base.get_trait_entries()) {
         const [trait, subprop] = key.split(/\.(.+)/)
         if (typeof subprop === 'string') {
-          //log("Add op");
+          log("Add op", trait, subprop );
           ops.push({
             key: subprop,
             value: value_in,
@@ -176,10 +176,13 @@ export class Belief {
           //log ("resolve _call", value_in);
           const {_call, ...props} = value_in
           const traittype = Traittype.get_by_label(trait)
+          assert(traittype, `Traittype '${trait}' not found for _call constructor pattern`, {trait, _call})
           const ValueClass = Traittype.type_class_by_name[traittype.data_type]
-          assert(ValueClass, "fixme")
-          assert(typeof ValueClass[_call] === 'function', "fixme")
-          value_out = (ValueClass[_call])(state, this, props)
+          assert(ValueClass, `No class registered for data type '${traittype.data_type}' (trait: ${trait})`, {trait, data_type: traittype.data_type, _call})
+          // @ts-ignore - Dynamic method lookup validated by assert
+          const method = ValueClass[_call]
+          assert(typeof method === 'function', `Method '${_call}' not found on class for trait '${trait}'`, {trait, _call, ValueClass: ValueClass.name})
+          value_out = method(state, this, props)
         }
 
         if(targets.has(trait) && (typeof value_out.state_data === 'function')) {
@@ -188,6 +191,7 @@ export class Belief {
 
         if (value_out !== value_in) {
           this.add_trait(trait, value_out)
+          //log("added", trait, value_out)
         }
       }
 
@@ -466,7 +470,7 @@ export class Belief {
   /**
    * Get tt for this belief (supports both shared and regular beliefs)
    * Checks @tt meta-trait first (for shared beliefs), falls back to origin_state.tt
-   * @returns {number} Transaction time when this belief was created
+   * @returns {number} Transaction time when this belief was created, or -Infinity for timeless shared beliefs
    */
   get_tt() {
     // Check meta-trait first (for shared beliefs)
@@ -476,7 +480,8 @@ export class Belief {
     }
 
     // Fall back to origin_state (for regular beliefs)
-    return this.origin_state?.tt ?? 0
+    // Return -Infinity for shared beliefs without @tt (timeless prototypes)
+    return this.origin_state?.tt ?? -Infinity
   }
 
   /**

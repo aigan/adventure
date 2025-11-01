@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## 2025-11-01
 
+### Timeless Shared Beliefs
+- `belief.get_tt()` returns `-Infinity` for shared beliefs without `@tt` (was: `0`)
+- Timeless prototypes are now always included in `subject.beliefs_at_tt()` queries
+- Enables shared beliefs that exist "outside of time" for universal prototypes
+
+### Method Rename
+- `subject.beliefs_valid_at()` → `subject.beliefs_at_tt()` (consistent with `mind.states_at_tt()`)
+
 ### State Constructor Validation
 - State constructor validates `ground_state` must be in parent mind
 - State constructor skips locked self check for versioned states (only checks initial states)
@@ -34,8 +42,8 @@ All notable changes to this project will be documented in this file.
 - Enables prototype-based inheritance: traits resolve through archetype bases, then shared belief prototypes
 
 ### Temporal Queries with Branch Support
-- `subject.beliefs_valid_at(timestamp)` - Generator yielding outermost beliefs on each branch at or before timestamp (moved from DB.valid_at)
-- `mind.states_valid_at(timestamp)` - Generator yielding outermost states on each branch at or before timestamp
+- `subject.beliefs_at_tt(timestamp)` - Generator yielding outermost beliefs on each branch at or before timestamp (moved from DB.valid_at)
+- `mind.states_at_tt(timestamp)` - Generator yielding outermost states on each branch at or before timestamp
 - Handles branching version histories correctly (filters out beliefs/states with descendants at same timestamp)
 - Returns empty iterable if no versions exist before timestamp
 - Enables "as of" queries across multiple parallel belief/state branches

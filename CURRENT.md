@@ -34,6 +34,12 @@ None - ready for next feature!
   - Need: Way to specify bases for beliefs created during learning
   - Options: Use same format as beliefs (with bases/traits) OR add `@bases` meta-trait
   - Goal: Avoid deep nesting in template syntax while supporting full belief construction
+- [ ] **`register_prototypes()` Helper** - Simplify prototype (shared belief) creation in world setup
+  - Add `DB.register_prototypes()` matching pattern of `DB.register()` for archetypes
+  - API: `{PrototypeName: {bases: [...], tt: 1, traits: {...}}}`
+  - Default `tt` to 1, provide default decider using `beliefs_at_tt(1)`
+  - Reduces verbose `Belief.create_shared_from_template()` boilerplate in world.mjs
+  - See world.mjs:99-107 for current pattern to simplify
 
 ## Next Up
 
