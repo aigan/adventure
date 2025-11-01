@@ -160,7 +160,7 @@ const world_belief = {
   },
 
   // Demonstrates trait composition from multiple archetypes
-  blacksmith_villager: {
+  blacksmith_villager: { // FIXME: should be a prototype
     bases: ['Person', 'Villager', 'Blacksmith'],
     traits: {
       location: 'forge',
@@ -168,7 +168,7 @@ const world_belief = {
   },
 
   player: {
-    bases: ['Person'],
+    bases: ['blacksmith_villager'], // FIXME: should not have a base with same tt
     traits: {
       location: 'workshop',
       mind: {

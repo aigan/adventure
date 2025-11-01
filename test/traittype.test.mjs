@@ -232,15 +232,13 @@ describe('Traittype', () => {
       const world_state = world_mind.create_state(1);
 
       const workshop = world_state.add_belief({
-        label: 'workshop',
         bases: ['Location'],
-        traits: { color: 'brown' }
+        traits: { '@label': 'workshop', color: 'brown' }
       });
 
       const main_area = world_state.add_belief({
-        label: 'main_area',
         bases: ['Location'],
-        traits: { color: 'green' }
+        traits: { '@label': 'main_area', color: 'green' }
       });
 
       world_state.lock();

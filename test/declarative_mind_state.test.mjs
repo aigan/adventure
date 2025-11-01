@@ -48,24 +48,18 @@ describe('Mind Trait', () => {
     const world_state = world_mind.create_state(1);
 
     const main_area = world_state.add_belief({
-      label: 'main_area',
+      traits: {'@label': 'main_area'},
       bases: ['Location'],
     });
 
     const workshop = world_state.add_belief({
-      label: 'workshop',
-      bases: ['Location'],
-      traits: {
-        location: main_area.subject,
-      },
+            bases: ['Location'],
+      traits: {'@label': 'workshop', location: main_area.subject,},
     });
 
     const player_body = world_state.add_belief({
-      label: 'player_body',
-      bases: ['Person'],
-      traits: {
-        location: workshop.subject,
-      },
+            bases: ['Person'],
+      traits: {'@label': 'player_body', location: workshop.subject,},
     });
 
     world_state.lock();
@@ -190,28 +184,22 @@ describe('Mind Trait', () => {
 
     // World beliefs inherit from shared prototypes
     const blacksmith_tavern = world_state.add_belief({
-      label: 'blacksmith_tavern',
       bases: [tavern_proto],
-      traits: {
-        coordinates: '50,30'  // Specific location
-      }
+      traits: {'@label': 'blacksmith_tavern', coordinates: '50,30'}  // Specific location
     });
 
     const town_square = world_state.add_belief({
-      label: 'town_square',
       bases: [square_proto],
-      traits: {
-        coordinates: '100,100'  // Specific location
-      }
+      traits: {'@label': 'town_square', coordinates: '100,100'}  // Specific location
     });
 
     const npc1_body = world_state.add_belief({
-      label: 'npc1_body',
+      traits: {'@label': 'npc1_body'},
       bases: ['Person']
     });
 
     const npc2_body = world_state.add_belief({
-      label: 'npc2_body',
+      traits: {'@label': 'npc2_body'},
       bases: ['Person']
     });
 
@@ -376,12 +364,9 @@ describe('Mind Trait', () => {
     const world_state = world_mind.create_state(200);
 
     const blacksmith_tavern = world_state.add_belief({
-      label: 'blacksmith_tavern',
-      bases: [tavern_proto],
-      traits: {
-        coordinates: '50,30',
-        owner: 'blacksmith_guild'
-      }
+            bases: [tavern_proto],
+      traits: {'@label': 'blacksmith_tavern', coordinates: '50,30',
+        owner: 'blacksmith_guild'}
     });
 
     world_state.lock();
@@ -487,11 +472,11 @@ describe('Mind Trait', () => {
     const world_mind = new Mind(null, 'world');
     const world_state = world_mind.create_state(1);
 
-    const location1 = world_state.add_belief({ label: 'location1', bases: ['Location'] });
+    const location1 = world_state.add_belief({ bases: ['Location'], traits: {'@label': 'location1'} });
 
     const entity_body = world_state.add_belief({
-      label: 'entity_body',
-      bases: ['Mental']
+      bases: ['Mental'],
+      traits: {'@label': 'entity_body'}
     });
 
     world_state.lock();
@@ -538,7 +523,7 @@ describe('Mind Trait', () => {
     const world_state = world_mind.create_state(1);
 
     const entity_body = world_state.add_belief({
-      label: 'entity_body',
+      traits: {'@label': 'entity_body'},
       bases: ['Mental']
     });
 

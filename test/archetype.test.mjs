@@ -91,9 +91,8 @@ describe('Archetype', () => {
       const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
       const workshop = state.add_belief({
-        label: 'workshop',
         bases: ['Location'],
-        traits: { color: 'brown' }
+        traits: { '@label': 'workshop', color: 'brown' }
       });
 
       const traittype = Traittype.get_by_label('location');
@@ -111,8 +110,8 @@ describe('Archetype', () => {
       const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
       const workshop = state.add_belief({
-        label: 'workshop',
-        bases: ['Location']
+        bases: ['Location'],
+        traits: {'@label': 'workshop'}
       });
 
       const traittype = Traittype.get_by_label('location');
@@ -130,8 +129,8 @@ describe('Archetype', () => {
       const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
       const workshop = state.add_belief({
-        label: 'workshop',
-        bases: ['Location']
+        bases: ['Location'],
+        traits: {'@label': 'workshop'}
       });
 
       const traittype = Traittype.get_by_label('location');
@@ -164,8 +163,8 @@ describe('Archetype', () => {
       const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
       const hammer = state.add_belief({
-        label: 'hammer',
-        bases: ['PortableObject']
+        bases: ['PortableObject'],
+        traits: {'@label': 'hammer'}
       });
 
       const traittype = Traittype.get_by_label('location');
@@ -183,8 +182,8 @@ describe('Archetype', () => {
       const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
       const workshop = state.add_belief({
-        label: 'workshop',
-        bases: ['Location']
+        bases: ['Location'],
+        traits: {'@label': 'workshop'}
       });
 
       // This uses the traittype resolver which delegates to Archetype

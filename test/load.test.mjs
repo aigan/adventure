@@ -16,7 +16,7 @@ describe('Save/Load functionality', () => {
       const world_state = world_mind.create_state(1);
 
       const workshop = world_state.add_belief({
-        label: 'workshop',
+        traits: {'@label': 'workshop'},
         bases: ['Location'],
       });
 
@@ -48,16 +48,13 @@ describe('Save/Load functionality', () => {
       const world_state = world_mind.create_state(1);
 
       const workshop = world_state.add_belief({
-        label: 'workshop',
+        traits: {'@label': 'workshop'},
         bases: ['Location'],
       });
 
       const hammer = world_state.add_belief({
-        label: 'hammer',
-        bases: ['PortableObject'],
-        traits: {
-          location: workshop.subject,
-        },
+                bases: ['PortableObject'],
+        traits: {'@label': 'hammer', location: workshop.subject,},
       });
 
       // Save and reload
@@ -84,16 +81,13 @@ describe('Save/Load functionality', () => {
       const state1 = world_mind.create_state(1);
 
       const room1 = state1.add_belief({
-        label: 'room1',
+        traits: {'@label': 'room1'},
         bases: ['Location'],
       });
 
       const room2 = state1.add_belief({
-        label: 'room2',
         bases: ['Location'],
-        traits: {
-          location: room1.subject,  // room2 → room1 in state1
-        },
+        traits: {'@label': 'room2', location: room1.subject}  // room2 → room1 in state1
       });
 
       // State 2: Update room1 to point back to room2 (creates circular reference)
@@ -149,7 +143,7 @@ describe('Save/Load functionality', () => {
       const world_mind = new Mind(null, 'world');
       const state1 = world_mind.create_state(1);
       const ball = state1.add_belief({
-        label: 'ball',
+        traits: {'@label': 'ball'},
         bases: ['PortableObject'],
       });
 
@@ -204,11 +198,8 @@ describe('Save/Load functionality', () => {
       state.add_beliefs(world_belief);
 
       const ball = state.add_belief({
-        label: 'ball',
-        bases: ['PortableObject'],
-        traits: {
-          location: 'workshop',
-        },
+                bases: ['PortableObject'],
+        traits: {'@label': 'ball', location: 'workshop',},
       });
 
       state = state.tick(null, state.vt + 1);
@@ -248,7 +239,7 @@ describe('Save/Load functionality', () => {
       const world_mind = new Mind(null, 'world');
       const state = world_mind.create_state(1);
       const workshop = state.add_belief({
-        label: 'workshop',
+        traits: {'@label': 'workshop'},
         bases: ['Location'],
       });
 
@@ -270,7 +261,7 @@ describe('Save/Load functionality', () => {
       const world_state = world_mind.create_state(1);
 
       const workshop = world_state.add_belief({
-        label: 'workshop',
+        traits: {'@label': 'workshop'},
         bases: ['Location'],
       });
 
@@ -328,25 +319,19 @@ describe('Save/Load functionality', () => {
 
       // Add entities and create versions
       const ball = state.add_belief({
-        label: 'ball',
-        bases: ['PortableObject'],
-        traits: {
-          location: 'workshop',
-        },
+                bases: ['PortableObject'],
+        traits: {'@label': 'ball', location: 'workshop',},
       });
 
       // Create circular reference first (before locking state)
       const room1 = state.add_belief({
-        label: 'room1',
+        traits: {'@label': 'room1'},
         bases: ['Location'],
       });
 
       const room2 = state.add_belief({
-        label: 'room2',
-        bases: ['Location'],
-        traits: {
-          location: 'room1',
-        },
+                bases: ['Location'],
+        traits: {'@label': 'room2', location: 'room1',},
       });
 
       state = state.tick_with_traits(ball, { color: 'blue' }, state.vt + 1);

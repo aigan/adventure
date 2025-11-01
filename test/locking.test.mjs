@@ -18,7 +18,7 @@ describe('Locking Constraints', () => {
       const world_state = world_mind.create_state(1)
 
       world_state.add_belief({
-        label: 'workshop',
+        traits: {'@label': 'workshop'},
         bases: ['Location']
       })
 
@@ -38,7 +38,7 @@ describe('Locking Constraints', () => {
       const world_state = world_mind.create_state(1)
 
       const player = world_state.add_belief({
-        label: 'player',
+        traits: {'@label': 'player'},
         bases: ['Person']
       })
 
@@ -58,7 +58,7 @@ describe('Locking Constraints', () => {
       const world_state = world_mind.create_state(1)
 
       const player = world_state.add_belief({
-        label: 'player',
+        traits: {'@label': 'player'},
         bases: ['Person']
       })
 
@@ -77,17 +77,14 @@ describe('Locking Constraints', () => {
       const world_state = world_mind.create_state(1)
 
       const workshop = world_state.add_belief({
-        label: 'workshop',
+        traits: {'@label': 'workshop'},
         bases: ['Location']
       })
 
       const player = world_state.add_belief({
-        label: 'player',
-        bases: ['Person'],
-        traits: {
-          mind: {
-            workshop: ['location']
-          }
+                bases: ['Person'],
+        traits: {'@label': 'player', mind: {
+            workshop: ['location']}
         }
       })
 
@@ -111,17 +108,14 @@ describe('Locking Constraints', () => {
       const world_state = world_mind.create_state(1)
 
       const workshop = world_state.add_belief({
-        label: 'workshop',
+        traits: {'@label': 'workshop'},
         bases: ['Location']
       })
 
       const player = world_state.add_belief({
-        label: 'player',
-        bases: ['Person'],
-        traits: {
-          mind: {
-            workshop: ['location']
-          }
+                bases: ['Person'],
+        traits: {'@label': 'player', mind: {
+            workshop: ['location']}
         }
       })
 
@@ -148,13 +142,10 @@ describe('Locking Constraints', () => {
 
       // Create a base belief with a Mind trait
       const base_player = world_state.add_belief({
-        label: 'base_player',
         bases: ['Person'],
-        traits: {
-          mind: {
-            // Empty learn spec
-          }
-        }
+        traits: {'@label': 'base_player', mind: {
+          // Empty learn spec
+        }}
       })
 
       const base_mind = base_player._traits.get('mind')
@@ -196,18 +187,15 @@ describe('Locking Constraints', () => {
       const world_state = world_mind.create_state(1)
 
       const workshop = world_state.add_belief({
-        label: 'workshop',
+        traits: {'@label': 'workshop'},
         bases: ['Location']
       })
 
       const player = world_state.add_belief({
-        label: 'player',
-        bases: ['Person'],
-        traits: {
-          location: 'workshop',
+                bases: ['Person'],
+        traits: {'@label': 'player', location: 'workshop',
           mind: {
-            workshop: ['location']
-          }
+            workshop: ['location']}
         }
       })
 
@@ -237,10 +225,8 @@ describe('Locking Constraints', () => {
       const world_state = world_mind.create_state(1)
 
       const player = world_state.add_belief({
-        label: 'player',
-        bases: ['Person'],
-        traits: {
-          mind: {}
+                bases: ['Person'],
+        traits: {'@label': 'player', mind: {}
         }
       })
 
@@ -252,7 +238,7 @@ describe('Locking Constraints', () => {
       // Try to modify locked player_state
       expect(() => {
         player_state.add_belief({
-          label: 'hammer',
+          traits: {'@label': 'hammer'},
           bases: ['PortableObject']
         })
       }).to.throw('Cannot modify locked state')

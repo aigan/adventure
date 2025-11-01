@@ -33,11 +33,8 @@ describe('Integration', () => {
       const world_mind = world_state.in_mind;
 
       let ball = world_state.add_belief({
-        label: 'ball',
-        bases: ['PortableObject'],
-        traits: {
-          location: 'workshop',
-        },
+                bases: ['PortableObject'],
+        traits: {'@label': 'ball', location: 'workshop',},
       });
 
       ball = Belief.from_template(world_state, {

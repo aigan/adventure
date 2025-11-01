@@ -144,6 +144,22 @@ export class Belief {
   add_trait_from_template(state, label, data) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
+    // Parse trait key to check for operation syntax (e.g., 'mind.append')
+    const {trait, subprop} = parse_trait_key(label)
+
+/*
+    // FIXME: handle operations in the right place
+    // If this is an operation (has subprop), store it directly without traittype resolution
+    if (subprop) {
+      // Operations are stored as-is and collected by get_trait_data()
+      // Validate that the base trait can be had
+      assert(this.can_have_trait(trait), `Belief can't have trait ${trait}`, {label, trait, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
+      this._traits.set(label, data)
+      return
+      }
+*/
+
+    // Regular trait - resolve via traittype
     const traittype = Traittype.get_by_label(label)
     assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
 
@@ -194,7 +210,7 @@ export class Belief {
    */
   can_have_trait(label) {
     // Parse dotted names (e.g., 'mind.append' -> check for 'mind')
-    const {trait} = parse_trait_key(label)
+    const {trait} = parse_trait_key(label) // FIXME: Should not parse the label
 
     for (const archetype of this.get_archetypes()) {
       if (archetype.has_trait(trait)) return true
@@ -254,7 +270,7 @@ export class Belief {
   }
 
   /**
-   * Get raw trait value (Subject/primitive/State/Mind/array) including inherited
+   * Get trait value (Subject/primitive/State/Mind/array) including inherited
    * Walks the bases chain to find inherited trait values (prototype pattern)
    * Supports trait operations pattern for composable value construction
    * @param {State} state - State context for trait resolution
@@ -268,13 +284,19 @@ export class Belief {
     // Return null if no value found
     if (value === undefined) return null
 
+    return value; // DEBUG: see whats need op. FIXME
+    /* eslint-disable no-unreachable */
+
     let result = value
 
+    // FIXME: move to some place that dont expect side effects
     // Process constructor marker {_call: 'method_name'}
     if (result && typeof result === 'object' && '_call' in result && !Array.isArray(result)) {
       const {_call, ...props} = result
       const traittype = Traittype.get_by_label(trait_name)
-      if (traittype) {
+      // @ts-ignore - TypeScript doesn't narrow type correctly in .mjs files
+      if (traittype?.data_type) {
+        // @ts-ignore - TypeScript doesn't narrow type correctly in .mjs files
         const ValueClass = get_class_by_name(traittype.data_type)
         // @ts-ignore - Dynamic method call on class
         if (ValueClass && typeof ValueClass[_call] === 'function') {
@@ -342,7 +364,7 @@ export class Belief {
    * Shows what traits CAN be set based on archetype composition
    * @returns {Generator<string>} Yields trait names available from archetypes
    */
-  *get_slots() {
+  *get_slots() { // FIXME: supposed to get all slots. Not just from archetypes
     const yielded = new Set()
 
     for (const archetype of this.get_archetypes()) {

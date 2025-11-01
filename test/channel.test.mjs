@@ -123,9 +123,8 @@ describe('Channel Message Handlers', () => {
       const world_mind = new Mind(null, 'test_mind');
       const state = world_mind.create_state(1);
       const hammer = state.add_belief({
-        label: 'test_hammer',
         bases: ['PortableObject'],
-        traits: { color: 'red' }
+        traits: { '@label': 'test_hammer', color: 'red' }
       });
 
       mockSession = new Session(world_mind, state, hammer);
@@ -220,7 +219,7 @@ describe('Channel Message Handlers', () => {
     it('can find state by searching all minds', () => {
       const mind2 = new Mind(null, 'mind2');
       const state2 = mind2.create_state(1);
-      const hammer = state2.add_belief({ label: 'hammer', bases: ['PortableObject'] });
+      const hammer = state2.add_belief({ bases: ['PortableObject'], traits: {'@label': 'hammer'} });
 
       messages.length = 0;
 
@@ -273,7 +272,7 @@ describe('Channel Message Handlers', () => {
       const mind = new Mind(null, 'belief_test_mind');
       const state = mind.create_state(1);
       const hammer = state.add_belief({
-        label: 'query_hammer',
+        traits: {'@label': 'query_hammer'},
         bases: ['PortableObject']
       });
 
@@ -309,7 +308,7 @@ describe('Channel Message Handlers', () => {
       const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
       const workshop = world_state.add_belief({
-        label: 'query_workshop',
+        traits: {'@label': 'query_workshop'},
         bases: ['Location']
       });
 
@@ -335,7 +334,7 @@ describe('Channel Message Handlers', () => {
       const mind = new Mind(null, 'bases_test_mind');
       const state = mind.create_state(1);
       const hammer = state.add_belief({
-        label: 'bases_hammer',
+        traits: {'@label': 'bases_hammer'},
         bases: ['PortableObject']
       });
 
@@ -375,9 +374,8 @@ describe('Channel Message Handlers', () => {
       const mind = new Mind(null, 'entity_test_mind');
       const state = mind.create_state(1);
       const ball = state.add_belief({
-        label: 'test_ball',
-        bases: ['PortableObject'],
-        traits: { color: 'red' }
+                bases: ['PortableObject'],
+        traits: {'@label': 'test_ball', color: 'red'}
       });
 
       const mockSession = new Session(mind, state, ball);

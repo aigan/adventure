@@ -245,7 +245,7 @@ describe('State', () => {
       const state1 = world_mind.create_state(1);
 
       const room = state1.add_belief({
-        label: 'room',
+        traits: {'@label': 'room'},
         bases: ['Location'],
       });
 
@@ -259,7 +259,7 @@ describe('State', () => {
       const state1 = world_mind.create_state(1);
 
       const room_v1 = state1.add_belief({
-        label: 'room',
+        traits: {'@label': 'room'},
         bases: ['Location'],
       });
 
@@ -282,8 +282,8 @@ describe('State', () => {
       const world_mind = new Mind(null, 'world');
       const state = world_mind.create_state(1);
 
-      const room1 = state.add_belief({ label: 'room1', bases: ['Location'] });
-      const room2 = state.add_belief({ label: 'room2', bases: ['Location'] });
+      const room1 = state.add_belief({ bases: ['Location'], traits: {'@label': 'room1'} });
+      const room2 = state.add_belief({ bases: ['Location'], traits: {'@label': 'room2'} });
 
       // Lock state to enable caching
       state.lock();
@@ -310,16 +310,13 @@ describe('State', () => {
 
       // Create two rooms with circular reference
       const room1 = state1.add_belief({
-        label: 'room1',
+        traits: {'@label': 'room1'},
         bases: ['Location'],
       });
 
       const room2 = state1.add_belief({
-        label: 'room2',
         bases: ['Location'],
-        traits: {
-          location: room1.subject,  // room2 inside room1
-        },
+        traits: {'@label': 'room2', location: room1.subject}  // room2 inside room1
       });
 
       // Now update room1 to be inside room2

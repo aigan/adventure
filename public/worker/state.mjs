@@ -163,24 +163,13 @@ export class State {
   }
 
   /**
-   * @param {object} template - Belief template (supports legacy 'label' parameter or traits['@label'])
+   * @param {object} template - Belief template
    * @returns {Belief}
    */
   add_belief(template) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
-    // Handle legacy 'label' parameter for backward compatibility
-    let normalized_template = template
-    if ('label' in template && template.label != null) {
-      const {label, ...rest} = /** @type {any} */ (template)
-      const existing_traits = /** @type {Record<string, any>} */ ('traits' in rest ? rest.traits : {})
-      normalized_template = {
-        ...rest,
-        traits: {...existing_traits, '@label': label}
-      }
-    }
-
-    const belief = Belief.from_template(this, normalized_template)
+    const belief = Belief.from_template(this, template)
     this.insert.push(belief)
     return belief
   }
@@ -302,7 +291,7 @@ export class State {
    * @param {number} vt - Valid time for new state
    * @returns {State}
    */
-  tick_with_traits(belief, traits, vt) {
+  tick_with_traits(belief, traits, vt) { // TODO: reorder params
     const new_belief = Belief.from_template(this, {sid: belief.subject.sid, bases: [belief], traits})
     return this.tick(this.ground_state, vt, { replace: [new_belief] })
   }

@@ -1,6 +1,7 @@
 import { expect } from 'chai'
 import { Mind, State, Belief, Archetype, Traittype } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
+import {log} from '../public/lib/debug.mjs'
 
 describe('Trait Operations Pattern', () => {
   beforeEach(() => {
@@ -247,7 +248,7 @@ describe('Trait Operations Pattern', () => {
     expect(npc_tools.can_have_trait('location')).to.be.true
   })
 
-  it.skip('mind.append with versioning adds knowledge to existing mind', () => {
+  it('mind.append with versioning adds knowledge to existing mind', () => {
     // Setup archetypes and traits
     const archetypes = {
       ObjectPhysical: {
@@ -299,9 +300,10 @@ describe('Trait Operations Pattern', () => {
       label: 'npc',
       bases: ['Person']
     })
-
+    // FIXME: Make sure mind with initial state now exists in world_state
+    
     // Initially, mind should be empty - get it BEFORE locking
-    let mind = npc.get_trait(world_state, 'mind')
+    let mind = npc.get_trait(world_state, 'mind') // FIXME: REMOVE
 
     world_state.lock()
     let npc_state = [...mind.states_at_tt(1)][0]
@@ -311,18 +313,16 @@ describe('Trait Operations Pattern', () => {
     expect(npc_tavern).to.be.null
 
     // Tick to new state and add knowledge via mind.append operation
-    world_state = world_state.tick(null, 2)
-    npc = world_state.get_belief_by_label('npc')
-
-    // Use Belief.from to add new knowledge (with_traits doesn't exist)
-    npc = Belief.from(npc, {
+    world_state = world_state.tick_with_traits(npc, {
       'mind.append': {
         tavern: ['location'],
         forge: ['location']
       }
-    })
+    }, 2)
+    // FIXME: make sure this results in a new mind state in world state.
 
-    world_state.lock()
+    // Get the updated npc belief from the new state
+    npc = world_state.get_belief_by_label('npc')
 
     // Now mind should have knowledge about tavern and forge
     mind = npc.get_trait(world_state, 'mind')
