@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
+import { stdTypes, Thing } from './helpers.mjs';
 
 describe('Mind Trait', () => {
   beforeEach(() => {
@@ -10,9 +11,10 @@ describe('Mind Trait', () => {
   it('creates mind from declarative template', () => {
     // Setup archetypes and traits
     const archetypes = {
+      Thing,
       ObjectPhysical: {
+        bases: ['Thing'],
         traits: {
-          '@about': null,
           location: null,
         },
       },
@@ -33,15 +35,12 @@ describe('Mind Trait', () => {
     };
 
     const traittypes = {
-      '@about': {
-        type: 'Subject',
-        mind: 'parent'
-      },
+      ...stdTypes,
       location: 'Location',
       mind: 'Mind',
     };
 
-    DB.register(archetypes, traittypes);
+    DB.register(traittypes, archetypes, {});
 
     // Create world beliefs
     const world_mind = new Mind(null, 'world');
@@ -117,13 +116,7 @@ describe('Mind Trait', () => {
   it('multiple NPCs learn about same shared beliefs', () => {
     // Setup archetypes
     const archetypes = {
-      Thing: {
-        traits: {
-          '@label': null,
-          '@tt': null,
-          '@about': null,  // All beliefs can be "about" something
-        },
-      },
+      Thing,
       ObjectPhysical: {
         bases: ['Thing'],
         traits: {
@@ -151,19 +144,14 @@ describe('Mind Trait', () => {
     };
 
     const traittypes = {
-      '@about': {
-        type: 'Subject',
-        mind: 'parent'
-      },
-      '@label': 'string',
-      '@tt': 'number',
+      ...stdTypes,
       location: 'Location',
       mind: 'Mind',
       coordinates: 'string',
       size: 'string',
     };
 
-    DB.register(archetypes, traittypes);
+    DB.register(traittypes, archetypes, {});
 
     // Create shared belief prototypes (templates for Location types)
     const tavern_proto = Belief.create_shared_from_template(null, ['Location'], {
@@ -294,13 +282,7 @@ describe('Mind Trait', () => {
   it('NPCs learn new traits about entities they already know from cultural knowledge', () => {
     // Setup archetypes
     const archetypes = {
-      Thing: {
-        traits: {
-          '@label': null,
-          '@tt': null,
-          '@about': null,  // All beliefs can be "about" something
-        },
-      },
+      Thing,
       ObjectPhysical: {
         bases: ['Thing'],
         traits: {
@@ -337,12 +319,7 @@ describe('Mind Trait', () => {
     };
 
     const traittypes = {
-      '@about': {
-        type: 'Subject',
-        mind: 'parent'
-      },
-      '@label': 'string',
-      '@tt': 'number',
+      ...stdTypes,
       location: 'Location',
       mind: 'Mind',
       coordinates: 'string',
@@ -350,7 +327,7 @@ describe('Mind Trait', () => {
       owner: 'string',
     };
 
-    DB.register(archetypes, traittypes);
+    DB.register(traittypes, archetypes, {});
 
     // Create shared prototype
     const tavern_proto = Belief.create_shared_from_template(null, ['Location'], {
@@ -447,8 +424,10 @@ describe('Mind Trait', () => {
 
   it('empty trait array learns nothing', () => {
     const archetypes = {
+      Thing,
       ObjectPhysical: {
-        traits: { '@about': null, location: null },
+        bases: ['Thing'],
+        traits: { location: null },
       },
       Location: {
         bases: ['ObjectPhysical'],
@@ -459,15 +438,12 @@ describe('Mind Trait', () => {
     };
 
     const traittypes = {
-      '@about': {
-        type: 'Subject',
-        mind: 'parent'
-      },
+      ...stdTypes,
       location: 'Location',
       mind: 'Mind',
     };
 
-    DB.register(archetypes, traittypes);
+    DB.register(traittypes, archetypes, {});
 
     const world_mind = new Mind(null, 'world');
     const world_state = world_mind.create_state(1);
@@ -504,20 +480,18 @@ describe('Mind Trait', () => {
 
   it('throws error for non-existent belief', () => {
     const archetypes = {
+      Thing,
       Mental: {
         traits: { mind: null },
       },
     };
 
     const traittypes = {
-      '@about': {
-        type: 'Subject',
-        mind: 'parent'
-      },
+      ...stdTypes,
       mind: 'Mind',
     };
 
-    DB.register(archetypes, traittypes);
+    DB.register(traittypes, archetypes, {});
 
     const world_mind = new Mind(null, 'world');
     const world_state = world_mind.create_state(1);

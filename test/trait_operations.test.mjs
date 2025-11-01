@@ -2,6 +2,7 @@ import { expect } from 'chai'
 import { Mind, State, Belief, Archetype, Traittype } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 import {log} from '../public/lib/debug.mjs'
+import { stdTypes } from './helpers.mjs'
 
 describe('Trait Operations Pattern', () => {
   beforeEach(() => {
@@ -31,15 +32,12 @@ describe('Trait Operations Pattern', () => {
     }
 
     const traittypes = {
-      '@about': {
-        type: 'Subject',
-        mind: 'parent'
-      },
+      ...stdTypes,
       location: 'Location',
       mind: 'Mind',
     }
 
-    DB.register(archetypes, traittypes)
+    DB.register(traittypes, archetypes, {})
 
     // Create world beliefs
     const world_mind = new Mind(null, 'world')
@@ -105,15 +103,12 @@ describe('Trait Operations Pattern', () => {
     }
 
     const traittypes = {
-      '@about': {
-        type: 'Subject',
-        mind: 'parent'
-      },
+      ...stdTypes,
       location: 'Location',
       mind: 'Mind',
     }
 
-    DB.register(archetypes, traittypes)
+    DB.register(traittypes, archetypes, {})
 
     // Create world beliefs
     const world_mind = new Mind(null, 'world')
@@ -190,15 +185,12 @@ describe('Trait Operations Pattern', () => {
     }
 
     const traittypes = {
-      '@about': {
-        type: 'Subject',
-        mind: 'parent'
-      },
+      ...stdTypes,
       location: 'Location',
       mind: 'Mind',
     }
 
-    DB.register(archetypes, traittypes)
+    DB.register(traittypes, archetypes, {})
 
     // Create world beliefs
     const world_mind = new Mind(null, 'world')
@@ -268,15 +260,12 @@ describe('Trait Operations Pattern', () => {
     }
 
     const traittypes = {
-      '@about': {
-        type: 'Subject',
-        mind: 'parent'
-      },
+      ...stdTypes,
       location: 'Location',
       mind: 'Mind',
     }
 
-    DB.register(archetypes, traittypes)
+    DB.register(traittypes, archetypes, {})
 
     // Create world beliefs
     const world_mind = new Mind(null, 'world')

@@ -435,16 +435,19 @@ export function reset_registries() {
 }
 
 /**
- * Register archetypes and trait types into the database
- * @param {Object<string, ArchetypeDefinition>} archetypes - Archetype definitions {label: definition}
+ * Register trait types, archetypes, and prototypes into the database
  * @param {Object<string, string|TraitTypeSchema>} traittypes - Trait type definitions {label: type or schema}
+ * @param {Object<string, ArchetypeDefinition>} archetypes - Archetype definitions {label: definition}
+ * @param {Object<string, {bases: string[], traits?: Object}>} prototypes - Prototype definitions (timeless shared beliefs)
  */
-export function register( archetypes, traittypes ) {
+export function register(traittypes, archetypes, prototypes) {
+  // Register trait types first
   for (const [label, def] of Object.entries(traittypes)) {
     const traittype = new Traittype(label, def)
     Traittype.register(label, traittype)
   }
 
+  // Register archetypes second
   for (const [label, def] of Object.entries(archetypes)) {
     if (Archetype.get_by_label(label)) {
       throw new Error(`Label '${label}' is already used by another archetype`)
@@ -454,5 +457,54 @@ export function register( archetypes, traittypes ) {
     }
     const archetype = new Archetype(label, def.bases ?? [], def.traits ?? {})
     Archetype.register(label, archetype)
+  }
+
+  // Register prototypes third (timeless shared beliefs)
+  for (const [label, def] of Object.entries(prototypes)) {
+    // Validate required fields
+    if (!def.bases || !Array.isArray(def.bases)) {
+      throw new Error(`Prototype '${label}' must have 'bases' array`)
+    }
+
+    // Check for label conflicts
+    if (Archetype.get_by_label(label)) {
+      throw new Error(`Label '${label}' is already used by an archetype`)
+    }
+    if (sid_by_label.has(label)) {
+      throw new Error(`Label '${label}' is already used by another prototype or belief`)
+    }
+
+    // Resolve bases from strings to Archetypes or prototype Beliefs
+    const resolved_bases = def.bases.map(base_label => {
+      // Try archetype first
+      const archetype = Archetype.get_by_label(base_label)
+      if (archetype) return archetype
+
+      // Try prototype (previously registered shared belief)
+      const subject = get_subject_by_label(base_label)
+      if (subject) {
+        const beliefs = [...subject.beliefs_at_tt(-Infinity)]
+        if (beliefs.length === 1) {
+          return beliefs[0]
+        }
+      }
+
+      throw new Error(`Base '${base_label}' not found as archetype or prototype for '${label}'`)
+    })
+
+    // Create timeless shared belief (no @tt, origin_state=null, in_mind=null)
+    const subject = get_or_create_subject(null)
+    const belief = new Belief(null, subject, resolved_bases)
+
+    // Register label first so subsequent prototypes can reference this one
+    register_label(label, subject.sid)
+
+    // Add label trait and any additional traits
+    belief.add_trait('@label', label)
+    if (def.traits) {
+      for (const [trait_name, trait_value] of Object.entries(def.traits)) {
+        belief.add_trait(trait_name, trait_value)
+      }
+    }
   }
 }

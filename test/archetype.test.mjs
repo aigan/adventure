@@ -76,7 +76,7 @@ describe('Archetype', () => {
       DB.reset_registries();
 
       expect(() => {
-        DB.register({
+        DB.register({}, {
           BadArchetype: {
             bases: ['NonExistentBase'],
             traits: {}

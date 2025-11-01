@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## 2025-11-01
 
+### Unified Registration API
+- `DB.register()` now accepts three parameters: `register(traittypes, archetypes, prototypes)`
+- Prototypes are timeless shared beliefs created without `@tt` (automatically get `get_tt() === -Infinity`)
+- Prototypes must have `bases` array, optional `traits` object
+- All prototypes created with `null` parent mind (global scope) and `null` origin_state (stateless)
+- Simplifies world setup - no manual `create_shared_from_template()` calls needed
+
 ### Timeless Shared Beliefs
 - `belief.get_tt()` returns `-Infinity` for shared beliefs without `@tt` (was: `0`)
 - Timeless prototypes are now always included in `subject.beliefs_at_tt()` queries

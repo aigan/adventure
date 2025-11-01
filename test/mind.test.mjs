@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
+import { stdTypes, Thing } from './helpers.mjs';
 
 describe('Mind', () => {
   beforeEach(() => {
@@ -97,12 +98,13 @@ describe('Mind', () => {
     beforeEach(() => {
       // Setup minimal archetypes for testing
       DB.register({
-        Base: {traits: {name: null, '@about': null}}
-      }, {
+        ...stdTypes,
         mind: 'Mind',
         name: 'string',
-        '@about': {type: 'Subject', mind: 'parent'}
-      });
+      }, {
+        Thing,
+        Base: {bases: ['Thing'], traits: {name: null}}
+      }, {});
     });
 
     it('should create Mind from plain object template (learn spec)', () => {

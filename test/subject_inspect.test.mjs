@@ -63,18 +63,18 @@ describe('Subject.to_inspect_view()', () => {
   it('resolves subject in array trait', () => {
     // Add items traittype and Container archetype for this test
     DB.register({
+      items: {
+        type: 'PortableObject',
+        container: Array
+      }
+    }, {
       Container: {
         bases: ['Location'],
         traits: {
           items: null
         }
       }
-    }, {
-      items: {
-        type: 'PortableObject',
-        container: Array
-      }
-    })
+    }, {})
 
     // Create sword and shield first
     const world_state = createMindWithBeliefs('world', {

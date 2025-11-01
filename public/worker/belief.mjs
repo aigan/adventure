@@ -134,16 +134,17 @@ export class Belief {
     DB.register_belief_by_subject(this)
 
     // collect dynamic props
-    //log("Resolve dynamic props from prototypes");
+    //log("Resolve dynamic props from prototypes", this);
 
     //const beliefs = []
     const queue = []
-    for (const base of this._bases) {
-      if (base instanceof Belief) {
-        if (base.in_mind === mind) continue
+    if (mind !== null) {
+      for (const base of this._bases) {
+        if (base instanceof Belief) {
+          if (base.in_mind === mind) continue
+        }
+        queue.push(base);
       }
-
-      queue.push(base);
     }
 
     const ops = []
@@ -159,7 +160,7 @@ export class Belief {
       for (const [key, value_in] of base.get_trait_entries()) {
         const [trait, subprop] = key.split(/\.(.+)/)
         if (typeof subprop === 'string') {
-          log("Add op", trait, subprop );
+          //log("Add op", trait, subprop );
           ops.push({
             key: subprop,
             value: value_in,
@@ -235,23 +236,29 @@ export class Belief {
       }
 */
 
-    // Regular trait - resolve via traittype
+    // Regular trait - resolve via traittype, then call add_trait with resolved value
     const traittype = Traittype.get_by_label(label)
     assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
 
     const value = /** @type {Traittype} */ (traittype).resolve_trait_value_from_template(this, data)
 
-    assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.get_label(), value, archetypes: [...this.get_archetypes()].map(a => a.label)})
-
-    this._traits.set(label, value)
+    // Call add_trait with resolved value (handles validation and special cases like @label)
+    this.add_trait(label, value)
   }
 
   /**
    * @param {string} label
-   * @param {Record<string, any>} data
+   * @param {any} data
    */
   add_trait(label, data) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
+
+    // Handle @label specially - set subject label instead of storing as trait
+    if (label === '@label') {
+      assert(typeof data === 'string', '@label must be a string', {label: data})
+      this.set_label(data)
+      return
+    }
 
     const traittype = Traittype.get_by_label(label)
     assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
@@ -457,10 +464,12 @@ export class Belief {
    */
   get_about(belief_state) {
     const about_trait = this._traits.get('@about')
+
+    //log("belief about", this, about_trait);
     if (!(about_trait instanceof Subject)) return null
 
     assert(belief_state instanceof State, 'get_about requires State where belief exists', {belief_state})
-    assert(belief_state.ground_state instanceof State, 'belief_state must have ground_state', {belief_state})
+    assert(belief_state.ground_state instanceof State, 'belief_state with @about must have ground_state', {belief_state})
 
     const belief = belief_state.ground_state.get_belief_by_subject(about_trait)
     assert(belief instanceof Belief, 'Belief referenced by @about must exist in ground_state', {about_trait, ground_state: belief_state.ground_state})
@@ -589,6 +598,8 @@ export class Belief {
    */
   set_label(label) {
     const existing_label = this.get_label()
+    if (existing_label == label) return;
+
     if (existing_label !== null) {
       throw new Error(`Subject sid ${this.subject.sid} already has label '${existing_label}', cannot set to '${label}'`)
     }
@@ -840,16 +851,8 @@ export class Belief {
 
     const belief = new Belief(state, subject, resolved_bases)
 
-    // Extract @label from traits (same pattern as create_shared_from_template)
-    const label = traits['@label']
-    if (label != null) {
-      assert(typeof label === 'string', '@label must be a string', {label})
-      belief.set_label(label)
-    }
-
-    // Add traits, skipping @label (already handled)
+    // Add all traits (add_trait handles @label specially)
     for (const [trait_label, trait_data] of Object.entries(traits)) {
-      if (trait_label === '@label') continue
       belief.add_trait_from_template(state, trait_label, trait_data)
     }
 
@@ -914,16 +917,8 @@ export class Belief {
     // Set ground_mind on auto-created subject for scoping
     belief.subject.ground_mind = parent_mind
 
-    // Register label if present
-    const label = traits['@label']
-    if (label != null) {
-      assert(typeof label === 'string', '@label must be a string', {label})
-      belief.set_label(label)
-    }
-
-    // Add all traits
+    // Add all traits (add_trait handles @label specially)
     for (const [trait_label, trait_data] of Object.entries(traits)) {
-      if (trait_label === '@label') continue  // Already handled
       belief.add_trait(trait_label, trait_data)
     }
 

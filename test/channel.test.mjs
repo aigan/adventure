@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Archetype, Traittype, Session, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
+import { stdTypes, Thing } from './helpers.mjs';
 
 // Mock BroadcastChannel
 class MockBroadcastChannel {
@@ -59,10 +60,7 @@ describe('Channel Message Handlers', () => {
     mockCounter = 0; // Reset sequence counter
     DB.reset_registries();
     const traittypes = {
-      '@about': {
-        type: 'Subject',
-        mind: 'parent'
-      },
+      ...stdTypes,
       location: 'Location',
       mind_states: {
         type: 'State',
@@ -73,9 +71,10 @@ describe('Channel Message Handlers', () => {
     }
 
     const archetypes = {
+      Thing,
       ObjectPhysical: {
+        bases: ['Thing'],
         traits: {
-          '@about': null,
           location: null,
           color: null,
         },
@@ -99,7 +98,7 @@ describe('Channel Message Handlers', () => {
       },
     }
 
-    DB.register(archetypes, traittypes);
+    DB.register(traittypes, archetypes, {});
   });
 
   describe('query_mind handler', () => {

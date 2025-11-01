@@ -28,6 +28,7 @@ export function setupStandardArchetypes() {
       type: 'Subject',
       mind: 'parent'  // Resolve in parent mind's ground state
     },
+    '@label': 'string',
     '@tt': 'number',
     location: 'Location',
     mind: 'Mind',  // Singular Mind reference
@@ -41,6 +42,7 @@ export function setupStandardArchetypes() {
     Thing: {
       traits: {
         '@about': null,
+        '@label': null,
         '@tt': null,
       },
     },
@@ -83,28 +85,20 @@ export function setupStandardArchetypes() {
     },
   };
 
-  DB.register(archetypes, traittypes);
+  /** @type {Record<string, {bases: string[], traits?: Object}>} */
+  const prototypes = {
+    Actor: {
+      bases: ['ObjectPhysical'],
+    },
+    Person: {
+      bases: ['Actor', 'Mental'],
+    },
+  };
+
+  DB.register(traittypes, archetypes, prototypes);
 }
 
 setupStandardArchetypes();
-
-/** @param {Subject} subject */
-const decider = (subject)=>{
-  const beliefs = [...subject.beliefs_at_tt(1)];
-  assert(beliefs.length === 1, 'Found more than one valid belief', beliefs);
-  return beliefs[0];
-}
-
-// Create shared beliefs (before world mind/state)
-Cosmos.Belief.create_shared_from_template(null, ['ObjectPhysical'], {
-  '@tt': 1,
-  '@label': 'Actor'
-}, decider);
-
-Cosmos.Belief.create_shared_from_template(null, ['Actor', 'Mental'], {
-  '@tt': 1,
-  '@label': 'Person'
-}, decider);
 
 // Create world mind and initial state
 const world_mind = new Cosmos.Mind(null, 'world');

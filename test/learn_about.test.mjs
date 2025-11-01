@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { createMindWithBeliefs, setupStandardArchetypes, setupMinimalArchetypes, get_first_belief_by_label } from './helpers.mjs';
+import { createMindWithBeliefs, setupStandardArchetypes, setupMinimalArchetypes, get_first_belief_by_label, stdTypes, Thing } from './helpers.mjs';
 
 describe('learn_about', () => {
   beforeEach(() => {
@@ -298,10 +298,7 @@ describe('learn_about', () => {
       DB.reset_registries();
 
       const traittypes = {
-        '@about': {
-          type: 'Subject',
-          mind: 'parent'
-        },
+        ...stdTypes,
         location: 'Location',
         items: {
           type: 'PortableObject',
@@ -311,9 +308,10 @@ describe('learn_about', () => {
       };
 
       const archetypes = {
+        Thing,
         ObjectPhysical: {
+          bases: ['Thing'],
           traits: {
-            '@about': null,
             location: null,
           },
         },
@@ -331,7 +329,7 @@ describe('learn_about', () => {
         },
       };
 
-      DB.register(archetypes, traittypes);
+      DB.register(traittypes, archetypes, {});
 
       const world_mind = new Mind(null, 'world');
 

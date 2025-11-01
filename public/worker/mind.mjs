@@ -408,7 +408,7 @@ export class Mind {
 
     // Create the mind (parent is the mind that contains ground_state)
     const parent_mind = ground_state.in_mind
-    const entity_mind = new Mind(parent_mind)
+    const entity_mind = new Mind(parent_mind) // TODO add a label based on template?
 
     // Create initial state with self reference - fork invariant: child.tt = parent_state.vt
     const state = new State(

@@ -41,7 +41,7 @@ describe('Temporal Reasoning', () => {
       mind: 'Mind',
     }
 
-    DB.register(archetypes, traittypes)
+    DB.register(traittypes, archetypes, {})
   }
 
   describe('Fork Invariant (child.tt = parent_state.vt)', () => {

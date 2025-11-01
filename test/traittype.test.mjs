@@ -1,11 +1,13 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
+import { stdTypes, Thing } from './helpers.mjs';
 
 describe('Traittype', () => {
   beforeEach(() => {
     DB.reset_registries();
     const traittypes = {
+      ...stdTypes,
       location: 'Location',
       mind_states: {
         type: 'State',
@@ -31,18 +33,15 @@ describe('Traittype', () => {
         container: Array,
         min: 1
       },
-      '@about': {
-        type: 'Subject',
-        mind: 'parent'
-      }
     };
 
     const archetypes = {
+      Thing,
       ObjectPhysical: {
+        bases: ['Thing'],
         traits: {
           location: null,
           color: null,
-          '@about': null,
         },
       },
       Mental: {
@@ -65,7 +64,7 @@ describe('Traittype', () => {
       },
     };
 
-    DB.register(archetypes, traittypes);
+    DB.register(traittypes, archetypes, {});
   });
 
   describe('Simple types (backward compatibility)', () => {
@@ -197,6 +196,7 @@ describe('Traittype', () => {
     it('handles empty array when min constraint allows it', () => {
       DB.reset_registries();
       const traittypes = {
+        ...stdTypes,
         tags: {
           type: 'string',
           container: Array,
@@ -205,14 +205,16 @@ describe('Traittype', () => {
       };
 
       const archetypes = {
+        Thing,
         Tagged: {
+          bases: ['Thing'],
           traits: {
             tags: null
           }
         }
       };
 
-      DB.register(archetypes, traittypes);
+      DB.register(traittypes, archetypes, {});
 
       const mind = new Mind(null, 'test_mind');
       const state = mind.create_state(1);
