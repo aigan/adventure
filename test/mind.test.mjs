@@ -219,4 +219,74 @@ describe('Mind', () => {
       }).to.throw('belief must have origin_state');
     });
   });
+
+  describe('mind.state property', () => {
+    it('tracks unlocked state after create_from_template', () => {
+      const world_mind = new Mind(null, 'world');
+      const world_state = world_mind.create_state(1);
+
+      // Just use empty trait spec (no learning needed for this test)
+      const npc_belief = world_state.add_belief_from_template({
+        bases: []
+      });
+
+      // Create mind from template
+      const mind = Mind.create_from_template(world_state, npc_belief, {});
+
+      // Should have unlocked state
+      expect(mind.state).to.not.be.null;
+      expect(mind.state).to.be.instanceof(State);
+      expect(mind.state.locked).to.be.false;
+    });
+
+    it('clears state property after locking', () => {
+      const world_mind = new Mind(null, 'world');
+      const world_state = world_mind.create_state(1);
+
+      // Just use empty trait spec
+      const npc_belief = world_state.add_belief_from_template({
+        bases: []
+      });
+
+      // Create mind from template
+      const mind = Mind.create_from_template(world_state, npc_belief, {});
+
+      const state = mind.state;
+      expect(state).to.not.be.null;
+
+      // Lock the state
+      state.lock();
+
+      // mind.state should now be null
+      expect(mind.state).to.be.null;
+    });
+
+    it('tracks most recent unlocked state when multiple states exist', () => {
+      const mind = new Mind(null, 'test');
+
+      // Create first state
+      const state1 = mind.create_state(100);
+      expect(mind.state).to.equal(state1);
+
+      // Lock first state before branching
+      state1.lock();
+
+      // Create second state (unlocked)
+      const state2 = state1.branch_state(null, 200);
+      expect(mind.state).to.equal(state2);
+
+      // Lock second state
+      state2.lock();
+      expect(mind.state).to.be.null;
+
+      // Create third state
+      const state3 = state1.branch_state(null, 300);
+      expect(mind.state).to.equal(state3);
+    });
+
+    it('is null for new mind with no states', () => {
+      const mind = new Mind(null, 'test');
+      expect(mind.state).to.be.null;
+    });
+  });
 });

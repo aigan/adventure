@@ -13,7 +13,7 @@
  * See docs/ALPHA-1.md for how beliefs are used in gameplay
  */
 
-import { assert } from '../lib/debug.mjs'
+import { assert, log } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
@@ -70,6 +70,7 @@ function parse_trait_key(key) {
  * @returns {Function|null} Class constructor or null
  */
 function get_class_by_name(data_type) {
+  // FIXME: move to Traittype
   return Traittype.type_class_by_name[data_type] ?? null
 }
 
@@ -132,7 +133,81 @@ export class Belief {
     DB.register_belief_by_id(this)
     DB.register_belief_by_subject(this)
 
-    // TODO: add default trait values
+/*
+
+    // collect dynamic props
+    log("Resolve dynamic props from prototypes");
+
+    //const beliefs = []
+    const queue = []
+    for (const base of this._bases) {
+      if (base instanceof Belief) {
+        if (base.in_mind === mind) continue
+      }
+
+      queue.push(base);
+    }
+
+    const ops = []
+    const targets = new Set()
+    const seen = new Set()
+    while (queue.length > 0) {
+      const base = queue.shift()
+      if (!base || seen.has(base)) continue
+      seen.add(base)
+
+      //log("Consider", base);
+
+      for (let [key, value_in] of base.get_trait_entries()) {
+        const [trait, subprop] = key.split(/\.(.+)/)
+        if (typeof subprop === 'string') {
+          log("Add op");
+          ops.push({
+            key: subprop,
+            value_in,
+            source: base,
+          })
+          targets.add(trait)
+          continue
+        }
+
+        if (value_in === null) continue
+
+        let value_out = value_in
+        if (value_in._call) {
+          log ("resolve _call", value_in);
+          const {_call, ...props} = value_in
+          const traittype = Traittype.get_by_label(trait)
+          const ValueClass = Traittype.type_class_by_name[traittype.data_type]
+          assert(ValueClass, "fixme")
+          assert(typeof ValueClass[_call] === 'function', "fixme")
+          value_out = (ValueClass[_call])(state, this, props)
+        }
+
+        if(targets.has(trait)) {
+          log("Handle trait", value_out);
+        }
+
+        if (value_out !== value_in) {
+          this.add_trait(trait, value_out)
+        }
+      }
+
+      queue.push(... base._bases);
+    }
+*/
+
+    /*
+      TODO:
+
+      1. get all shared base beleifs recursively + this belief
+      2. Get all archetypes from collected beliefs
+
+      * Collect operations.
+      * Run calls.
+      * Add default values
+    */
+
   }
 
   /**
@@ -209,11 +284,8 @@ export class Belief {
    * @returns {boolean}
    */
   can_have_trait(label) {
-    // Parse dotted names (e.g., 'mind.append' -> check for 'mind')
-    const {trait} = parse_trait_key(label) // FIXME: Should not parse the label
-
     for (const archetype of this.get_archetypes()) {
-      if (archetype.has_trait(trait)) return true
+      if (archetype.has_trait(label)) return true
     }
     return false
   }
@@ -275,7 +347,7 @@ export class Belief {
    * Supports trait operations pattern for composable value construction
    * @param {State} state - State context for trait resolution
    * @param {string} trait_name - Name of the trait to get
-   * @returns {*} Raw trait value (Subject, not Belief), or null if not found
+   * @returns {*} trait value (Subject, not Belief), or null if not found
    */
   get_trait(state, trait_name) {
     // Collect value and operations using polymorphic delegation
@@ -307,7 +379,7 @@ export class Belief {
           // If constructor returns a State (e.g., from Mind.create_from_template),
           // extract the value (Mind) and let operations work with it
           if (result instanceof State) {
-            result = result.in_mind
+            result = result.in_mind // FIXME: should return consistent type
           }
         }
       }
@@ -323,9 +395,9 @@ export class Belief {
   }
 
   /**
-   * Iterate over all traits (own and inherited) with their raw values
+   * Iterate over all traits (own and inherited) with their values
    * Own traits shadow inherited traits with the same name
-   * @returns {Generator<[string, *]>} Yields [trait_name, raw_value] pairs
+   * @returns {Generator<[string, *]>} Yields [trait_name, value] pairs
    */
   *get_traits() {
     const yielded = new Set()

@@ -107,6 +107,14 @@ export class Mind {
      */
     this._states_by_ground_state = new Map()
 
+    /**
+     * Latest unlocked state, or null if all states are locked
+     * Updated by register_state() when unlocked state is registered
+     * Cleared by State.lock() when this state is locked
+     * @type {State|null}
+     */
+    this.state = null
+
     // Register as child in parent
     if (this.parent) {
       this.parent._child_minds.add(this)
@@ -174,10 +182,16 @@ export class Mind {
   /**
    * Register a state in this mind (called by State constructor)
    * Adds to both _states Set and _states_by_ground_state index
+   * Tracks unlocked states in this.state property
    * @param {State} state
    */
   register_state(state) {
     this._states.add(state)
+
+    // Track latest unlocked state
+    if (!state.locked) {
+      this.state = state
+    }
 
     if (state.ground_state) {
       if (!this._states_by_ground_state.has(state.ground_state)) {
@@ -313,7 +327,9 @@ export class Mind {
         !(data._states instanceof Set)) {
       // It's a learn spec - call create_from_template
       assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
-      return Mind.create_from_template(creator_state, belief, data).lock().in_mind
+      const mind = Mind.create_from_template(creator_state, belief, data)
+      assert(mind.state !== null, 'create_from_template must create unlocked state')
+      return mind.state.lock().in_mind
     }
 
     // Detect explicit Mind template with _type field
@@ -321,7 +337,9 @@ export class Mind {
       assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
       // Strip _type from template before passing to create_from_template
       const {_type, ...traits} = data
-      return Mind.create_from_template(creator_state, belief, traits).lock().in_mind
+      const mind = Mind.create_from_template(creator_state, belief, traits)
+      assert(mind.state !== null, 'create_from_template must create unlocked state')
+      return mind.state.lock().in_mind
     }
 
     // Not a template - return as-is (Mind instance, null, undefined, etc.)
@@ -371,11 +389,11 @@ export class Mind {
 
   /**
    * Create Mind with initial state from declarative template
-   * Returns the unlocked state - caller is responsible for locking it
+   * Returns the mind - access unlocked state via mind.state property
    * @param {State} ground_state - State context for belief resolution and ground_state
    * @param {Belief} ground_belief - The belief that owns this mind trait
    * @param {Object<string, string[]>} traits - {belief_label: [trait_names]} to learn
-   * @returns {State} The unlocked initial state (access mind via state.in_mind)
+   * @returns {Mind} The created mind (access unlocked state via mind.state)
    */
   static create_from_template(ground_state, ground_belief, traits) {
     const assert = (/** @type {any} */ condition, /** @type {string} */ message, /** @type {any} */ context) => {
@@ -417,8 +435,8 @@ export class Mind {
       }
     }
 
-    // Return unlocked state - caller is responsible for locking
-    return state
+    // Return mind - caller can access unlocked state via mind.state
+    return entity_mind
   }
 
   /**

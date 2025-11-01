@@ -148,6 +148,12 @@ export class State {
    */
   lock() {
     this.locked = true
+
+    // Clear mind's reference to this as unlocked state
+    if (this.in_mind.state === this) {
+      this.in_mind.state = null
+    }
+
     for (const belief of this.insert) {
       belief.lock(this)
     }

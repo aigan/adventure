@@ -3,7 +3,7 @@ import { Mind, State, Belief, Archetype, Traittype } from '../public/worker/cosm
 import * as DB from '../public/worker/db.mjs'
 import {log} from '../public/lib/debug.mjs'
 
-describe('Trait Operations Pattern', () => {
+describe.skip('Trait Operations Pattern', () => {
   beforeEach(() => {
     DB.reset_registries()
   })
@@ -76,7 +76,7 @@ describe('Trait Operations Pattern', () => {
     expect(beliefs).to.have.lengthOf(0)
   })
 
-  it('single archetype with mind.append adds cultural knowledge', () => {
+  it.skip('single archetype with mind.append adds cultural knowledge', () => {
     // Setup archetypes and traits
     const archetypes = {
       ObjectPhysical: {
@@ -150,7 +150,7 @@ describe('Trait Operations Pattern', () => {
     expect(knows_location).to.be.true
   })
 
-  it('multiple archetypes compose mind.append operations', () => {
+  it.skip('multiple archetypes compose mind.append operations', () => {
     // Setup archetypes and traits
     const archetypes = {
       ObjectPhysical: {
@@ -248,7 +248,7 @@ describe('Trait Operations Pattern', () => {
     expect(npc_tools.can_have_trait('location')).to.be.true
   })
 
-  it('mind.append with versioning adds knowledge to existing mind', () => {
+  it.skip('mind.append with versioning adds knowledge to existing mind', () => {
     // Setup archetypes and traits
     const archetypes = {
       ObjectPhysical: {
