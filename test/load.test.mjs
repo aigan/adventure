@@ -105,7 +105,7 @@ describe('Save/Load functionality', () => {
         },
       });
 
-      const state2 = state1.tick({ replace: [room1_v2] });
+      const state2 = state1.tick(null, 2, { replace: [room1_v2] });
 
       // Save and reload
       const json = save_mind(world_mind);
@@ -114,7 +114,7 @@ describe('Save/Load functionality', () => {
       const loaded_mind = load(json);
 
       // Get state2 (the one with the circular reference)
-      const loaded_state2 = [...loaded_mind._states].find(s => s.timestamp === 2);
+      const loaded_state2 = [...loaded_mind._states].find(s => s.tt === 2);
       expect(loaded_state2).to.exist;
 
       // Get the beliefs
@@ -153,8 +153,8 @@ describe('Save/Load functionality', () => {
         bases: ['PortableObject'],
       });
 
-      const state2 = state1.tick({ insert: [] });
-      const state3 = state2.tick({ insert: [] });
+      const state2 = state1.tick(null, 2);
+      const state3 = state2.tick(null, 3);
 
       // Save and reload
       const json = save_mind(world_mind);
@@ -167,9 +167,9 @@ describe('Save/Load functionality', () => {
       expect(states).to.have.lengthOf(3);
 
       // Verify state chain via base references
-      const s3 = states.find(s => s.timestamp === 3);
-      const s2 = states.find(s => s.timestamp === 2);
-      const s1 = states.find(s => s.timestamp === 1);
+      const s3 = states.find(s => s.tt === 3);
+      const s2 = states.find(s => s.tt === 2);
+      const s1 = states.find(s => s.tt === 1);
 
       expect(s3.base).to.equal(s2);
       expect(s2.base).to.equal(s1);
@@ -211,8 +211,8 @@ describe('Save/Load functionality', () => {
         },
       });
 
-      state = state.tick({ insert: [] });
-      state = state.tick_with_traits(ball, { color: 'blue' });
+      state = state.tick(null, state.vt + 1);
+      state = state.tick_with_traits(ball, { color: 'blue' }, state.vt + 1);
 
       // Get versioned ball's ID before saving
       const ball_v2 = [...state.get_beliefs()].find(b => b.get_label() === 'ball');
@@ -349,7 +349,7 @@ describe('Save/Load functionality', () => {
         },
       });
 
-      state = state.tick_with_traits(ball, { color: 'blue' });
+      state = state.tick_with_traits(ball, { color: 'blue' }, state.vt + 1);
 
       const room1_v2 = Belief.from_template(state, {
         bases: [room1],
@@ -357,7 +357,7 @@ describe('Save/Load functionality', () => {
           location: 'room2',
         },
       });
-      state = state.tick({ replace: [room1_v2] });
+      state = state.tick(null, state.vt + 1, { replace: [room1_v2] });
 
       // First save
       const json1 = save_mind(world_mind);

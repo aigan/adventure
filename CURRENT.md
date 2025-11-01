@@ -6,26 +6,42 @@ None - ready for next feature!
 
 ## Recently Completed
 
-- **Trait Operations Pattern Phase 4** - Completed integration of trait operations pattern ([plan](docs/plans/trait-operations-pattern.md))
+- **Bi-Temporal Database Implementation** - Implemented tri-temporal semantics for temporal reasoning and nested mind coordination
+  - Renamed `timestamp` → `tt` (Transaction Time) throughout codebase
+  - Added `State.vt` (Valid Time) for temporal reasoning: memory (vt < tt), present (vt = tt), planning (vt > tt)
+  - Implemented fork invariant: `child_mind.tt = parent_state.vt` for nested mind time coordination
+  - Updated `tick()` signature: `state.tick(ground_state, vt, {operations})` for explicit time control
+  - Renamed `states_valid_at()` → `states_at_tt()` to clarify temporal querying semantics
+  - Removed all `timestamp + 1` placeholders - time now coordinated via ground_state.vt
+  - Documented tri-temporal model (TT/VT/DT) in SPECIFICATION.md and IMPLEMENTATION.md
+  - All 176 tests passing with new temporal semantics
+
+- **Trait Operations Pattern Phase 4** - Completed integration of trait operations pattern ([plan](docs/plans/archive/trait-operations-pattern.md))
   - Added Mental, Villager, Blacksmith archetypes demonstrating mind.append composition
   - Integration tests verify NPCs compose cultural knowledge from multiple bases
   - Fixed timestamp synchronization: mind states created at ground_state.timestamp
   - Added DB.get_belief_about_subject_in_state() helper for querying learned beliefs
   - State.lock() now chainable for cleaner code
 
-- **Shared Belief Architecture Phase 5** - Added ground_mind scoping to prevent cross-parent belief access ([plan](docs/plans/shared-belief-architecture.md))
+- **Shared Belief Architecture Phase 5** - Added ground_mind scoping to prevent cross-parent belief access ([plan](docs/plans/archive/shared-belief-architecture.md))
   - Subject.ground_mind property scopes shared beliefs to parent mind hierarchies
   - Global shared beliefs (ground_mind=null) accessible from any context
   - Prevents unintended belief sharing across different world hierarchies
 
 ## Backlog
-- [ ] **Time Progression and Coordination** - Design proper time system for minds and ground states
-  - Problem: All `timestamp + 1` uses are placeholders (state.mjs:192, mind.mjs:355)
-  - Current: Simple increment with no coordination between mind states and ground states
-  - Need: Define how time flows when minds create new states
-  - Questions: Should mind states sync to ground_state time? Independent timelines? Event-based?
-  - Impact: Affects versioning, state branching, mind state creation
-- [ ] **Shared Belief Architecture - Documentation** - Complete remaining phases of shared belief plan
+- [ ] **Trait Composition Beyond Mind** - Test trait operations pattern with non-Mind traits
+  - Example: Enchanted Sword with `damage_types.append`, `tags.append` from multiple bases
+  - Validates pattern is generic, not Mind-specific
+  - Tests: Array-valued traits compose correctly via append operations
+- [ ] **Trait Operations with Versioning** - Test operations on already-constructed values
+  - Case: NPC at t=1 gets mind from archetypes, then at t=2 gets additional `mind.append` in belief traits
+  - Should: Call existing Mind's `state_data()` with new operations only (not re-collect archetype operations)
+  - Tests: Versioning path in `get_or_create_open_state_for_ground()` (locked belief → tt + 1)
+- [ ] **Temporal Reasoning Tests** - Add tests for temporal scenarios (memory, planning, superposition)
+  - Memory: NPC recalls past state (vt < tt)
+  - Planning: NPC reasons about future (vt > tt)
+  - Superposition: Multiple states at same tt with different possibilities
+- [ ] **Shared Belief Architecture - Documentation** - Complete remaining phases of shared belief plan ([plan](docs/plans/archive/shared-belief-architecture.md))
   - Phase 6: Update documentation with scoping patterns
   - Phase 7: Integration with lazy version propagation
 - [ ] **Lazy Version Propagation** - Enable efficient shared belief updates without version cascades ([plan](docs/plans/lazy-version-propagation.md))

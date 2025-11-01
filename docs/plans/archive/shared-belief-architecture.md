@@ -317,14 +317,17 @@ const country_v2 = Belief.create_shared(
 - [x] Phase 2: Add parent mind tracking
 - [x] Phase 3: Update base resolution to include shared beliefs
 - [x] Phase 4: Add shared belief creation helper (create_shared_from_template exists)
-- [ ] Phase 5: Add @parent_mind scoping to shared beliefs (prevent cross-parent access)
+- [x] Phase 5: Add ground_mind scoping to shared beliefs (prevent cross-parent access)
 - [ ] Phase 6: Update documentation
 - [ ] Phase 7: Integration with lazy version propagation
 
 **Notes:**
-- Phases 1-4 implemented while plan was waiting
-- Still missing: @parent_mind trait for scoping (currently no enforcement of parent boundaries)
-- Base resolution works but doesn't filter by parent scope yet
+- Phases 1-5 implemented
+- Phase 5 implemented with `Subject.ground_mind` property (not @parent_mind trait)
+- Global shared beliefs (ground_mind=null) accessible from any context
+- Scoped shared beliefs (ground_mind set) only accessible within parent hierarchy
+- Base resolution filters by parent scope correctly
+- Remaining: Documentation (Phase 6) and lazy propagation integration (Phase 7)
 
 ## Success Criteria
 

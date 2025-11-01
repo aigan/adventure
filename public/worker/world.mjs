@@ -28,7 +28,7 @@ export function setupStandardArchetypes() {
       type: 'Subject',
       mind: 'parent'  // Resolve in parent mind's ground state
     },
-    '@timestamp': 'number',
+    '@tt': 'number',
     location: 'Location',
     mind: 'Mind',  // Singular Mind reference
     color: 'string',
@@ -41,7 +41,7 @@ export function setupStandardArchetypes() {
     Thing: {
       traits: {
         '@about': null,
-        '@timestamp': null,
+        '@tt': null,
       },
     },
 
@@ -97,12 +97,12 @@ const decider = (subject)=>{
 
 // Create shared beliefs (before world mind/state)
 Cosmos.Belief.create_shared_from_template(null, ['ObjectPhysical'], {
-  '@timestamp': 1,
+  '@tt': 1,
   '@label': 'Actor'
 }, decider);
 
 Cosmos.Belief.create_shared_from_template(null, ['Actor', 'Mental'], {
-  '@timestamp': 1,
+  '@tt': 1,
   '@label': 'Person'
 }, decider);
 
@@ -146,7 +146,6 @@ const world_belief = {
     bases: ['Person'],
     traits: {
       location: 'tavern',
-      name: 'Aldric'
     },
   },
 
@@ -165,7 +164,6 @@ const world_belief = {
     bases: ['Person', 'Villager', 'Blacksmith'],
     traits: {
       location: 'forge',
-      name: 'Gareth'
     },
   },
 
@@ -185,7 +183,7 @@ state.add_beliefs(world_belief);
 const player = state.get_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
 const player_mind = player.get_trait(state, 'mind');
-let player_state = [...player_mind.states_valid_at(1)][0];
+let player_state = [...player_mind.states_at_tt(1)][0];
 player_state = player_state.branch_state(state);
 player_state.learn_about(state.get_belief_by_label('hammer'), ['location']);
 

@@ -300,7 +300,7 @@ describe('Belief', () => {
         bases: ['PortableObject']
       });
 
-      expect(hammer.get_timestamp()).to.equal(100);
+      expect(hammer.get_tt()).to.equal(100);
     });
 
     it('returns @timestamp meta-trait for shared beliefs (null ownership)', () => {
@@ -308,9 +308,9 @@ describe('Belief', () => {
       const archetype = Archetype.get_by_label('Temporal');
       const belief = new Belief(null, null, [archetype]);
 
-      belief.add_trait('@timestamp', 110);
+      belief.add_trait('@tt', 110);
 
-      expect(belief.get_timestamp()).to.equal(110);
+      expect(belief.get_tt()).to.equal(110);
     });
 
     it('prefers @timestamp meta-trait over origin_state.timestamp', () => {
@@ -321,31 +321,31 @@ describe('Belief', () => {
         bases: ['PortableObject', 'Temporal']
       });
 
-      // Add @timestamp that differs from origin_state.timestamp
-      belief.add_trait('@timestamp', 200);
+      // Add @tt that differs from origin_state.tt
+      belief.add_trait('@tt', 200);
 
-      // Should return @timestamp, not origin_state.timestamp
-      expect(belief.get_timestamp()).to.equal(200);
+      // Should return @tt, not origin_state.tt
+      expect(belief.get_tt()).to.equal(200);
     });
 
     it('returns 0 for beliefs without origin_state or @timestamp', () => {
       const belief = new Belief(null, null, []);
 
-      expect(belief.get_timestamp()).to.equal(0);
+      expect(belief.get_tt()).to.equal(0);
     });
 
     it('handles undefined vs 0 correctly', () => {
       const archetype = Archetype.get_by_label('Temporal');
       const belief = new Belief(null, null, [archetype]);
 
-      // No origin_state, no @timestamp -> returns 0
-      expect(belief.get_timestamp()).to.equal(0);
+      // No origin_state, no @tt -> returns 0
+      expect(belief.get_tt()).to.equal(0);
 
-      // Add explicit @timestamp of 0
-      belief.add_trait('@timestamp', 0);
+      // Add explicit @tt of 0
+      belief.add_trait('@tt', 0);
 
-      // Should return 0 from @timestamp (not fall through to origin_state)
-      expect(belief.get_timestamp()).to.equal(0);
+      // Should return 0 from @tt (not fall through to origin_state)
+      expect(belief.get_tt()).to.equal(0);
     });
   });
 
@@ -395,7 +395,7 @@ describe('Belief', () => {
       state1.lock();
 
       // Create v2 with only color changed
-      const state2 = state1.tick({});
+      const state2 = state1.tick(null, 101);
       const hammer_v2 = Belief.from_template(state2, {
         sid: hammer_v1.subject.sid,
         bases: [hammer_v1],
@@ -499,7 +499,7 @@ describe('Belief', () => {
     it('inherits traits from shared belief prototype', () => {
       // Create shared belief "GenericSword" with damage: 10, weight: 5
       const generic_sword = Belief.create_shared_from_template(null, ['MeleeWeapon'], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'GenericSword',
         damage: 10,
         weight: 5
@@ -532,7 +532,7 @@ describe('Belief', () => {
     it('multiple beliefs reference same shared subject', () => {
       // Create shared belief "StandardSword" with damage: 10
       const standard_sword = Belief.create_shared_from_template(null, ['MeleeWeapon'], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'StandardSword',
         damage: 10,
         weight: 3
@@ -579,14 +579,14 @@ describe('Belief', () => {
     it('resolves correct version at different timestamps', () => {
       // Create shared belief v1 at timestamp 100
       const seasonal_v1 = Belief.create_shared_from_template(null, ['Effect'], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'SeasonalBonus',
         bonus: 5
       });
 
-      // Create shared belief v2 at timestamp 200 (newer version)
+      // Create shared belief v2 at tt 200 (newer version)
       const seasonal_v2 = new Belief(null, seasonal_v1.subject, [seasonal_v1]);
-      seasonal_v2.add_trait('@timestamp', 200);
+      seasonal_v2.add_trait('@tt', 200);
       seasonal_v2.add_trait('bonus', 10);
 
       // Query at timestamp 150 -> should find v1
@@ -607,14 +607,14 @@ describe('Belief', () => {
     it('resolves traits through shared belief chain', () => {
       // Create shared belief chain: Weapon (base damage) → Sword (adds sharpness)
       const weapon = Belief.create_shared_from_template(null, ['MeleeWeapon'], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'Weapon',
         damage: 5,
         weight: 2
       });
 
       const sword = Belief.create_shared_from_template(null, [weapon], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'Sword',
         sharpness: 8
       });
@@ -644,7 +644,7 @@ describe('Belief', () => {
     it('inherits from shared belief through regular belief chain', () => {
       // Create shared belief "Tool" with durability
       const tool = Belief.create_shared_from_template(null, ['Tool'], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'GenericTool',
         durability: 100
       });
@@ -682,7 +682,7 @@ describe('Belief', () => {
     it('get_belief_by_state_or_shared finds shared belief', () => {
       // Create shared belief for a subject
       const default_item = Belief.create_shared_from_template(null, ['Item'], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'default_item',
         value: 50
       });
@@ -703,7 +703,7 @@ describe('Belief', () => {
     it('shared beliefs not registered in belief_by_mind', () => {
       // Create shared belief
       const prototype = Belief.create_shared_from_template(null, ['Item'], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'prototype_1',
         value: 42
       });
@@ -743,7 +743,7 @@ describe('Belief', () => {
 
       // Create shared belief scoped to world_mind (use existing Thing archetype)
       const cultural_knowledge = Belief.create_shared_from_template(world_mind, ['Thing'], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'CityLore'
       });
 
@@ -771,7 +771,7 @@ describe('Belief', () => {
 
       // Create shared belief scoped to world_mind
       const world_culture = Belief.create_shared_from_template(world_mind, ['Thing'], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'WorldCulture'
       });
 
@@ -799,12 +799,12 @@ describe('Belief', () => {
 
       // Each creates shared belief (different labels since labels must be globally unique)
       const world_tavern = Belief.create_shared_from_template(world_mind, ['Thing'], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'WorldTavern'
       });
 
       const dream_tavern = Belief.create_shared_from_template(dream_mind, ['Thing'], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'DreamTavern'
       });
 
@@ -834,7 +834,7 @@ describe('Belief', () => {
     it('global shared belief (ground_mind=null) accessible from any parent', () => {
       // Create global shared belief (no scoping)
       const generic_weapon = Belief.create_shared_from_template(null, ['Thing'], {
-        '@timestamp': 100,
+        '@tt': 100,
         '@label': 'GenericWeapon'
       });
 

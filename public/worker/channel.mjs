@@ -78,9 +78,9 @@ export const dispatch = {
 			});
 		}
 
-		const state_info = /** @type {{id: number, timestamp: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
+		const state_info = /** @type {{id: number, tt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
 			id: state._id,
-			timestamp: state.timestamp,
+			tt: state.tt,
 			mind_id: state.in_mind._id,
 			mind_label: state.in_mind.label,
 			self_label: state.in_mind.self?.get_label(),
@@ -118,9 +118,9 @@ export const dispatch = {
 			});
 		}
 
-		const state_info = /** @type {{id: number, timestamp: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
+		const state_info = /** @type {{id: number, tt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
 			id: state_obj._id,
-			timestamp: state_obj.timestamp,
+			tt: state_obj.tt,
 			mind_id: state_obj.in_mind._id,
 			mind_label: state_obj.in_mind.label,
 			self_label: state_obj.in_mind.self?.get_label(),

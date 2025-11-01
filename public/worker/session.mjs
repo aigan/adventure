@@ -41,7 +41,7 @@ export class Session {
       this._channel.postMessage({
         msg: 'state_changed',
         state_id: new_state._id,
-        timestamp: new_state.timestamp
+        tt: new_state.tt
       })
     }
   }

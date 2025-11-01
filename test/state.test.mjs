@@ -111,7 +111,7 @@ describe('State', () => {
         traits: { color: 'red' }
       });
 
-      const state2 = state1.tick({ replace: [hammer_v2] });
+      const state2 = state1.tick(null, 2, { replace: [hammer_v2] });
 
       const beliefs = [...state2.get_beliefs()];
       expect(beliefs).to.have.lengthOf(1);
@@ -134,14 +134,14 @@ describe('State', () => {
         bases: [item_a],
         traits: { color: 'red' }
       });
-      const state_a2 = state_a1.tick({ replace: [item_a2] });
+      const state_a2 = state_a1.tick(null, 2, { replace: [item_a2] });
 
       const item_b = get_first_belief_by_label('item_in_b');
       const item_b2 = Belief.from_template(state_b1, {
         bases: [item_b],
         traits: { color: 'blue' }
       });
-      const state_b2 = state_b1.tick({ replace: [item_b2] });
+      const state_b2 = state_b1.tick(null, 2, { replace: [item_b2] });
 
       // Verify states are independent
       const beliefs_a = [...state_a2.get_beliefs()];
@@ -159,7 +159,7 @@ describe('State', () => {
       const mind = state1.in_mind;
 
       const item3 = Belief.from_template(state1, {traits: {'@label': 'item3'}, bases: ['PortableObject']});
-      const state2 = state1.tick({ insert: [item3] });
+      const state2 = state1.tick(null, 2, { insert: [item3] });
 
       // state2 should have all three items
       const beliefs = [...state2.get_beliefs()];
@@ -194,7 +194,7 @@ describe('State', () => {
 
       const npc_mind = new Mind(world_mind, 'npc');
       const npc_state1 = npc_mind.create_state(1, world_state);
-      const npc_state2 = npc_state1.tick({insert: []});
+      const npc_state2 = npc_state1.tick(world_state);
 
       expect(npc_state2.ground_state).to.equal(world_state);
     });
@@ -202,11 +202,11 @@ describe('State', () => {
     it('tick() can override ground_state', () => {
       const world_mind = new Mind(null, 'world');
       const world_state1 = world_mind.create_state(1);
-      const world_state2 = world_state1.tick({insert: []});
+      const world_state2 = world_state1.tick(null, 2);
 
       const npc_mind = new Mind(world_mind, 'npc');
       const npc_state1 = npc_mind.create_state(1, world_state1);
-      const npc_state2 = npc_state1.tick({insert: [], ground_state: world_state2});
+      const npc_state2 = npc_state1.tick(world_state2);
 
       expect(npc_state2.ground_state).to.equal(world_state2);
     });
@@ -214,8 +214,8 @@ describe('State', () => {
     it('tracks branches forward from parent state', () => {
       const mind = new Mind(null, 'test');
       const state1 = mind.create_state(1);
-      const state2 = state1.tick({insert: []});
-      const state3 = state1.tick({insert: []});
+      const state2 = state1.tick(null, 2);
+      const state3 = state1.tick(null, 3);
 
       expect(state1.get_branches()).to.have.lengthOf(2);
       expect(state1.get_branches()).to.include(state2);
@@ -269,7 +269,7 @@ describe('State', () => {
         bases: [room_v1],
         traits: { color: 'red' },
       });
-      const state2 = state1.tick({ replace: [room_v2] });
+      const state2 = state1.tick(null, 2, { replace: [room_v2] });
 
       // state1 should resolve to v1
       expect(state1.get_belief_by_subject(room_v1.subject)).to.equal(room_v1);
@@ -330,7 +330,7 @@ describe('State', () => {
           location: room2.subject,  // room1 now inside room2
         },
       });
-      const state2 = state1.tick({ replace: [room1_v2] });
+      const state2 = state1.tick(null, 2, { replace: [room1_v2] });
 
       // THE KEY TEST: room2's location trait stores a Subject
       const room2_location = room2._traits.get('location');
@@ -396,7 +396,7 @@ describe('State', () => {
       const state1 = new State(mind, 2, null, null, body.subject);
       state1.lock();
 
-      const state2 = state1.branch_state(null);
+      const state2 = state1.branch_state(null, 3);
 
       expect(state2.self).to.equal(body.subject);
       expect(state2.self).to.equal(state1.self);
@@ -411,7 +411,7 @@ describe('State', () => {
       });
 
       const state1 = new State(mind, 2, null, null, body.subject);
-      const state2 = state1.tick({ insert: [] });
+      const state2 = state1.tick(null, 2);
 
       expect(state2.self).to.equal(body.subject);
       expect(state2.self).to.equal(state1.self);

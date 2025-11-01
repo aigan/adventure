@@ -32,7 +32,7 @@ export function createMindWithBeliefs(label, beliefs = {}, parent_mind = null) {
 export function setupStandardArchetypes() {
   const traittypes = {
     '@label': 'string',
-    '@timestamp': 'number',
+    '@tt': 'number',
     '@about': {
       type: 'Subject',
       mind: 'parent'
@@ -53,7 +53,7 @@ export function setupStandardArchetypes() {
     Thing: {
       traits: {
         '@label': null,
-        '@timestamp': null,
+        '@tt': null,
         '@about': null,
       },
     },
@@ -71,7 +71,7 @@ export function setupStandardArchetypes() {
     },
     Temporal: {
       traits: {
-        '@timestamp': null,
+        '@tt': null,
       },
     },
     Location: {
@@ -125,7 +125,7 @@ export function setupStandardArchetypes() {
 export function setupMinimalArchetypes() {
   const traittypes = {
     '@label': 'string',
-    '@timestamp': 'number',
+    '@tt': 'number',
     '@about': {
       type: 'Subject',
       mind: 'parent'
@@ -138,7 +138,7 @@ export function setupMinimalArchetypes() {
     Thing: {
       traits: {
         '@label': null,
-        '@timestamp': null,
+        '@tt': null,
         '@about': null,
       },
     },

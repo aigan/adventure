@@ -119,6 +119,60 @@ All current indexes are necessary and non-redundant - each serves distinct query
 
 For structure details, see source files in `public/worker/`
 
+### Bi-Temporal Semantics
+
+The implementation uses **bi-temporal database concepts** with Transaction Time (TT) and Valid Time (VT). Decision Time (DT) is planned but not yet implemented.
+
+**State Properties:**
+- `State.tt` - Transaction time: When this state was created (computational time)
+- `State.vt` - Valid time: What time this state is thinking about (defaults to tt)
+- Both stored as simple integers (tick numbers)
+
+**Time Coordination:**
+- **Fork Invariant**: `child_mind.tt = parent_state.vt`
+  - When creating child mind state, sync to parent's valid time
+  - Ensures nested minds stay coordinated with their context
+- **Ground State Reference**: `state.ground_state` links child to parent
+  - Child states always have ground_state (except world mind)
+  - Ground state owns canonical valid time
+- **No Time Arithmetic**: Never use `tt + 1` or similar
+  - Always coordinate via explicit ground_state.vt reference
+  - Time parameters must be passed explicitly to tick()
+
+**Method Signatures:**
+```javascript
+// Create new state with explicit time coordination
+state.tick(ground_state, vt, {insert, remove, replace})
+
+// World mind (no ground state)
+world_state.tick(null, 2)  // Must provide explicit vt
+
+// Child mind (inherits vt from ground_state.vt)
+npc_state.tick(world_state)  // vt comes from world_state.vt
+
+// Branch state directly
+state.branch_state(ground_state, vt)
+```
+
+**Temporal Querying:**
+- `mind.states_at_tt(tt)` - Find states that exist at given transaction time
+  - Filters by `state.tt <= tt`
+  - Returns outermost states on each branch
+  - Common usage: `mind.states_at_tt(ground_state.vt)` due to fork invariant
+
+**Temporal Reasoning Patterns:**
+- **Present thinking**: `state.vt = state.tt` (default)
+- **Memory/recall**: `state.vt < state.tt` (thinking about the past)
+- **Planning**: `state.vt > state.tt` (thinking about the future)
+- **Superposition**: Same tt + same ground_state = different possibilities at same moment
+- **Versioning**: Same tt + different ground_state = different versions in parent's timeline
+
+**Future: Decision Time (DT)**
+- Planned as trait-level metadata (not yet implemented)
+- Will track when information was learned/decided
+- Enables testimony chains and knowledge provenance
+- See SPECIFICATION.md "Tri-Temporal Semantics" for design
+
 ### Possibility Spaces
 
 - Properties can return probability distributions rather than single values

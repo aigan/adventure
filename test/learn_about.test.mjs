@@ -219,7 +219,7 @@ describe('learn_about', () => {
       });
 
       npc_mind_state.lock();
-      const new_state = npc_mind_state.branch_state();
+      const new_state = npc_mind_state.branch_state(world_state);
 
       // New behavior: updates first belief (highest confidence in future)
       const hammer_knowledge = new_state.learn_about(
@@ -413,7 +413,7 @@ describe('learn_about', () => {
       world_state.lock();
 
       // Hammer gets repainted - only color in _traits, location inherited
-      const world_state2 = world_state.tick({});
+      const world_state2 = world_state.tick(null, 101);
       const hammer_v2 = Belief.from_template(world_state2, {
         sid: hammer_v1.subject.sid,
         bases: [hammer_v1],
@@ -427,7 +427,7 @@ describe('learn_about', () => {
 
       // Player sees hammer and learns its location (NOT color)
       const player_mind = new Mind(world_mind, 'player');
-      const player_state = player_mind.create_state(1, world_state2);
+      const player_state = player_mind.create_state(101, world_state2);
 
       const player_hammer = player_state.learn_about(hammer_v2, ['location']);
 

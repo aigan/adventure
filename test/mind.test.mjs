@@ -19,26 +19,24 @@ describe('Mind', () => {
     expect(Mind.get_by_label('registered')).to.equal(mind);
   });
 
-  describe('states_valid_at()', () => {
+  describe('states_at_tt()', () => {
     it('should return outermost state on linear state chain', () => {
       const mind = new Mind(null, 'test');
       const state1 = mind.create_state(100);
       state1.lock();
-      const state2 = state1.tick({});
-      state2.timestamp = 200;
+      const state2 = state1.tick(null, 200);
       state2.lock();
-      const state3 = state2.tick({});
-      state3.timestamp = 300;
+      const state3 = state2.tick(null, 300);
       state3.lock();
 
       // Query at different times - should return single outermost state
-      expect([...mind.states_valid_at(50)]).to.deep.equal([]);  // Before any state
-      expect([...mind.states_valid_at(100)]).to.deep.equal([state1]);
-      expect([...mind.states_valid_at(150)]).to.deep.equal([state1]);
-      expect([...mind.states_valid_at(200)]).to.deep.equal([state2]);
-      expect([...mind.states_valid_at(250)]).to.deep.equal([state2]);
-      expect([...mind.states_valid_at(300)]).to.deep.equal([state3]);
-      expect([...mind.states_valid_at(999)]).to.deep.equal([state3]);
+      expect([...mind.states_at_tt(50)]).to.deep.equal([]);  // Before any state
+      expect([...mind.states_at_tt(100)]).to.deep.equal([state1]);
+      expect([...mind.states_at_tt(150)]).to.deep.equal([state1]);
+      expect([...mind.states_at_tt(200)]).to.deep.equal([state2]);
+      expect([...mind.states_at_tt(250)]).to.deep.equal([state2]);
+      expect([...mind.states_at_tt(300)]).to.deep.equal([state3]);
+      expect([...mind.states_at_tt(999)]).to.deep.equal([state3]);
     });
 
     it('should return outermost states on each branch', () => {
@@ -50,52 +48,48 @@ describe('Mind', () => {
       // s1(t=100) ← s2(t=200) ← s4(t=300)   [Branch A]
       //     ↑
       //    s3(t=150) ← s5(t=175)            [Branch B]
-      const state2 = state1.tick({});
-      state2.timestamp = 200;
+      const state2 = state1.tick(null, 200);
       state2.lock();
 
-      const state3 = state1.tick({});
-      state3.timestamp = 150;
+      const state3 = state1.tick(null, 150);
       state3.lock();
 
-      const state4 = state2.tick({});
-      state4.timestamp = 300;
+      const state4 = state2.tick(null, 300);
       state4.lock();
 
-      const state5 = state3.tick({});
-      state5.timestamp = 175;
+      const state5 = state3.tick(null, 175);
       state5.lock();
 
       // Before any state
-      expect([...mind.states_valid_at(50)]).to.deep.equal([]);
+      expect([...mind.states_at_tt(50)]).to.deep.equal([]);
 
       // Both branches converge to s1
-      expect([...mind.states_valid_at(125)]).to.have.members([state1]);
+      expect([...mind.states_at_tt(125)]).to.have.members([state1]);
 
       // Only branch B has progressed: s3
-      const at_160 = [...mind.states_valid_at(160)];
+      const at_160 = [...mind.states_at_tt(160)];
       expect(at_160).to.have.lengthOf(1);
       expect(at_160).to.have.members([state3]);
 
       // Branch A: s2 (just created), Branch B: s5
-      const at_210 = [...mind.states_valid_at(210)];
+      const at_210 = [...mind.states_at_tt(210)];
       expect(at_210).to.have.lengthOf(2);
       expect(at_210).to.have.members([state2, state5]);
 
       // Branch A: s2 (s4 is at t=300), Branch B: s5
-      const at_250 = [...mind.states_valid_at(250)];
+      const at_250 = [...mind.states_at_tt(250)];
       expect(at_250).to.have.lengthOf(2);
       expect(at_250).to.have.members([state2, state5]);
 
       // Branch A: s4, Branch B: s5 (both tips)
-      const at_400 = [...mind.states_valid_at(400)];
+      const at_400 = [...mind.states_at_tt(400)];
       expect(at_400).to.have.lengthOf(2);
       expect(at_400).to.have.members([state4, state5]);
     });
 
     it('should return empty iterable for empty mind', () => {
       const mind = new Mind(null, 'test');
-      expect([...mind.states_valid_at(100)]).to.deep.equal([]);
+      expect([...mind.states_at_tt(100)]).to.deep.equal([]);
     });
   });
 

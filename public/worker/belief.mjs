@@ -373,19 +373,19 @@ export class Belief {
   }
 
   /**
-   * Get timestamp for this belief (supports both shared and regular beliefs)
-   * Checks @timestamp meta-trait first (for shared beliefs), falls back to origin_state.timestamp
-   * @returns {number} Timestamp when this belief was created
+   * Get tt for this belief (supports both shared and regular beliefs)
+   * Checks @tt meta-trait first (for shared beliefs), falls back to origin_state.tt
+   * @returns {number} Transaction time when this belief was created
    */
-  get_timestamp() {
+  get_tt() {
     // Check meta-trait first (for shared beliefs)
-    const timestamp_trait = this._traits.get('@timestamp')
-    if (timestamp_trait !== undefined) {
-      return timestamp_trait
+    const tt_trait = this._traits.get('@tt')
+    if (tt_trait !== undefined) {
+      return tt_trait
     }
 
     // Fall back to origin_state (for regular beliefs)
-    return this.origin_state?.timestamp ?? 0
+    return this.origin_state?.tt ?? 0
   }
 
   /**
@@ -781,7 +781,7 @@ export class Belief {
    * Create shared belief from template (limbo - no mind/state ownership)
    * @param {import('./mind.mjs').Mind|null} parent_mind - Parent mind context for scoping
    * @param {Array<string|Belief|Archetype>} bases - Base archetypes/beliefs (can be strings)
-   * @param {Object<string, any>} traits - Traits (including optional @timestamp and @label)
+   * @param {Object<string, any>} traits - Traits (including optional @tt and @label)
    * @param {((subject: Subject) => Belief|Archetype|null)|null} [decider] - Function to decide which belief to use for a subject
    * @returns {Belief}
    */

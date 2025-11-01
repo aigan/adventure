@@ -47,15 +47,15 @@ export class Subject {
 
     // Fall back to shared beliefs (prototypes) with scope filtering
     const query_parent = state.in_mind.parent
-    const shared = [...this.beliefs_valid_at(state.timestamp)].filter(
+    const shared = [...this.beliefs_valid_at(state.tt)].filter(
       b => b.in_mind === null &&
            b.origin_state === null &&
            (b.subject.ground_mind === null || b.subject.ground_mind === query_parent)  // Global or matching parent
     )
 
     assert(shared.length <= 1,
-      'Multiple shared beliefs found for subject at timestamp',
-      {sid: this.sid, timestamp: state.timestamp, parent: query_parent?._id})
+      'Multiple shared beliefs found for subject at tt',
+      {sid: this.sid, tt: state.tt, parent: query_parent?._id})
 
     return shared[0] ?? null
   }
@@ -89,24 +89,24 @@ export class Subject {
   }
 
   /**
-   * Get all beliefs for this subject that were valid at a specific timestamp
-   * Yields the outermost belief on each branch at or before the given timestamp
-   * (beliefs that have no descendants also at or before the timestamp)
+   * Get all beliefs for this subject that were valid at a specific tt
+   * Yields the outermost belief on each branch at or before the given tt
+   * (beliefs that have no descendants also at or before the tt)
    *
    * TODO: Refactor to walk tree from starting belief instead of scanning all versions
    * Current: O(n²) over all belief versions - doesn't scale to millions of versions per subject
    * Future approach: Walk from branch tips or given starting belief
    * Future: Event saving with time/space-based archival for billions of belief versions
    *
-   * @param {number} timestamp - Timestamp to query at
-   * @yields {Belief} Outermost beliefs on each branch at timestamp
+   * @param {number} tt - Transaction time to query at
+   * @yields {Belief} Outermost beliefs on each branch at tt
    */
-  *beliefs_valid_at(timestamp) {
+  *beliefs_valid_at(tt) {
     const beliefs = DB.get_beliefs_by_subject(this)
     if (!beliefs || beliefs.size === 0) return
 
-    // Get all beliefs with timestamp <= target
-    const valid_beliefs = [...beliefs].filter(b => b.get_timestamp() <= timestamp)
+    // Get all beliefs with tt <= target
+    const valid_beliefs = [...beliefs].filter(b => b.get_tt() <= tt)
 
     // Yield beliefs that have no descendants in the valid set
     for (const belief of valid_beliefs) {

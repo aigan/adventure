@@ -66,7 +66,7 @@ describe('Trait Operations Pattern', () => {
     expect(mind.parent).to.equal(world_mind)
 
     // Should have one state (unlocked since no operations were applied)
-    const states = [...mind.states_valid_at(1)]
+    const states = [...mind.states_at_tt(1)]
     expect(states).to.have.lengthOf(1)
     expect(states[0].locked).to.be.false  // Unlocked - waiting for operations
 
@@ -138,7 +138,7 @@ describe('Trait Operations Pattern', () => {
     expect(mind).to.be.instanceOf(Mind)
 
     // Get the mind's state
-    const npc_state = [...mind.states_valid_at(1)][0]
+    const npc_state = [...mind.states_at_tt(1)][0]
 
     // Should have learned about world_tavern - find NPC's belief about it
     const npc_tavern = DB.get_belief_about_subject_in_state(npc_state, world_tavern.subject)
@@ -231,7 +231,7 @@ describe('Trait Operations Pattern', () => {
     const mind = npc.get_trait(world_state, 'mind')
 
     world_state.lock()
-    const npc_state = [...mind.states_valid_at(1)][0]
+    const npc_state = [...mind.states_at_tt(1)][0]
 
     // Should have knowledge from both Villager (tavern) and Blacksmith (forge, tools)
     const npc_tavern = DB.get_belief_about_subject_in_state(npc_state, world_tavern.subject)
@@ -304,14 +304,14 @@ describe('Trait Operations Pattern', () => {
     let mind = npc.get_trait(world_state, 'mind')
 
     world_state.lock()
-    let npc_state = [...mind.states_valid_at(1)][0]
+    let npc_state = [...mind.states_at_tt(1)][0]
 
     // Initially no beliefs about world entities
     let npc_tavern = DB.get_belief_about_subject_in_state(npc_state, world_tavern.subject)
     expect(npc_tavern).to.be.null
 
     // Tick to new state and add knowledge via mind.append operation
-    world_state = world_state.tick({})
+    world_state = world_state.tick(null, 2)
     npc = world_state.get_belief_by_label('npc')
 
     // Use Belief.from to add new knowledge (with_traits doesn't exist)
@@ -326,7 +326,7 @@ describe('Trait Operations Pattern', () => {
 
     // Now mind should have knowledge about tavern and forge
     mind = npc.get_trait(world_state, 'mind')
-    npc_state = [...mind.states_valid_at(2)][0]
+    npc_state = [...mind.states_at_tt(2)][0]
 
     npc_tavern = DB.get_belief_about_subject_in_state(npc_state, world_tavern.subject)
     expect(npc_tavern).to.exist

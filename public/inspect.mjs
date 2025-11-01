@@ -65,9 +65,12 @@ const dispatch = {
 
     const mind_prefix = dat.state.mind_label || dat.state.self_label || `Mind #${dat.state.mind_id}`;
     const mutable_indicator = dat.state.locked === false ? ' <span style="color: orange; font-weight: bold;">[MUTABLE]</span>' : '';
+    const time_info = dat.state.vt !== dat.state.tt && dat.state.vt !== undefined
+      ? `tt: ${dat.state.tt}, vt: ${dat.state.vt}`
+      : `tt: ${dat.state.tt}`;
 
     render({
-      header: `${mind_prefix} beliefs (State #${dat.state.id}, timestamp: ${dat.state.timestamp}) ${state_nav}${mutable_indicator}`,
+      header: `${mind_prefix} beliefs (State #${dat.state.id}, ${time_info}) ${state_nav}${mutable_indicator}`,
       table: {
         columns: ["label", "desig"],
         rows: dat.state.beliefs,

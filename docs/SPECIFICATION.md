@@ -283,6 +283,70 @@ npc.hammer_belief:
 
 Each mind maintains its own subject space, with `about` creating traceable links from belief → ground truth.
 
+## **Tri-Temporal Semantics**
+
+The system uses three distinct time dimensions to support temporal reasoning, nested minds, and knowledge provenance:
+
+### **Transaction Time (TT)**
+
+When a state or belief was created in computational time.
+
+**Properties:**
+- Always set and never goes backwards within a state chain
+- Used to query "what states existed at this point in the simulation"
+- Child mind states synchronize with parent via **fork invariant**: `child.tt = parent_state.vt`
+
+**Example uses:**
+- Finding the current state of a mind at simulation tick 100
+- Querying which version of a belief was active when an event occurred
+- Coordinating nested mind timelines with their parent contexts
+
+### **Valid Time (VT)**
+
+What time the state is thinking/reasoning about.
+
+**Properties:**
+- Defaults to transaction time (present thinking)
+- Can differ from tt to enable temporal reasoning:
+  - `vt < tt` - Remembering the past
+  - `vt = tt` - Reasoning about the present
+  - `vt > tt` - Planning for the future
+- Same tt + same ground_state = superposition (different possibilities at same moment)
+- Same tt + different ground_state = different versions in parent's timeline
+
+**Example uses:**
+- NPC recalling what the workshop looked like yesterday (vt=50, tt=100)
+- NPC planning a future action (vt=110, tt=100)
+- Multiple conflicting beliefs about the current state (superposition)
+
+### **Decision Time (DT)** *(planned, not yet implemented)*
+
+When information was learned or decided upon.
+
+**Properties:**
+- Lives at the trait level (provenance metadata)
+- Enables testimony chains and knowledge tracking
+- Distinguishes direct observation from hearsay
+
+**Example uses:**
+- "I saw the hammer at tick 50" (dt=50, direct observation)
+- "Guard told me hammer was stolen at tick 40" (dt=60, hearsay about tick 40)
+- Resolving conflicting information by recency or source reliability
+
+### **Time Coordination**
+
+**Ground state coordination:**
+- Ground state owns the canonical valid time
+- Child minds synchronize: `child.tt = ground_state.vt` (fork invariant)
+- No arithmetic on time values - always coordinate via explicit ground state reference
+
+**Temporal consistency:**
+- Transaction time must progress forward: `next_tt >= current_tt`
+- Valid time can move freely (past, present, future)
+- Decision time tracks when knowledge was acquired (trait-level metadata)
+
+See IMPLEMENTATION.md for how these concepts map to the current JavaScript implementation.
+
 ## **Example: The Missing Hammer Mystery**
 
 *Note: The following examples show beliefs grouped under minds for readability, but in the actual design, beliefs are stored in a global registry with `in_mind` references.*

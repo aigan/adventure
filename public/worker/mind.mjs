@@ -141,23 +141,23 @@ export class Mind {
   }
 
   /**
-   * Get all states in this mind that were valid at a specific timestamp
-   * Yields the outermost state on each branch at or before the given timestamp
-   * (states that have no descendants also at or before the timestamp)
+   * Get all states in this mind that were valid at a specific tt
+   * Yields the outermost state on each branch at or before the given tt
+   * (states that have no descendants also at or before the tt)
    *
    * TODO: Refactor to walk tree from starting state instead of scanning all states
    * Current: O(n²) over all states in mind - doesn't scale to millions of states
    * Future approach: Walk from branch tips or given starting state
    * Future: Event saving with time/space-based archival for billions of states
    *
-   * @param {number} timestamp - Timestamp to query at
-   * @yields {State} Outermost states on each branch at timestamp
+   * @param {number} tt - Transaction time to query at
+   * @yields {State} Outermost states on each branch at tt
    */
-  *states_valid_at(timestamp) {
+  *states_at_tt(tt) {
     if (this._states.size === 0) return
 
-    // Get all states with timestamp <= target
-    const valid_states = [...this._states].filter(s => s.timestamp <= timestamp)
+    // Get all states with tt <= target
+    const valid_states = [...this._states].filter(s => s.tt <= tt)
 
     // Yield states that have no descendants in the valid set
     for (const state of valid_states) {
@@ -189,18 +189,18 @@ export class Mind {
   }
 
   /**
-   * @param {number} timestamp
+   * @param {number} tt
    * @param {State|null} ground_state
    * @returns {State}
    */
-  create_state(timestamp, ground_state = null) {
+  create_state(tt, ground_state = null) {
     assert(
       !ground_state || ground_state.in_mind === this.parent,
       'ground_state must be in parent mind',
       {mind: this.label, parent: this.parent?.label, ground_state_mind: ground_state?.in_mind?.label}
     )
 
-    const state = new State(this, timestamp, null, ground_state)
+    const state = new State(this, tt, null, ground_state)
     return state
   }
 
@@ -339,31 +339,32 @@ export class Mind {
     assert(ground_state instanceof State, 'ground_state must be State', {ground_state})
     assert(ground_belief instanceof Belief, 'ground_belief must be Belief', {ground_belief})
 
+    // FIXME: Only one new State
+
     // Check if ground_belief is locked
     if (ground_belief.locked) {
-      // VERSIONING PATH: Belief is locked, need new state at new timestamp
-      // Find latest state valid at ground_state.timestamp
-      const latest_states = [...this.states_valid_at(ground_state.timestamp)]
+      // VERSIONING PATH: Belief is locked, need new state at new tt
+      // Find latest state valid at ground_state.vt
+      const latest_states = [...this.states_at_tt(ground_state.vt)]
       const latest = latest_states[0]
 
       if (!latest) {
         throw new Error('No existing state found for versioning')
       }
 
-      // Create new state at next timestamp
-      // TODO: Replace with proper time coordination system (see backlog: Time Progression)
-      const next_timestamp = latest.timestamp + 1  // PLACEHOLDER: Increment for versioning
+      // Create new state - fork invariant: child.tt = parent_state.vt
       const new_state = new State(
         this,
-        next_timestamp,
+        ground_state.vt,       // Fork invariant: child.tt = parent_state.vt
         latest,                // Inherit from previous
         ground_state,
-        latest.self
+        latest.self,
+        ground_state.vt        // Inherit vt from ground_state
       )
 
       return new_state  // Unlocked, ready for operations
     } else {
-      // CONSTRUCTION PATH: Belief is unlocked, reuse or create at current timestamp
+      // CONSTRUCTION PATH: Belief is unlocked, reuse or create at current tt
       // Look for existing unlocked state for this ground_state
       const existing_states = this._states_by_ground_state.get(ground_state)
 
@@ -376,13 +377,14 @@ export class Mind {
         }
       }
 
-      // No unlocked state exists, create one at ground_state.timestamp
+      // No unlocked state exists - fork invariant: child.tt = parent_state.vt
       const new_state = new State(
         this,
-        ground_state.timestamp,  // Same timestamp as ground
-        null,                    // No base (initial state)
+        ground_state.vt,       // Fork invariant: child.tt = parent_state.vt
+        null,                  // No base (initial state)
         ground_state,
-        ground_belief.subject    // self from ground_belief
+        ground_belief.subject, // self from ground_belief
+        ground_state.vt        // Inherit vt from ground_state
       )
 
       return new_state  // Unlocked, ready for operations
@@ -412,13 +414,14 @@ export class Mind {
     const parent_mind = ground_state.in_mind
     const entity_mind = new Mind(parent_mind)
 
-    // Create initial state with self reference
+    // Create initial state with self reference - fork invariant: child.tt = parent_state.vt
     const state = new State(
       entity_mind,
-      ground_state.timestamp,  // Use ground_state's timestamp, not hardcoded 1
-      null,  // no base
-      ground_state,  // ground_state (where body exists)
-      self_subject  // self (WHO is experiencing this)
+      ground_state.vt,   // Fork invariant: child.tt = parent_state.vt
+      null,              // no base
+      ground_state,      // ground_state (where body exists)
+      self_subject,      // self (WHO is experiencing this)
+      ground_state.vt    // Inherit vt from ground_state
     )
 
     // Execute learning

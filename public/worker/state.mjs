@@ -35,7 +35,8 @@ import { Serialize } from './serialize.mjs'
  * @typedef {object} StateJSON
  * @property {string} _type - Always "State"
  * @property {number} _id - State identifier
- * @property {number} timestamp - State timestamp/tick
+ * @property {number} tt - State transaction time/tick
+ * @property {number} vt - State valid time (what time this state is thinking about)
  * @property {number|null} base - Base state _id (null for root states)
  * @property {number|null} ground_state - Ground state _id (null if no external reference)
  * @property {number|null} self - Subject sid (null if no self identity)
@@ -54,7 +55,8 @@ import { Serialize } from './serialize.mjs'
  * Immutable state snapshot with differential updates
  * @property {number} _id - Unique identifier
  * @property {Mind} in_mind - Mind this state belongs to
- * @property {number} timestamp - State timestamp/tick
+ * @property {number} tt - State transaction time/tick
+ * @property {number} vt - State valid time (what time this state is thinking about, defaults to tt)
  * @property {State|null} base - Parent state (inheritance chain)
  * @property {State|null} ground_state - External world state this references
  * @property {Belief[]} insert - Beliefs added/present in this state
@@ -71,12 +73,13 @@ export class State {
 
   /**
    * @param {Mind} mind
-   * @param {number} timestamp
+   * @param {number} tt
    * @param {State|null} base
    * @param {State|null} ground_state
    * @param {Subject|null} self
+   * @param {number|null} vt - Valid time (defaults to tt if not specified)
    */
-  constructor(mind, timestamp, base=null, ground_state=null, self=null) {
+  constructor(mind, tt, base=null, ground_state=null, self=null, vt=null) {
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
     assert(self === null || self instanceof Subject, 'self must be Subject or null')
 
@@ -89,7 +92,8 @@ export class State {
     this._id = next_id()
     this.in_mind = mind
     /** @type {State|null} */ this.base = base
-    this.timestamp = timestamp
+    this.tt = tt
+    this.vt = vt ?? tt  // Default vt to tt
     /** @type {Belief[]} */ this.insert = []
     /** @type {Belief[]} */ this.remove = []
     /** @type {State|null} */ this.ground_state = ground_state
@@ -185,12 +189,25 @@ export class State {
   /**
    * Create a new branched state from this state (low-level)
    * @param {State|null} [ground_state] - External world state this mind observes (for resolving beliefs in learn_about)
+   * @param {number|null} [vt] - Valid time override (for temporal reasoning about past/future)
    * @returns {State} New unlocked state
    */
-  branch_state(ground_state) {
-    // TODO: Replace with proper time coordination system (see backlog: Time Progression)
-    const next_timestamp = this.timestamp + 1  // PLACEHOLDER
-    const state = new State(this.in_mind, next_timestamp, this, ground_state ?? this.ground_state, this.self)
+  branch_state(ground_state, vt) {
+    // Assert ground_state is in parent mind (or null for world_mind)
+    assert(
+      ground_state?.in_mind == this.in_mind.parent,
+      'ground_state must be in parent mind',
+      {mind: this.in_mind.label, parent: this.in_mind.parent?.label, ground_state_mind: ground_state?.in_mind?.label}
+    )
+
+    // Time coordination: tt from ground_state.vt, vt can be overridden
+    const next_tt = ground_state?.vt ?? vt
+    const next_vt = vt ?? next_tt
+
+    assert(next_tt != null, 'next_tt must be set (world state must provide vt when branching)')
+    assert(next_tt >= this.tt, 'tt must not go backwards', {current_tt: this.tt, next_tt})
+
+    const state = new State(this.in_mind, next_tt, this, ground_state, this.self, next_vt)
     this._branches.push(state)
     return state
   }
@@ -237,16 +254,17 @@ export class State {
 
   /**
    * High-level convenience method: branch state and apply operations
-   * @param {object} param0
-   * @param {Belief[]} [param0.insert]
-   * @param {Belief[]} [param0.remove]
-   * @param {Belief[]} [param0.replace]
-   * @param {State|null} [param0.ground_state]
+   * @param {State|null} ground_state - Ground state (required for child minds, null for world mind)
+   * @param {number|null} [vt] - Valid time (required for world mind, optional override for child minds)
+   * @param {object} [operations] - Operations to apply
+   * @param {Belief[]} [operations.insert]
+   * @param {Belief[]} [operations.remove]
+   * @param {Belief[]} [operations.replace]
    * @returns {State} New locked state with operations applied
    */
-  tick({insert=[], remove=[], replace=[], ground_state}) {
+  tick(ground_state, vt, {insert=[], remove=[], replace=[]}={}) {
     this.lock()  // Lock this state before branching
-    const state = this.branch_state(ground_state)
+    const state = this.branch_state(ground_state, vt)
 
     if (replace.length > 0) {
       state.replace_beliefs(...replace)
@@ -266,11 +284,12 @@ export class State {
    * Create new belief version with updated traits and add to new state
    * @param {Belief} belief - Belief to version
    * @param {object} traits - New traits to add
+   * @param {number} vt - Valid time for new state
    * @returns {State}
    */
-  tick_with_traits(belief, traits) {
+  tick_with_traits(belief, traits, vt) {
     const new_belief = Belief.from_template(this, {sid: belief.subject.sid, bases: [belief], traits})
-    return this.tick({ replace: [new_belief] })
+    return this.tick(this.ground_state, vt, { replace: [new_belief] })
   }
 
   *get_beliefs() {
@@ -499,7 +518,8 @@ export class State {
     return {
       _type: 'State',
       _id: this._id,
-      timestamp: this.timestamp,
+      tt: this.tt,
+      vt: this.vt,
       base: this.base?._id ?? null,
       ground_state: this.ground_state?._id ?? null,
       self: this.self?.toJSON() ?? null,
@@ -575,7 +595,8 @@ export class State {
     state._id = data._id
     state.in_mind = resolved_mind
     state.base = base
-    state.timestamp = data.timestamp
+    state.tt = data.tt
+    state.vt = data.vt ?? data.tt  // Default vt to tt for backward compatibility
     state.insert = insert
     state.remove = remove
     state.ground_state = ground_state
