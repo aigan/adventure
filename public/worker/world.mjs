@@ -178,7 +178,7 @@ const world_belief = {
   },
 }
 
-state.add_beliefs(world_belief);
+state.add_beliefs_from_template(world_belief);
 
 const player = state.get_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
@@ -190,7 +190,7 @@ player_state.learn_about(state.get_belief_by_label('hammer'), ['location']);
 state.lock();
 //log(player_state);
 
-//const ball = state.add_belief({
+//const ball = state.add_belief_from_template({
 //  label: 'ball',
 //  bases: ['PortableObject'],
 //  traits: {

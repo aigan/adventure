@@ -15,7 +15,7 @@ describe('Save/Load functionality', () => {
       const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
-      const workshop = world_state.add_belief({
+      const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location'],
       });
@@ -47,12 +47,12 @@ describe('Save/Load functionality', () => {
       const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
-      const workshop = world_state.add_belief({
+      const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location'],
       });
 
-      const hammer = world_state.add_belief({
+      const hammer = world_state.add_belief_from_template({
                 bases: ['PortableObject'],
         traits: {'@label': 'hammer', location: workshop.subject,},
       });
@@ -80,12 +80,12 @@ describe('Save/Load functionality', () => {
       const world_mind = new Mind(null, 'world');
       const state1 = world_mind.create_state(1);
 
-      const room1 = state1.add_belief({
+      const room1 = state1.add_belief_from_template({
         traits: {'@label': 'room1'},
         bases: ['Location'],
       });
 
-      const room2 = state1.add_belief({
+      const room2 = state1.add_belief_from_template({
         bases: ['Location'],
         traits: {'@label': 'room2', location: room1.subject}  // room2 → room1 in state1
       });
@@ -136,7 +136,7 @@ describe('Save/Load functionality', () => {
     it('loads state chains with base references', () => {
       const world_mind = new Mind(null, 'world');
       const state1 = world_mind.create_state(1);
-      const ball = state1.add_belief({
+      const ball = state1.add_belief_from_template({
         traits: {'@label': 'ball'},
         bases: ['PortableObject'],
       });
@@ -191,9 +191,9 @@ describe('Save/Load functionality', () => {
 
       const world_mind = new Mind(null, 'world');
       let state = world_mind.create_state(1);
-      state.add_beliefs(world_belief);
+      state.add_beliefs_from_template(world_belief);
 
-      const ball = state.add_belief({
+      const ball = state.add_belief_from_template({
                 bases: ['PortableObject'],
         traits: {'@label': 'ball', location: 'workshop',},
       });
@@ -236,7 +236,7 @@ describe('Save/Load functionality', () => {
     it('preserves and continues id_sequence', () => {
       const world_mind = new Mind(null, 'world');
       const state = world_mind.create_state(1);
-      const workshop = state.add_belief({
+      const workshop = state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location'],
       });
@@ -258,7 +258,7 @@ describe('Save/Load functionality', () => {
       const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
-      const workshop = world_state.add_belief({
+      const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location'],
       });
@@ -313,21 +313,21 @@ describe('Save/Load functionality', () => {
 
       const world_mind = new Mind(null, 'world');
       let state = world_mind.create_state(1);
-      state.add_beliefs(world_belief);
+      state.add_beliefs_from_template(world_belief);
 
       // Add entities and create versions
-      const ball = state.add_belief({
+      const ball = state.add_belief_from_template({
                 bases: ['PortableObject'],
         traits: {'@label': 'ball', location: 'workshop',},
       });
 
       // Create circular reference first (before locking state)
-      const room1 = state.add_belief({
+      const room1 = state.add_belief_from_template({
         traits: {'@label': 'room1'},
         bases: ['Location'],
       });
 
-      const room2 = state.add_belief({
+      const room2 = state.add_belief_from_template({
                 bases: ['Location'],
         traits: {'@label': 'room2', location: 'room1',},
       });

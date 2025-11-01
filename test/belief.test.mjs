@@ -275,7 +275,7 @@ describe('Belief', () => {
       const world_mind = new Mind(null, 'world');
       const state = world_mind.create_state(1);
 
-      const room = state.add_belief({
+      const room = state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location'],
       });
@@ -354,12 +354,12 @@ describe('Belief', () => {
       const mind = new Mind(null, 'test');
       const state = mind.create_state(100);
 
-      const workshop = state.add_belief({
+      const workshop = state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location']
       });
 
-      const hammer = state.add_belief({
+      const hammer = state.add_belief_from_template({
                 bases: ['PortableObject'],
         traits: {'@label': 'hammer', location: workshop.subject,
           color: 'grey'}
@@ -375,12 +375,12 @@ describe('Belief', () => {
       const mind = new Mind(null, 'test');
       const state1 = mind.create_state(100);
 
-      const workshop = state1.add_belief({
+      const workshop = state1.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location']
       });
 
-      const hammer_v1 = state1.add_belief({
+      const hammer_v1 = state1.add_belief_from_template({
                 bases: ['PortableObject'],
         traits: {'@label': 'hammer', location: workshop.subject,
           color: 'grey'}

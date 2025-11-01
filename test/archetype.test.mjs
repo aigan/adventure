@@ -90,7 +90,7 @@ describe('Archetype', () => {
     it('resolves string label to subject', () => {
       const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
-      const workshop = state.add_belief({
+      const workshop = state.add_belief_from_template({
         bases: ['Location'],
         traits: { '@label': 'workshop', color: 'brown' }
       });
@@ -109,7 +109,7 @@ describe('Archetype', () => {
     it('returns Subject as-is', () => {
       const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
-      const workshop = state.add_belief({
+      const workshop = state.add_belief_from_template({
         bases: ['Location'],
         traits: {'@label': 'workshop'}
       });
@@ -128,7 +128,7 @@ describe('Archetype', () => {
     it('throws error when Belief object is passed', () => {
       const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
-      const workshop = state.add_belief({
+      const workshop = state.add_belief_from_template({
         bases: ['Location'],
         traits: {'@label': 'workshop'}
       });
@@ -162,7 +162,7 @@ describe('Archetype', () => {
     it('throws error when belief has wrong archetype', () => {
       const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
-      const hammer = state.add_belief({
+      const hammer = state.add_belief_from_template({
         bases: ['PortableObject'],
         traits: {'@label': 'hammer'}
       });
@@ -181,7 +181,7 @@ describe('Archetype', () => {
     it('works in trait resolution during from_template', () => {
       const mind = new Mind(null, 'test');
       const state = mind.create_state(1);
-      const workshop = state.add_belief({
+      const workshop = state.add_belief_from_template({
         bases: ['Location'],
         traits: {'@label': 'workshop'}
       });

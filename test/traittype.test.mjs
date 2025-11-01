@@ -231,17 +231,15 @@ describe('Traittype', () => {
       const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
-      const workshop = world_state.add_belief({
+      const workshop = world_state.add_belief_from_template({
         bases: ['Location'],
         traits: { '@label': 'workshop', color: 'brown' }
       });
 
-      const main_area = world_state.add_belief({
+      const main_area = world_state.add_belief_from_template({
         bases: ['Location'],
         traits: { '@label': 'main_area', color: 'green' }
       });
-
-      world_state.lock();
 
       // Create belief with array of Mind templates
       const npc = Belief.from_template(world_state, {
@@ -254,6 +252,8 @@ describe('Traittype', () => {
         },
         bases: ['Mental']
       });
+
+      world_state.lock();
 
       const minds = npc._traits.get('minds_array');
       expect(Array.isArray(minds)).to.be.true;

@@ -208,12 +208,12 @@ class Mind {
 ```javascript
 // Setup world entities
 const world_state = world_mind.create_state(100)
-world_state.add_belief({label: 'tavern', bases: ['Location'], ...})
-world_state.add_belief({label: 'forge', bases: ['Location'], ...})
+world_state.add_belief_from_template({label: 'tavern', bases: ['Location'], ...})
+world_state.add_belief_from_template({label: 'forge', bases: ['Location'], ...})
 world_state.lock()
 
 // Create NPC with composed knowledge
-const blacksmith = world_state.add_belief({
+const blacksmith = world_state.add_belief_from_template({
   label: 'blacksmith_npc',
   bases: ['Mental', 'Villager', 'Blacksmith'],  // Composes all three
   traits: {
@@ -246,7 +246,7 @@ const blacksmith_v2 = belief.with_traits(state_200, {
 
 ```javascript
 // NPC overrides inherited knowledge structure
-const unique_npc = world_state.add_belief({
+const unique_npc = world_state.add_belief_from_template({
   label: 'unique_npc',
   bases: ['Mental', 'Villager'],
   traits: {

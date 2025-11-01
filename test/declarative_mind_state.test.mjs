@@ -47,24 +47,22 @@ describe('Mind Trait', () => {
     const world_mind = new Mind(null, 'world');
     const world_state = world_mind.create_state(1);
 
-    const main_area = world_state.add_belief({
+    const main_area = world_state.add_belief_from_template({
       traits: {'@label': 'main_area'},
       bases: ['Location'],
     });
 
-    const workshop = world_state.add_belief({
+    const workshop = world_state.add_belief_from_template({
             bases: ['Location'],
       traits: {'@label': 'workshop', location: main_area.subject,},
     });
 
-    const player_body = world_state.add_belief({
+    const player_body = world_state.add_belief_from_template({
             bases: ['Person'],
       traits: {'@label': 'player_body', location: workshop.subject,},
     });
 
-    world_state.lock();
-
-    // Create player with mind trait
+    // Create player with mind trait (before locking state)
     const player = Belief.from_template(world_state, {
       bases: [player_body],
       traits: {
@@ -74,6 +72,8 @@ describe('Mind Trait', () => {
         }
       }
     });
+
+    world_state.lock();
 
     // Verify mind trait returns Mind instance
     const player_mind = player._traits.get('mind');
@@ -183,27 +183,25 @@ describe('Mind Trait', () => {
     const world_state = world_mind.create_state(200);
 
     // World beliefs inherit from shared prototypes
-    const blacksmith_tavern = world_state.add_belief({
+    const blacksmith_tavern = world_state.add_belief_from_template({
       bases: [tavern_proto],
       traits: {'@label': 'blacksmith_tavern', coordinates: '50,30'}  // Specific location
     });
 
-    const town_square = world_state.add_belief({
+    const town_square = world_state.add_belief_from_template({
       bases: [square_proto],
       traits: {'@label': 'town_square', coordinates: '100,100'}  // Specific location
     });
 
-    const npc1_body = world_state.add_belief({
+    const npc1_body = world_state.add_belief_from_template({
       traits: {'@label': 'npc1_body'},
       bases: ['Person']
     });
 
-    const npc2_body = world_state.add_belief({
+    const npc2_body = world_state.add_belief_from_template({
       traits: {'@label': 'npc2_body'},
       bases: ['Person']
     });
-
-    world_state.lock();
 
     // NPC1 learns about world entities (not prototypes)
     const npc1 = Belief.from_template(world_state, {
@@ -228,6 +226,8 @@ describe('Mind Trait', () => {
         }
       }
     });
+
+    world_state.lock();
 
     // Get both minds and their states
     const npc1_mind = npc1._traits.get('mind');
@@ -363,7 +363,7 @@ describe('Mind Trait', () => {
     const world_mind = new Mind(null, 'world');
     const world_state = world_mind.create_state(200);
 
-    const blacksmith_tavern = world_state.add_belief({
+    const blacksmith_tavern = world_state.add_belief_from_template({
             bases: [tavern_proto],
       traits: {'@label': 'blacksmith_tavern', coordinates: '50,30',
         owner: 'blacksmith_guild'}
@@ -472,14 +472,12 @@ describe('Mind Trait', () => {
     const world_mind = new Mind(null, 'world');
     const world_state = world_mind.create_state(1);
 
-    const location1 = world_state.add_belief({ bases: ['Location'], traits: {'@label': 'location1'} });
+    const location1 = world_state.add_belief_from_template({ bases: ['Location'], traits: {'@label': 'location1'} });
 
-    const entity_body = world_state.add_belief({
+    const entity_body = world_state.add_belief_from_template({
       bases: ['Mental'],
       traits: {'@label': 'entity_body'}
     });
-
-    world_state.lock();
 
     const entity = Belief.from_template(world_state, {
       bases: [entity_body],
@@ -490,6 +488,8 @@ describe('Mind Trait', () => {
         }
       }
     });
+
+    world_state.lock();
 
     const entity_mind = entity._traits.get('mind');
     expect(entity_mind).to.be.instanceOf(Mind);
@@ -522,7 +522,7 @@ describe('Mind Trait', () => {
     const world_mind = new Mind(null, 'world');
     const world_state = world_mind.create_state(1);
 
-    const entity_body = world_state.add_belief({
+    const entity_body = world_state.add_belief_from_template({
       traits: {'@label': 'entity_body'},
       bases: ['Mental']
     });

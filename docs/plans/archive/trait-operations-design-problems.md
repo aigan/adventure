@@ -7,10 +7,10 @@ When creating an NPC with composed knowledge:
 ```javascript
 // World state at timestamp 1
 const world_state = world_mind.create_state(1)
-const tavern = world_state.add_belief({label: 'tavern', bases: ['Location']})
+const tavern = world_state.add_belief_from_template({label: 'tavern', bases: ['Location']})
 
 // NPC with Mental + Villager bases
-const npc = world_state.add_belief({
+const npc = world_state.add_belief_from_template({
   label: 'npc',
   bases: ['Person', 'Villager']  // Person -> Villager -> Mental
 })
@@ -210,7 +210,7 @@ const new_state = new State(
 
 ```javascript
 // Test 1: Initial construction composes knowledge
-const npc = world_state.add_belief({
+const npc = world_state.add_belief_from_template({
   bases: ['Person', 'Villager', 'Blacksmith']  // Multiple mind.append operations
 })
 const mind = npc.get_trait(world_state, 'mind')

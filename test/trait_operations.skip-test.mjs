@@ -45,13 +45,13 @@ describe('Trait Operations Pattern', () => {
     const world_mind = new Mind(null, 'world')
     const world_state = world_mind.create_state(1)
 
-    const workshop = world_state.add_belief({
+    const workshop = world_state.add_belief_from_template({
       label: 'workshop',
       bases: ['Location']
     })
 
     // Create NPC with Mental base - should construct mind via constructor marker
-    const npc = world_state.add_belief({
+    const npc = world_state.add_belief_from_template({
       label: 'npc',
       bases: ['Person'],
       traits: {
@@ -121,13 +121,13 @@ describe('Trait Operations Pattern', () => {
     const world_mind = new Mind(null, 'world')
     const world_state = world_mind.create_state(1)
 
-    const world_tavern = world_state.add_belief({
+    const world_tavern = world_state.add_belief_from_template({
       label: 'tavern',
       bases: ['Location']
     })
 
     // Create NPC with Villager base - should have knowledge about tavern
-    const npc = world_state.add_belief({
+    const npc = world_state.add_belief_from_template({
       label: 'villager_npc',
       bases: ['Person']
     })
@@ -207,23 +207,23 @@ describe('Trait Operations Pattern', () => {
     const world_mind = new Mind(null, 'world')
     const world_state = world_mind.create_state(1)
 
-    const world_tavern = world_state.add_belief({
+    const world_tavern = world_state.add_belief_from_template({
       label: 'tavern',
       bases: ['Location']
     })
 
-    const world_forge = world_state.add_belief({
+    const world_forge = world_state.add_belief_from_template({
       label: 'forge',
       bases: ['Location']
     })
 
-    const world_tools = world_state.add_belief({
+    const world_tools = world_state.add_belief_from_template({
       label: 'tools',
       bases: ['PortableObject']
     })
 
     // Create NPC with both Villager and Blacksmith bases
-    const npc = world_state.add_belief({
+    const npc = world_state.add_belief_from_template({
       label: 'blacksmith_villager',
       bases: ['Person']
     })
@@ -285,18 +285,18 @@ describe('Trait Operations Pattern', () => {
     const world_mind = new Mind(null, 'world')
     let world_state = world_mind.create_state(1)
 
-    const world_tavern = world_state.add_belief({
+    const world_tavern = world_state.add_belief_from_template({
       label: 'tavern',
       bases: ['Location']
     })
 
-    const world_forge = world_state.add_belief({
+    const world_forge = world_state.add_belief_from_template({
       label: 'forge',
       bases: ['Location']
     })
 
     // Create NPC with empty mind initially
-    let npc = world_state.add_belief({
+    let npc = world_state.add_belief_from_template({
       label: 'npc',
       bases: ['Person']
     })

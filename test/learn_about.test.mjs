@@ -58,7 +58,7 @@ describe('learn_about', () => {
     it('learn_about on versioned belief walks chain to find archetypes', () => {
       const world_mind = new Mind(null, 'world');
       const world_mind_state = world_mind.create_state(1);
-      const hammer_v1_belief = world_mind_state.add_belief({bases: ['PortableObject'], traits: {'@label': 'hammer_v1'}});
+      const hammer_v1_belief = world_mind_state.add_belief_from_template({bases: ['PortableObject'], traits: {'@label': 'hammer_v1'}});
 
       const hammer_v1 = get_first_belief_by_label('hammer_v1');
       const hammer_v2 = Belief.from_template(world_mind_state, {
@@ -100,7 +100,7 @@ describe('learn_about', () => {
       );
 
       // Should be able to reference learned belief in traits
-      const hammer_knowledge = player_mind_state.add_belief({
+      const hammer_knowledge = player_mind_state.add_belief_from_template({
         bases: ['PortableObject'],
         traits: { '@label': 'hammer_knowledge', location: workshop_knowledge.subject }
       });
@@ -113,7 +113,7 @@ describe('learn_about', () => {
     it('learn_about directly from base belief works', () => {
       const world_mind = new Mind(null, 'world');
       const world_mind_state = world_mind.create_state(1);
-      const base_hammer_belief = world_mind_state.add_belief({bases: ['PortableObject'], traits: {'@label': 'base_hammer'}});
+      const base_hammer_belief = world_mind_state.add_belief_from_template({bases: ['PortableObject'], traits: {'@label': 'base_hammer'}});
 
       const base_hammer = get_first_belief_by_label('base_hammer');
 
@@ -170,7 +170,7 @@ describe('learn_about', () => {
       const npc_mind_state = npc_mind.create_state(1, world_state);
 
       // NPC already knows about the workshop
-      const existing_workshop = npc_mind_state.add_belief({
+      const existing_workshop = npc_mind_state.add_belief_from_template({
                 bases: ['Location'],
         traits: {'@label': 'my_workshop', '@about': get_first_belief_by_label('workshop').subject}
       });
@@ -198,12 +198,12 @@ describe('learn_about', () => {
       const npc_mind_state = npc_mind.create_state(1, world_state);
 
       // NPC has two different beliefs about the workshop (uncertainty case)
-      const belief1 = npc_mind_state.add_belief({
+      const belief1 = npc_mind_state.add_belief_from_template({
                 bases: ['Location'],
         traits: {'@label': 'workshop_belief_1', '@about': get_first_belief_by_label('workshop')}
       });
 
-      const belief2 = npc_mind_state.add_belief({
+      const belief2 = npc_mind_state.add_belief_from_template({
                 bases: ['Location'],
         traits: {'@label': 'workshop_belief_2', '@about': get_first_belief_by_label('workshop')}
       });
@@ -231,11 +231,11 @@ describe('learn_about', () => {
     it.skip('learn_about is not transitive - about points to the belief, not what it\'s about', () => {
       const world_mind = new Mind(null, 'world');
       const world_mind_state = world_mind.create_state(1);
-      world_mind_state.add_belief({bases: ['Location'], traits: {'@label': 'workshop'}});
+      world_mind_state.add_belief_from_template({bases: ['Location'], traits: {'@label': 'workshop'}});
 
       const npc1_mind = new Mind(world_mind, 'npc1');
       const npc1_mind_state = npc1_mind.create_state(1, world_mind_state);
-      const workshop_from_npc1 = npc1_mind_state.add_belief({
+      const workshop_from_npc1 = npc1_mind_state.add_belief_from_template({
                 bases: ['Location'],
         traits: {'@label': 'workshop_knowledge', '@about': get_first_belief_by_label('workshop').subject}
       });
@@ -254,7 +254,7 @@ describe('learn_about', () => {
     it('learn_about should walk belief chain to find archetypes', () => {
       const world_mind = new Mind(null, 'world');
       const world_mind_state = world_mind.create_state(1);
-      world_mind_state.add_belief({bases: ['PortableObject'], traits: {'@label': 'hammer_v1'}});
+      world_mind_state.add_belief_from_template({bases: ['PortableObject'], traits: {'@label': 'hammer_v1'}});
 
       const hammer_v1 = get_first_belief_by_label('hammer_v1');
       const hammer_v2 = Belief.from_template(world_mind_state, {
@@ -338,18 +338,18 @@ describe('learn_about', () => {
       const world_mind_state = world_mind.create_state(1);
 
       // Create items
-      const sword = world_mind_state.add_belief({
+      const sword = world_mind_state.add_belief_from_template({
         traits: {'@label': 'sword'},
         bases: ['PortableObject']
       });
 
-      const shield = world_mind_state.add_belief({
+      const shield = world_mind_state.add_belief_from_template({
         traits: {'@label': 'shield'},
         bases: ['PortableObject']
       });
 
       // Create container with array of items
-      const chest = world_mind_state.add_belief({
+      const chest = world_mind_state.add_belief_from_template({
                 bases: ['Container'],
         traits: {'@label': 'chest', items: [sword.subject, shield.subject]}
       });
@@ -380,12 +380,12 @@ describe('learn_about', () => {
       const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(100);
 
-      const workshop = world_state.add_belief({
+      const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location']
       });
 
-      const hammer_v1 = world_state.add_belief({
+      const hammer_v1 = world_state.add_belief_from_template({
                 bases: ['PortableObject'],
         traits: {'@label': 'hammer', location: workshop.subject,
           color: 'grey'}
@@ -435,12 +435,12 @@ describe('learn_about', () => {
       const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(100);
 
-      const workshop = world_state.add_belief({
+      const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location']
       });
 
-      const hammer = world_state.add_belief({
+      const hammer = world_state.add_belief_from_template({
                 bases: ['PortableObject'],
         traits: {'@label': 'hammer', location: workshop.subject,
           color: 'grey'}

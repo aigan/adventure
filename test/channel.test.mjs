@@ -122,7 +122,7 @@ describe('Channel Message Handlers', () => {
 
       const world_mind = new Mind(null, 'test_mind');
       const state = world_mind.create_state(1);
-      const hammer = state.add_belief({
+      const hammer = state.add_belief_from_template({
         bases: ['PortableObject'],
         traits: { '@label': 'test_hammer', color: 'red' }
       });
@@ -219,7 +219,7 @@ describe('Channel Message Handlers', () => {
     it('can find state by searching all minds', () => {
       const mind2 = new Mind(null, 'mind2');
       const state2 = mind2.create_state(1);
-      const hammer = state2.add_belief({ bases: ['PortableObject'], traits: {'@label': 'hammer'} });
+      const hammer = state2.add_belief_from_template({ bases: ['PortableObject'], traits: {'@label': 'hammer'} });
 
       messages.length = 0;
 
@@ -271,7 +271,7 @@ describe('Channel Message Handlers', () => {
     it('can find belief by id and returns correct data', () => {
       const mind = new Mind(null, 'belief_test_mind');
       const state = mind.create_state(1);
-      const hammer = state.add_belief({
+      const hammer = state.add_belief_from_template({
         traits: {'@label': 'query_hammer'},
         bases: ['PortableObject']
       });
@@ -307,7 +307,7 @@ describe('Channel Message Handlers', () => {
     it('includes about chain in response', () => {
       const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
-      const workshop = world_state.add_belief({
+      const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'query_workshop'},
         bases: ['Location']
       });
@@ -333,7 +333,7 @@ describe('Channel Message Handlers', () => {
     it('includes bases information', () => {
       const mind = new Mind(null, 'bases_test_mind');
       const state = mind.create_state(1);
-      const hammer = state.add_belief({
+      const hammer = state.add_belief_from_template({
         traits: {'@label': 'bases_hammer'},
         bases: ['PortableObject']
       });
@@ -373,7 +373,7 @@ describe('Channel Message Handlers', () => {
     it('can find belief in Session.state', async () => {
       const mind = new Mind(null, 'entity_test_mind');
       const state = mind.create_state(1);
-      const ball = state.add_belief({
+      const ball = state.add_belief_from_template({
                 bases: ['PortableObject'],
         traits: {'@label': 'test_ball', color: 'red'}
       });

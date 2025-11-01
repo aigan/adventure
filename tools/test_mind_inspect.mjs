@@ -7,7 +7,7 @@ setupStandardArchetypes()
 const world_mind = new Mind('world')
 const world_state = world_mind.create_state(1)
 
-const player = world_state.add_belief({
+const player = world_state.add_belief_from_template({
   label: 'player',
   bases: ['Person'],
   traits: {

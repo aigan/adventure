@@ -779,8 +779,8 @@ export class Belief {
       belief.add_trait_from_template(state, trait_label, trait_data)
     }
 
-    // Add belief to state's insert list
-    state.insert.push(belief)
+    // Add belief to state's insert list (validates locked state and origin_state)
+    state.insert_beliefs(belief)
 
     return belief
   }

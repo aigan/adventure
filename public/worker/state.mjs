@@ -166,19 +166,14 @@ export class State {
    * @param {object} template - Belief template
    * @returns {Belief}
    */
-  add_belief(template) { // FIXME: simplify
-    assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
-
-    const belief = Belief.from_template(this, template)
-    return belief
+  add_belief_from_template(template) {
+    return Belief.from_template(this, template)
   }
 
   /**
    * @param {Object<string, object>} beliefs - Object mapping labels to belief definitions
    */
-  add_beliefs(beliefs) { // FIXME: simplify
-    assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
-
+  add_beliefs_from_template(beliefs) {
     for (const [label, def] of Object.entries(beliefs)) {
       const existing_traits = /** @type {Record<string, any>} */ ('traits' in def ? def.traits : {})
       Belief.from_template(this, {

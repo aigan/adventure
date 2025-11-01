@@ -110,13 +110,13 @@ describe('Mind', () => {
       const world_state = world_mind.create_state(1);
 
       // Create a belief that can be learned about
-      const workshop_belief = world_state.add_belief({
+      const workshop_belief = world_state.add_belief_from_template({
         bases: ['Base'],
         traits: {'@label': 'workshop', name: 'Workshop'}
       });
 
       // Create NPC belief that will have a mind trait
-      const npc_belief = world_state.add_belief({
+      const npc_belief = world_state.add_belief_from_template({
         bases: ['Base']
       });
 
@@ -139,12 +139,12 @@ describe('Mind', () => {
       const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
-      const workshop_belief = world_state.add_belief({
+      const workshop_belief = world_state.add_belief_from_template({
         bases: ['Base'],
         traits: {'@label': 'workshop', name: 'Workshop'}
       });
 
-      const npc_belief = world_state.add_belief({
+      const npc_belief = world_state.add_belief_from_template({
         bases: ['Base']
       });
 
@@ -167,7 +167,7 @@ describe('Mind', () => {
       const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
-      const npc_belief = world_state.add_belief({
+      const npc_belief = world_state.add_belief_from_template({
         bases: ['Base']
       });
       world_state.lock();
@@ -184,7 +184,7 @@ describe('Mind', () => {
       const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
-      const npc_belief = world_state.add_belief({
+      const npc_belief = world_state.add_belief_from_template({
         bases: ['Base']
       });
       world_state.lock();
@@ -199,7 +199,7 @@ describe('Mind', () => {
       const world_mind = new Mind(null, 'world');
       const world_state = world_mind.create_state(1);
 
-      const npc_belief = world_state.add_belief({
+      const npc_belief = world_state.add_belief_from_template({
         bases: ['Base']
       });
       world_state.lock();

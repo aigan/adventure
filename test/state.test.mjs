@@ -230,7 +230,7 @@ describe('State', () => {
       const world_mind = new Mind(null, 'world');
       const state1 = world_mind.create_state(1);
 
-      const room = state1.add_belief({
+      const room = state1.add_belief_from_template({
         traits: {'@label': 'room'},
         bases: ['Location'],
       });
@@ -244,7 +244,7 @@ describe('State', () => {
       const world_mind = new Mind(null, 'world');
       const state1 = world_mind.create_state(1);
 
-      const room_v1 = state1.add_belief({
+      const room_v1 = state1.add_belief_from_template({
         traits: {'@label': 'room'},
         bases: ['Location'],
       });
@@ -265,8 +265,8 @@ describe('State', () => {
       const world_mind = new Mind(null, 'world');
       const state = world_mind.create_state(1);
 
-      const room1 = state.add_belief({ bases: ['Location'], traits: {'@label': 'room1'} });
-      const room2 = state.add_belief({ bases: ['Location'], traits: {'@label': 'room2'} });
+      const room1 = state.add_belief_from_template({ bases: ['Location'], traits: {'@label': 'room1'} });
+      const room2 = state.add_belief_from_template({ bases: ['Location'], traits: {'@label': 'room2'} });
 
       // Lock state to enable caching
       state.lock();
@@ -292,12 +292,12 @@ describe('State', () => {
       const state1 = world_mind.create_state(1);
 
       // Create two rooms with circular reference
-      const room1 = state1.add_belief({
+      const room1 = state1.add_belief_from_template({
         traits: {'@label': 'room1'},
         bases: ['Location'],
       });
 
-      const room2 = state1.add_belief({
+      const room2 = state1.add_belief_from_template({
         bases: ['Location'],
         traits: {'@label': 'room2', location: room1.subject}  // room2 inside room1
       });
@@ -427,9 +427,6 @@ describe('State', () => {
         bases: ['Actor']
       });
 
-      world_state.insert_beliefs(player_body);
-      world_state.lock();
-
       // Create player with mind trait using create_from_template
       // Person archetype has Mental which has mind trait
       const player = Belief.from_template(world_state, {
@@ -441,6 +438,8 @@ describe('State', () => {
         },
         bases: ['Person']
       });
+
+      world_state.lock();
 
       const player_mind = player._traits.get('mind');
       expect(player_mind).to.be.instanceOf(Mind);

@@ -17,7 +17,7 @@ describe('Locking Constraints', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(1)
 
-      world_state.add_belief({
+      world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location']
       })
@@ -37,7 +37,7 @@ describe('Locking Constraints', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(1)
 
-      const player = world_state.add_belief({
+      const player = world_state.add_belief_from_template({
         traits: {'@label': 'player'},
         bases: ['Person']
       })
@@ -57,7 +57,7 @@ describe('Locking Constraints', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(1)
 
-      const player = world_state.add_belief({
+      const player = world_state.add_belief_from_template({
         traits: {'@label': 'player'},
         bases: ['Person']
       })
@@ -76,12 +76,12 @@ describe('Locking Constraints', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(1)
 
-      const workshop = world_state.add_belief({
+      const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location']
       })
 
-      const player = world_state.add_belief({
+      const player = world_state.add_belief_from_template({
                 bases: ['Person'],
         traits: {'@label': 'player', mind: {
             workshop: ['location']}
@@ -107,12 +107,12 @@ describe('Locking Constraints', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(1)
 
-      const workshop = world_state.add_belief({
+      const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location']
       })
 
-      const player = world_state.add_belief({
+      const player = world_state.add_belief_from_template({
                 bases: ['Person'],
         traits: {'@label': 'player', mind: {
             workshop: ['location']}
@@ -141,7 +141,7 @@ describe('Locking Constraints', () => {
       const world_state = world_mind.create_state(1)
 
       // Create a base belief with a Mind trait
-      const base_player = world_state.add_belief({
+      const base_player = world_state.add_belief_from_template({
         bases: ['Person'],
         traits: {'@label': 'base_player', mind: {
           // Empty learn spec
@@ -186,12 +186,12 @@ describe('Locking Constraints', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(1)
 
-      const workshop = world_state.add_belief({
+      const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location']
       })
 
-      const player = world_state.add_belief({
+      const player = world_state.add_belief_from_template({
                 bases: ['Person'],
         traits: {'@label': 'player', location: 'workshop',
           mind: {
@@ -224,7 +224,7 @@ describe('Locking Constraints', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(1)
 
-      const player = world_state.add_belief({
+      const player = world_state.add_belief_from_template({
                 bases: ['Person'],
         traits: {'@label': 'player', mind: {}
         }
@@ -237,7 +237,7 @@ describe('Locking Constraints', () => {
 
       // Try to modify locked player_state
       expect(() => {
-        player_state.add_belief({
+        player_state.add_belief_from_template({
           traits: {'@label': 'hammer'},
           bases: ['PortableObject']
         })

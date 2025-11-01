@@ -51,7 +51,7 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(100)
 
-      const npc = world_state.add_belief({
+      const npc = world_state.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
@@ -79,12 +79,12 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(200)
 
-      world_state.add_belief({
+      world_state.add_belief_from_template({
         label: 'tavern',
         bases: ['Location']
       })
 
-      const npc = world_state.add_belief({
+      const npc = world_state.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
@@ -103,7 +103,7 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(150)
 
-      const npc = world_state.add_belief({
+      const npc = world_state.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
@@ -131,7 +131,7 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       const world_state1 = world_mind.create_state(100)
 
-      const npc = world_state1.add_belief({
+      const npc = world_state1.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
@@ -256,12 +256,12 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       let world_state = world_mind.create_state(100)
 
-      world_state.add_belief({
+      world_state.add_belief_from_template({
         label: 'workshop',
         bases: ['Location']
       })
 
-      const npc = world_state.add_belief({
+      const npc = world_state.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
@@ -299,7 +299,7 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(300)
 
-      const npc = world_state.add_belief({
+      const npc = world_state.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
@@ -332,7 +332,7 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(100)
 
-      const npc = world_state.add_belief({
+      const npc = world_state.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
@@ -363,7 +363,7 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(100)
 
-      const npc = world_state.add_belief({
+      const npc = world_state.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
@@ -396,7 +396,7 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       let world_state = world_mind.create_state(100)
 
-      const npc = world_state.add_belief({
+      const npc = world_state.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
@@ -431,7 +431,7 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(100)
 
-      const npc1 = world_state.add_belief({
+      const npc1 = world_state.add_belief_from_template({
         label: 'npc1',
         bases: ['Person']
       })
@@ -444,7 +444,7 @@ describe('Temporal Reasoning', () => {
       const npc1_state = [...npc1_mind.states_at_tt(100)][0]
 
       // NPC1 models NPC2
-      const npc2_model = npc1_state.add_belief({
+      const npc2_model = npc1_state.add_belief_from_template({
         label: 'npc2_model',
         bases: ['Person']
       })
@@ -470,7 +470,7 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(100)
 
-      const npc = world_state.add_belief({
+      const npc = world_state.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
@@ -498,7 +498,7 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(100)
 
-      const npc = world_state.add_belief({
+      const npc = world_state.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
@@ -532,12 +532,12 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(100)
 
-      const hammer = world_state.add_belief({
+      const hammer = world_state.add_belief_from_template({
         label: 'hammer',
         bases: ['PortableObject']
       })
 
-      const npc = world_state.add_belief({
+      const npc = world_state.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
@@ -549,11 +549,11 @@ describe('Temporal Reasoning', () => {
 
       // Possibility A: NPC believes hammer is in workshop
       const poss_a = new State(npc_mind, 100, null, world_state, null, 100)
-      const workshop_a = poss_a.add_belief({
+      const workshop_a = poss_a.add_belief_from_template({
         label: 'workshop',
         bases: ['Location']
       })
-      poss_a.add_belief({
+      poss_a.add_belief_from_template({
         label: 'hammer_belief_a',
         bases: ['PortableObject'],
         traits: {
@@ -564,11 +564,11 @@ describe('Temporal Reasoning', () => {
 
       // Possibility B: NPC believes hammer is in shed
       const poss_b = new State(npc_mind, 100, null, world_state, null, 100)
-      const shed_b = poss_b.add_belief({
+      const shed_b = poss_b.add_belief_from_template({
         label: 'shed',
         bases: ['Location']
       })
-      poss_b.add_belief({
+      poss_b.add_belief_from_template({
         label: 'hammer_belief_b',
         bases: ['PortableObject'],
         traits: {
@@ -703,7 +703,7 @@ describe('Temporal Reasoning', () => {
       const world_mind = new Mind(null, 'world')
       const world_state = world_mind.create_state(100)
 
-      const npc = world_state.add_belief({
+      const npc = world_state.add_belief_from_template({
         label: 'npc',
         bases: ['Person']
       })
