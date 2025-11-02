@@ -1,6 +1,11 @@
 /**
  * Temporary test to verify world.mjs setup works correctly
  * Shows what's created using to_inspect_view() format (matches inspect GUI)
+ *
+ * Note: Prototypes (shared beliefs) are locked after creation. The "locked" field
+ * only appears in output when false (to highlight mutable state), so locked prototypes
+ * won't show a "locked" field.
+ *
  * Run with: node tools/test_world.mjs
  */
 
@@ -136,6 +141,7 @@ console.log('SUMMARY')
 console.log('='.repeat(80))
 console.log(`Archetypes: ${archetype_labels.length}`)
 console.log(`Prototypes: ${shared_beliefs.length}`)
+console.log(`  All prototypes locked: ${shared_beliefs.every(b => b.locked) ? '✓' : '✗'}`)
 console.log(`World state beliefs: ${state ? [...state.get_beliefs()].length : 0}`)
 console.log(`Minds: ${all_minds.length}`)
 console.log('\n✓ All checks complete')

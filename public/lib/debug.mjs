@@ -26,3 +26,17 @@ export function assert(condition, message, ...args) {
     throw new Error(message || 'Assertion failed');
   }
 }
+
+/**
+ * System designation - get debug string for object
+ * Calls obj.sysdesig() if available, otherwise returns obj for default presentation
+ * @param {any} obj - Object to get debug string for
+ * @param {...any} args - Additional arguments to pass to sysdesig method
+ * @returns {string|any} Debug string if sysdesig exists, otherwise original object
+ */
+export function sysdesig(obj, ...args) {
+  if (obj && typeof obj.sysdesig === 'function') {
+    return obj.sysdesig(...args)
+  }
+  return obj
+}

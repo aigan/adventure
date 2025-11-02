@@ -634,6 +634,7 @@ export class Belief {
     }
 
     parts.push(`#${this._id}`)
+    parts.push(this.locked ? '🔒' : '🔓')
 
     return parts.join(' ')
   }
@@ -669,7 +670,7 @@ export class Belief {
       prototypes: [...this.get_prototypes()],
       bases: [...this._bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
-        [...this._traits].map(([k, v]) => {
+        [...this.get_traits()].map(([k, v]) => {
           const traittype = Traittype.get_by_label(k)
           assert(traittype instanceof Traittype, `Traittype '${k}' not found`)
           return [k, traittype.to_inspect_view(state, v)]
@@ -800,22 +801,26 @@ export class Belief {
   static from_template(state, {sid=null, bases=[], traits={}}) {
     assert(state instanceof State, 'from_template requires State as first argument', {state})
 
-    const resolved_bases = bases.map(base => {
-      if (typeof base === 'string') {
+    const resolved_bases = bases.map(base_in => {
+      if (typeof base_in === 'string') {
+
         // Try archetype first (lighter)
-        const archetype = Archetype.get_by_label(base)
+        const archetype = Archetype.get_by_label(base_in)
         if (archetype) return archetype
 
         // Try shared belief (prototype only - prevents same-state inheritance)
         // TODO: Future - support versioned subjects (bases from earlier states with tt < state.tt)
-        const subject = DB.get_subject_by_label(base)
-        const belief = subject?.get_shared_belief_by_state(state)
-        if (belief) return belief
+        const subject = DB.get_subject_by_label(base_in)
+        const base = subject?.get_shared_belief_by_state(state)
+        if (base) {
+          assert(base.locked, 'Cannot add belief with unlocked base', {belief_id: base._id, label: base.get_label()})
+          return base
+        }
 
         // Not found
-        assert(false, `Base '${base}' not found as archetype or shared belief (prototype). Only archetypes and prototypes can be used as bases.`, {base, note: 'To use an entity as a base, convert it to a prototype (shared belief with in_mind=null, origin_state=null)'})
+        assert(false, `Base '${base_in}' not found as archetype or shared belief (prototype). Only archetypes and prototypes can be used as bases.`, {base_in, note: 'To use an entity as a base, convert it to a prototype (shared belief with in_mind=null, origin_state=null)'})
       }
-      return base
+      return base_in
     })
 
     const ground_mind = state.in_mind.parent
@@ -909,6 +914,9 @@ export class Belief {
       if (trait_label === '@label') continue
       belief.add_trait(trait_label, trait_data)
     }
+
+    // Lock shared belief (prototypes must be immutable before use as bases)
+    belief.locked = true
 
     return belief
   }

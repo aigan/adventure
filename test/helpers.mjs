@@ -28,16 +28,55 @@ export function createMindWithBeliefs(label, beliefs = {}, parent_mind = null) {
 }
 
 /**
+ * Standard trait types used in most tests
+ * Spread this into your test's traittype definition
+ *
+ * @example
+ * import { stdTypes, Thing } from './helpers.mjs';
+ *
+ * const traittypes = {
+ *   ...stdTypes,
+ *   location: 'Location',
+ *   color: 'string',
+ * };
+ *
+ * const archetypes = {
+ *   Thing,
+ *   ObjectPhysical: {
+ *     bases: ['Thing'],
+ *     traits: { location: null, color: null }
+ *   }
+ * };
+ *
+ * DB.register(traittypes, archetypes, {});
+ */
+export const stdTypes = {
+  '@tt': 'number',
+  '@about': {
+    type: 'Subject',
+    mind: 'parent'
+  },
+}
+
+/**
+ * Thing archetype definition (base for all entities)
+ * Spread this into your test's archetype definition
+ *
+ * See stdTypes for usage example
+ */
+export const Thing = {
+  traits: {
+    '@tt': null,
+    '@about': null,
+  },
+}
+
+/**
  * Standard archetype setup matching world.mjs
  */
 export function setupStandardArchetypes() {
   const traittypes = {
-    '@label': 'string',
-    '@tt': 'number',
-    '@about': {
-      type: 'Subject',
-      mind: 'parent'
-    },
+    ...stdTypes,
     location: 'Location',
     mind: 'Mind',
     color: 'string',
@@ -51,13 +90,7 @@ export function setupStandardArchetypes() {
   };
 
   const archetypes = {
-    Thing: {
-      traits: {
-        '@label': null,
-        '@tt': null,
-        '@about': null,
-      },
-    },
+    Thing,
     ObjectPhysical: {
       bases: ['Thing'],
       traits: {
@@ -125,24 +158,13 @@ export function setupStandardArchetypes() {
  */
 export function setupMinimalArchetypes() {
   const traittypes = {
-    '@label': 'string',
-    '@tt': 'number',
-    '@about': {
-      type: 'Subject',
-      mind: 'parent'
-    },
+    ...stdTypes,
     location: 'Location',
     color: 'string',
   };
 
   const archetypes = {
-    Thing: {
-      traits: {
-        '@label': null,
-        '@tt': null,
-        '@about': null,
-      },
-    },
+    Thing,
     ObjectPhysical: {
       bases: ['Thing'],
       traits: {
@@ -183,50 +205,4 @@ export function get_first_belief_by_label(label) {
   if (!beliefs || beliefs.size === 0) return null
 
   return beliefs.values().next().value ?? null
-}
-
-/**
- * Standard trait types used in most tests
- * Spread this into your test's traittype definition
- *
- * @example
- * import { stdTypes, Thing } from './helpers.mjs';
- *
- * const traittypes = {
- *   ...stdTypes,
- *   location: 'Location',
- *   color: 'string',
- * };
- *
- * const archetypes = {
- *   Thing,
- *   ObjectPhysical: {
- *     bases: ['Thing'],
- *     traits: { location: null, color: null }
- *   }
- * };
- *
- * DB.register(traittypes, archetypes, {});
- */
-export const stdTypes = {
-  '@label': 'string',
-  '@tt': 'number',
-  '@about': {
-    type: 'Subject',
-    mind: 'parent'
-  },
-}
-
-/**
- * Thing archetype definition (base for all entities)
- * Spread this into your test's archetype definition
- *
- * See stdTypes for usage example
- */
-export const Thing = {
-  traits: {
-    '@label': null,
-    '@tt': null,
-    '@about': null,
-  },
 }

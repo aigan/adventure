@@ -233,6 +233,27 @@ export class Mind {
   }
 
   /**
+   * System designation - compact debug string
+   * @returns {string}
+   */
+  sysdesig() {
+    const parts = []
+
+    if (this.label) {
+      parts.push(this.label)
+    }
+
+    parts.push(`Mind#${this._id}`)
+
+    if (this.parent) {
+      const parent_label = this.parent.label || `#${this.parent._id}`
+      parts.push(`(child of ${parent_label})`)
+    }
+
+    return parts.join(' ')
+  }
+
+  /**
    * @returns {Omit<MindJSON, 'nested_minds'>}
    */
   toJSON() {

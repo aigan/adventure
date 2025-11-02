@@ -172,4 +172,16 @@ export class Archetype {
     // Subject input (or other): return as-is
     return data
   }
+
+  /**
+   * System designation - compact debug string
+   * @returns {string}
+   */
+  sysdesig() {
+    const bases = [...this._bases].map(b => b.label).join(', ')
+    if (bases) {
+      return `Archetype ${this.label} (bases: ${bases})`
+    }
+    return `Archetype ${this.label}`
+  }
 }

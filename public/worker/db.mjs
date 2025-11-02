@@ -501,11 +501,13 @@ export function register(traittypes, archetypes, prototypes) {
     register_label(label, subject.sid)
 
     // Add label trait and any additional traits
-    belief.add_trait('@label', label)
     if (def.traits) {
       for (const [trait_name, trait_value] of Object.entries(def.traits)) {
         belief.add_trait(trait_name, trait_value)
       }
     }
+
+    // Lock shared belief (prototypes must be immutable before use as bases)
+    belief.locked = true
   }
 }

@@ -66,6 +66,30 @@ export class Subject {
   }
 
   /**
+   * System designation - compact debug string
+   * @returns {string}
+   */
+  sysdesig() {
+    const parts = []
+
+    const label = this.get_label()
+    if (label) {
+      parts.push(label)
+    }
+
+    parts.push(`Subject sid=${this.sid}`)
+
+    if (this.ground_mind) {
+      const mind_label = this.ground_mind.label || `Mind#${this.ground_mind._id}`
+      parts.push(`@${mind_label}`)
+    } else {
+      parts.push('@global')
+    }
+
+    return parts.join(' ')
+  }
+
+  /**
    * Get label for this subject (sid)
    * @returns {string|null}
    */

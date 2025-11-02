@@ -488,6 +488,29 @@ export class State {
     return {_ref: this._id, _type: 'State'}
   }
 
+  /**
+   * System designation - compact debug string
+   * @returns {string}
+   */
+  sysdesig() {
+    const parts = []
+
+    const mind_label = this.in_mind?.label || `Mind#${this.in_mind?._id}`
+    parts.push(mind_label)
+
+    parts.push(`State#${this._id}`)
+
+    if (this.vt !== undefined && this.vt !== this.tt) {
+      parts.push(`tt:${this.tt} vt:${this.vt}`)
+    } else {
+      parts.push(`tt:${this.tt}`)
+    }
+
+    parts.push(this.locked ? '🔒' : '🔓')
+
+    return parts.join(' ')
+  }
+
   toJSON() {
     // Register in_mind as dependency if we're in a serialization context
     if (Serialize.active && this.in_mind) {

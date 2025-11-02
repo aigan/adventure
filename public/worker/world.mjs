@@ -10,7 +10,7 @@ import * as Cosmos from "./cosmos.mjs";
 import * as DB from "./db.mjs";
 import { Session } from "./session.mjs";
 import { Subject } from "./subject.mjs";
-import { log, assert } from "../lib/debug.mjs";
+import { log, assert, sysdesig } from "../lib/debug.mjs";
 //import {observation,observation_text} from "./observation.mjs";
 //import Time from "./time.mjs";
 //import * as Ponder from "./ponder.mjs";
@@ -28,7 +28,6 @@ export function setupStandardArchetypes() {
       type: 'Subject',
       mind: 'parent'  // Resolve in parent mind's ground state
     },
-    '@label': 'string',
     '@tt': 'number',
     location: 'Location',
     mind: 'Mind',  // Singular Mind reference
@@ -42,7 +41,6 @@ export function setupStandardArchetypes() {
     Thing: {
       traits: {
         '@about': null,
-        '@label': null,
         '@tt': null,
       },
     },
@@ -178,6 +176,10 @@ const player = state.get_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
 
 //log(player);
+for (const [name, value] of player.get_traits()) {
+  log(`  ${name}:`, sysdesig(value));
+}
+
 
 
 //const player_mind = player.get_trait(state, 'mind');

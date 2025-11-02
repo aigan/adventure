@@ -487,6 +487,49 @@ describe('Belief', () => {
 
       expect(hammer.get_trait(state, 'nonexistent')).to.be.null;
     });
+
+    it('to_inspect_view includes inherited traits', () => {
+      const mind = new Mind(null, 'test');
+      const state = mind.create_state(100);
+
+      const workshop = Belief.from_template(state, {
+        traits: {'@label': 'workshop'},
+        bases: ['Location']
+      });
+
+      // Create v1 with location and color
+      const hammer_v1 = Belief.from_template(state, {
+        traits: {
+          '@label': 'hammer',
+          location: workshop.subject,
+          color: 'grey'
+        },
+        bases: ['PortableObject']
+      });
+
+      // Create v2 that only sets color (location should be inherited from v1)
+      const hammer_v2 = Belief.from_template(state, {
+        sid: hammer_v1.subject.sid,
+        bases: [hammer_v1],
+        traits: {
+          color: 'blue'
+        }
+      });
+
+      // get_trait should find both own and inherited traits
+      expect(hammer_v2.get_trait(state, 'color')).to.equal('blue');
+      expect(hammer_v2.get_trait(state, 'location')).to.be.instanceOf(Subject);
+
+      // to_inspect_view should show BOTH own and inherited traits
+      const inspected = hammer_v2.to_inspect_view(state);
+      expect(inspected.traits).to.have.property('color');
+      expect(inspected.traits).to.have.property('location');
+      expect(inspected.traits.color).to.equal('blue');
+      expect(inspected.traits.location).to.deep.include({
+        _ref: workshop._id,
+        _type: 'Belief'
+      });
+    });
   });
 
   describe('Shared Belief Resolution', () => {
