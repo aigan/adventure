@@ -196,9 +196,9 @@ export class State {
    * @returns {State} New unlocked state
    */
   branch_state(ground_state, vt) {
-    // Assert ground_state is in parent mind (or null for world_mind)
+    // Assert ground_state is in parent mind (or null for root minds)
     assert(
-      ground_state?.in_mind == this.in_mind.parent,
+      ground_state === null || ground_state?.in_mind === this.in_mind.parent,
       'ground_state must be in parent mind',
       {mind: this.in_mind.label, parent: this.in_mind.parent?.label, ground_state_mind: ground_state?.in_mind?.label}
     )

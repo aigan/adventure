@@ -7,6 +7,8 @@ import { Belief } from '../public/worker/belief.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
 import { sysdesig } from '../public/lib/debug.mjs'
 
+const logos = () => DB.get_logos_mind();
+
 describe('sysdesig', () => {
   beforeEach(() => {
     DB.reset_registries()
@@ -15,7 +17,7 @@ describe('sysdesig', () => {
 
   describe('sysdesig() helper function', () => {
     it('calls obj.sysdesig() if method exists', () => {
-      const mind = new Mind(null, 'test')
+      const mind = new Mind(logos(), 'test')
       const result = sysdesig(mind)
       expect(result).to.be.a('string')
       expect(result).to.include('test')
@@ -42,7 +44,7 @@ describe('sysdesig', () => {
 
   describe('Mind.sysdesig()', () => {
     it('includes label and ID', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const result = mind.sysdesig()
 
       expect(result).to.include('world')
@@ -51,7 +53,7 @@ describe('sysdesig', () => {
     })
 
     it('shows parent info for child mind', () => {
-      const parent = new Mind(null, 'world')
+      const parent = new Mind(logos(), 'world')
       const child = new Mind(parent, 'npc')
       const result = child.sysdesig()
 
@@ -60,7 +62,7 @@ describe('sysdesig', () => {
     })
 
     it('works without label', () => {
-      const mind = new Mind(null)
+      const mind = new Mind(logos())
       const result = mind.sysdesig()
 
       expect(result).to.include('Mind#')
@@ -70,7 +72,7 @@ describe('sysdesig', () => {
 
   describe('State.sysdesig()', () => {
     it('includes mind label, ID, and tt', () => {
-      const mind = new Mind(null, 'test')
+      const mind = new Mind(logos(), 'test')
       const state = mind.create_state(42)
       const result = state.sysdesig()
 
@@ -80,7 +82,7 @@ describe('sysdesig', () => {
     })
 
     it('shows vt when different from tt', () => {
-      const mind = new Mind(null, 'test')
+      const mind = new Mind(logos(), 'test')
       const state1 = mind.create_state(100)
       state1.lock()
 
@@ -94,7 +96,7 @@ describe('sysdesig', () => {
     })
 
     it('shows 🔓 for unlocked states', () => {
-      const mind = new Mind(null, 'test')
+      const mind = new Mind(logos(), 'test')
       const state = mind.create_state(1)
       const result = state.sysdesig()
 
@@ -102,7 +104,7 @@ describe('sysdesig', () => {
     })
 
     it('shows 🔒 for locked states', () => {
-      const mind = new Mind(null, 'test')
+      const mind = new Mind(logos(), 'test')
       const state = mind.create_state(1)
       state.lock()
       const result = state.sysdesig()
@@ -129,7 +131,7 @@ describe('sysdesig', () => {
     })
 
     it('works without label', () => {
-      const mind = new Mind(null, 'test')
+      const mind = new Mind(logos(), 'test')
       const state = mind.create_state(1)
       const belief = Belief.from_template(state, {
         bases: ['Location']
@@ -180,8 +182,8 @@ describe('sysdesig', () => {
       expect(result).to.include('@')
     })
 
-    it('shows @global for subjects without ground_mind', () => {
-      const mind = new Mind(null, 'test')
+    it('shows @logos for subjects scoped to logos', () => {
+      const mind = new Mind(logos(), 'test')
       const state = mind.create_state(1)
       const belief = Belief.from_template(state, {
         bases: ['Location']
@@ -189,11 +191,12 @@ describe('sysdesig', () => {
       const subject = belief.subject
       const result = subject.sysdesig()
 
-      expect(result).to.include('@global')
+      // Subject's ground_mind is logos (parent of 'test' mind)
+      expect(result).to.include('@logos')
     })
 
     it('works without label', () => {
-      const mind = new Mind(null, 'test')
+      const mind = new Mind(logos(), 'test')
       const state = mind.create_state(1)
       const belief = Belief.from_template(state, {
         bases: ['Location']

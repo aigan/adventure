@@ -61,15 +61,17 @@ import { assert, log } from '../lib/debug.mjs'
 export class Mind {
 
   /**
-   * @param {Mind|null} parent_mind - Parent mind (null for root minds like world)
+   * @param {Mind|null} parent_mind - Parent mind (null ONLY for logos - use DB.get_logos_mind() for all other minds)
    * @param {string|null} label - Mind identifier
    * @param {Belief|null} self - What this mind considers "self" (can be null, can change)
    */
   constructor(parent_mind, label = null, self = null) {
-    // parent_mind must be null or Mind instance
-    assert(parent_mind === null || parent_mind instanceof Mind,
-      'parent_mind must be null or Mind instance',
-      {label, parent_mind})
+    // parent_mind must be Mind instance (or null only for logos)
+    assert(
+      parent_mind instanceof Mind || (parent_mind === null && label === 'logos'),
+      'parent_mind must be Mind instance (null only allowed for logos)',
+      {label, parent_mind}
+    )
 
     this._id = next_id()
     /** @type {Mind|null} */
@@ -137,6 +139,17 @@ export class Mind {
    */
   static get_by_label(label) {
     return DB.get_mind_by_label(label)
+  }
+
+  /**
+   * Create a world mind with logos as parent
+   * Convenience helper for creating root-level world minds
+   * @param {string} label - World label (default: 'world')
+   * @returns {Mind} World mind with logos as parent
+   */
+  static create_world(label = 'world') {
+    const logos = DB.get_logos_mind()
+    return new Mind(logos, label)
   }
 
   /**
@@ -336,8 +349,7 @@ export class Mind {
    * @returns {Mind|*} Resolved Mind instance or data as-is
    */
   static resolve_trait_value_from_template(traittype, belief, data) {
-    assert(belief.origin_state instanceof State, "belief must have origin_state", {belief})
-    assert(!belief.is_shared, 'Shared beliefs cannot have Mind traits', {belief})
+    assert(belief.is_shared || belief.origin_state instanceof State, "belief must have origin_state", {belief})
     const creator_state = /** @type {State} */ (belief.origin_state)
 
     // Detect plain object Mind template (learn spec)
@@ -427,8 +439,11 @@ export class Mind {
 
     //console.trace('create mind with subj', self_subject.get_label());
 
-    // Create the mind (parent is the mind that contains ground_state)
-    const parent_mind = ground_state.in_mind
+    // Create the mind (parent is the mind that contains ground_belief)
+    // For shared beliefs, use subject.ground_mind; for regular beliefs, use in_mind
+    const parent_mind = ground_belief.is_shared
+      ? ground_belief.subject.ground_mind
+      : ground_belief.in_mind
     const entity_mind = new Mind(parent_mind, self_subject.get_label())
 
     // Create initial state with self reference - fork invariant: child.tt = parent_state.vt

@@ -3,6 +3,8 @@ import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../p
 import * as DB from '../public/worker/db.mjs';
 import { setupStandardArchetypes } from './helpers.mjs';
 
+const logos = () => DB.get_logos_mind();
+
 describe('Archetype', () => {
   beforeEach(() => {
     DB.reset_registries();
@@ -11,7 +13,7 @@ describe('Archetype', () => {
 
   describe('Archetype Composition', () => {
     it('single archetype has correct structure', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state = mind.create_state(1);
       const workshop = Belief.from_template(state, {
         traits: {'@label': 'workshop'},
@@ -24,7 +26,7 @@ describe('Archetype', () => {
     });
 
     it('archetype with base inherits traits from parent', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state = mind.create_state(1);
       const hammer = Belief.from_template(state, {
         traits: {
@@ -40,7 +42,7 @@ describe('Archetype', () => {
     });
 
     it('Person archetype inherits from multiple bases', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state = mind.create_state(1);
       const player = Belief.from_template(state, {
         traits: {'@label': 'player'},
@@ -57,7 +59,7 @@ describe('Archetype', () => {
     });
 
     it('get_archetypes walks full inheritance chain', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state = mind.create_state(1);
       const player = Belief.from_template(state, {
         traits: {'@label': 'player'},
@@ -88,7 +90,7 @@ describe('Archetype', () => {
 
   describe('resolve_trait_value_from_template', () => {
     it('resolves string label to subject', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state = mind.create_state(1);
       const workshop = state.add_belief_from_template({
         bases: ['Location'],
@@ -107,7 +109,7 @@ describe('Archetype', () => {
     });
 
     it('returns Subject as-is', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state = mind.create_state(1);
       const workshop = state.add_belief_from_template({
         bases: ['Location'],
@@ -126,7 +128,7 @@ describe('Archetype', () => {
     });
 
     it('throws error when Belief object is passed', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state = mind.create_state(1);
       const workshop = state.add_belief_from_template({
         bases: ['Location'],
@@ -145,7 +147,7 @@ describe('Archetype', () => {
     });
 
     it('throws error when belief label not found', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state = mind.create_state(1);
 
       const traittype = Traittype.get_by_label('location');
@@ -160,7 +162,7 @@ describe('Archetype', () => {
     });
 
     it('throws error when belief has wrong archetype', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state = mind.create_state(1);
       const hammer = state.add_belief_from_template({
         bases: ['PortableObject'],
@@ -179,7 +181,7 @@ describe('Archetype', () => {
     });
 
     it('works in trait resolution during from_template', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state = mind.create_state(1);
       const workshop = state.add_belief_from_template({
         bases: ['Location'],

@@ -3,6 +3,8 @@ import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../p
 import * as DB from '../public/worker/db.mjs';
 import { stdTypes, Thing } from './helpers.mjs';
 
+const logos = () => DB.get_logos_mind();
+
 describe('Mind Trait', () => {
   beforeEach(() => {
     DB.reset_registries();
@@ -43,7 +45,7 @@ describe('Mind Trait', () => {
     DB.register(traittypes, archetypes, {});
 
     // Create world beliefs
-    const world_mind = new Mind(null, 'world');
+    const world_mind = new Mind(logos(), 'world');
     const world_state = world_mind.create_state(1);
 
     const main_area = world_state.add_belief_from_template({
@@ -167,7 +169,7 @@ describe('Mind Trait', () => {
     });
 
     // Create world with two NPC bodies
-    const world_mind = new Mind(null, 'world');
+    const world_mind = new Mind(logos(), 'world');
     const world_state = world_mind.create_state(200);
 
     // World beliefs inherit from shared prototypes
@@ -337,7 +339,7 @@ describe('Mind Trait', () => {
     });
 
     // Create world entity
-    const world_mind = new Mind(null, 'world');
+    const world_mind = new Mind(logos(), 'world');
     const world_state = world_mind.create_state(200);
 
     const blacksmith_tavern = world_state.add_belief_from_template({
@@ -445,7 +447,7 @@ describe('Mind Trait', () => {
 
     DB.register(traittypes, archetypes, {});
 
-    const world_mind = new Mind(null, 'world');
+    const world_mind = new Mind(logos(), 'world');
     const world_state = world_mind.create_state(1);
 
     const location1 = world_state.add_belief_from_template({ bases: ['Location'], traits: {'@label': 'location1'} });
@@ -493,7 +495,7 @@ describe('Mind Trait', () => {
 
     DB.register(traittypes, archetypes, {});
 
-    const world_mind = new Mind(null, 'world');
+    const world_mind = new Mind(logos(), 'world');
     const world_state = world_mind.create_state(1);
 
     const entity_body = world_state.add_belief_from_template({

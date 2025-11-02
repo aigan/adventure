@@ -2,6 +2,8 @@ import { expect } from 'chai'
 import { Mind, State, Belief } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
+const logos = () => DB.get_logos_mind();
+
 describe.skip('Temporal Reasoning', () => {
   beforeEach(() => {
     DB.reset_registries()
@@ -48,7 +50,7 @@ describe.skip('Temporal Reasoning', () => {
     it('child mind state inherits tt from ground_state.vt', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state = world_mind.create_state(100)
 
       const npc = world_state.add_belief_from_template({
@@ -76,7 +78,7 @@ describe.skip('Temporal Reasoning', () => {
     it('Mind.create_from_template follows fork invariant', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state = world_mind.create_state(200)
 
       world_state.add_belief_from_template({
@@ -100,7 +102,7 @@ describe.skip('Temporal Reasoning', () => {
     it('get_or_create_open_state_for_ground follows fork invariant', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state = world_mind.create_state(150)
 
       const npc = world_state.add_belief_from_template({
@@ -128,7 +130,7 @@ describe.skip('Temporal Reasoning', () => {
     it('child state created at different parent vt has corresponding tt', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state1 = world_mind.create_state(100)
 
       const npc = world_state1.add_belief_from_template({
@@ -160,10 +162,10 @@ describe.skip('Temporal Reasoning', () => {
     it('throws error when ground_state is in wrong mind', () => {
       setupArchetypesWithMind()
 
-      const world_mind1 = new Mind(null, 'world1')
+      const world_mind1 = new Mind(logos(), 'world1')
       const world_state1 = world_mind1.create_state(100)
 
-      const world_mind2 = new Mind(null, 'world2')
+      const world_mind2 = new Mind(logos(), 'world2')
       const world_state2 = world_mind2.create_state(100)
 
       const npc_mind = new Mind(world_mind1, 'npc')
@@ -182,7 +184,7 @@ describe.skip('Temporal Reasoning', () => {
 
   describe('Valid Time (VT) Basics', () => {
     it('vt defaults to tt when not specified', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const state = mind.create_state(100)
 
       expect(state.tt).to.equal(100)
@@ -190,7 +192,7 @@ describe.skip('Temporal Reasoning', () => {
     })
 
     it('vt can be set explicitly via State constructor', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const state = new State(mind, 50, null, null, null, 75)
 
       expect(state.tt).to.equal(50)
@@ -198,7 +200,7 @@ describe.skip('Temporal Reasoning', () => {
     })
 
     it('vt can be set via tick()', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const state1 = mind.create_state(100)
       state1.lock()
 
@@ -210,7 +212,7 @@ describe.skip('Temporal Reasoning', () => {
     })
 
     it('vt can differ from tt (past)', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const state = new State(mind, 100, null, null, null, 50)
 
       expect(state.tt).to.equal(100)
@@ -219,7 +221,7 @@ describe.skip('Temporal Reasoning', () => {
     })
 
     it('vt can differ from tt (future)', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const state = new State(mind, 100, null, null, null, 200)
 
       expect(state.tt).to.equal(100)
@@ -228,7 +230,7 @@ describe.skip('Temporal Reasoning', () => {
     })
 
     it('vt can move freely while tt progresses forward', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const state1 = new State(mind, 100, null, null, null, 50)   // vt=50
       state1.lock()
 
@@ -253,7 +255,7 @@ describe.skip('Temporal Reasoning', () => {
     it('NPC recalls what workshop looked like in the past', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       let world_state = world_mind.create_state(100)
 
       world_state.add_belief_from_template({
@@ -296,7 +298,7 @@ describe.skip('Temporal Reasoning', () => {
     it('NPC can have multiple memories at different vt', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state = world_mind.create_state(300)
 
       const npc = world_state.add_belief_from_template({
@@ -329,7 +331,7 @@ describe.skip('Temporal Reasoning', () => {
     it('NPC plans future action', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state = world_mind.create_state(100)
 
       const npc = world_state.add_belief_from_template({
@@ -360,7 +362,7 @@ describe.skip('Temporal Reasoning', () => {
     it('NPC can have multiple plans at different future vt', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state = world_mind.create_state(100)
 
       const npc = world_state.add_belief_from_template({
@@ -393,7 +395,7 @@ describe.skip('Temporal Reasoning', () => {
     it('child state synchronizes with advancing parent', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       let world_state = world_mind.create_state(100)
 
       const npc = world_state.add_belief_from_template({
@@ -428,7 +430,7 @@ describe.skip('Temporal Reasoning', () => {
       setupArchetypesWithMind()
 
       // World → NPC → NPC's model of other NPC
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state = world_mind.create_state(100)
 
       const npc1 = world_state.add_belief_from_template({
@@ -467,7 +469,7 @@ describe.skip('Temporal Reasoning', () => {
     it('tick() with explicit vt overrides ground_state.vt', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state = world_mind.create_state(100)
 
       const npc = world_state.add_belief_from_template({
@@ -495,7 +497,7 @@ describe.skip('Temporal Reasoning', () => {
     it('multiple states at same tt with same ground_state', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state = world_mind.create_state(100)
 
       const npc = world_state.add_belief_from_template({
@@ -529,7 +531,7 @@ describe.skip('Temporal Reasoning', () => {
     it('different beliefs in each superposed state', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state = world_mind.create_state(100)
 
       const hammer = world_state.add_belief_from_template({
@@ -584,7 +586,7 @@ describe.skip('Temporal Reasoning', () => {
     })
 
     it('same tt + different ground_state = versioning, not superposition', () => {
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state1 = world_mind.create_state(100)
       world_state1.lock()
 
@@ -607,7 +609,7 @@ describe.skip('Temporal Reasoning', () => {
 
   describe('Transaction Time (TT) Basics', () => {
     it('tt is always set on state creation', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const state = mind.create_state(42)
 
       expect(state.tt).to.be.a('number')
@@ -615,7 +617,7 @@ describe.skip('Temporal Reasoning', () => {
     })
 
     it('tt progresses forward in state chain', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const state1 = mind.create_state(100)
       state1.lock()
 
@@ -632,7 +634,7 @@ describe.skip('Temporal Reasoning', () => {
     })
 
     it('tt cannot go backwards', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const state1 = mind.create_state(200)
       state1.lock()
 
@@ -643,7 +645,7 @@ describe.skip('Temporal Reasoning', () => {
     })
 
     it('states_at_tt returns correct states', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const state1 = mind.create_state(100)
       state1.lock()
 
@@ -666,10 +668,10 @@ describe.skip('Temporal Reasoning', () => {
     it('ground_state must be in parent mind', () => {
       setupArchetypesWithMind()
 
-      const world_mind1 = new Mind(null, 'world1')
+      const world_mind1 = new Mind(logos(), 'world1')
       const world_state1 = world_mind1.create_state(100)
 
-      const world_mind2 = new Mind(null, 'world2')
+      const world_mind2 = new Mind(logos(), 'world2')
       const world_state2 = world_mind2.create_state(100)
 
       const npc_mind = new Mind(world_mind1, 'npc')
@@ -686,7 +688,7 @@ describe.skip('Temporal Reasoning', () => {
     })
 
     it('world mind tick requires explicit vt', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const state1 = mind.create_state(100)
       state1.lock()
 
@@ -700,7 +702,7 @@ describe.skip('Temporal Reasoning', () => {
     it('locked belief versioning requires existing state', () => {
       setupArchetypesWithMind()
 
-      const world_mind = new Mind(null, 'world')
+      const world_mind = new Mind(logos(), 'world')
       const world_state = world_mind.create_state(100)
 
       const npc = world_state.add_belief_from_template({
@@ -730,7 +732,7 @@ describe.skip('Temporal Reasoning', () => {
     })
 
     it('next_tt must be set assertion', () => {
-      const mind = new Mind(null, 'world')
+      const mind = new Mind(logos(), 'world')
       const state1 = mind.create_state(100)
       state1.lock()
 

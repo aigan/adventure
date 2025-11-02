@@ -15,7 +15,7 @@ import { next_id } from './id_sequence.mjs'
  */
 export class Subject {
   /**
-   * @param {Mind|null} ground_mind - Parent mind context (null for global subjects)
+   * @param {Mind|null} ground_mind - Parent mind context (null for truly global subjects like archetypes)
    * @param {number|null} [sid] - Subject identifier (auto-generated if not provided)
    */
   constructor(ground_mind, sid = null) {

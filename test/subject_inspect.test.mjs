@@ -3,6 +3,8 @@ import { setupStandardArchetypes, createMindWithBeliefs, get_first_belief_by_lab
 import { Mind } from '../public/worker/mind.mjs'
 import * as DB from '../public/worker/db.mjs'
 
+const logos = () => DB.get_logos_mind();
+
 describe('Subject.to_inspect_view()', () => {
   beforeEach(() => {
     DB.reset_registries()
@@ -146,7 +148,7 @@ describe('Subject.to_inspect_view()', () => {
     const workshop = get_first_belief_by_label('workshop')
 
     // Create a different mind without the workshop
-    const other_mind = new Mind(null, 'other')
+    const other_mind = new Mind(logos(), 'other')
     const other_state = other_mind.create_state(1)
 
     // Trying to inspect workshop.subject in other_state should fail

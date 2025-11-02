@@ -3,6 +3,8 @@ import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../p
 import * as DB from '../public/worker/db.mjs';
 import { setupMinimalArchetypes, get_first_belief_by_label } from './helpers.mjs';
 
+const logos = () => DB.get_logos_mind();
+
 describe('Registry', () => {
   beforeEach(() => {
     DB.reset_registries();
@@ -11,11 +13,11 @@ describe('Registry', () => {
 
   describe('Label Uniqueness', () => {
     it('currently allows duplicate labels across minds', () => {
-      const mind_a = new Mind(null, 'mind_a');
+      const mind_a = new Mind(logos(), 'mind_a');
       const state_a = mind_a.create_state(1);
       const workshop_a = Belief.from_template(state_a, {traits: {'@label': 'workshop_unique_a'}, bases: ['Location']});
 
-      const mind_b = new Mind(null, 'mind_b');
+      const mind_b = new Mind(logos(), 'mind_b');
       const state_b = mind_b.create_state(1);
       const workshop_b = Belief.from_template(state_b, {traits: {'@label': 'workshop_unique_b'}, bases: ['Location']});
 
@@ -28,7 +30,7 @@ describe('Registry', () => {
     });
 
     it('throws error on duplicate labels', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state = mind.create_state(1);
       Belief.from_template(state, {traits: {'@label': 'item1'}, bases: ['PortableObject']});
 
@@ -39,7 +41,7 @@ describe('Registry', () => {
     });
 
     it('throws error when belief label matches archetype label', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state = mind.create_state(1);
 
       // Trying to create belief with same label as archetype should throw

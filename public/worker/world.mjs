@@ -76,9 +76,9 @@ export function setupStandardArchetypes() {
     Villager: {
       bases: ['Person'],
       traits: {
-        mind: {
-          workshop: ['location'],
-        }
+        //mind: {
+        //  workshop: ['location'],
+        //}
       },
     },
 

@@ -55,6 +55,8 @@ global.indexedDB = {
   }
 };
 
+const logos = () => DB.get_logos_mind();
+
 describe('Channel Message Handlers', () => {
   beforeEach(() => {
     mockCounter = 0; // Reset sequence counter
@@ -119,7 +121,7 @@ describe('Channel Message Handlers', () => {
       };
       global.BroadcastChannel = function() { return mockChannel; };
 
-      const world_mind = new Mind(null, 'test_mind');
+      const world_mind = new Mind(logos(), 'test_mind');
       const state = world_mind.create_state(1);
       const hammer = state.add_belief_from_template({
         bases: ['PortableObject'],
@@ -207,7 +209,7 @@ describe('Channel Message Handlers', () => {
       };
       global.BroadcastChannel = function() { return mockChannel; };
 
-      const mind1 = new Mind(null, 'mind1');
+      const mind1 = new Mind(logos(), 'mind1');
       const state1 = mind1.create_state(1);
 
       const mockSession = new Session(mind1, state1);
@@ -216,7 +218,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('can find state by searching all minds', () => {
-      const mind2 = new Mind(null, 'mind2');
+      const mind2 = new Mind(logos(), 'mind2');
       const state2 = mind2.create_state(1);
       const hammer = state2.add_belief_from_template({ bases: ['PortableObject'], traits: {'@label': 'hammer'} });
 
@@ -261,14 +263,14 @@ describe('Channel Message Handlers', () => {
       };
       global.BroadcastChannel = function() { return mockChannel; };
 
-      const world_mind = new Mind(null, 'world');
+      const world_mind = new Mind(logos(), 'world');
       const mockSession = new Session(world_mind, world_mind.create_state(1));
 
       await Channel.init_channel(mockSession);
     });
 
     it('can find belief by id and returns correct data', () => {
-      const mind = new Mind(null, 'belief_test_mind');
+      const mind = new Mind(logos(), 'belief_test_mind');
       const state = mind.create_state(1);
       const hammer = state.add_belief_from_template({
         traits: {'@label': 'query_hammer'},
@@ -290,7 +292,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('throws assertion for non-existent belief', () => {
-      const mind = new Mind(null, 'test_mind');
+      const mind = new Mind(logos(), 'test_mind');
       const state = mind.create_state(1);
       messages.length = 0;
 
@@ -304,7 +306,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('includes about chain in response', () => {
-      const world_mind = new Mind(null, 'world');
+      const world_mind = new Mind(logos(), 'world');
       const world_state = world_mind.create_state(1);
       const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'query_workshop'},
@@ -330,7 +332,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('includes bases information', () => {
-      const mind = new Mind(null, 'bases_test_mind');
+      const mind = new Mind(logos(), 'bases_test_mind');
       const state = mind.create_state(1);
       const hammer = state.add_belief_from_template({
         traits: {'@label': 'bases_hammer'},
@@ -370,7 +372,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('can find belief in Session.state', async () => {
-      const mind = new Mind(null, 'entity_test_mind');
+      const mind = new Mind(logos(), 'entity_test_mind');
       const state = mind.create_state(1);
       const ball = state.add_belief_from_template({
                 bases: ['PortableObject'],
@@ -394,7 +396,7 @@ describe('Channel Message Handlers', () => {
     });
 
     it('throws assertion for non-existent entity', async () => {
-      const mind = new Mind(null, 'empty_entity_mind');
+      const mind = new Mind(logos(), 'empty_entity_mind');
       const state = mind.create_state(1);
 
       const mockSession = new Session(mind, state);
@@ -427,7 +429,7 @@ describe('Channel Message Handlers', () => {
       };
       global.BroadcastChannel = function() { return mockChannel; };
 
-      const mind = new Mind(null, 'world');
+      const mind = new Mind(logos(), 'world');
       const mockSession = new Session(mind, mind.create_state(1));
 
       await Channel.init_channel(mockSession);

@@ -12,11 +12,8 @@ import { Traittype } from './traittype.mjs'
 import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
 import { log, assert } from '../lib/debug.mjs';
-
-/**
- * @typedef {import('./mind.mjs').Mind} Mind
- * @typedef {import('./state.mjs').State} State
- */
+import { Mind } from './mind.mjs'
+import { State } from './state.mjs'
 
 // ============================================================================
 // Mind Registries
@@ -39,6 +36,18 @@ const mind_by_id = new Map()
  * @type {Map<string, Mind>}
  */
 const mind_by_label = new Map()
+
+/**
+ * Logos singleton - the ground of being, ultimate parent of all minds
+ * @type {Mind|null}
+ */
+let _logos_mind = null
+
+/**
+ * Logos primordial state - the ground of all states
+ * @type {State|null}
+ */
+let _logos_state = null
 
 // ============================================================================
 // State Registries
@@ -152,6 +161,35 @@ export function _reflect() {
     archetype_by_label: Archetype._registry,
     traittype_by_label: Traittype._registry
   }
+}
+
+// ============================================================================
+// Logos Singleton - Ground of Being
+// ============================================================================
+
+/**
+ * Get or create the logos singleton - ultimate ground of being
+ * Logos is the ONE mind with parent=null, all other minds descend from logos
+ * @returns {Mind} The logos mind singleton
+ */
+export function get_logos_mind() {
+  if (_logos_mind === null) {
+    _logos_mind = new Mind(null, 'logos')
+  }
+  return _logos_mind
+}
+
+/**
+ * Get or create the logos primordial state - ground of all states
+ * Logos state is the ONE state with ground_state=null, all other states ground in it
+ * @returns {State} The logos state singleton
+ */
+export function get_logos_state() {
+  if (_logos_state === null) {
+    const logos_mind = get_logos_mind()
+    _logos_state = new State(logos_mind, 0, null, null)
+  }
+  return _logos_state
 }
 
 // ============================================================================
@@ -285,7 +323,7 @@ export function register_belief_by_subject(belief) {
 
 /**
  * Get or create the canonical Subject for a given SID
- * @param {import('./mind.mjs').Mind|null} ground_mind - Parent mind context (null for global subjects)
+ * @param {import('./mind.mjs').Mind|null} ground_mind - Parent mind context (null for truly global subjects like archetypes)
  * @param {number|null} [sid] - Subject ID (auto-generated if not provided)
  * @returns {Subject}
  */
@@ -387,6 +425,10 @@ export function reset_all_registries() {
   sid_by_label.clear()
   label_by_sid.clear()
   subject_by_sid.clear()
+
+  // Reset logos singletons
+  _logos_mind = null
+  _logos_state = null
 
   for (const key in state_by_label) delete state_by_label[key]
   Archetype.reset_registry()

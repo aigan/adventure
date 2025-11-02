@@ -4,6 +4,8 @@ import * as DB from '../public/worker/db.mjs'
 import {log} from '../public/lib/debug.mjs'
 import { stdTypes } from './helpers.mjs'
 
+const logos = () => DB.get_logos_mind();
+
 describe('Trait Operations Pattern', () => {
   beforeEach(() => {
     DB.reset_registries()
@@ -40,7 +42,7 @@ describe('Trait Operations Pattern', () => {
     DB.register(traittypes, archetypes, {})
 
     // Create world beliefs
-    const world_mind = new Mind(null, 'world')
+    const world_mind = new Mind(logos(), 'world')
     const world_state = world_mind.create_state(1)
 
     const workshop = world_state.add_belief_from_template({
@@ -111,7 +113,7 @@ describe('Trait Operations Pattern', () => {
     DB.register(traittypes, archetypes, {})
 
     // Create world beliefs
-    const world_mind = new Mind(null, 'world')
+    const world_mind = new Mind(logos(), 'world')
     const world_state = world_mind.create_state(1)
 
     const world_tavern = world_state.add_belief_from_template({
@@ -193,7 +195,7 @@ describe('Trait Operations Pattern', () => {
     DB.register(traittypes, archetypes, {})
 
     // Create world beliefs
-    const world_mind = new Mind(null, 'world')
+    const world_mind = new Mind(logos(), 'world')
     const world_state = world_mind.create_state(1)
 
     const world_tavern = world_state.add_belief_from_template({
@@ -268,7 +270,7 @@ describe('Trait Operations Pattern', () => {
     DB.register(traittypes, archetypes, {})
 
     // Create world beliefs
-    const world_mind = new Mind(null, 'world')
+    const world_mind = new Mind(logos(), 'world')
     let world_state = world_mind.create_state(1)
 
     const world_tavern = world_state.add_belief_from_template({

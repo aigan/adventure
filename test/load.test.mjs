@@ -3,6 +3,8 @@ import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../p
 import * as DB from '../public/worker/db.mjs';
 import { setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
 
+const logos = () => DB.get_logos_mind();
+
 describe('Save/Load functionality', () => {
   beforeEach(() => {
     DB.reset_registries();
@@ -12,7 +14,7 @@ describe('Save/Load functionality', () => {
   describe('save_mind() and load()', () => {
     it('saves and loads a simple mind', () => {
       // Create simple world
-      const world_mind = new Mind(null, 'world');
+      const world_mind = new Mind(logos(), 'world');
       const world_state = world_mind.create_state(1);
 
       const workshop = world_state.add_belief_from_template({
@@ -44,7 +46,7 @@ describe('Save/Load functionality', () => {
 
     it('handles belief trait references after save/load', () => {
       // Create world with location relationship
-      const world_mind = new Mind(null, 'world');
+      const world_mind = new Mind(logos(), 'world');
       const world_state = world_mind.create_state(1);
 
       const workshop = world_state.add_belief_from_template({
@@ -77,7 +79,7 @@ describe('Save/Load functionality', () => {
       // This test verifies the SID system fixes the "time-travel" bug where
       // circular trait references would point to old versions from previous states
 
-      const world_mind = new Mind(null, 'world');
+      const world_mind = new Mind(logos(), 'world');
       const state1 = world_mind.create_state(1);
 
       const room1 = state1.add_belief_from_template({
@@ -134,7 +136,7 @@ describe('Save/Load functionality', () => {
     });
 
     it('loads state chains with base references', () => {
-      const world_mind = new Mind(null, 'world');
+      const world_mind = new Mind(logos(), 'world');
       const state1 = world_mind.create_state(1);
       const ball = state1.add_belief_from_template({
         traits: {'@label': 'ball'},
@@ -189,7 +191,7 @@ describe('Save/Load functionality', () => {
         },
       };
 
-      const world_mind = new Mind(null, 'world');
+      const world_mind = new Mind(logos(), 'world');
       let state = world_mind.create_state(1);
       state.add_beliefs_from_template(world_belief);
 
@@ -234,7 +236,7 @@ describe('Save/Load functionality', () => {
     });
 
     it('preserves and continues id_sequence', () => {
-      const world_mind = new Mind(null, 'world');
+      const world_mind = new Mind(logos(), 'world');
       const state = world_mind.create_state(1);
       const workshop = state.add_belief_from_template({
         traits: {'@label': 'workshop'},
@@ -250,12 +252,12 @@ describe('Save/Load functionality', () => {
       load(json);
 
       // Create new object - should have higher ID
-      const new_mind = new Mind(null, 'test');
+      const new_mind = new Mind(logos(), 'test');
       expect(new_mind._id).to.be.greaterThan(max_id);
     });
 
     it('handles state ground_state references', () => {
-      const world_mind = new Mind(null, 'world');
+      const world_mind = new Mind(logos(), 'world');
       const world_state = world_mind.create_state(1);
 
       const workshop = world_state.add_belief_from_template({
@@ -311,7 +313,7 @@ describe('Save/Load functionality', () => {
         },
       };
 
-      const world_mind = new Mind(null, 'world');
+      const world_mind = new Mind(logos(), 'world');
       let state = world_mind.create_state(1);
       state.add_beliefs_from_template(world_belief);
 

@@ -3,6 +3,8 @@ import { Mind, Belief } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { setupMinimalArchetypes } from './helpers.mjs';
 
+const logos = () => DB.get_logos_mind();
+
 describe('Subject', () => {
   beforeEach(() => {
     DB.reset_registries();
@@ -11,7 +13,7 @@ describe('Subject', () => {
 
   describe('beliefs_at_tt()', () => {
     it('should return outermost belief on linear version chain', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state1 = mind.create_state(100);
       const state2 = mind.create_state(200);
       const state3 = mind.create_state(300);
@@ -34,7 +36,7 @@ describe('Subject', () => {
     });
 
     it('should return outermost beliefs on each branch', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const state1 = mind.create_state(100);
       const state2 = mind.create_state(200);
       const state3 = mind.create_state(150);
@@ -81,7 +83,7 @@ describe('Subject', () => {
     });
 
     it('should return empty iterable for non-existent subject', () => {
-      const mind = new Mind(null, 'test');
+      const mind = new Mind(logos(), 'test');
       const nonexistent_subject = DB.get_or_create_subject(null, 999);  // Global subject for test
 
       expect([...nonexistent_subject.beliefs_at_tt(100)]).to.deep.equal([]);
