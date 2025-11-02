@@ -406,7 +406,7 @@ export class Mind {
     // Extract self_subject from ground_belief
     const self_subject = ground_belief.subject
 
-    //log('create mind with subj', self_subject.get_label());
+    //console.trace('create mind with subj', self_subject.get_label());
 
     // Create the mind (parent is the mind that contains ground_state)
     const parent_mind = ground_state.in_mind

@@ -37,16 +37,12 @@ export class Subject {
   }
 
   /**
-   * Get Belief for this Subject, checking state first then shared beliefs
+   * Get shared belief (prototype) for this Subject at state's tt
+   * Only returns beliefs with in_mind === null and origin_state === null
    * @param {State} state
    * @returns {Belief|null}
    */
-  get_belief_by_state_or_shared(state) {
-    // Try state first (private beliefs)
-    const belief = state.get_belief_by_subject(this)
-    if (belief) return belief
-
-    // Fall back to shared beliefs (prototypes) with scope filtering
+  get_shared_belief_by_state(state) {
     const query_parent = state.in_mind.parent
     const shared = [...this.beliefs_at_tt(state.tt)].filter(
       b => b.in_mind === null &&

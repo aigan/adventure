@@ -806,13 +806,14 @@ export class Belief {
         const archetype = Archetype.get_by_label(base)
         if (archetype) return archetype
 
-        // Try belief (state or shared)
+        // Try shared belief (prototype only - prevents same-state inheritance)
+        // TODO: Future - support versioned subjects (bases from earlier states with tt < state.tt)
         const subject = DB.get_subject_by_label(base)
-        const belief = subject?.get_belief_by_state_or_shared(state)
+        const belief = subject?.get_shared_belief_by_state(state)
         if (belief) return belief
 
         // Not found
-        assert(false, `Base '${base}' not found as belief label or archetype`, {base})
+        assert(false, `Base '${base}' not found as archetype or shared belief (prototype). Only archetypes and prototypes can be used as bases.`, {base, note: 'To use an entity as a base, convert it to a prototype (shared belief with in_mind=null, origin_state=null)'})
       }
       return base
     })
@@ -831,6 +832,7 @@ export class Belief {
 
     // Add remaining traits
     for (const [trait_label, trait_data] of Object.entries(traits)) {
+      //log("  add trait", trait_label)
       belief.add_trait_from_template(state, trait_label, trait_data)
     }
 

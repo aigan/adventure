@@ -2,7 +2,11 @@
 
 ## Active Plan
 
-None - ready for next feature!
+**Trait Composition and Learn_About Fixes** ([plan](docs/plans/trait-composition-fixes.md))
+- Fix learned beliefs creating child minds (Mental archetype _call execution)
+- Fix null trait values creating labeled subjects in learn_about
+- Add tests and asserts to prevent double-mind bugs
+- Document trait composition refactoring in progress
 
 ## Backlog
 
@@ -15,6 +19,20 @@ None - ready for next feature!
   - Example: Enchanted Sword with `damage_types.append`, `tags.append` from multiple bases
   - Validates pattern is generic, not Mind-specific
   - Tests: Array-valued traits compose correctly via append operations
+
+### Design & Architecture
+- [ ] **Trait Merge Semantics** - Document when traits update vs create new belief version
+  - Why Mind is mutable reference (contains States, modified in place)
+  - Contrast with immutable trait values (primitives, Subjects)
+  - Question: Is mind.append needed, or can we unify trait merge patterns?
+- [ ] **Learnable Trait Metadata** - Add visibility metadata to distinguish internal vs observable traits
+  - Add `learnable` field to TraitTypeSchema (default: true)
+  - Filter in State.integrate() to prevent learning internal traits
+  - Examples: `mind` (internal), `location` (observable)
+- [ ] **Observable Trait Mapping** - Design how internal traits map to observable perceptions
+  - Internal `health: 50` → Observable `condition: 'wounded'`
+  - Internal `inventory: [key]` → Observable `visible_items: []`
+  - One-to-many mapping? Separate traits? Computed properties?
 
 ### Features
 - [ ] **Lazy Version Propagation** - Enable efficient shared belief updates without version cascades ([plan](docs/plans/lazy-version-propagation.md))

@@ -93,6 +93,15 @@ export function setupStandardArchetypes() {
     Person: {
       bases: ['Actor', 'Mental'],
     },
+
+    // Demonstrates trait composition from multiple archetypes
+    blacksmith_villager: {
+      bases: ['Person', 'Villager', 'Blacksmith'],
+      traits: {
+        location: 'forge',
+      },
+    },
+
   };
 
   DB.register(traittypes, archetypes, prototypes);
@@ -147,27 +156,19 @@ const world_belief = {
     bases: ['Person'],
     traits: {
       location: 'market',
-      mind: {
-        workshop: ['location']
-      }
-    },
-  },
-
-  // Demonstrates trait composition from multiple archetypes
-  blacksmith_villager: { // FIXME: should be a prototype
-    bases: ['Person', 'Villager', 'Blacksmith'],
-    traits: {
-      location: 'forge',
+//    mind: {
+//      workshop: ['location']
+//    }
     },
   },
 
   player: {
-    bases: ['blacksmith_villager'], // FIXME: should not have a base with same tt
+    bases: ['blacksmith_villager'],
     traits: {
       location: 'workshop',
-      mind: {
-        workshop: ['location']
-      }
+//      mind: {
+//        workshop: ['location']
+//      }
     },
   },
 }
@@ -176,10 +177,15 @@ state.add_beliefs_from_template(world_belief);
 
 const player = state.get_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
-const player_mind = player.get_trait(state, 'mind');
-let player_state = [...player_mind.states_at_tt(1)][0];
-player_state = player_state.branch_state(state);
-player_state.learn_about(state.get_belief_by_label('hammer'), ['location']);
+
+//const player_mind = player.get_trait(state, 'mind');
+//let player_state = [...player_mind.states_at_tt(1)][0];
+//player_state.lock()
+
+//player_state = player_state.branch_state(state);
+//player_state.learn_about(state.get_belief_by_label('hammer'), ['location']);
+
+
 
 state.lock();
 //log(player_state);
