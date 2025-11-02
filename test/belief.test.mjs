@@ -746,9 +746,9 @@ describe('Belief', () => {
       });
 
       // Shared belief should be in belief_by_subject
-      const beliefs_by_subject = DB.get_beliefs_by_subject(prototype.subject);
-      expect(beliefs_by_subject).to.not.be.undefined;
-      expect(beliefs_by_subject.has(prototype)).to.be.true;
+      const beliefs_by_subject = [...DB.get_beliefs_by_subject(prototype.subject)];
+      expect(beliefs_by_subject).to.have.lengthOf.at.least(1);
+      expect(beliefs_by_subject).to.include(prototype);
 
       // Shared belief should NOT be in belief_by_mind (no mind to index under)
       // We can't directly check belief_by_mind, but we can verify it has null mind
@@ -765,9 +765,9 @@ describe('Belief', () => {
       });
 
       // Regular belief SHOULD be in belief_by_mind
-      const beliefs_in_mind = DB.get_beliefs_by_mind(mind);
-      expect(beliefs_in_mind).to.not.be.undefined;
-      expect(beliefs_in_mind.has(regular_belief)).to.be.true;
+      const beliefs_in_mind = [...DB.get_beliefs_by_mind(mind)];
+      expect(beliefs_in_mind).to.have.lengthOf.at.least(1);
+      expect(beliefs_in_mind).to.include(regular_belief);
       expect(regular_belief.in_mind).to.equal(mind);
     });
   });

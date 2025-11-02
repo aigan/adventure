@@ -38,15 +38,14 @@ export class Subject {
 
   /**
    * Get shared belief (prototype) for this Subject at state's tt
-   * Only returns beliefs with in_mind === null and origin_state === null
+   * Only returns shared beliefs (is_shared === true)
    * @param {State} state
    * @returns {Belief|null}
    */
   get_shared_belief_by_state(state) {
     const query_parent = state.in_mind.parent
     const shared = [...this.beliefs_at_tt(state.tt)].filter(
-      b => b.in_mind === null &&
-           b.origin_state === null &&
+      b => b.is_shared &&
            (b.subject.ground_mind === null || b.subject.ground_mind === query_parent)  // Global or matching parent
     )
 
@@ -105,16 +104,10 @@ export class Subject {
     const existing_label = this.get_label()
     if (existing_label == label) return
 
-    if (existing_label !== null) {
-      throw new Error(`Subject sid ${this.sid} already has label '${existing_label}', cannot set to '${label}'`)
-    }
+    assert(existing_label === null, `Subject sid ${this.sid} already has label '${existing_label}'`, {sid: this.sid, existing_label, new_label: label})
 
-    if (DB.has_label(label)) {
-      throw new Error(`Label '${label}' is already used by another belief`)
-    }
-    if (Archetype.get_by_label(label)) {
-      throw new Error(`Label '${label}' is already used by an archetype`)
-    }
+    assert(!DB.has_label(label), `Label '${label}' is already used by another belief`, {label})
+    assert(!Archetype.get_by_label(label), `Label '${label}' is already used by an archetype`, {label})
 
     DB.register_label(label, this.sid)
   }
@@ -155,11 +148,8 @@ export class Subject {
    * @yields {Belief} Outermost beliefs on each branch at tt
    */
   *beliefs_at_tt(tt) {
-    const beliefs = DB.get_beliefs_by_subject(this)
-    if (!beliefs || beliefs.size === 0) return
-
     // Get all beliefs with tt <= target
-    const valid_beliefs = [...beliefs].filter(b => b.get_tt() <= tt)
+    const valid_beliefs = [...DB.get_beliefs_by_subject(this)].filter(b => b.get_tt() <= tt)
 
     // Yield beliefs that have no descendants in the valid set
     for (const belief of valid_beliefs) {

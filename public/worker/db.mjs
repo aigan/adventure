@@ -11,7 +11,7 @@ import { Archetype } from './archetype.mjs'
 import { Traittype } from './traittype.mjs'
 import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
-import { log } from '../lib/debug.mjs';
+import { log, assert } from '../lib/debug.mjs';
 
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
@@ -245,19 +245,25 @@ export function register_label(label, sid) {
 /**
  * Get beliefs by subject
  * @param {Subject} subject
- * @returns {Set<Belief>|undefined}
+ * @returns {Generator<Belief>} Iterator over beliefs (empty if subject has no beliefs)
  */
-export function get_beliefs_by_subject(subject) {
-  return belief_by_subject.get(subject)
+export function* get_beliefs_by_subject(subject) {
+  const beliefs = belief_by_subject.get(subject)
+  if (beliefs) {
+    yield* beliefs
+  }
 }
 
 /**
  * Get beliefs by mind
  * @param {Mind} mind
- * @returns {Set<Belief>|undefined}
+ * @returns {Generator<Belief>} Iterator over beliefs (empty if mind has no beliefs)
  */
-export function get_beliefs_by_mind(mind) {
-  return belief_by_mind.get(mind)
+export function* get_beliefs_by_mind(mind) {
+  const beliefs = belief_by_mind.get(mind)
+  if (beliefs) {
+    yield* beliefs
+  }
 }
 
 /**
@@ -450,12 +456,7 @@ export function register(traittypes, archetypes, prototypes) {
 
   // Register archetypes second
   for (const [label, def] of Object.entries(archetypes)) {
-    if (Archetype.get_by_label(label)) {
-      throw new Error(`Label '${label}' is already used by another archetype`)
-    }
-    if (sid_by_label.has(label)) {
-      throw new Error(`Label '${label}' is already used by a belief`)
-    }
+    assert(!Archetype.get_by_label(label), `Duplicate archetype '${label}'`, {label})
     const archetype = new Archetype(label, def.bases ?? [], def.traits ?? {})
     Archetype.register(label, archetype)
   }
@@ -463,51 +464,27 @@ export function register(traittypes, archetypes, prototypes) {
   // Register prototypes third (timeless shared beliefs)
   for (const [label, def] of Object.entries(prototypes)) {
     // Validate required fields
-    if (!def.bases || !Array.isArray(def.bases)) {
-      throw new Error(`Prototype '${label}' must have 'bases' array`)
+    assert(def.bases && Array.isArray(def.bases), `Prototype '${label}' must have 'bases' array`, {label, def})
+
+    // Decider function for resolving string bases to beliefs
+    // Prototypes are timeless shared beliefs - look them up directly without time
+    /** @type {(subject: import('./subject.mjs').Subject) => import('./belief.mjs').Belief} */
+    const decider = (subject) => {
+      const beliefs = [...get_beliefs_by_subject(subject)]
+
+      // Prototypes should have exactly one belief per subject
+      assert(beliefs.length === 1, `Expected exactly one belief for prototype subject sid=${subject.sid}`, {sid: subject.sid, count: beliefs.length})
+
+      return beliefs[0]
     }
 
-    // Check for label conflicts
-    if (Archetype.get_by_label(label)) {
-      throw new Error(`Label '${label}' is already used by an archetype`)
-    }
-    if (sid_by_label.has(label)) {
-      throw new Error(`Label '${label}' is already used by another prototype or belief`)
+    // Build traits object with @label
+    const traits = {
+      '@label': label,
+      ...(def.traits || {})
     }
 
-    // Resolve bases from strings to Archetypes or prototype Beliefs
-    const resolved_bases = def.bases.map(base_label => {
-      // Try archetype first
-      const archetype = Archetype.get_by_label(base_label)
-      if (archetype) return archetype
-
-      // Try prototype (previously registered shared belief)
-      const subject = get_subject_by_label(base_label)
-      if (subject) {
-        const beliefs = [...subject.beliefs_at_tt(-Infinity)]
-        if (beliefs.length === 1) {
-          return beliefs[0]
-        }
-      }
-
-      throw new Error(`Base '${base_label}' not found as archetype or prototype for '${label}'`)
-    })
-
-    // Create timeless shared belief (no @tt, origin_state=null, in_mind=null)
-    const subject = get_or_create_subject(null)
-    const belief = new Belief(null, subject, resolved_bases)
-
-    // Register label first so subsequent prototypes can reference this one
-    register_label(label, subject.sid)
-
-    // Add label trait and any additional traits
-    if (def.traits) {
-      for (const [trait_name, trait_value] of Object.entries(def.traits)) {
-        belief.add_trait(trait_name, trait_value)
-      }
-    }
-
-    // Lock shared belief (prototypes must be immutable before use as bases)
-    belief.locked = true
+    // Use create_shared_from_template to eliminate duplication
+    Belief.create_shared_from_template(null, def.bases, traits, decider)
   }
 }

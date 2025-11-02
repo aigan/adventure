@@ -83,6 +83,7 @@ function get_class_by_name(data_type) {
  * @returns {Array<{key: string, value: any, source: Belief|Archetype}>} Operations
  */
 function _collect_operations_from_entries(trait_name, entries, source) {
+  //console.warn('remove')
   const operations = []
   for (const [key, value] of entries) {
     const {trait, subprop} = parse_trait_key(key)
@@ -133,6 +134,7 @@ export class Belief {
     DB.register_belief_by_id(this)
     DB.register_belief_by_subject(this)
 
+    /*
     // collect dynamic props
     //log("Resolve dynamic props from prototypes", this);
 
@@ -198,28 +200,28 @@ export class Belief {
 
       queue.push(... base._bases);
     }
+*/
+  }
 
-    /*
-      TODO:
-
-      1. get all shared base beleifs recursively + this belief
-      2. Get all archetypes from collected beliefs
-
-      * Collect operations.
-      * Run calls.
-      * Add default values
-    */
-
+  /**
+   * Check if this is a shared belief (prototype/template)
+   * Shared beliefs have no mind and no origin state
+   * @returns {boolean}
+   */
+  get is_shared() {
+    return this.in_mind === null && this.origin_state === null
   }
 
   /**
    * Add trait from template data (resolves via traittype)
-   * @param {State} state - State context for resolution
+   * @param {State|null} state - State context for resolution (null for shared beliefs)
    * @param {string} label - Trait label
    * @param {*} data - Raw data to be resolved by traittype
    */
   add_trait_from_template(state, label, data) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
+
+    //log("add_trait", label)
 
     // Parse trait key to check for operation syntax (e.g., 'mind.append')
     const {trait, subprop} = parse_trait_key(label)
@@ -530,7 +532,7 @@ export class Belief {
         seen.add(base)
         // Only include shared beliefs (prototypes) with labels
         const label = base.get_label()
-        if (base.in_mind === null && label !== null) {
+        if (base.is_shared && label !== null) {
           yield {label, type: 'Belief'}
         }
         bases.push(...base._bases)
@@ -889,7 +891,7 @@ export class Belief {
         const belief= decider(subject)
         assert(belief instanceof Belief, `Decider returned invalid type for base '${base}'`, {base, subject, belief})
 
-        assert(belief.in_mind === null && belief.origin_state === null, `Decider must return a shared belief (in_mind and origin_state must be null) for base '${base}'`, {base, subject, belief, in_mind: belief.in_mind, origin_state: belief.origin_state})
+        assert(belief.is_shared, `Decider must return a shared belief for base '${base}'`, {base, subject, belief})
 
         return belief
       }
@@ -912,7 +914,7 @@ export class Belief {
     // Add remaining traits
     for (const [trait_label, trait_data] of Object.entries(traits)) {
       if (trait_label === '@label') continue
-      belief.add_trait(trait_label, trait_data)
+      belief.add_trait_from_template(null, trait_label, trait_data)
     }
 
     // Lock shared belief (prototypes must be immutable before use as bases)

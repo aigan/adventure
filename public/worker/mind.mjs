@@ -258,8 +258,7 @@ export class Mind {
    */
   toJSON() {
     // Get beliefs from belief_by_mind index
-    const beliefs = DB.get_beliefs_by_mind(this) || new Set()
-    const mind_beliefs = [...beliefs].map(b => b.toJSON())
+    const mind_beliefs = [...DB.get_beliefs_by_mind(this)].map(b => b.toJSON())
 
     return {
       _type: 'Mind',
@@ -337,7 +336,8 @@ export class Mind {
    * @returns {Mind|*} Resolved Mind instance or data as-is
    */
   static resolve_trait_value_from_template(traittype, belief, data) {
-    assert(belief.origin_state instanceof State, "belief must have origin_state", belief)
+    assert(belief.origin_state instanceof State, "belief must have origin_state", {belief})
+    assert(!belief.is_shared, 'Shared beliefs cannot have Mind traits', {belief})
     const creator_state = /** @type {State} */ (belief.origin_state)
 
     // Detect plain object Mind template (learn spec)
@@ -347,7 +347,6 @@ export class Mind {
         !data._type &&
         !(data._states instanceof Set)) {
       // It's a learn spec - call create_from_template
-      assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
       const mind = Mind.create_from_template(creator_state, belief, data)
       assert(mind.state !== null, 'create_from_template must create unlocked state')
       return mind.state.lock().in_mind
@@ -355,7 +354,6 @@ export class Mind {
 
     // Detect explicit Mind template with _type field
     if (data?._type === 'Mind') {
-      assert(belief.in_mind instanceof Mind, 'Shared beliefs cannot have Mind traits', {belief})
       // Strip _type from template before passing to create_from_template
       const {_type, ...traits} = data
       const mind = Mind.create_from_template(creator_state, belief, traits)
