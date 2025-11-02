@@ -54,27 +54,11 @@ export function setupStandardArchetypes() {
         color: null,
       },
     },
+
     Mental: {
+      bases: ['Thing'],
       traits: {
-        mind: {_call: 'create_from_template'},
-      },
-    },
-    Villager: {
-      bases: ['Mental'],
-      traits: {
-        'mind.append': {
-          tavern: ['location'],
-          mayor: ['name']
-        }
-      },
-    },
-    Blacksmith: {
-      bases: ['Mental'],
-      traits: {
-        'mind.append': {
-          forge: ['location'],
-          tools: ['inventory']
-        }
+        mind: null,
       },
     },
     Location: {
@@ -87,20 +71,36 @@ export function setupStandardArchetypes() {
 
   /** @type {Record<string, {bases: string[], traits?: Object}>} */
   const prototypes = {
-    Actor: {
-      bases: ['ObjectPhysical'],
-    },
     Person: {
-      bases: ['Actor', 'Mental'],
+      bases: ['ObjectPhysical', 'Mental'],
     },
 
-    // Demonstrates trait composition from multiple archetypes
-    blacksmith_villager: {
-      bases: ['Person', 'Villager', 'Blacksmith'],
+    Villager: {
+      bases: ['Person'],
       traits: {
-        location: 'forge',
+        mind: {
+          workshop: ['location'],
+        }
       },
     },
+
+    //Blacksmith: {
+    //  bases: ['Mental'],
+    //  traits: {
+    //    mind: {
+    //      forge: ['location'],
+    //      tools: ['inventory']
+    //    }
+    //  },
+    //},
+    //
+    //// Demonstrates trait composition from multiple archetypes
+    //blacksmith_villager: {
+    //  bases: ['Person', 'Villager', 'Blacksmith'],
+    //  traits: {
+    //    location: 'forge',
+    //  },
+    //},
 
   };
 
@@ -119,17 +119,17 @@ const world_belief = {
     bases: ['Location'],
   },
 
-  market: {
-    bases: ['Location'],
-  },
-
-  tavern: {
-    bases: ['Location'],
-  },
-
-  forge: {
-    bases: ['Location'],
-  },
+  //market: {
+  //  bases: ['Location'],
+  //},
+  //
+  //tavern: {
+  //  bases: ['Location'],
+  //},
+  //
+  //forge: {
+  //  bases: ['Location'],
+  //},
 
   hammer: {
     bases: ['PortableObject'],
@@ -138,37 +138,36 @@ const world_belief = {
     },
   },
 
-  tools: {
-    bases: ['PortableObject'],
-    traits: {
-      location: 'forge',
-    },
-  },
+  //tools: {
+  //  bases: ['PortableObject'],
+  //  traits: {
+  //    location: 'forge',
+  //  },
+  //},
+  //
+  //mayor: {
+  //  bases: ['Person'],
+  //  traits: {
+  //    location: 'tavern',
+  //  },
+  //},
 
-  mayor: {
-    bases: ['Person'],
-    traits: {
-      location: 'tavern',
-    },
-  },
-
-  npc1: {
-    bases: ['Person'],
-    traits: {
-      location: 'market',
-//    mind: {
-//      workshop: ['location']
-//    }
-    },
-  },
+  //npc1: {
+  //  bases: ['Villager'],
+  //  traits: {
+  //    mind: {
+  //      workshop: ['location']
+  //    }
+  //  },
+  //},
 
   player: {
-    bases: ['blacksmith_villager'],
+    bases: ['Villager'],
     traits: {
       location: 'workshop',
-//      mind: {
-//        workshop: ['location']
-//      }
+      //mind: {
+      //  workshop: ['location']
+      //}
     },
   },
 }
@@ -177,6 +176,9 @@ state.add_beliefs_from_template(world_belief);
 
 const player = state.get_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
+
+//log(player);
+
 
 //const player_mind = player.get_trait(state, 'mind');
 //let player_state = [...player_mind.states_at_tt(1)][0];

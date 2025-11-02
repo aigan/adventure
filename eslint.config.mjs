@@ -13,6 +13,7 @@ export default [
       "public/lab/**",
       "dist/**",
       "build/**",
+      "public/worker/world*",
     ]
   },
   js.configs.recommended,

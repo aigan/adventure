@@ -2,7 +2,9 @@
 
 **Goal**: Fix double-mind bugs, prevent invalid trait composition, and clarify learnable vs internal traits
 
-**Status**: Active (2025-11-02)
+**Status**: Active (2025-11-02, updated 2025-11-03)
+
+**Decision**: Returning to original design with data in shared nodes (Option 2 - materialize in source/archetype). Current implementation (Option 1 - materialize per-belief) was temporary workaround for locked state problem.
 
 **Related**:
 - docs/SPECIFICATION.md (archetype composition, learn_about)
@@ -506,55 +508,89 @@ const traittypes = {
 
 ## Backlog Items
 
-### High Priority
+### High Priority - Redesign for Shared Nodes (Option 2)
 
-1. **Implement learned belief detection in Belief constructor**
-   - Skip _call execution for beliefs with @about trait
-   - Add test coverage
+**Current state**: 34 pending tests awaiting redesign
 
-2. **Fix null handling in _recursively_learn_trait_value**
-   - Return null/undefined without trying to learn about it
-   - Add test coverage
-
-3. **Add mind trait + Mental archetype conflict detection**
-   - Throw clear error when both present
-   - Suggest mind.append alternative
-
-### Medium Priority
-
-4. **Implement lazy materialization for _call traits**
+1. **Implement lazy materialization with shared storage (Option 2)**
    - Move _call execution from Belief constructor to get_trait() read-time
-   - Decide materialization location: Option 1 (reading belief) vs Option 2 (source/archetype)
+   - Materialize Mind objects in source (shared belief/archetype), not reading belief
+   - First read creates Mind, stores in shared node
+   - Subsequent reads (from any inheriting belief) return same Mind
    - Ensure reads on locked states work correctly (no mutation, pure computation)
-   - Cache materialized values appropriately
+   - This enables shared cultural knowledge architecture
 
-5. **Implement shared cultural mind architecture** (requires lazy materialization Option 2)
+2. **Implement belief import system for chunks (shared or not)**
+   - Separate world setup from cultural knowledge injection
+   - World setup: Create entities (tavern, mayor, etc.) with labels
+   - Cultural injection: Add beliefs to shared minds AFTER world entities exist
+   - Support batch operations for adding beliefs to minds
+   - Works for both shared prototypes and individual minds
+   - Example flow:
+     ```javascript
+     // 1. Create world entities
+     state.add_beliefs_from_template({ tavern: {...}, mayor: {...} })
+
+     // 2. Add cultural knowledge to Villager prototype (after entities exist)
+     villager_shared_belief.import_cultural_knowledge(state, {
+       tavern: ['location'],
+       mayor: ['name']
+     })
+     ```
+
+3. **Template format can use labels, but underlying system works with subjects**
+   - User-facing API: Labels are convenient (`mind: { tavern: ['location'] }`)
+   - Internal implementation: Works with Subject references, not label strings
+   - Label resolution happens at import time, not definition time
+   - This allows templates to be reusable across different worlds (resolve labels in context)
+
+4. **Fix 34 pending tests**
+   - Update tests to work with shared node architecture
+   - Tests currently expect per-belief mind instantiation
+   - Update expectations for shared cultural minds
+   - Verify theory-of-mind parent selection works correctly
+
+5. **Implement shared cultural mind architecture**
    - Villager archetype's mind materializes once, shared across all villager instances
    - NPC actual minds have village_mind as parent, states inherit from shared cultural state
    - Theory-of-mind models also use village_mind as parent (not modeling entity's mind)
    - Document parent mind selection for nested minds
 
-6. **Document trait merge semantics**
-   - When does trait update vs create new belief?
-   - Why Mind is mutable reference
-   - Contrast with immutable trait values
+### Medium Priority - Bug Fixes
 
-7. **Implement learnable trait metadata**
-   - Add learnable field to TraitTypeSchema
-   - Filter in State.integrate()
-   - Document which traits are internal vs observable
+6. **Implement learned belief detection in Belief constructor**
+   - Skip _call execution for beliefs with @about trait
+   - Add test coverage
 
-8. **Cleanup commented code**
-   - Remove old operation handling in add_trait_from_template (belief.mjs:227-237)
-   - Verify all functionality moved to constructor
+7. **Fix null handling in _recursively_learn_trait_value**
+   - Return null/undefined without trying to learn about it
+   - Add test coverage
+
+8. **Add mind trait + Mental archetype conflict detection**
+   - Throw clear error when both present
+   - Suggest mind.append alternative
 
 ### Low Priority
 
-9. **Design observable trait mapping**
-   - How do internal traits map to observable perceptions?
-   - One-to-many? Separate traits? Computed properties?
+9. **Document trait merge semantics**
+   - When does trait update vs create new belief?
+   - Why Mind is mutable reference (with shared storage)
+   - Contrast with immutable trait values
 
-10. **Classify existing archetypes**
+10. **Implement learnable trait metadata**
+    - Add learnable field to TraitTypeSchema
+    - Filter in State.integrate()
+    - Document which traits are internal vs observable
+
+11. **Cleanup commented code**
+    - Remove old operation handling in add_trait_from_template (belief.mjs:227-237)
+    - Verify all functionality moved to constructor
+
+12. **Design observable trait mapping**
+    - How do internal traits map to observable perceptions?
+    - One-to-many? Separate traits? Computed properties?
+
+13. **Classify existing archetypes**
     - Which archetypes are "data" (safe to copy in learn_about)?
     - Which are "stateful" (should not trigger _call in learned beliefs)?
     - Document in SPECIFICATION.md
@@ -606,6 +642,14 @@ const traittypes = {
    - Executes _call patterns, applies operations via state_data()
    - Old code commented out during refactoring
 
+9. **Separate world setup from cultural knowledge injection**
+   - World setup creates entities first (tavern, mayor, etc.)
+   - Cultural knowledge added to shared prototypes AFTER world exists
+   - Belief import system for batch operations (shared or individual minds)
+   - Template format uses labels (user convenience), underlying system uses Subjects
+   - Lazy materialization: beliefs in shared minds created on-demand, not eagerly
+   - This matches wild_at_heart_model.md design: Blackbough_resident.Thought references entities
+
 ### Migration Notes
 
 **Why construction-time creation was needed:**
@@ -627,5 +671,16 @@ When refactoring is complete:
 1. Should we prevent ALL _call execution in learned beliefs, or just Mind-creating ones?
 2. Should learn_about error or silently skip non-learnable traits?
 3. Do we need both @about and explicit learnable flag, or is @about sufficient marker?
-4. Which lazy materialization option: Option 1 (per-belief) or Option 2 (shared/archetype)?
+4. ~~Which lazy materialization option: Option 1 (per-belief) or Option 2 (shared/archetype)?~~ **DECIDED: Option 2 (shared/archetype)**
 5. How to create theory-of-mind models explicitly? New API or automatic on certain queries?
+6. ~~How should mind template format work without requiring labeled world subjects?~~ **RESOLVED: Separate world setup from cultural injection**
+   - Template format can use labels - that's fine for user-facing API
+   - Underlying system works with Subject references, not labels
+   - Cultural knowledge added AFTER world entities exist
+   - Belief import system handles batch operations for adding cultural beliefs
+7. **NEW: Design for belief import/batch system**
+   - API for adding beliefs to minds in chunks
+   - Should work for both shared prototypes and individual minds
+   - Handle label resolution at import time
+   - Support lazy materialization (don't create all beliefs immediately)
+   - Example: `villager_shared_belief.import_cultural_knowledge(state, { tavern: ['location'] })`
