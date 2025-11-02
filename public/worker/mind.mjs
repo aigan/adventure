@@ -25,7 +25,7 @@ import * as DB from './db.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
 import { Traittype } from './traittype.mjs'
-import { assert } from '../lib/debug.mjs'
+import { assert, log } from '../lib/debug.mjs'
 
 /**
  * @typedef {import('./belief.mjs').BeliefJSON} BeliefJSON
@@ -406,9 +406,11 @@ export class Mind {
     // Extract self_subject from ground_belief
     const self_subject = ground_belief.subject
 
+    //log('create mind with subj', self_subject.get_label());
+
     // Create the mind (parent is the mind that contains ground_state)
     const parent_mind = ground_state.in_mind
-    const entity_mind = new Mind(parent_mind) // TODO add a label based on template?
+    const entity_mind = new Mind(parent_mind, self_subject.get_label())
 
     // Create initial state with self reference - fork invariant: child.tt = parent_state.vt
     const state = new State(

@@ -19,7 +19,7 @@
  * See docs/ALPHA-1.md for how states track observations over time
  */
 
-import { assert } from '../lib/debug.mjs'
+import { assert, log } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'

@@ -1,5 +1,6 @@
 import * as DB from './db.mjs'
 import { Belief } from './belief.mjs'
+import { Archetype } from './archetype.mjs'
 import { assert } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
 
@@ -66,6 +67,36 @@ export class Subject {
    */
   toJSON() {
     return this.sid
+  }
+
+  /**
+   * Get label for this subject (sid)
+   * @returns {string|null}
+   */
+  get_label() {
+    return DB.get_label_by_sid(this.sid) ?? null
+  }
+
+  /**
+   * Set label for this subject (sid)
+   * @param {string} label
+   */
+  set_label(label) {
+    const existing_label = this.get_label()
+    if (existing_label == label) return
+
+    if (existing_label !== null) {
+      throw new Error(`Subject sid ${this.sid} already has label '${existing_label}', cannot set to '${label}'`)
+    }
+
+    if (DB.has_label(label)) {
+      throw new Error(`Label '${label}' is already used by another belief`)
+    }
+    if (Archetype.get_by_label(label)) {
+      throw new Error(`Label '${label}' is already used by an archetype`)
+    }
+
+    DB.register_label(label, this.sid)
   }
 
   /**

@@ -64,7 +64,7 @@ const registries = DB._reflect()
 const all_minds = [...registries.mind_by_id.values()]
 console.log(`Total minds: ${all_minds.length}`)
 for (const mind of all_minds) {
-  console.log(`\n  ${mind.label} (id: ${mind._id}, parent: ${mind.parent?.label ?? 'null'})`)
+  console.log(`\n  ${mind.label} (id: ${mind._id}, parent: ${mind.parent?._id ?? 'null'})`)
 
   // Show states for this mind
   const states = [...mind._states]
@@ -75,7 +75,7 @@ for (const mind of all_minds) {
 
   // Show child minds
   if (mind._child_minds.size > 0) {
-    console.log(`    - Child minds: ${[...mind._child_minds].map(m => m.label).join(', ')}`)
+    console.log(`    - Child minds: ${[...mind._child_minds].map(m => m._id).join(', ')}`)
   }
 }
 

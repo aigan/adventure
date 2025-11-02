@@ -242,7 +242,7 @@ export class Belief {
 
     const value = /** @type {Traittype} */ (traittype).resolve_trait_value_from_template(this, data)
 
-    // Call add_trait with resolved value (handles validation and special cases like @label)
+    // Call add_trait with resolved value
     this.add_trait(label, value)
   }
 
@@ -252,13 +252,6 @@ export class Belief {
    */
   add_trait(label, data) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
-
-    // Handle @label specially - set subject label instead of storing as trait
-    if (label === '@label') {
-      assert(typeof data === 'string', '@label must be a string', {label: data})
-      this.set_label(data)
-      return
-    }
 
     const traittype = Traittype.get_by_label(label)
     assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
@@ -589,29 +582,7 @@ export class Belief {
    * @returns {string|null}
    */
   get_label() {
-    return DB.get_label_by_sid(this.subject.sid) ?? null
-  }
-
-  /**
-   * Set label for this belief's subject (sid)
-   * @param {string} label
-   */
-  set_label(label) {
-    const existing_label = this.get_label()
-    if (existing_label == label) return;
-
-    if (existing_label !== null) {
-      throw new Error(`Subject sid ${this.subject.sid} already has label '${existing_label}', cannot set to '${label}'`)
-    }
-
-    if (DB.has_label(label)) {
-      throw new Error(`Label '${label}' is already used by another belief`)
-    }
-    if (Archetype.get_by_label(label)) {
-      throw new Error(`Label '${label}' is already used by an archetype`)
-    }
-
-    DB.register_label(label, this.subject.sid)
+    return this.subject.get_label()
   }
 
   /**
@@ -847,11 +818,18 @@ export class Belief {
     })
 
     const ground_mind = state.in_mind.parent
-    const subject = sid ? DB.get_or_create_subject(ground_mind, sid) : null
+    const subject = DB.get_or_create_subject(ground_mind, sid)
+
+    // Handle @label first (must be set before other traits or creating belief)
+    if ('@label' in traits) {
+      const label_value = traits['@label']
+      delete traits['@label']
+      subject.set_label(label_value)
+    }
 
     const belief = new Belief(state, subject, resolved_bases)
 
-    // Add all traits (add_trait handles @label specially)
+    // Add remaining traits
     for (const [trait_label, trait_data] of Object.entries(traits)) {
       belief.add_trait_from_template(state, trait_label, trait_data)
     }
@@ -917,8 +895,16 @@ export class Belief {
     // Set ground_mind on auto-created subject for scoping
     belief.subject.ground_mind = parent_mind
 
-    // Add all traits (add_trait handles @label specially)
+    // Handle @label first (must be set before other traits)
+    if ('@label' in traits) {
+      const label_value = traits['@label']
+      assert(typeof label_value === 'string', '@label must be a string', {label: label_value})
+      belief.subject.set_label(label_value)
+    }
+
+    // Add remaining traits
     for (const [trait_label, trait_data] of Object.entries(traits)) {
+      if (trait_label === '@label') continue
       belief.add_trait(trait_label, trait_data)
     }
 

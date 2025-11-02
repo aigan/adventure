@@ -11,6 +11,7 @@ import { Archetype } from './archetype.mjs'
 import { Traittype } from './traittype.mjs'
 import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
+import { log } from '../lib/debug.mjs';
 
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
