@@ -1,9 +1,8 @@
 import { expect } from 'chai';
-import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { setupStandardArchetypes } from './helpers.mjs';
 
-const logos = () => DB.get_logos_mind();
 
 describe('Archetype', () => {
   beforeEach(() => {

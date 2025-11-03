@@ -5,7 +5,7 @@
  * See docs/IMPLEMENTATION.md for implementation architecture
  */
 
-import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 
 /**
@@ -15,7 +15,7 @@ import * as DB from '../public/worker/db.mjs';
  * @param {Mind|null} parent_mind - Parent mind (defaults to logos)
  * @returns {State} State containing the beliefs (access mind via state.in_mind)
  */
-export function createMindWithBeliefs(label, beliefs = {}, parent_mind = DB.get_logos_mind()) {
+export function createMindWithBeliefs(label, beliefs = {}, parent_mind = logos()) {
   const mind = new Mind(parent_mind, label);
   const state = mind.create_state(1, null);  // Explicit null for root state
 

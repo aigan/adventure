@@ -6,8 +6,8 @@ import { State } from '../public/worker/state.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
 import { sysdesig } from '../public/lib/debug.mjs'
+import { logos } from '../public/worker/cosmos.mjs';
 
-const logos = () => DB.get_logos_mind();
 
 describe('sysdesig', () => {
   beforeEach(() => {

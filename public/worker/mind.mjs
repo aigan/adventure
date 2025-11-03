@@ -117,6 +117,13 @@ export class Mind {
      */
     this.state = null
 
+    /**
+     * Origin state - primordial state for this mind (used for prototypes)
+     * Set on first create_state() call or explicitly during initialization
+     * @type {State|null}
+     */
+    this.origin_state = null
+
     // Register as child in parent
     if (this.parent) {
       this.parent._child_minds.add(this)
@@ -228,6 +235,12 @@ export class Mind {
     )
 
     const state = new State(this, tt, null, ground_state)
+
+    // Track first state as origin
+    if (this.origin_state === null) {
+      this.origin_state = state
+    }
+
     return state
   }
 

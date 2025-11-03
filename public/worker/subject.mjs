@@ -1,4 +1,5 @@
 import * as DB from './db.mjs'
+import { eidos } from './cosmos.mjs'
 import { Belief } from './belief.mjs'
 import { Archetype } from './archetype.mjs'
 import { assert } from '../lib/debug.mjs'
@@ -45,8 +46,25 @@ export class Subject {
   get_shared_belief_by_state(state) {
     const query_parent = state.in_mind.parent
     const shared = [...this.beliefs_at_tt(state.tt)].filter(
-      b => b.is_shared &&
-           (b.subject.ground_mind === null || b.subject.ground_mind === query_parent)  // Global or matching parent
+      b => {
+        if (!b.is_shared) return false
+
+        // FIXME: simplify
+
+        // Check ground_mind scoping
+        // Eidos beliefs with ground_mind=logos are globally accessible
+        // Eidos beliefs with specific ground_mind are scoped to that hierarchy
+        if (b.in_mind === eidos()) {
+          const belief_ground_mind = b.subject.ground_mind
+          // Global if ground_mind is null or logos
+          if (belief_ground_mind === null || belief_ground_mind?.label === 'logos') return true
+          // Scoped: only accessible if query_parent matches
+          return belief_ground_mind === query_parent
+        }
+
+        // Legacy: Global or matching parent
+        return b.subject.ground_mind === null || b.subject.ground_mind === query_parent
+      }
     )
 
     assert(shared.length <= 1,

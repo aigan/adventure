@@ -17,6 +17,7 @@ import { assert, log } from '../lib/debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
+import { eidos } from './cosmos.mjs'
 import { Subject } from './subject.mjs'
 import { Traittype } from './traittype.mjs'
 import { State } from './state.mjs'
@@ -99,7 +100,7 @@ function _collect_operations_from_entries(trait_name, entries, source) {
  * @property {number} _id - Unique version identifier
  * @property {Subject} subject - Canonical Subject (identity holder)
  * @property {string|null} label - Optional label for lookup
- * @property {Mind|null} in_mind - Mind this belief belongs to (null for shared beliefs)
+ * @property {Mind} in_mind - Mind this belief belongs to (eidos() for prototypes)
  * @property {Set<Belief|Archetype>} _bases - Base archetypes/beliefs for inheritance
  * @property {Map<string, *>} _traits - Trait values (sids, primitives, State/Mind refs)
  * @property {boolean} locked - Whether belief can be modified
@@ -107,7 +108,7 @@ function _collect_operations_from_entries(trait_name, entries, source) {
 export class Belief {
 
   /**
-   * @param {State|null} state - State creating this belief (null for shared beliefs)
+   * @param {State} state - State creating this belief
    * @param {Subject|null} [subject] - Subject (provide to create version of existing subject)
    * @param {Array<Archetype|Belief>} [bases] - Archetype or Belief objects (no strings)
    */
@@ -118,17 +119,20 @@ export class Belief {
         {base})
     }
 
-    /** @type {Mind|null} */
-    const mind = state?.in_mind ?? null
-    const ground_mind = mind?.parent ?? null
+    assert(state instanceof State, "belief must be constructed with a state")
+
+    /** @type {Mind} */
+    const mind = state.in_mind
+    const ground_mind = mind.parent
 
     /** @type {Set<Belief|Archetype>} */ this._bases = new Set(bases)
     this.subject = subject ?? DB.get_or_create_subject(ground_mind)
     this._id = next_id()
-    /** @type {Mind|null} */
+    /** @type {Mind} */
     this.in_mind = mind
     this._traits = new Map()
-    this.locked = false
+    this._locked = false
+    /** @type {State} */
     this.origin_state = state
 
     DB.register_belief_by_id(this)
@@ -204,12 +208,21 @@ export class Belief {
   }
 
   /**
+   * Get locked status of this belief
+   * @returns {boolean}
+   */
+  get locked() {
+    return this._locked
+  }
+
+  /**
    * Check if this is a shared belief (prototype/template)
-   * Shared beliefs have no mind and no origin state
+   * Shared beliefs live in Eidos mind (realm of forms)
    * @returns {boolean}
    */
   get is_shared() {
-    return this.in_mind === null && this.origin_state === null
+    // Shared beliefs live in Eidos - the realm of forms
+    return this.in_mind === eidos()
   }
 
   /**
@@ -545,7 +558,7 @@ export class Belief {
    * @param {State} state - State context being locked
    */
   lock(state) {
-    this.locked = true
+    this._locked = true
 
     // Cascade to child mind states
     // Note: Only checks _traits (directly set on this belief), not inherited traits.
@@ -740,7 +753,7 @@ export class Belief {
     const ground_mind = mind?.parent ?? null
     belief.subject = DB.get_or_create_subject(ground_mind, data.sid)
     belief.in_mind = mind
-    belief.locked = false
+    belief._locked = false
 
     // Resolve 'bases' (archetype labels or belief IDs)
     belief._bases = new Set()
@@ -898,8 +911,10 @@ export class Belief {
       return base
     })
 
-    // Create belief with null ownership (limbo)
-    const belief = new Belief(null, null, resolved_bases)
+    // Create belief in Eidos (realm of forms)
+    const eidos_state = eidos().origin_state
+    assert(eidos_state !== null, 'Eidos origin_state must exist')
+    const belief = new Belief(eidos_state, null, resolved_bases)
 
     // Set ground_mind on auto-created subject for scoping
     belief.subject.ground_mind = parent_mind
@@ -914,11 +929,11 @@ export class Belief {
     // Add remaining traits
     for (const [trait_label, trait_data] of Object.entries(traits)) {
       if (trait_label === '@label') continue
-      belief.add_trait_from_template(null, trait_label, trait_data)
+      belief.add_trait_from_template(eidos_state, trait_label, trait_data)
     }
 
     // Lock shared belief (prototypes must be immutable before use as bases)
-    belief.locked = true
+    belief.lock(eidos_state)
 
     return belief
   }

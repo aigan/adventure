@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-11-03
+
+### Eidos - Realm of Forms
+- Primordial singletons moved to cosmos.mjs: `logos()`, `logos_state()`, `eidos()`
+- Eidos singleton holds all universal prototypes (child of Logos)
+- `mind.origin_state` property tracks first state created by each mind
+- Prototypes created by `DB.register()` now live in Eidos.origin_state
+- `belief.locked` is now a getter (internal `._locked` field)
+- Backward compatibility: `DB.get_eidos()`, `DB.get_logos_mind()`, `DB.get_logos_state()` still available
+
 ## 2025-11-01
 
 ### Unified Registration API

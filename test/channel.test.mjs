@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, State, Belief, Archetype, Traittype, Session, save_mind, load } from '../public/worker/cosmos.mjs';
+import { Mind, State, Belief, Archetype, Traittype, Session, save_mind, load , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { stdTypes, Thing } from './helpers.mjs';
 
@@ -55,7 +55,6 @@ global.indexedDB = {
   }
 };
 
-const logos = () => DB.get_logos_mind();
 
 describe('Channel Message Handlers', () => {
   beforeEach(() => {

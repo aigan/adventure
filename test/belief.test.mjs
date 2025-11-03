@@ -1,9 +1,7 @@
 import { expect } from 'chai';
-import { Mind, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { Mind, State, Belief, Subject, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
-
-const logos = () => DB.get_logos_mind();
 
 describe('Belief', () => {
   beforeEach(() => {
@@ -306,9 +304,10 @@ describe('Belief', () => {
     });
 
     it('returns @timestamp meta-trait for shared beliefs (null ownership)', () => {
-      // Create a shared belief with null ownership and @timestamp meta-trait
+      // Create a shared belief in Eidos with @timestamp meta-trait
+      const eidos = DB.get_eidos();
       const archetype = Archetype.get_by_label('Temporal');
-      const belief = new Belief(null, null, [archetype]);
+      const belief = new Belief(eidos.origin_state, null, [archetype]);
 
       belief.add_trait('@tt', 110);
 
@@ -331,14 +330,18 @@ describe('Belief', () => {
     });
 
     it('returns -Infinity for timeless shared beliefs (no origin_state or @tt)', () => {
-      const belief = new Belief(null, null, []);
+      const eidos = DB.get_eidos();
+      const belief = new Belief(eidos.origin_state, null, []);
+      belief.origin_state = null;  // Manually break it for testing
 
       expect(belief.get_tt()).to.equal(-Infinity);
     });
 
     it('handles undefined vs explicit @tt:0 correctly', () => {
+      const eidos = DB.get_eidos();
       const archetype = Archetype.get_by_label('Temporal');
-      const belief = new Belief(null, null, [archetype]);
+      const belief = new Belief(eidos.origin_state, null, [archetype]);
+      belief.origin_state = null;  // Manually break it for testing
 
       // No origin_state, no @tt -> returns -Infinity (timeless)
       expect(belief.get_tt()).to.equal(-Infinity);
@@ -537,15 +540,19 @@ describe('Belief', () => {
   describe('Shared Belief Resolution', () => {
     it('inherits traits from shared belief prototype', () => {
       // Create shared belief "GenericSword" with damage: 10, weight: 5
-      const generic_sword = Belief.create_shared_from_template(null, ['MeleeWeapon'], {
-        '@tt': 100,
-        '@label': 'GenericSword',
-        damage: 10,
-        weight: 5
+      const eidos = DB.get_eidos();
+      const generic_sword = eidos.origin_state.add_belief_from_template({
+        bases: ['MeleeWeapon'],
+        traits: {
+          '@tt': 100,
+          '@label': 'GenericSword',
+          damage: 10,
+          weight: 5
+        }
       });
 
-      expect(generic_sword.in_mind).to.be.null;
-      expect(generic_sword.origin_state).to.be.null;
+      expect(generic_sword.in_mind).to.equal(eidos);
+      expect(generic_sword.origin_state).to.equal(eidos.origin_state);
 
       // Create regular belief inheriting from GenericSword
       const mind = new Mind(logos(), 'player');
@@ -570,11 +577,15 @@ describe('Belief', () => {
 
     it('multiple beliefs reference same shared subject', () => {
       // Create shared belief "StandardSword" with damage: 10
-      const standard_sword = Belief.create_shared_from_template(null, ['MeleeWeapon'], {
-        '@tt': 100,
-        '@label': 'StandardSword',
-        damage: 10,
-        weight: 3
+      const eidos = DB.get_eidos();
+      const standard_sword = eidos.origin_state.add_belief_from_template({
+        bases: ['MeleeWeapon'],
+        traits: {
+          '@tt': 100,
+          '@label': 'StandardSword',
+          damage: 10,
+          weight: 3
+        }
       });
 
       // Create two different minds with beliefs inheriting from same shared belief
@@ -617,16 +628,21 @@ describe('Belief', () => {
 
     it('resolves correct version at different timestamps', () => {
       // Create shared belief v1 at timestamp 100
-      const seasonal_v1 = Belief.create_shared_from_template(null, ['Effect'], {
-        '@tt': 100,
-        '@label': 'SeasonalBonus',
-        bonus: 5
+      const eidos = DB.get_eidos();
+      const seasonal_v1 = eidos.origin_state.add_belief_from_template({
+        bases: ['Effect'],
+        traits: {
+          '@tt': 100,
+          '@label': 'SeasonalBonus',
+          bonus: 5
+        }
       });
 
       // Create shared belief v2 at tt 200 (newer version)
-      const seasonal_v2 = new Belief(null, seasonal_v1.subject, [seasonal_v1]);
+      const seasonal_v2 = new Belief(eidos.origin_state, seasonal_v1.subject, [seasonal_v1]);
       seasonal_v2.add_trait('@tt', 200);
       seasonal_v2.add_trait('bonus', 10);
+      seasonal_v2.lock(eidos.origin_state);
 
       // Query at timestamp 150 -> should find v1
       const at_150 = [...seasonal_v1.subject.beliefs_at_tt(150)];
@@ -645,17 +661,24 @@ describe('Belief', () => {
 
     it('resolves traits through shared belief chain', () => {
       // Create shared belief chain: Weapon (base damage) → Sword (adds sharpness)
-      const weapon = Belief.create_shared_from_template(null, ['MeleeWeapon'], {
-        '@tt': 100,
-        '@label': 'Weapon',
-        damage: 5,
-        weight: 2
+      const eidos = DB.get_eidos();
+      const weapon = eidos.origin_state.add_belief_from_template({
+        bases: ['MeleeWeapon'],
+        traits: {
+          '@tt': 100,
+          '@label': 'Weapon',
+          damage: 5,
+          weight: 2
+        }
       });
 
-      const sword = Belief.create_shared_from_template(null, [weapon], {
-        '@tt': 100,
-        '@label': 'Sword',
-        sharpness: 8
+      const sword = eidos.origin_state.add_belief_from_template({
+        bases: [weapon],
+        traits: {
+          '@tt': 100,
+          '@label': 'Sword',
+          sharpness: 8
+        }
       });
 
       // Create regular belief inheriting from Sword
@@ -682,10 +705,14 @@ describe('Belief', () => {
 
     it('inherits from shared belief through regular belief chain', () => {
       // Create shared belief "Tool" with durability
-      const tool = Belief.create_shared_from_template(null, ['Tool'], {
-        '@tt': 100,
-        '@label': 'GenericTool',
-        durability: 100
+      const eidos = DB.get_eidos();
+      const tool = eidos.origin_state.add_belief_from_template({
+        bases: ['Tool'],
+        traits: {
+          '@tt': 100,
+          '@label': 'GenericTool',
+          durability: 100
+        }
       });
 
       const mind = new Mind(logos(), 'player');
@@ -715,15 +742,19 @@ describe('Belief', () => {
       // Verify chain: hammer_v2 → hammer_v1 → Tool (shared)
       expect(hammer_v2._bases.has(hammer_v1)).to.be.true;
       expect(hammer_v1._bases.has(tool)).to.be.true;
-      expect(tool.in_mind).to.be.null;
+      expect(tool.in_mind).to.equal(eidos);
     });
 
     it('get_shared_belief_by_state finds shared belief', () => {
       // Create shared belief for a subject
-      const default_item = Belief.create_shared_from_template(null, ['Item'], {
-        '@tt': 100,
-        '@label': 'default_item',
-        value: 50
+      const eidos = DB.get_eidos();
+      const default_item = eidos.origin_state.add_belief_from_template({
+        bases: ['Item'],
+        traits: {
+          '@tt': 100,
+          '@label': 'default_item',
+          value: 50
+        }
       });
 
       // Create state in mind (no belief for default_item in this mind)
@@ -735,16 +766,20 @@ describe('Belief', () => {
 
       expect(found).to.not.be.null;
       expect(found).to.equal(default_item);
-      expect(found.in_mind).to.be.null;  // Confirms it's the shared belief
+      expect(found.in_mind).to.equal(eidos);  // Confirms it's the shared belief in Eidos
       expect(found.get_trait(state, 'value')).to.equal(50);
     });
 
     it('shared beliefs not registered in belief_by_mind', () => {
       // Create shared belief
-      const prototype = Belief.create_shared_from_template(null, ['Item'], {
-        '@tt': 100,
-        '@label': 'prototype_1',
-        value: 42
+      const eidos = DB.get_eidos();
+      const prototype = eidos.origin_state.add_belief_from_template({
+        bases: ['Item'],
+        traits: {
+          '@tt': 100,
+          '@label': 'prototype_1',
+          value: 42
+        }
       });
 
       // Shared belief should be in belief_by_subject
@@ -752,9 +787,8 @@ describe('Belief', () => {
       expect(beliefs_by_subject).to.have.lengthOf.at.least(1);
       expect(beliefs_by_subject).to.include(prototype);
 
-      // Shared belief should NOT be in belief_by_mind (no mind to index under)
-      // We can't directly check belief_by_mind, but we can verify it has null mind
-      expect(prototype.in_mind).to.be.null;
+      // Shared belief is now in Eidos mind
+      expect(prototype.in_mind).to.equal(eidos);
 
       // Create regular belief in a mind
       const mind = new Mind(logos(), 'player');
@@ -872,12 +906,18 @@ describe('Belief', () => {
 
     it('global shared belief (ground_mind=null) accessible from any parent', () => {
       // Create global shared belief (no scoping)
-      const generic_weapon = Belief.create_shared_from_template(null, ['Thing'], {
-        '@tt': 100,
-        '@label': 'GenericWeapon'
+      const eidos = DB.get_eidos();
+      const generic_weapon = eidos.origin_state.add_belief_from_template({
+        bases: ['Thing'],
+        traits: {
+          '@tt': 100,
+          '@label': 'GenericWeapon'
+        }
       });
+      generic_weapon.lock(eidos.origin_state);  // Test-created prototypes must be manually locked
 
-      expect(generic_weapon.subject.ground_mind).to.be.null;
+      // Eidos is child of Logos, so ground_mind should be logos
+      expect(generic_weapon.subject.ground_mind).to.equal(logos());
 
       // Create two separate parent hierarchies
       const world_mind = new Mind(logos(), 'world');

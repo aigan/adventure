@@ -3,10 +3,10 @@ import { expect } from 'chai'
 import { Mind } from '../public/worker/mind.mjs'
 import { State } from '../public/worker/state.mjs'
 import { Belief } from '../public/worker/belief.mjs'
+import { logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { setupStandardArchetypes } from './helpers.mjs'
 
-const logos = () => DB.get_logos_mind();
 
 describe('Locking Constraints', () => {
   beforeEach(() => {

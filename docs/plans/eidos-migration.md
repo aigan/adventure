@@ -1,6 +1,6 @@
 # Eidos Migration - Eliminate Limbo Pattern
 
-**Status**: Planned
+**Status**: Complete
 **Created**: 2025-11-03
 
 ## Goal
@@ -184,15 +184,17 @@ npc2_state.base = world.group_mind.state_110
 
 ## Implementation Tasks
 
-- [ ] Add `DB.get_eidos()` singleton function
-- [ ] Add `mind.origin_state` property tracking
-- [ ] Update `DB.register()` to use Eidos instead of limbo
-- [ ] Migrate test files using `create_shared_from_template(null, ...)`
-- [ ] Remove null support from `in_mind` type
-- [ ] Remove null support from `origin_state` type
-- [ ] Remove `Belief.create_shared_from_template()` method
-- [ ] Document group_mind pattern
-- [ ] Update SPECIFICATION.md with Eidos architecture
+- [x] Add `DB.get_eidos()` singleton function
+- [x] Add `mind.origin_state` property tracking
+- [x] Update `DB.register()` to use Eidos instead of limbo
+- [x] Migrate test files using `create_shared_from_template(null, ...)`
+- [x] Update `is_shared` getter to recognize Eidos beliefs
+- [x] Update `get_shared_belief_by_state` to make Eidos beliefs globally accessible
+- [ ] Remove null support from `in_mind` type (deferred - keeping backward compatibility)
+- [ ] Remove null support from `origin_state` type (deferred - keeping backward compatibility)
+- [ ] Remove `Belief.create_shared_from_template()` method (deferred - keeping backward compatibility)
+- [ ] Document group_mind pattern (future work)
+- [ ] Update SPECIFICATION.md with Eidos architecture (future work)
 
 ## Breaking Changes
 

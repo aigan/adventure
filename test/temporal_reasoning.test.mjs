@@ -1,8 +1,7 @@
 import { expect } from 'chai'
-import { Mind, State, Belief } from '../public/worker/cosmos.mjs'
+import { Mind, State, Belief , logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
-const logos = () => DB.get_logos_mind();
 
 describe.skip('Temporal Reasoning', () => {
   beforeEach(() => {

@@ -14,6 +14,7 @@ import { Belief } from './belief.mjs'
 import { log, assert } from '../lib/debug.mjs';
 import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
+import { logos, logos_state, eidos, _reset_singletons } from './cosmos.mjs'
 
 // ============================================================================
 // Mind Registries
@@ -36,18 +37,6 @@ const mind_by_id = new Map()
  * @type {Map<string, Mind>}
  */
 const mind_by_label = new Map()
-
-/**
- * Logos singleton - the ground of being, ultimate parent of all minds
- * @type {Mind|null}
- */
-let _logos_mind = null
-
-/**
- * Logos primordial state - the ground of all states
- * @type {State|null}
- */
-let _logos_state = null
 
 // ============================================================================
 // State Registries
@@ -164,32 +153,31 @@ export function _reflect() {
 }
 
 // ============================================================================
-// Logos Singleton - Ground of Being
+// Singleton Accessors (Backward Compatibility)
 // ============================================================================
 
 /**
- * Get or create the logos singleton - ultimate ground of being
- * Logos is the ONE mind with parent=null, all other minds descend from logos
- * @returns {Mind} The logos mind singleton
+ * Get logos mind singleton (backward compatibility wrapper)
+ * @returns {Mind}
  */
 export function get_logos_mind() {
-  if (_logos_mind === null) {
-    _logos_mind = new Mind(null, 'logos')
-  }
-  return _logos_mind
+  return logos()
 }
 
 /**
- * Get or create the logos primordial state - ground of all states
- * Logos state is the ONE state with ground_state=null, all other states ground in it
- * @returns {State} The logos state singleton
+ * Get logos state singleton (backward compatibility wrapper)
+ * @returns {State}
  */
 export function get_logos_state() {
-  if (_logos_state === null) {
-    const logos_mind = get_logos_mind()
-    _logos_state = new State(logos_mind, 0, null, null)
-  }
-  return _logos_state
+  return logos_state()
+}
+
+/**
+ * Get eidos mind singleton (backward compatibility wrapper)
+ * @returns {Mind}
+ */
+export function get_eidos() {
+  return eidos()
 }
 
 // ============================================================================
@@ -426,9 +414,8 @@ export function reset_all_registries() {
   label_by_sid.clear()
   subject_by_sid.clear()
 
-  // Reset logos singletons
-  _logos_mind = null
-  _logos_state = null
+  // Reset primordial singletons (Logos, Eidos)
+  _reset_singletons()
 
   for (const key in state_by_label) delete state_by_label[key]
   Archetype.reset_registry()
@@ -503,22 +490,13 @@ export function register(traittypes, archetypes, prototypes) {
     Archetype.register(label, archetype)
   }
 
-  // Register prototypes third (timeless shared beliefs)
+  // Register prototypes third (shared beliefs in Eidos)
+  const eidos_mind = eidos()
+  assert(eidos_mind.origin_state !== null, 'Eidos origin_state must exist')
+
   for (const [label, def] of Object.entries(prototypes)) {
     // Validate required fields
     assert(def.bases && Array.isArray(def.bases), `Prototype '${label}' must have 'bases' array`, {label, def})
-
-    // Decider function for resolving string bases to beliefs
-    // Prototypes are timeless shared beliefs - look them up directly without time
-    /** @type {(subject: import('./subject.mjs').Subject) => import('./belief.mjs').Belief} */
-    const decider = (subject) => {
-      const beliefs = [...get_beliefs_by_subject(subject)]
-
-      // Prototypes should have exactly one belief per subject
-      assert(beliefs.length === 1, `Expected exactly one belief for prototype subject sid=${subject.sid}`, {sid: subject.sid, count: beliefs.length})
-
-      return beliefs[0]
-    }
 
     // Build traits object with @label
     const traits = {
@@ -526,7 +504,12 @@ export function register(traittypes, archetypes, prototypes) {
       ...(def.traits || {})
     }
 
-    // Use create_shared_from_template to eliminate duplication
-    Belief.create_shared_from_template(null, def.bases, traits, decider)
+    // Create prototype in Eidos origin_state
+    const prototype = eidos_mind.origin_state.add_belief_from_template({
+      bases: def.bases,
+      traits
+    })
+    // Lock prototypes (must be immutable before use as bases)
+    prototype.lock(eidos_mind.origin_state)
   }
 }

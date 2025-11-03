@@ -1,9 +1,9 @@
 import { expect } from 'chai'
 import { setupStandardArchetypes, createMindWithBeliefs, get_first_belief_by_label } from './helpers.mjs'
 import { Mind } from '../public/worker/mind.mjs'
+import { logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
-const logos = () => DB.get_logos_mind();
 
 describe('Subject.to_inspect_view()', () => {
   beforeEach(() => {

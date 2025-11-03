@@ -2,6 +2,21 @@
 
 ## Recently Completed
 
+**Eidos Migration - Eliminate Limbo Pattern** (2025-11-03) ([plan](docs/plans/eidos-migration.md))
+- ✅ Created Eidos singleton (`eidos()`) - realm of forms for prototypes
+- ✅ Added `mind.origin_state` property tracking first state created
+- ✅ Updated `DB.register()` to create prototypes in Eidos.origin_state
+- ✅ Migrated all test files from `create_shared_from_template(null, ...)` to Eidos
+- ✅ Encapsulated `locked` property (getter with `._locked` internal field)
+- ✅ Changed to reference equality (`in_mind === eidos()`) from string comparison
+- ✅ Moved primordial singletons to cosmos.mjs (`logos()`, `logos_state()`, `eidos()`)
+- ✅ Updated all test imports to use `logos` directly from cosmos.mjs
+- ✅ Updated `is_shared` getter to recognize Eidos beliefs
+- ✅ Updated `get_shared_belief_by_state` to make Eidos beliefs globally accessible
+- ✅ All 210 tests passing with Eidos architecture
+- Note: Kept `create_shared_from_template()` for backward compatibility
+- Note: Kept `DB.get_eidos()` wrapper for backward compatibility
+
 **Logos Singleton & Null Elimination** (2025-11-03)
 - ✅ Created Logos singleton (`DB.get_logos_mind()`) - the ONE mind with `parent=null`
 - ✅ Created logos_state singleton - the ONE state with `ground_state=null`
@@ -12,18 +27,21 @@
 - ✅ All 210 tests passing with strict null enforcement
 
 **Remaining nulls (intentional)**:
-- `in_mind: Mind|null` - null for shared beliefs in limbo (to be migrated to Eidos)
-- `origin_state: State|null` - null for shared beliefs in limbo (to be migrated to Eidos)
-- `ground_mind: Mind|null` - null for truly global subjects (archetypes)
+- `ground_mind: Mind|null` - null only for Logos (primordial mind has no parent)
+- `ground_state: State|null` - null only for logos_state (primordial state has no ground)
 
 ## Active Plan
 
-**Eidos Migration - Eliminate Limbo Pattern** ([plan](docs/plans/eidos-migration.md))
-- Replace shared belief limbo (`in_mind=null`) with explicit Eidos mind
-- All prototypes/archetypes live in Eidos.origin_state
-- Group mind pattern: each mind has sibling peer for shared knowledge
-- Origin state pattern: every mind tracks its primordial state
-- After migration: `in_mind` and `origin_state` never null
+**Eliminate null ground_state** ([plan](docs/plans/eliminate-null-ground-state.md))
+
+Enforce that `create_state()` requires ground_state parameter. Only `logos_state()` created in cosmos.mjs should have `ground_state=null`.
+
+**Current Status**: Planning
+- [ ] Update Mind.create_state() to require ground_state (no null allowed)
+- [ ] Bulk update ~200 test instances: `.create_state(tt, null)` → `.create_state(tt, logos_state())`
+- [ ] Fix special cases (NPC minds use world_state, not logos_state)
+- [ ] Verify all 210 tests passing
+- [ ] Update CURRENT.md to remove ground_state from remaining nulls
 
 ## Backlog
 
@@ -44,12 +62,6 @@
   - Trait resolution: last wins (override pattern)
   - Restrictions: no delete operations (only insert/replace)
   - Used for prototype minds with composed knowledge
-- [ ] **Eidos Implementation** - Create realm of forms for prototypes ([plan](docs/plans/eidos-migration.md))
-  - Add `DB.get_eidos()` singleton (child of Logos)
-  - Add `mind.origin_state` property for primordial state tracking
-  - Migrate `DB.register()` to create prototypes in Eidos.origin_state
-  - Implement group_mind pattern for shared cultural knowledge
-  - Remove limbo support: `in_mind` and `origin_state` never null
 - [ ] **Trait Merge Semantics** - Document when traits update vs create new belief version
   - Why Mind is mutable reference (contains States, modified in place)
   - Contrast with immutable trait values (primitives, Subjects)

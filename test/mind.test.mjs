@@ -1,10 +1,7 @@
 import { expect } from 'chai';
-import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { stdTypes, Thing } from './helpers.mjs';
-
-// Helper to get logos for cleaner test code
-const logos = () => DB.get_logos_mind();
 
 describe('Mind', () => {
   beforeEach(() => {
@@ -216,7 +213,10 @@ describe('Mind', () => {
     });
 
     it('should throw if belief has no origin_state', () => {
-      const belief = new Belief(null);
+      const mind = new Mind(logos(), 'test');
+      const state = mind.create_state(0, null);
+      const belief = new Belief(state);
+      belief.origin_state = null;  // Manually break it for testing
       const mind_traittype = Traittype.get_by_label('mind');
 
       expect(() => {

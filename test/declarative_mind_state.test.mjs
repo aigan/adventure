@@ -1,9 +1,8 @@
 import { expect } from 'chai';
-import { Mind, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { stdTypes, Thing } from './helpers.mjs';
 
-const logos = () => DB.get_logos_mind();
 
 describe('Mind Trait', () => {
   beforeEach(() => {
@@ -156,16 +155,23 @@ describe('Mind Trait', () => {
     DB.register(traittypes, archetypes, {});
 
     // Create shared belief prototypes (templates for Location types)
-    const tavern_proto = Belief.create_shared_from_template(null, ['Location'], {
-      '@tt': 100,
-      '@label': 'TavernPrototype',
-      size: 'large'  // Default size for taverns
+    const eidos = DB.get_eidos();
+    const tavern_proto = eidos.origin_state.add_belief_from_template({
+      bases: ['Location'],
+      traits: {
+        '@tt': 100,
+        '@label': 'TavernPrototype',
+        size: 'large'  // Default size for taverns
+      }
     });
 
-    const square_proto = Belief.create_shared_from_template(null, ['Location'], {
-      '@tt': 100,
-      '@label': 'SquarePrototype',
-      size: 'huge'  // Default size for squares
+    const square_proto = eidos.origin_state.add_belief_from_template({
+      bases: ['Location'],
+      traits: {
+        '@tt': 100,
+        '@label': 'SquarePrototype',
+        size: 'huge'  // Default size for squares
+      }
     });
 
     // Create world with two NPC bodies
@@ -332,10 +338,14 @@ describe('Mind Trait', () => {
     DB.register(traittypes, archetypes, {});
 
     // Create shared prototype
-    const tavern_proto = Belief.create_shared_from_template(null, ['Location'], {
-      '@tt': 100,
-      '@label': 'TavernPrototype',
-      size: 'large'
+    const eidos = DB.get_eidos();
+    const tavern_proto = eidos.origin_state.add_belief_from_template({
+      bases: ['Location'],
+      traits: {
+        '@tt': 100,
+        '@label': 'TavernPrototype',
+        size: 'large'
+      }
     });
 
     // Create world entity
@@ -353,12 +363,15 @@ describe('Mind Trait', () => {
     // Create shared cultural knowledge (what villagers know about the tavern)
     // NOTE: Uses CulturalKnowledge archetype (non-spatial), not Location (spatial)
     // It's a template containing only the culturally known traits
-    const cultural_knowledge = Belief.create_shared_from_template(null, ['CulturalKnowledge'], {
-      '@tt': 200,
-      '@label': 'CulturalKnowledge_Tavern',
-      size: 'large',  // Everyone knows it's large
-      owner: 'blacksmith_guild'  // Everyone knows who owns it
-      // NOTE: coordinates are NOT in cultural knowledge - must be observed
+    const cultural_knowledge = eidos.origin_state.add_belief_from_template({
+      bases: ['CulturalKnowledge'],
+      traits: {
+        '@tt': 200,
+        '@label': 'CulturalKnowledge_Tavern',
+        size: 'large',  // Everyone knows it's large
+        owner: 'blacksmith_guild'  // Everyone knows who owns it
+        // NOTE: coordinates are NOT in cultural knowledge - must be observed
+      }
     });
 
     // Create NPC1 with initial cultural knowledge (manual setup, not via mind template)
