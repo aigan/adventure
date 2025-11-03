@@ -149,7 +149,7 @@ describe('Subject.to_inspect_view()', () => {
 
     // Create a different mind without the workshop
     const other_mind = new Mind(logos(), 'other')
-    const other_state = other_mind.create_state(1)
+    const other_state = other_mind.create_state(1, null)
 
     // Trying to inspect workshop.subject in other_state should fail
     expect(() => {

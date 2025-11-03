@@ -14,11 +14,11 @@ describe('Registry', () => {
   describe('Label Uniqueness', () => {
     it('currently allows duplicate labels across minds', () => {
       const mind_a = new Mind(logos(), 'mind_a');
-      const state_a = mind_a.create_state(1);
+      const state_a = mind_a.create_state(1, null);
       const workshop_a = Belief.from_template(state_a, {traits: {'@label': 'workshop_unique_a'}, bases: ['Location']});
 
       const mind_b = new Mind(logos(), 'mind_b');
-      const state_b = mind_b.create_state(1);
+      const state_b = mind_b.create_state(1, null);
       const workshop_b = Belief.from_template(state_b, {traits: {'@label': 'workshop_unique_b'}, bases: ['Location']});
 
       // Labels are globally unique now
@@ -31,7 +31,7 @@ describe('Registry', () => {
 
     it('throws error on duplicate labels', () => {
       const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1);
+      const state = mind.create_state(1, null);
       Belief.from_template(state, {traits: {'@label': 'item1'}, bases: ['PortableObject']});
 
       // Adding another with same label should throw
@@ -42,7 +42,7 @@ describe('Registry', () => {
 
     it('throws error when belief label matches archetype label', () => {
       const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1);
+      const state = mind.create_state(1, null);
 
       // Trying to create belief with same label as archetype should throw
       expect(() => {

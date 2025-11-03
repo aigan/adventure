@@ -87,7 +87,9 @@ export function load(json_string) {
   let result
   switch (data._type) {
     case 'Mind':
-      result = Mind.from_json(/** @type {MindJSON} */ (data))
+      // When loading root mind, parent should be logos (or null only for logos itself)
+      // TODO: Check data.label === 'logos' and handle appropriately
+      result = Mind.from_json(/** @type {MindJSON} */ (data), null)
       break
     case 'Belief':
       throw new Error('Loading individual Belief not yet implemented')

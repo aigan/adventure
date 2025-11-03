@@ -109,7 +109,7 @@ setupStandardArchetypes();
 
 // Create world mind and initial state
 const world_mind = new Cosmos.Mind(null, 'world');
-const state = world_mind.create_state(1);
+const state = world_mind.create_state(1, null);
 
 // Create world beliefs (entities in the world)
 const world_belief = {

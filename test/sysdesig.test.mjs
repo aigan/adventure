@@ -73,7 +73,7 @@ describe('sysdesig', () => {
   describe('State.sysdesig()', () => {
     it('includes mind label, ID, and tt', () => {
       const mind = new Mind(logos(), 'test')
-      const state = mind.create_state(42)
+      const state = mind.create_state(42, null)
       const result = state.sysdesig()
 
       expect(result).to.include('test')
@@ -83,7 +83,7 @@ describe('sysdesig', () => {
 
     it('shows vt when different from tt', () => {
       const mind = new Mind(logos(), 'test')
-      const state1 = mind.create_state(100)
+      const state1 = mind.create_state(100, null)
       state1.lock()
 
       // Create state with explicit vt different from tt
@@ -97,7 +97,7 @@ describe('sysdesig', () => {
 
     it('shows 🔓 for unlocked states', () => {
       const mind = new Mind(logos(), 'test')
-      const state = mind.create_state(1)
+      const state = mind.create_state(1, null)
       const result = state.sysdesig()
 
       expect(result).to.include('🔓')
@@ -105,7 +105,7 @@ describe('sysdesig', () => {
 
     it('shows 🔒 for locked states', () => {
       const mind = new Mind(logos(), 'test')
-      const state = mind.create_state(1)
+      const state = mind.create_state(1, null)
       state.lock()
       const result = state.sysdesig()
 
@@ -132,7 +132,7 @@ describe('sysdesig', () => {
 
     it('works without label', () => {
       const mind = new Mind(logos(), 'test')
-      const state = mind.create_state(1)
+      const state = mind.create_state(1, null)
       const belief = Belief.from_template(state, {
         bases: ['Location']
       })
@@ -184,7 +184,7 @@ describe('sysdesig', () => {
 
     it('shows @logos for subjects scoped to logos', () => {
       const mind = new Mind(logos(), 'test')
-      const state = mind.create_state(1)
+      const state = mind.create_state(1, null)
       const belief = Belief.from_template(state, {
         bases: ['Location']
       })
@@ -197,7 +197,7 @@ describe('sysdesig', () => {
 
     it('works without label', () => {
       const mind = new Mind(logos(), 'test')
-      const state = mind.create_state(1)
+      const state = mind.create_state(1, null)
       const belief = Belief.from_template(state, {
         bases: ['Location']
       })

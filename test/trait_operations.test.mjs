@@ -43,7 +43,7 @@ describe('Trait Operations Pattern', () => {
 
     // Create world beliefs
     const world_mind = new Mind(logos(), 'world')
-    const world_state = world_mind.create_state(1)
+    const world_state = world_mind.create_state(1, null)
 
     const workshop = world_state.add_belief_from_template({
       label: 'workshop',
@@ -114,7 +114,7 @@ describe('Trait Operations Pattern', () => {
 
     // Create world beliefs
     const world_mind = new Mind(logos(), 'world')
-    const world_state = world_mind.create_state(1)
+    const world_state = world_mind.create_state(1, null)
 
     const world_tavern = world_state.add_belief_from_template({
       label: 'tavern',
@@ -196,7 +196,7 @@ describe('Trait Operations Pattern', () => {
 
     // Create world beliefs
     const world_mind = new Mind(logos(), 'world')
-    const world_state = world_mind.create_state(1)
+    const world_state = world_mind.create_state(1, null)
 
     const world_tavern = world_state.add_belief_from_template({
       label: 'tavern',
@@ -271,7 +271,7 @@ describe('Trait Operations Pattern', () => {
 
     // Create world beliefs
     const world_mind = new Mind(logos(), 'world')
-    let world_state = world_mind.create_state(1)
+    let world_state = world_mind.create_state(1, null)
 
     const world_tavern = world_state.add_belief_from_template({
       label: 'tavern',

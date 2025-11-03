@@ -59,7 +59,7 @@ describe('learn_about', () => {
 
     it('learn_about on versioned belief walks chain to find archetypes', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_mind_state = world_mind.create_state(1);
+      const world_mind_state = world_mind.create_state(1, null);
       const hammer_v1_belief = world_mind_state.add_belief_from_template({bases: ['PortableObject'], traits: {'@label': 'hammer_v1'}});
 
       const hammer_v1 = get_first_belief_by_label('hammer_v1');
@@ -114,7 +114,7 @@ describe('learn_about', () => {
 
     it('learn_about directly from base belief works', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_mind_state = world_mind.create_state(1);
+      const world_mind_state = world_mind.create_state(1, null);
       const base_hammer_belief = world_mind_state.add_belief_from_template({bases: ['PortableObject'], traits: {'@label': 'base_hammer'}});
 
       const base_hammer = get_first_belief_by_label('base_hammer');
@@ -232,7 +232,7 @@ describe('learn_about', () => {
     // Future: Cross-NPC communication will work via communication events in the world that NPCs observe and learn from.
     it.skip('learn_about is not transitive - about points to the belief, not what it\'s about', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_mind_state = world_mind.create_state(1);
+      const world_mind_state = world_mind.create_state(1, null);
       world_mind_state.add_belief_from_template({bases: ['Location'], traits: {'@label': 'workshop'}});
 
       const npc1_mind = new Mind(world_mind, 'npc1');
@@ -255,7 +255,7 @@ describe('learn_about', () => {
 
     it('learn_about should walk belief chain to find archetypes', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_mind_state = world_mind.create_state(1);
+      const world_mind_state = world_mind.create_state(1, null);
       world_mind_state.add_belief_from_template({bases: ['PortableObject'], traits: {'@label': 'hammer_v1'}});
 
       const hammer_v1 = get_first_belief_by_label('hammer_v1');
@@ -335,7 +335,7 @@ describe('learn_about', () => {
 
       const world_mind = new Mind(logos(), 'world');
 
-      const world_mind_state = world_mind.create_state(1);
+      const world_mind_state = world_mind.create_state(1, null);
 
       // Create items
       const sword = world_mind_state.add_belief_from_template({
@@ -378,7 +378,7 @@ describe('learn_about', () => {
 
     it('learn_about copies trait values even when inherited from base', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(100);
+      const world_state = world_mind.create_state(100, null);
 
       const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
@@ -433,7 +433,7 @@ describe('learn_about', () => {
 
     it('incremental knowledge accumulation via inheritance', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(100);
+      const world_state = world_mind.create_state(100, null);
 
       const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},

@@ -1,12 +1,29 @@
 # Current Work
 
+## Recently Completed
+
+**Logos Singleton & Null Elimination** (2025-11-03)
+- ✅ Created Logos singleton (`DB.get_logos_mind()`) - the ONE mind with `parent=null`
+- ✅ Created logos_state singleton - the ONE state with `ground_state=null`
+- ✅ Enforced Mind constructor: `parent` must be Mind (or null only for Logos)
+- ✅ Removed implicit `ground_state=null` default from `Mind.create_state()`
+- ✅ Migrated 194 test instances to use `Mind(logos(), ...)` pattern
+- ✅ Fixed `Mind.create_from_template()` to work with shared beliefs (uses `subject.ground_mind`)
+- ✅ All 210 tests passing with strict null enforcement
+
+**Remaining nulls (intentional)**:
+- `in_mind: Mind|null` - null for shared beliefs in limbo (to be migrated to Eidos)
+- `origin_state: State|null` - null for shared beliefs in limbo (to be migrated to Eidos)
+- `ground_mind: Mind|null` - null for truly global subjects (archetypes)
+
 ## Active Plan
 
-**Trait Composition and Learn_About Fixes** ([plan](docs/plans/trait-composition-fixes.md))
-- Fix learned beliefs creating child minds (Mental archetype _call execution)
-- Fix null trait values creating labeled subjects in learn_about
-- Add tests and asserts to prevent double-mind bugs
-- Document trait composition refactoring in progress
+**Eidos Migration - Eliminate Limbo Pattern** ([plan](docs/plans/eidos-migration.md))
+- Replace shared belief limbo (`in_mind=null`) with explicit Eidos mind
+- All prototypes/archetypes live in Eidos.origin_state
+- Group mind pattern: each mind has sibling peer for shared knowledge
+- Origin state pattern: every mind tracks its primordial state
+- After migration: `in_mind` and `origin_state` never null
 
 ## Backlog
 
@@ -21,6 +38,18 @@
   - Tests: Array-valued traits compose correctly via append operations
 
 ### Design & Architecture
+- [ ] **UnionState for Prototype Composition** - Flyweight composition for prototype minds ([plan](docs/plans/union-state.md))
+  - Enable VillageBlacksmith = Villager + Blacksmith without multiple base states
+  - UnionState holds ordered array of component_states
+  - Trait resolution: last wins (override pattern)
+  - Restrictions: no delete operations (only insert/replace)
+  - Used for prototype minds with composed knowledge
+- [ ] **Eidos Implementation** - Create realm of forms for prototypes ([plan](docs/plans/eidos-migration.md))
+  - Add `DB.get_eidos()` singleton (child of Logos)
+  - Add `mind.origin_state` property for primordial state tracking
+  - Migrate `DB.register()` to create prototypes in Eidos.origin_state
+  - Implement group_mind pattern for shared cultural knowledge
+  - Remove limbo support: `in_mind` and `origin_state` never null
 - [ ] **Trait Merge Semantics** - Document when traits update vs create new belief version
   - Why Mind is mutable reference (contains States, modified in place)
   - Contrast with immutable trait values (primitives, Subjects)
@@ -35,23 +64,22 @@
   - One-to-many mapping? Separate traits? Computed properties?
 
 ### Features
-- [ ] **Lazy Version Propagation** - Enable efficient shared belief updates without version cascades ([plan](docs/plans/lazy-version-propagation.md))
-  - Add branch tracking to beliefs (branches set, metadata)
-  - Implement state resolver interface for branch evaluation
-  - Update trait resolution to walk branches lazily
-  - Materialization on explicit version creation
-  - Superposition handling for probability branches
+- [ ] **Lazy Version Propagation with Group Minds** - Enable efficient shared belief updates ([plan](docs/plans/lazy-version-propagation.md))
+  - NPCs reference sibling group_mind states as bases
+  - Cultural knowledge updates create new group_mind states
+  - NPCs inherit old version until they observe/interact
+  - Materialization on explicit observation (not automatic cascade)
   - Enables scaling to millions of NPCs inheriting cultural knowledge
-  - Includes: Shared Belief documentation integration (Phase 7 from [shared belief plan](docs/plans/archive/shared-belief-architecture.md))
-- [ ] **Shared Belief Scoping Documentation** - Document ground_mind scoping patterns ([plan](docs/plans/archive/shared-belief-architecture.md) Phase 6)
-  - Update SPECIFICATION.md with shared belief scoping semantics
-  - Document Subject.ground_mind property and global vs scoped beliefs
-  - Add examples of cross-parent isolation
+  - Architecture: `npc_state.base = world.group_mind.origin_state`
 - [ ] **Mind Template Syntax: Support Bases** - Enable specifying belief bases in declarative mind templates
   - Current limitation: `mind: {tavern: ['location']}` only supports labeled subjects
   - Need: Way to specify bases for beliefs created during learning
   - Options: Use same format as beliefs (with bases/traits) OR add `@bases` meta-trait
   - Goal: Avoid deep nesting in template syntax while supporting full belief construction
+- [ ] **Trait Composition Fix** - Fix learned beliefs creating child minds ([plan](docs/plans/trait-composition-fixes.md))
+  - Fix Mental archetype _call execution creating duplicate minds
+  - Fix null trait values creating labeled subjects in learn_about
+  - Add tests and asserts to prevent double-mind bugs
 
 ## Next Up
 

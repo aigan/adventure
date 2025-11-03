@@ -17,7 +17,7 @@ import * as DB from '../public/worker/db.mjs';
  */
 export function createMindWithBeliefs(label, beliefs = {}, parent_mind = DB.get_logos_mind()) {
   const mind = new Mind(parent_mind, label);
-  const state = mind.create_state(1);
+  const state = mind.create_state(1, null);  // Explicit null for root state
 
   for (const [belief_label, def] of Object.entries(beliefs)) {
     const existing_traits = 'traits' in def ? def.traits : {};

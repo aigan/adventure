@@ -15,7 +15,7 @@ describe('Save/Load functionality', () => {
     it('saves and loads a simple mind', () => {
       // Create simple world
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(1);
+      const world_state = world_mind.create_state(1, null);
 
       const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
@@ -47,7 +47,7 @@ describe('Save/Load functionality', () => {
     it('handles belief trait references after save/load', () => {
       // Create world with location relationship
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(1);
+      const world_state = world_mind.create_state(1, null);
 
       const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
@@ -80,7 +80,7 @@ describe('Save/Load functionality', () => {
       // circular trait references would point to old versions from previous states
 
       const world_mind = new Mind(logos(), 'world');
-      const state1 = world_mind.create_state(1);
+      const state1 = world_mind.create_state(1, null);
 
       const room1 = state1.add_belief_from_template({
         traits: {'@label': 'room1'},
@@ -137,7 +137,7 @@ describe('Save/Load functionality', () => {
 
     it('loads state chains with base references', () => {
       const world_mind = new Mind(logos(), 'world');
-      const state1 = world_mind.create_state(1);
+      const state1 = world_mind.create_state(1, null);
       const ball = state1.add_belief_from_template({
         traits: {'@label': 'ball'},
         bases: ['PortableObject'],
@@ -192,7 +192,7 @@ describe('Save/Load functionality', () => {
       };
 
       const world_mind = new Mind(logos(), 'world');
-      let state = world_mind.create_state(1);
+      let state = world_mind.create_state(1, null);
       state.add_beliefs_from_template(world_belief);
 
       const ball = state.add_belief_from_template({
@@ -237,7 +237,7 @@ describe('Save/Load functionality', () => {
 
     it('preserves and continues id_sequence', () => {
       const world_mind = new Mind(logos(), 'world');
-      const state = world_mind.create_state(1);
+      const state = world_mind.create_state(1, null);
       const workshop = state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location'],
@@ -258,7 +258,7 @@ describe('Save/Load functionality', () => {
 
     it('handles state ground_state references', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(1);
+      const world_state = world_mind.create_state(1, null);
 
       const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
@@ -314,7 +314,7 @@ describe('Save/Load functionality', () => {
       };
 
       const world_mind = new Mind(logos(), 'world');
-      let state = world_mind.create_state(1);
+      let state = world_mind.create_state(1, null);
       state.add_beliefs_from_template(world_belief);
 
       // Add entities and create versions

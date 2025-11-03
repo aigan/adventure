@@ -122,7 +122,7 @@ describe('Logos Singleton', () => {
     it('works with shared belief as ground_belief', () => {
       // Create world context
       const world_mind = Mind.create_world()
-      const world_state = world_mind.create_state(100)
+      const world_state = world_mind.create_state(100, null)
 
       // Create a shared belief (template) scoped to world
       const shared_template = Belief.create_shared_from_template(

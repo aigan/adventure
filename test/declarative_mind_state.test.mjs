@@ -46,7 +46,7 @@ describe('Mind Trait', () => {
 
     // Create world beliefs
     const world_mind = new Mind(logos(), 'world');
-    const world_state = world_mind.create_state(1);
+    const world_state = world_mind.create_state(1, null);
 
     const main_area = world_state.add_belief_from_template({
       traits: {'@label': 'main_area'},
@@ -170,7 +170,7 @@ describe('Mind Trait', () => {
 
     // Create world with two NPC bodies
     const world_mind = new Mind(logos(), 'world');
-    const world_state = world_mind.create_state(200);
+    const world_state = world_mind.create_state(200, null);
 
     // World beliefs inherit from shared prototypes
     const blacksmith_tavern = world_state.add_belief_from_template({
@@ -340,7 +340,7 @@ describe('Mind Trait', () => {
 
     // Create world entity
     const world_mind = new Mind(logos(), 'world');
-    const world_state = world_mind.create_state(200);
+    const world_state = world_mind.create_state(200, null);
 
     const blacksmith_tavern = world_state.add_belief_from_template({
             bases: [tavern_proto],
@@ -448,7 +448,7 @@ describe('Mind Trait', () => {
     DB.register(traittypes, archetypes, {});
 
     const world_mind = new Mind(logos(), 'world');
-    const world_state = world_mind.create_state(1);
+    const world_state = world_mind.create_state(1, null);
 
     const location1 = world_state.add_belief_from_template({ bases: ['Location'], traits: {'@label': 'location1'} });
 
@@ -496,7 +496,7 @@ describe('Mind Trait', () => {
     DB.register(traittypes, archetypes, {});
 
     const world_mind = new Mind(logos(), 'world');
-    const world_state = world_mind.create_state(1);
+    const world_state = world_mind.create_state(1, null);
 
     const entity_body = world_state.add_belief_from_template({
       traits: {'@label': 'entity_body'},

@@ -217,13 +217,13 @@ export class Mind {
 
   /**
    * @param {number} tt
-   * @param {State|null} ground_state
+   * @param {State|null} ground_state - External world state (null for root states in world minds)
    * @returns {State}
    */
-  create_state(tt, ground_state = null) {
+  create_state(tt, ground_state) {
     assert(
-      !ground_state || ground_state.in_mind === this.parent,
-      'ground_state must be in parent mind',
+      ground_state === null || ground_state.in_mind === this.parent,
+      'ground_state must be in parent mind (or null for root states)',
       {mind: this.label, parent: this.parent?.label, ground_state_mind: ground_state?.in_mind?.label}
     )
 
@@ -285,10 +285,10 @@ export class Mind {
   /**
    * Create Mind from JSON data with lazy loading
    * @param {MindJSON} data - JSON data with _type: 'Mind'
-   * @param {Mind|null} [parent_mind] - Parent mind (null for root minds)
+   * @param {Mind|null} [parent_mind] - Parent mind (required for non-logos minds, null only for logos)
    * @returns {Mind}
    */
-  static from_json(data, parent_mind = null) {
+  static from_json(data, parent_mind) {
     // Create mind shell manually (can't use constructor due to ID/registration requirements)
     const mind = Object.create(Mind.prototype)
 
