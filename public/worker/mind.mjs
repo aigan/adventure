@@ -59,23 +59,18 @@ import { assert, log } from '../lib/debug.mjs'
  * @property {Set<State>} state - All states belonging to this mind
  */
 export class Mind {
-
   /**
-   * @param {Mind|null} parent_mind - Parent mind (null ONLY for logos - use DB.get_logos_mind() for all other minds)
+   * @param {Mind} parent_mind - Parent mind
    * @param {string|null} label - Mind identifier
    * @param {Belief|null} self - What this mind considers "self" (can be null, can change)
    */
   constructor(parent_mind, label = null, self = null) {
-    // parent_mind must be Mind instance (or null only for logos)
-    assert(
-      parent_mind instanceof Mind || (parent_mind === null && label === 'logos'),
-      'parent_mind must be Mind instance (null only allowed for logos)',
-      {label, parent_mind}
-    )
+    // parent_mind must be Mind instance
+    assert(parent_mind instanceof Mind, 'parent_mind must be Mind instance', {label, parent_mind})
 
     this._id = next_id()
-    /** @type {Mind|null} */
-    this.parent = parent_mind
+    /** @type {Mind} - Internal storage, use getter/setter to access */
+    this._parent = parent_mind
     this.label = label
     /** @type {Belief|null} */
     this.self = self
@@ -130,6 +125,22 @@ export class Mind {
     }
 
     DB.register_mind(this)
+  }
+
+  /**
+   * Get parent mind
+   * @returns {Mind}
+   */
+  get parent() {
+    return this._parent
+  }
+
+  /**
+   * Set parent mind (used during deserialization)
+   * @param {Mind} value
+   */
+  set parent(value) {
+    this._parent = value
   }
 
   /**
@@ -306,7 +317,7 @@ export class Mind {
     mind._id = data._id
     mind.label = data.label
     mind.self = null
-    mind.parent = parent_mind
+    mind._parent = parent_mind
     mind._child_minds = new Set()
     mind._states = new Set()
     mind._states_by_ground_state = new Map()

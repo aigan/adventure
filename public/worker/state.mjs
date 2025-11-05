@@ -26,6 +26,7 @@ import * as Cosmos from './cosmos.mjs'
 import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
 import { Serialize } from './serialize.mjs'
+import { Pleroma } from './pleroma.mjs'
 
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
@@ -99,15 +100,15 @@ export class State {
     )
 
     // Derive tt from ground_state.vt (fork invariant)
-    // Exception: When ground_state is logos_state, allow explicit tt
+    // Exception: When ground_state is Pleroma (timeless), allow explicit tt
     const tt = ground_state.vt ?? tt_option
 
-    // If tt was explicitly provided, validate it's only for logos ground_state
+    // If tt was explicitly provided, validate it's only for Pleroma ground_state
     if (tt_option != null) {
       assert(
-        ground_state.ground_state === null,
-        'tt can only be provided explicitly when ground_state is logos_state (fork invariant)',
-        {provided_tt: tt_option, is_logos_ground: ground_state.ground_state === null}
+        ground_state instanceof Pleroma,
+        'tt can only be provided explicitly when ground_state is Pleroma (timeless state)',
+        {provided_tt: tt_option, is_pleroma_ground: ground_state instanceof Pleroma}
       )
     }
 
@@ -648,3 +649,7 @@ export class State {
     return state
   }
 }
+
+// Set up Pleroma inheritance after State is fully defined
+import { _setup_pleroma_inheritance } from './pleroma.mjs'
+_setup_pleroma_inheritance(State)

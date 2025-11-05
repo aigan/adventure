@@ -227,7 +227,7 @@ export class Belief {
 
   /**
    * Add trait from template data (resolves via traittype)
-   * @param {State|null} state - State context for resolution (null for shared beliefs)
+   * @param {State} state - State context for resolution
    * @param {string} label - Trait label
    * @param {*} data - Raw data to be resolved by traittype
    */
@@ -602,10 +602,12 @@ export class Belief {
 
   /**
    * Generate a designation string for this belief
-   * @param {State|null} [state] - State context for resolving `@about`
+   * @param {State} state - State context for resolving `@about`
    * @returns {string} Designation string (e.g., "hammer [PortableObject] #42")
    */
-  sysdesig(state = null) {
+  sysdesig(state) {
+    assert(state instanceof State, 'sysdesig requires State parameter', {belief_id: this._id, label: this.get_label()})
+
     const parts = []
 
     const label = this.get_label()
@@ -638,13 +640,11 @@ export class Belief {
     }
 
     // Include subject label if this belief is about something
-    if (state) {
-      const about_belief = this.get_about(state)
-      if (about_belief) {
-        const about_label = about_belief.get_label()
-        if (about_label) {
-          parts.push(`about ${about_label}`)
-        }
+    const about_belief = this.get_about(state)
+    if (about_belief) {
+      const about_label = about_belief.get_label()
+      if (about_label) {
+        parts.push(`about ${about_label}`)
       }
     }
 
@@ -727,7 +727,7 @@ export class Belief {
       if (traittype) {
         if (Archetype.get_by_label(traittype.data_type) || traittype.data_type === 'Subject') {
           // It's a Belief/Subject reference - get canonical Subject
-          const ground_mind = this.in_mind?.parent ?? null
+          const ground_mind = this.in_mind.parent
           return DB.get_or_create_subject(ground_mind, value)
         }
       }
@@ -881,7 +881,7 @@ export class Belief {
 
   /**
    * Create shared belief from template (limbo - no mind/state ownership)
-   * @param {import('./mind.mjs').Mind|null} parent_mind - Parent mind context for scoping
+   * @param {Mind} parent_mind - Parent mind context for scoping
    * @param {Array<string|Belief|Archetype>} bases - Base archetypes/beliefs (can be strings)
    * @param {Object<string, any>} traits - Traits (including optional @tt and @label)
    * @param {((subject: Subject) => Belief|Archetype|null)|null} [decider] - Function to decide which belief to use for a subject
