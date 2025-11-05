@@ -82,6 +82,7 @@ export class State {
   constructor(mind, tt, base=null, ground_state=null, self=null, vt=null) {
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
     assert(self === null || self instanceof Subject, 'self must be Subject or null')
+    assert(ground_state === null || ground_state instanceof State, 'ground_state must be State or null')
 
     // Validate ground_state is in parent mind
     if (ground_state) {

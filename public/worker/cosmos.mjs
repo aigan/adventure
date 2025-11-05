@@ -6,6 +6,7 @@
 import * as DB from './db.mjs'
 import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
+import { next_id } from './id_sequence.mjs'
 
 export { Archetype } from './archetype.mjs'
 export { Traittype } from './traittype.mjs'
@@ -58,9 +59,27 @@ export function logos() {
  */
 export function logos_state() {
   if (_logos_state === null) {
-    _logos_state = new State(logos(), 0, null, null)
+    const state = Object.create(State.prototype)
+    state._id = next_id()
+    state.in_mind = logos()
+    state.ground_state = null
+    state.tt = null
+    state.vt = null
+    state.base = null
+    state.self = null
+    state.insert = []
+    state.remove = []
+    state.locked = false
+    state._branches = []
+    state._subject_index = null
+
+    state.in_mind.register_state(state)
+    DB.register_state(state)
+    logos().origin_state = state
+
+    _logos_state = state
   }
-  return _logos_state
+  return /** @type {State} */ (_logos_state)
 }
 
 /**

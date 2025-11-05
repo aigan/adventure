@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Mind, Belief , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { setupMinimalArchetypes } from './helpers.mjs';
+import { setupMinimalArchetypes, createStateInNewMind } from './helpers.mjs';
 
 
 describe('Subject', () => {
@@ -12,10 +12,9 @@ describe('Subject', () => {
 
   describe('beliefs_at_tt()', () => {
     it('should return outermost belief on linear version chain', () => {
-      const mind = new Mind(logos(), 'test');
-      const state1 = mind.create_state(100, null);
-      const state2 = mind.create_state(200, null);
-      const state3 = mind.create_state(300, null);
+      const state1 = createStateInNewMind('test', 100);
+      const state2 = createStateInNewMind('test', 200);
+      const state3 = createStateInNewMind('test', 300);
 
       // Create linear version chain: v1 ← v2 ← v3
       const hammer_v1 = Belief.from_template(state1, {traits: {'@label': 'hammer'}, bases: ['PortableObject']});
@@ -35,12 +34,11 @@ describe('Subject', () => {
     });
 
     it('should return outermost beliefs on each branch', () => {
-      const mind = new Mind(logos(), 'test');
-      const state1 = mind.create_state(100, null);
-      const state2 = mind.create_state(200, null);
-      const state3 = mind.create_state(150, null);
-      const state4 = mind.create_state(300, null);
-      const state5 = mind.create_state(175, null);
+      const state1 = createStateInNewMind('test', 100);
+      const state2 = createStateInNewMind('test', 200);
+      const state3 = createStateInNewMind('test', 150);
+      const state4 = createStateInNewMind('test', 300);
+      const state5 = createStateInNewMind('test', 175);
 
       // Create branching version tree:
       // v1(t=100) ← v2(t=200) ← v4(t=300)   [Branch A]
@@ -82,7 +80,6 @@ describe('Subject', () => {
     });
 
     it('should return empty iterable for non-existent subject', () => {
-      const mind = new Mind(logos(), 'test');
       const nonexistent_subject = DB.get_or_create_subject(null, 999);  // Global subject for test
 
       expect([...nonexistent_subject.beliefs_at_tt(100)]).to.deep.equal([]);

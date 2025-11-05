@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Subject, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { createMindWithBeliefs, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
+import { createMindWithBeliefs, createStateInNewMind, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
 
 describe('Belief', () => {
   beforeEach(() => {
@@ -39,8 +39,7 @@ describe('Belief', () => {
     });
 
     it('versioned belief inherits archetypes from base', () => {
-      const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1, null);
+      const state = createStateInNewMind();
       const hammer = Belief.from_template(state, {
         traits: {'@label': 'hammer'},
         bases: ['PortableObject']

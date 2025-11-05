@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { setupStandardArchetypes } from './helpers.mjs';
+import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs';
 
 
 describe('Archetype', () => {
@@ -12,8 +12,7 @@ describe('Archetype', () => {
 
   describe('Archetype Composition', () => {
     it('single archetype has correct structure', () => {
-      const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1, null);
+      const state = createStateInNewMind('test', 1, logos());
       const workshop = Belief.from_template(state, {
         traits: {'@label': 'workshop'},
         bases: ['Location']
@@ -25,8 +24,7 @@ describe('Archetype', () => {
     });
 
     it('archetype with base inherits traits from parent', () => {
-      const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1, null);
+      const state = createStateInNewMind();
       const hammer = Belief.from_template(state, {
         traits: {
           '@label': 'hammer',
@@ -41,8 +39,7 @@ describe('Archetype', () => {
     });
 
     it('Person archetype inherits from multiple bases', () => {
-      const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1, null);
+      const state = createStateInNewMind();
       const player = Belief.from_template(state, {
         traits: {'@label': 'player'},
         bases: ['Person']
@@ -58,8 +55,7 @@ describe('Archetype', () => {
     });
 
     it('get_archetypes walks full inheritance chain', () => {
-      const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1, null);
+      const state = createStateInNewMind();
       const player = Belief.from_template(state, {
         traits: {'@label': 'player'},
         bases: ['Person']
@@ -89,8 +85,7 @@ describe('Archetype', () => {
 
   describe('resolve_trait_value_from_template', () => {
     it('resolves string label to subject', () => {
-      const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1, null);
+      const state = createStateInNewMind();
       const workshop = state.add_belief_from_template({
         bases: ['Location'],
         traits: { '@label': 'workshop', color: 'brown' }
@@ -108,8 +103,7 @@ describe('Archetype', () => {
     });
 
     it('returns Subject as-is', () => {
-      const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1, null);
+      const state = createStateInNewMind();
       const workshop = state.add_belief_from_template({
         bases: ['Location'],
         traits: {'@label': 'workshop'}
@@ -127,8 +121,7 @@ describe('Archetype', () => {
     });
 
     it('throws error when Belief object is passed', () => {
-      const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1, null);
+      const state = createStateInNewMind();
       const workshop = state.add_belief_from_template({
         bases: ['Location'],
         traits: {'@label': 'workshop'}
@@ -146,8 +139,7 @@ describe('Archetype', () => {
     });
 
     it('throws error when belief label not found', () => {
-      const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1, null);
+      const state = createStateInNewMind();
 
       const traittype = Traittype.get_by_label('location');
       const test_belief = Belief.from_template(state, {
@@ -161,8 +153,7 @@ describe('Archetype', () => {
     });
 
     it('throws error when belief has wrong archetype', () => {
-      const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1, null);
+      const state = createStateInNewMind();
       const hammer = state.add_belief_from_template({
         bases: ['PortableObject'],
         traits: {'@label': 'hammer'}
@@ -180,8 +171,7 @@ describe('Archetype', () => {
     });
 
     it('works in trait resolution during from_template', () => {
-      const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1, null);
+      const state = createStateInNewMind();
       const workshop = state.add_belief_from_template({
         bases: ['Location'],
         traits: {'@label': 'workshop'}

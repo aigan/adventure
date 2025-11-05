@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { setupStandardArchetypes, createMindWithBeliefs, get_first_belief_by_label } from './helpers.mjs'
+import { setupStandardArchetypes, createMindWithBeliefs, createStateInNewMind, get_first_belief_by_label } from './helpers.mjs'
 import { Mind } from '../public/worker/mind.mjs'
 import { logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
@@ -148,8 +148,7 @@ describe('Subject.to_inspect_view()', () => {
     const workshop = get_first_belief_by_label('workshop')
 
     // Create a different mind without the workshop
-    const other_mind = new Mind(logos(), 'other')
-    const other_state = other_mind.create_state(1, null)
+    const other_state = createStateInNewMind('other')
 
     // Trying to inspect workshop.subject in other_state should fail
     expect(() => {
@@ -164,8 +163,8 @@ describe('Subject.to_inspect_view()', () => {
 
     const workshop = get_first_belief_by_label('workshop')
 
-    // Root state has no ground_state
-    expect(world_state.ground_state).to.be.null
+    // Root state has logos origin_state as ground_state
+    expect(world_state.ground_state).to.equal(logos().origin_state)
 
     // Should still resolve in itself
     const inspected = workshop.subject.to_inspect_view(world_state)

@@ -88,7 +88,7 @@ describe('sysdesig', () => {
 
       // Create state with explicit vt different from tt
       // vt must be set via State constructor directly
-      const state2 = new State(mind, 50, state1, null, null, 75)
+      const state2 = new State(mind, 50, state1, logos().origin_state, null, 75)
       const result = state2.sysdesig()
 
       expect(result).to.include('tt:50')

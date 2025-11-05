@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { stdTypes, Thing } from './helpers.mjs';
+import { stdTypes, Thing, createStateInNewMind } from './helpers.mjs';
 
 describe('Mind', () => {
   beforeEach(() => {
@@ -22,8 +22,7 @@ describe('Mind', () => {
 
   describe('states_at_tt()', () => {
     it('should return outermost state on linear state chain', () => {
-      const mind = new Mind(logos(), 'test');
-      const state1 = mind.create_state(100, null);
+      const state1 = createStateInNewMind('test', 100);
       state1.lock();
       const state2 = state1.branch_state(null, 200);
       state2.lock();
@@ -31,18 +30,17 @@ describe('Mind', () => {
       state3.lock();
 
       // Query at different times - should return single outermost state
-      expect([...mind.states_at_tt(50)]).to.deep.equal([]);  // Before any state
-      expect([...mind.states_at_tt(100)]).to.deep.equal([state1]);
-      expect([...mind.states_at_tt(150)]).to.deep.equal([state1]);
-      expect([...mind.states_at_tt(200)]).to.deep.equal([state2]);
-      expect([...mind.states_at_tt(250)]).to.deep.equal([state2]);
-      expect([...mind.states_at_tt(300)]).to.deep.equal([state3]);
-      expect([...mind.states_at_tt(999)]).to.deep.equal([state3]);
+      expect([...state1.in_mind.states_at_tt(50)]).to.deep.equal([]);  // Before any state
+      expect([...state1.in_mind.states_at_tt(100)]).to.deep.equal([state1]);
+      expect([...state1.in_mind.states_at_tt(150)]).to.deep.equal([state1]);
+      expect([...state1.in_mind.states_at_tt(200)]).to.deep.equal([state2]);
+      expect([...state1.in_mind.states_at_tt(250)]).to.deep.equal([state2]);
+      expect([...state1.in_mind.states_at_tt(300)]).to.deep.equal([state3]);
+      expect([...state1.in_mind.states_at_tt(999)]).to.deep.equal([state3]);
     });
 
     it('should return outermost states on each branch', () => {
-      const mind = new Mind(logos(), 'test');
-      const state1 = mind.create_state(100, null);
+      const state1 = createStateInNewMind('test', 100);
       state1.lock();
 
       // Create branching state tree:
@@ -62,28 +60,28 @@ describe('Mind', () => {
       state5.lock();
 
       // Before any state
-      expect([...mind.states_at_tt(50)]).to.deep.equal([]);
+      expect([...state1.in_mind.states_at_tt(50)]).to.deep.equal([]);
 
       // Both branches converge to s1
-      expect([...mind.states_at_tt(125)]).to.have.members([state1]);
+      expect([...state1.in_mind.states_at_tt(125)]).to.have.members([state1]);
 
       // Only branch B has progressed: s3
-      const at_160 = [...mind.states_at_tt(160)];
+      const at_160 = [...state1.in_mind.states_at_tt(160)];
       expect(at_160).to.have.lengthOf(1);
       expect(at_160).to.have.members([state3]);
 
       // Branch A: s2 (just created), Branch B: s5
-      const at_210 = [...mind.states_at_tt(210)];
+      const at_210 = [...state1.in_mind.states_at_tt(210)];
       expect(at_210).to.have.lengthOf(2);
       expect(at_210).to.have.members([state2, state5]);
 
       // Branch A: s2 (s4 is at t=300), Branch B: s5
-      const at_250 = [...mind.states_at_tt(250)];
+      const at_250 = [...state1.in_mind.states_at_tt(250)];
       expect(at_250).to.have.lengthOf(2);
       expect(at_250).to.have.members([state2, state5]);
 
       // Branch A: s4, Branch B: s5 (both tips)
-      const at_400 = [...mind.states_at_tt(400)];
+      const at_400 = [...state1.in_mind.states_at_tt(400)];
       expect(at_400).to.have.lengthOf(2);
       expect(at_400).to.have.members([state4, state5]);
     });
@@ -213,8 +211,7 @@ describe('Mind', () => {
     });
 
     it('should throw if belief has no origin_state', () => {
-      const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(0, null);
+      const state = createStateInNewMind('test', 0);
       const belief = new Belief(state);
       belief.origin_state = null;  // Manually break it for testing
       const mind_traittype = Traittype.get_by_label('mind');

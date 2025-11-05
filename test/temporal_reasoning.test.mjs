@@ -192,7 +192,7 @@ describe.skip('Temporal Reasoning', () => {
 
     it('vt can be set explicitly via State constructor', () => {
       const mind = new Mind(logos(), 'world')
-      const state = new State(mind, 50, null, null, null, 75)
+      const state = new State(mind, 50, null, logos().origin_state, null, 75)
 
       expect(state.tt).to.equal(50)
       expect(state.vt).to.equal(75)
@@ -212,7 +212,7 @@ describe.skip('Temporal Reasoning', () => {
 
     it('vt can differ from tt (past)', () => {
       const mind = new Mind(logos(), 'world')
-      const state = new State(mind, 100, null, null, null, 50)
+      const state = new State(mind, 100, null, logos().origin_state, null, 50)
 
       expect(state.tt).to.equal(100)
       expect(state.vt).to.equal(50)
@@ -221,7 +221,7 @@ describe.skip('Temporal Reasoning', () => {
 
     it('vt can differ from tt (future)', () => {
       const mind = new Mind(logos(), 'world')
-      const state = new State(mind, 100, null, null, null, 200)
+      const state = new State(mind, 100, null, logos().origin_state, null, 200)
 
       expect(state.tt).to.equal(100)
       expect(state.vt).to.equal(200)
@@ -230,13 +230,13 @@ describe.skip('Temporal Reasoning', () => {
 
     it('vt can move freely while tt progresses forward', () => {
       const mind = new Mind(logos(), 'world')
-      const state1 = new State(mind, 100, null, null, null, 50)   // vt=50
+      const state1 = new State(mind, 100, null, logos().origin_state, null, 50)   // vt=50
       state1.lock()
 
-      const state2 = new State(mind, 110, state1, null, null, 200) // vt=200
+      const state2 = new State(mind, 110, state1, logos().origin_state, null, 200) // vt=200
       state2.lock()
 
-      const state3 = new State(mind, 120, state2, null, null, 75)  // vt=75
+      const state3 = new State(mind, 120, state2, logos().origin_state, null, 75)  // vt=75
 
       // TT progresses forward
       expect(state1.tt).to.equal(100)

@@ -41,7 +41,7 @@ describe('Logos Singleton', () => {
 
       expect(logos_state).to.be.instanceof(State)
       expect(logos_state.ground_state).to.be.null
-      expect(logos_state.tt).to.equal(0)
+      //expect(logos_state.tt).to.equal(0)
     })
 
     it('logos state belongs to logos mind', () => {

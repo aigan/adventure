@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
+import { setupStandardArchetypes, get_first_belief_by_label, createStateInNewMind } from './helpers.mjs';
 
 
 describe('Save/Load functionality', () => {
@@ -135,8 +135,7 @@ describe('Save/Load functionality', () => {
     });
 
     it('loads state chains with base references', () => {
-      const world_mind = new Mind(logos(), 'world');
-      const state1 = world_mind.create_state(1, null);
+      const state1 = createStateInNewMind('world');
       const ball = state1.add_belief_from_template({
         traits: {'@label': 'ball'},
         bases: ['PortableObject'],
@@ -148,7 +147,7 @@ describe('Save/Load functionality', () => {
       const state3 = state2.branch_state(null, 3);
 
       // Save and reload
-      const json = save_mind(world_mind);
+      const json = save_mind(state1.in_mind);
       DB.reset_registries();
       setupStandardArchetypes();
       const loaded_mind = load(json);
@@ -235,17 +234,16 @@ describe('Save/Load functionality', () => {
     });
 
     it('preserves and continues id_sequence', () => {
-      const world_mind = new Mind(logos(), 'world');
-      const state = world_mind.create_state(1, null);
+      const state = createStateInNewMind('world');
       const workshop = state.add_belief_from_template({
         traits: {'@label': 'workshop'},
         bases: ['Location'],
       });
 
-      const max_id = Math.max(world_mind._id, state._id, workshop._id);
+      const max_id = Math.max(state.in_mind._id, state._id, workshop._id);
 
       // Save and reload
-      const json = save_mind(world_mind);
+      const json = save_mind(state.in_mind);
       DB.reset_registries();
       setupStandardArchetypes();
       load(json);

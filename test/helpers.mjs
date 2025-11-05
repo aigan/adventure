@@ -9,6 +9,19 @@ import { Mind, State, Belief, Archetype, Traittype, save_mind, load, logos } fro
 import * as DB from '../public/worker/db.mjs';
 
 /**
+ * Helper to create a state in a new test mind
+ * @param {string} label - Mind label (defaults to 'test')
+ * @param {number} tt - Transaction time (defaults to 1)
+ * @param {Mind|null} parent_mind - Parent mind (defaults to logos)
+ * @returns {State} State (access mind via state.in_mind)
+ */
+export function createStateInNewMind(label = 'test', tt = 1, parent_mind = logos()) {
+  const mind = new Mind(parent_mind, label);
+  const ground_state = parent_mind ? parent_mind.origin_state : null;
+  return mind.create_state(tt, ground_state);
+}
+
+/**
  * Helper to create a mind with initial beliefs and return a state containing them
  * @param {string} label - Mind label
  * @param {Object} beliefs - Belief definitions
@@ -17,7 +30,8 @@ import * as DB from '../public/worker/db.mjs';
  */
 export function createMindWithBeliefs(label, beliefs = {}, parent_mind = logos()) {
   const mind = new Mind(parent_mind, label);
-  const state = mind.create_state(1, null);  // Explicit null for root state
+  const ground_state = parent_mind ? parent_mind.origin_state : null;
+  const state = mind.create_state(1, ground_state);
 
   for (const [belief_label, def] of Object.entries(beliefs)) {
     const existing_traits = 'traits' in def ? def.traits : {};

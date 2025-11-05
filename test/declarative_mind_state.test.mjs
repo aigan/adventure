@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Mind, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { stdTypes, Thing } from './helpers.mjs';
+import { stdTypes, Thing, createStateInNewMind } from './helpers.mjs';
 
 
 describe('Mind Trait', () => {
@@ -508,8 +508,7 @@ describe('Mind Trait', () => {
 
     DB.register(traittypes, archetypes, {});
 
-    const world_mind = new Mind(logos(), 'world');
-    const world_state = world_mind.create_state(1, null);
+    const world_state = createStateInNewMind('world');
 
     const entity_body = world_state.add_belief_from_template({
       traits: {'@label': 'entity_body'},
