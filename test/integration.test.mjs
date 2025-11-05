@@ -50,7 +50,7 @@ describe('Integration', () => {
       // Verify player
       let player = get_first_belief_by_label('player');
       const player_mind = new Mind(world_state.in_mind, 'player_mind');
-      const player_mind_state = player_mind.create_state(1, world_state);
+      const player_mind_state = player_mind.create_state(world_state);
       player = Belief.from_template(world_state, {
         bases: [player],
         traits: { mind: player_mind }

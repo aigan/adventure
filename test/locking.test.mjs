@@ -17,7 +17,7 @@ describe('Locking Constraints', () => {
   describe('State Constructor', () => {
     it('allows creation with locked ground_state but state becomes immutable', () => {
       const world_mind = new Mind(logos(), 'world')
-      const world_state = world_mind.create_state(1, null)
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
@@ -28,7 +28,7 @@ describe('Locking Constraints', () => {
 
       // Can create nested mind state with locked ground_state
       const player_mind = new Mind(world_mind, 'player')
-      const player_state = player_mind.create_state(1, world_state)
+      const player_state = player_mind.create_state(world_state)
 
       // But modifications should be prevented by ground_state being locked
       expect(player_state).to.exist
@@ -37,7 +37,7 @@ describe('Locking Constraints', () => {
 
     it('rejects creation when self belief is locked', async () => {
       const world_mind = new Mind(logos(), 'world')
-      const world_state = world_mind.create_state(1, null)
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       const player = world_state.add_belief_from_template({
         traits: {'@label': 'player'},
@@ -51,13 +51,13 @@ describe('Locking Constraints', () => {
 
       // Use State constructor directly to pass self parameter
       expect(() => {
-        new State(player_mind, 1, null, world_state, player.subject)
+        new State(player_mind, world_state, null, {self: player.subject})
       }).to.throw('Cannot create state for locked self')
     })
 
     it('allows creation when ground_state is unlocked', () => {
       const world_mind = new Mind(logos(), 'world')
-      const world_state = world_mind.create_state(1, null)
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       const player = world_state.add_belief_from_template({
         traits: {'@label': 'player'},
@@ -66,7 +66,7 @@ describe('Locking Constraints', () => {
 
       // ground_state unlocked - should succeed
       const player_mind = new Mind(world_mind, 'player_mind')
-      const player_state = player_mind.create_state(1, world_state)
+      const player_state = player_mind.create_state(world_state)
 
       expect(player_state).to.exist
       expect(player_state.ground_state).to.equal(world_state)
@@ -76,7 +76,7 @@ describe('Locking Constraints', () => {
   describe('Belief.lock() Cascade', () => {
     it('cascades to child mind states', () => {
       const world_mind = new Mind(logos(), 'world')
-      const world_state = world_mind.create_state(1, null)
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
@@ -107,7 +107,7 @@ describe('Locking Constraints', () => {
 
     it('cascades when world_state locks', () => {
       const world_mind = new Mind(logos(), 'world')
-      const world_state = world_mind.create_state(1, null)
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
@@ -140,7 +140,7 @@ describe('Locking Constraints', () => {
 
     it('does not cascade to inherited Mind traits (already locked via base)', () => {
       const world_mind = new Mind(logos(), 'world')
-      const world_state = world_mind.create_state(1, null)
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       // Create a base belief with a Mind trait
       const base_player = world_state.add_belief_from_template({
@@ -186,7 +186,7 @@ describe('Locking Constraints', () => {
   describe('Full Locking Cascade', () => {
     it('locks entire dependency tree from world_state', () => {
       const world_mind = new Mind(logos(), 'world')
-      const world_state = world_mind.create_state(1, null)
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       const workshop = world_state.add_belief_from_template({
         traits: {'@label': 'workshop'},
@@ -224,7 +224,7 @@ describe('Locking Constraints', () => {
 
     it('prevents modification after cascade lock', () => {
       const world_mind = new Mind(logos(), 'world')
-      const world_state = world_mind.create_state(1, null)
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       const player = world_state.add_belief_from_template({
                 bases: ['Person'],

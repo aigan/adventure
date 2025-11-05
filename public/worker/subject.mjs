@@ -45,7 +45,9 @@ export class Subject {
    */
   get_shared_belief_by_state(state) {
     const query_parent = state.in_mind.parent
-    const shared = [...this.beliefs_at_tt(state.tt)].filter(
+    // For timeless states (tt=null), get all beliefs; otherwise filter by tt
+    const beliefs = state.tt != null ? [...this.beliefs_at_tt(state.tt)] : [...DB.get_beliefs_by_subject(this)]
+    const shared = beliefs.filter(
       b => {
         if (!b.is_shared) return false
 

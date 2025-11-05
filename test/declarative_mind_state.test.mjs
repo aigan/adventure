@@ -45,7 +45,7 @@ describe('Mind Trait', () => {
 
     // Create world beliefs
     const world_mind = new Mind(logos(), 'world');
-    const world_state = world_mind.create_state(1, null);
+    const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
     const main_area = world_state.add_belief_from_template({
       traits: {'@label': 'main_area'},
@@ -176,7 +176,7 @@ describe('Mind Trait', () => {
 
     // Create world with two NPC bodies
     const world_mind = new Mind(logos(), 'world');
-    const world_state = world_mind.create_state(200, null);
+    const world_state = world_mind.create_state(logos().origin_state, {tt: 200});
 
     // World beliefs inherit from shared prototypes
     const blacksmith_tavern = world_state.add_belief_from_template({
@@ -350,7 +350,7 @@ describe('Mind Trait', () => {
 
     // Create world entity
     const world_mind = new Mind(logos(), 'world');
-    const world_state = world_mind.create_state(200, null);
+    const world_state = world_mind.create_state(logos().origin_state, {tt: 200});
 
     const blacksmith_tavern = world_state.add_belief_from_template({
             bases: [tavern_proto],
@@ -376,7 +376,7 @@ describe('Mind Trait', () => {
 
     // Create NPC1 with initial cultural knowledge (manual setup, not via mind template)
     const npc1_mind = new Mind(world_mind, 'npc1');
-    const npc1_state = npc1_mind.create_state(200, null, world_state, null);
+    const npc1_state = npc1_mind.create_state(world_state);
 
     // NPC1 starts with belief based on cultural knowledge
     // This belief is ABOUT blacksmith_tavern and inherits cultural traits
@@ -391,7 +391,7 @@ describe('Mind Trait', () => {
 
     // Create NPC2 with same cultural knowledge
     const npc2_mind = new Mind(world_mind, 'npc2');
-    const npc2_state = npc2_mind.create_state(200, null, world_state, null);
+    const npc2_state = npc2_mind.create_state(world_state);
 
     const npc2_initial_belief = Belief.from_template(npc2_state, {
       bases: [cultural_knowledge],
@@ -461,7 +461,7 @@ describe('Mind Trait', () => {
     DB.register(traittypes, archetypes, {});
 
     const world_mind = new Mind(logos(), 'world');
-    const world_state = world_mind.create_state(1, null);
+    const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
     const location1 = world_state.add_belief_from_template({ bases: ['Location'], traits: {'@label': 'location1'} });
 

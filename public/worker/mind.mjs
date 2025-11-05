@@ -184,8 +184,8 @@ export class Mind {
   *states_at_tt(tt) {
     if (this._states.size === 0) return
 
-    // Get all states with tt <= target
-    const valid_states = [...this._states].filter(s => s.tt <= tt)
+    // Get all states with tt <= target (exclude timeless states with tt=null)
+    const valid_states = [...this._states].filter(s => s.tt != null && s.tt <= tt)
 
     // Yield states that have no descendants in the valid set
     for (const state of valid_states) {
@@ -223,18 +223,15 @@ export class Mind {
   }
 
   /**
-   * @param {number} tt
-   * @param {State|null} ground_state - External world state (null for root states in world minds)
+   * @param {State} ground_state - Required ground state (parent's state)
+   * @param {object} options - Optional parameters
+   * @param {number|null} [options.tt] - Transaction time (only when ground_state.vt is null)
+   * @param {number|null} [options.vt] - Valid time (defaults to tt)
+   * @param {Subject|null} [options.self] - Self identity
    * @returns {State}
    */
-  create_state(tt, ground_state) {
-    assert(
-      ground_state === null || ground_state.in_mind === this.parent,
-      'ground_state must be in parent mind (or null for root states)',
-      {mind: this.label, parent: this.parent?.label, ground_state_mind: ground_state?.in_mind?.label}
-    )
-
-    const state = new State(this, tt, null, ground_state)
+  create_state(ground_state, options = {}) {
+    const state = new State(this, ground_state, null, options)
 
     // Track first state as origin
     if (this.origin_state === null) {
@@ -412,7 +409,10 @@ export class Mind {
     }
 
     // Create new state (either versioning or initial construction)
-    const latest_states = [...this.states_at_tt(ground_state.vt)]
+    // For timeless ground states (vt=null), get all states; otherwise filter by vt
+    const latest_states = ground_state.vt != null
+      ? [...this.states_at_tt(ground_state.vt)]
+      : [...this._states]
     const latest = latest_states[0]
 
     // VERSIONING PATH: ground_belief locked requires existing state
@@ -420,14 +420,15 @@ export class Mind {
       throw new Error('No existing state found for versioning')
     }
 
-    // Fork invariant: child.tt = parent_state.vt
+    // Fork invariant: child.tt = parent_state.vt (handled by State constructor)
     return new State(
       this,
-      ground_state.vt,              // Fork invariant: child.tt = parent_state.vt
-      latest ?? null,               // Inherit from latest or null for initial
       ground_state,
-      latest?.self ?? ground_belief.subject,  // self from latest or ground_belief
-      ground_state.vt               // Inherit vt from ground_state
+      latest ?? null,               // Inherit from latest or null for initial
+      {
+        self: latest?.self ?? ground_belief.subject  // self from latest or ground_belief
+        // vt defaults to tt (from ground_state.vt)
+      }
     )
   }
 
@@ -462,11 +463,12 @@ export class Mind {
     // Create initial state with self reference - fork invariant: child.tt = parent_state.vt
     const state = new State(
       entity_mind,
-      ground_state.vt,   // Fork invariant: child.tt = parent_state.vt
-      null,              // no base
       ground_state,      // ground_state (where body exists)
-      self_subject,      // self (WHO is experiencing this)
-      ground_state.vt    // Inherit vt from ground_state
+      null,              // no base
+      {
+        self: self_subject  // self (WHO is experiencing this)
+        // tt and vt both derive from ground_state.vt (fork invariant)
+      }
     )
 
     // Execute learning

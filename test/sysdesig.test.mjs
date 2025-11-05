@@ -73,7 +73,7 @@ describe('sysdesig', () => {
   describe('State.sysdesig()', () => {
     it('includes mind label, ID, and tt', () => {
       const mind = new Mind(logos(), 'test')
-      const state = mind.create_state(42, null)
+      const state = mind.create_state(logos().origin_state, {tt: 42})
       const result = state.sysdesig()
 
       expect(result).to.include('test')
@@ -83,12 +83,12 @@ describe('sysdesig', () => {
 
     it('shows vt when different from tt', () => {
       const mind = new Mind(logos(), 'test')
-      const state1 = mind.create_state(100, null)
+      const state1 = mind.create_state(logos().origin_state, {tt: 100})
       state1.lock()
 
       // Create state with explicit vt different from tt
       // vt must be set via State constructor directly
-      const state2 = new State(mind, 50, state1, logos().origin_state, null, 75)
+      const state2 = new State(mind, logos().origin_state, state1, {tt: 50, vt: 75})
       const result = state2.sysdesig()
 
       expect(result).to.include('tt:50')
@@ -97,7 +97,7 @@ describe('sysdesig', () => {
 
     it('shows 🔓 for unlocked states', () => {
       const mind = new Mind(logos(), 'test')
-      const state = mind.create_state(1, null)
+      const state = mind.create_state(logos().origin_state, {tt: 1})
       const result = state.sysdesig()
 
       expect(result).to.include('🔓')
@@ -105,7 +105,7 @@ describe('sysdesig', () => {
 
     it('shows 🔒 for locked states', () => {
       const mind = new Mind(logos(), 'test')
-      const state = mind.create_state(1, null)
+      const state = mind.create_state(logos().origin_state, {tt: 1})
       state.lock()
       const result = state.sysdesig()
 
@@ -132,7 +132,7 @@ describe('sysdesig', () => {
 
     it('works without label', () => {
       const mind = new Mind(logos(), 'test')
-      const state = mind.create_state(1, null)
+      const state = mind.create_state(logos().origin_state, {tt: 1})
       const belief = Belief.from_template(state, {
         bases: ['Location']
       })
@@ -149,7 +149,7 @@ describe('sysdesig', () => {
       const workshop = get_first_belief_by_label('workshop')
 
       const npc_mind = new Mind(world_state.in_mind, 'npc')
-      const npc_state = npc_mind.create_state(1, world_state)
+      const npc_state = npc_mind.create_state(world_state)
       const knowledge = npc_state.learn_about(workshop, [])
 
       const result = knowledge.sysdesig(npc_state)
@@ -184,7 +184,7 @@ describe('sysdesig', () => {
 
     it('shows @logos for subjects scoped to logos', () => {
       const mind = new Mind(logos(), 'test')
-      const state = mind.create_state(1, null)
+      const state = mind.create_state(logos().origin_state, {tt: 1})
       const belief = Belief.from_template(state, {
         bases: ['Location']
       })
@@ -197,7 +197,7 @@ describe('sysdesig', () => {
 
     it('works without label', () => {
       const mind = new Mind(logos(), 'test')
-      const state = mind.create_state(1, null)
+      const state = mind.create_state(logos().origin_state, {tt: 1})
       const belief = Belief.from_template(state, {
         bases: ['Location']
       })

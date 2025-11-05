@@ -3,6 +3,7 @@ import * as DB from '../public/worker/db.mjs'
 import { Mind } from '../public/worker/mind.mjs'
 import { State } from '../public/worker/state.mjs'
 import { Belief } from '../public/worker/belief.mjs'
+import { logos } from '../public/worker/cosmos.mjs'
 import { setupStandardArchetypes } from './helpers.mjs'
 
 describe('Logos Singleton', () => {
@@ -89,7 +90,7 @@ describe('Logos Singleton', () => {
       const logos = DB.get_logos_mind()
       const logos_state = DB.get_logos_state()
       const world_mind = new Mind(logos, 'world')
-      const world_state = new State(world_mind, 100, null, logos_state)
+      const world_state = new State(world_mind, logos_state, null, {tt: 100})
 
       expect(world_state.ground_state).to.equal(logos_state)
       expect(world_state.in_mind).to.equal(world_mind)
@@ -122,7 +123,7 @@ describe('Logos Singleton', () => {
     it('works with shared belief as ground_belief', () => {
       // Create world context
       const world_mind = Mind.create_world()
-      const world_state = world_mind.create_state(100, null)
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
       // Create a shared belief (template) scoped to world
       const shared_template = Belief.create_shared_from_template(

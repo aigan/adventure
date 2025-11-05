@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, State, Belief, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load, logos, logos_state } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { stdTypes, Thing, createStateInNewMind } from './helpers.mjs';
 
@@ -24,9 +24,9 @@ describe('Mind', () => {
     it('should return outermost state on linear state chain', () => {
       const state1 = createStateInNewMind('test', 100);
       state1.lock();
-      const state2 = state1.branch_state(null, 200);
+      const state2 = state1.branch_state(logos().origin_state, 200);
       state2.lock();
-      const state3 = state2.branch_state(null, 300);
+      const state3 = state2.branch_state(logos().origin_state, 300);
       state3.lock();
 
       // Query at different times - should return single outermost state
@@ -47,16 +47,16 @@ describe('Mind', () => {
       // s1(t=100) ← s2(t=200) ← s4(t=300)   [Branch A]
       //     ↑
       //    s3(t=150) ← s5(t=175)            [Branch B]
-      const state2 = state1.branch_state(null, 200);
+      const state2 = state1.branch_state(logos().origin_state, 200);
       state2.lock();
 
-      const state3 = state1.branch_state(null, 150);
+      const state3 = state1.branch_state(logos().origin_state, 150);
       state3.lock();
 
-      const state4 = state2.branch_state(null, 300);
+      const state4 = state2.branch_state(logos().origin_state, 300);
       state4.lock();
 
-      const state5 = state3.branch_state(null, 175);
+      const state5 = state3.branch_state(logos().origin_state, 175);
       state5.lock();
 
       // Before any state
@@ -107,7 +107,7 @@ describe('Mind', () => {
 
     it('should create Mind from plain object template (learn spec)', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(1, null);
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       // Create a belief that can be learned about
       const workshop_belief = world_state.add_belief_from_template({
@@ -137,7 +137,7 @@ describe('Mind', () => {
 
     it('should create Mind from explicit template with _type field', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(1, null);
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const workshop_belief = world_state.add_belief_from_template({
         bases: ['Base'],
@@ -165,7 +165,7 @@ describe('Mind', () => {
 
     it('should return Mind instance as-is (not a template)', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(1, null);
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const npc_belief = world_state.add_belief_from_template({
         bases: ['Base']
@@ -182,7 +182,7 @@ describe('Mind', () => {
 
     it('should return null as-is', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(1, null);
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const npc_belief = world_state.add_belief_from_template({
         bases: ['Base']
@@ -197,7 +197,7 @@ describe('Mind', () => {
 
     it('should return undefined as-is', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(1, null);
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const npc_belief = world_state.add_belief_from_template({
         bases: ['Base']
@@ -225,7 +225,7 @@ describe('Mind', () => {
   describe('mind.state property', () => {
     it('tracks unlocked state after create_from_template', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(1, null);
+      const world_state = world_mind.create_state(logos_state(), {tt: 1});
 
       // Just use empty trait spec (no learning needed for this test)
       const npc_belief = world_state.add_belief_from_template({
@@ -243,7 +243,7 @@ describe('Mind', () => {
 
     it('clears state property after locking', () => {
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(1, null);
+      const world_state = world_mind.create_state(logos_state(), {tt: 1});
 
       // Just use empty trait spec
       const npc_belief = world_state.add_belief_from_template({
@@ -267,14 +267,14 @@ describe('Mind', () => {
       const mind = new Mind(logos(), 'test');
 
       // Create first state
-      const state1 = mind.create_state(100, null);
+      const state1 = mind.create_state(logos_state(), {tt: 100});
       expect(mind.state).to.equal(state1);
 
       // Lock first state before branching
       state1.lock();
 
       // Create second state (unlocked)
-      const state2 = state1.branch_state(null, 200);
+      const state2 = state1.branch_state(logos().origin_state, 200);
       expect(mind.state).to.equal(state2);
 
       // Lock second state
@@ -282,7 +282,7 @@ describe('Mind', () => {
       expect(mind.state).to.be.null;
 
       // Create third state
-      const state3 = state1.branch_state(null, 300);
+      const state3 = state1.branch_state(logos().origin_state, 300);
       expect(mind.state).to.equal(state3);
     });
 

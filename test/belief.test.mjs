@@ -64,7 +64,7 @@ describe('Belief', () => {
   describe('Mind Isolation', () => {
     it('beliefs store in_mind reference', () => {
       const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(1, null);
+      const state = mind.create_state(logos().origin_state, {tt: 1});
       Belief.from_template(state, {traits: {'@label': 'workshop'}, bases: ['Location']});
 
       const workshop = get_first_belief_by_label('workshop');
@@ -73,9 +73,9 @@ describe('Belief', () => {
 
     it('each mind has independent belief storage', () => {
       const mind_a = new Mind(logos(), 'mind_a');
-      const state_a = mind_a.create_state(1, null);
+      const state_a = mind_a.create_state(logos().origin_state, {tt: 1});
       const mind_b = new Mind(logos(), 'mind_b');
-      const state_b = mind_b.create_state(1, null);
+      const state_b = mind_b.create_state(logos().origin_state, {tt: 1});
 
       const item_a = Belief.from_template(state_a, {traits: {'@label': 'item_unique_a'}, bases: ['PortableObject']});
       const item_b = Belief.from_template(state_b, {traits: {'@label': 'item_unique_b'}, bases: ['PortableObject']});
@@ -90,11 +90,11 @@ describe('Belief', () => {
 
     it('currently allows referencing other mind\'s beliefs in bases', () => {
       const mind_a = new Mind(logos(), 'mind_a');
-      const state_a = mind_a.create_state(1, null);
+      const state_a = mind_a.create_state(logos().origin_state, {tt: 1});
       Belief.from_template(state_a, {traits: {'@label': 'workshop'}, bases: ['Location']});
 
       const mind_b = new Mind(logos(), 'mind_b');
-      const state_b = mind_b.create_state(1, null);
+      const state_b = mind_b.create_state(logos().origin_state, {tt: 1});
 
       // Currently this works - mind_b can reference mind_a's belief
       const workshop_a = get_first_belief_by_label('workshop');
@@ -110,7 +110,7 @@ describe('Belief', () => {
   describe('SID System', () => {
     it('creates belief with both sid and _id from same sequence', () => {
       const world_mind = new Mind(logos(), 'world');
-      const state = world_mind.create_state(1, null);
+      const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const workshop = Belief.from_template(state, {
         traits: {'@label': 'workshop'},
@@ -131,7 +131,7 @@ describe('Belief', () => {
 
     it('creates versioned belief with same sid but new _id', () => {
       const world_mind = new Mind(logos(), 'world');
-      const state = world_mind.create_state(1, null);
+      const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const room1 = Belief.from_template(state, {
         traits: {'@label': 'room1'},
@@ -158,7 +158,7 @@ describe('Belief', () => {
 
     it('registers beliefs in belief_by_subject registry', () => {
       const world_mind = new Mind(logos(), 'world');
-      const state = world_mind.create_state(1, null);
+      const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const room = Belief.from_template(state, {
         traits: {'@label': 'room'},
@@ -177,7 +177,7 @@ describe('Belief', () => {
 
     it('registers multiple versions under same sid', () => {
       const world_mind = new Mind(logos(), 'world');
-      const state = world_mind.create_state(1, null);
+      const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const room_v1 = Belief.from_template(state, {
         traits: {'@label': 'room'},
@@ -210,7 +210,7 @@ describe('Belief', () => {
 
     it('stores trait value as Subject when value is a Belief', () => {
       const world_mind = new Mind(logos(), 'world');
-      const state = world_mind.create_state(1, null);
+      const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const workshop = Belief.from_template(state, {
         traits: {'@label': 'workshop'},
@@ -233,7 +233,7 @@ describe('Belief', () => {
 
     it('stores primitive values directly (not as sid)', () => {
       const world_mind = new Mind(logos(), 'world');
-      const state = world_mind.create_state(1, null);
+      const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const ball = Belief.from_template(state, {
         traits: {
@@ -249,7 +249,7 @@ describe('Belief', () => {
 
     it('associates label with sid, not _id', () => {
       const world_mind = new Mind(logos(), 'world');
-      const state = world_mind.create_state(1, null);
+      const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const room_v1 = Belief.from_template(state, {
         traits: {'@label': 'room'},
@@ -272,7 +272,7 @@ describe('Belief', () => {
 
     it('lookup by label returns sid, then resolve in state', () => {
       const world_mind = new Mind(logos(), 'world');
-      const state = world_mind.create_state(1, null);
+      const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const room = state.add_belief_from_template({
         traits: {'@label': 'workshop'},
@@ -292,7 +292,7 @@ describe('Belief', () => {
   describe('get_timestamp()', () => {
     it('returns timestamp from origin_state for regular beliefs', () => {
       const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(100, null);
+      const state = mind.create_state(logos().origin_state, {tt: 100});
 
       const hammer = Belief.from_template(state, {
         traits: {'@label': 'hammer'},
@@ -315,7 +315,7 @@ describe('Belief', () => {
 
     it('prefers @timestamp meta-trait over origin_state.timestamp', () => {
       const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(100, null);
+      const state = mind.create_state(logos().origin_state, {tt: 100});
 
       const belief = Belief.from_template(state, {
         bases: ['PortableObject', 'Temporal']
@@ -356,7 +356,7 @@ describe('Belief', () => {
   describe('Trait Value Inheritance', () => {
     it('returns trait from own _traits', () => {
       const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(100, null);
+      const state = mind.create_state(logos().origin_state, {tt: 100});
 
       const workshop = state.add_belief_from_template({
         traits: {'@label': 'workshop'},
@@ -377,7 +377,7 @@ describe('Belief', () => {
 
     it('inherits trait value from base belief', () => {
       const mind = new Mind(logos(), 'test');
-      const state1 = mind.create_state(100, null);
+      const state1 = mind.create_state(logos().origin_state, {tt: 100});
 
       const workshop = state1.add_belief_from_template({
         traits: {'@label': 'workshop'},
@@ -393,7 +393,7 @@ describe('Belief', () => {
       state1.lock();
 
       // Create v2 with only color changed
-      const state2 = state1.branch_state(null, 101);
+      const state2 = state1.branch_state(logos().origin_state, 101);
       const hammer_v2 = Belief.from_template(state2, {
         sid: hammer_v1.subject.sid,
         bases: [hammer_v1],
@@ -415,7 +415,7 @@ describe('Belief', () => {
 
     it('own trait shadows inherited trait', () => {
       const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(100, null);
+      const state = mind.create_state(logos().origin_state, {tt: 100});
 
       const hammer_v1 = Belief.from_template(state, {
         traits: {
@@ -438,7 +438,7 @@ describe('Belief', () => {
 
     it('multi-level inheritance works', () => {
       const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(100, null);
+      const state = mind.create_state(logos().origin_state, {tt: 100});
 
       const workshop = Belief.from_template(state, {
         traits: {'@label': 'workshop'},
@@ -479,7 +479,7 @@ describe('Belief', () => {
 
     it('returns undefined for trait not in chain', () => {
       const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(100, null);
+      const state = mind.create_state(logos().origin_state, {tt: 100});
 
       const hammer = Belief.from_template(state, {
         traits: {
@@ -494,7 +494,7 @@ describe('Belief', () => {
 
     it('to_inspect_view includes inherited traits', () => {
       const mind = new Mind(logos(), 'test');
-      const state = mind.create_state(100, null);
+      const state = mind.create_state(logos().origin_state, {tt: 100});
 
       const workshop = Belief.from_template(state, {
         traits: {'@label': 'workshop'},
@@ -555,7 +555,7 @@ describe('Belief', () => {
 
       // Create regular belief inheriting from GenericSword
       const mind = new Mind(logos(), 'player');
-      const state = mind.create_state(200, null);
+      const state = mind.create_state(logos().origin_state, {tt: 200});
 
       const player_sword = Belief.from_template(state, {
         traits: {
@@ -589,7 +589,7 @@ describe('Belief', () => {
 
       // Create two different minds with beliefs inheriting from same shared belief
       const mind1 = new Mind(logos(), 'player1');
-      const state1 = mind1.create_state(200, null);
+      const state1 = mind1.create_state(logos().origin_state, {tt: 200});
 
       const sword_1 = Belief.from_template(state1, {
         traits: {
@@ -600,7 +600,7 @@ describe('Belief', () => {
       });
 
       const mind2 = new Mind(logos(), 'player2');
-      const state2 = mind2.create_state(200, null);
+      const state2 = mind2.create_state(logos().origin_state, {tt: 200});
 
       const sword_2 = Belief.from_template(state2, {
         traits: {
@@ -682,7 +682,7 @@ describe('Belief', () => {
 
       // Create regular belief inheriting from Sword
       const mind = new Mind(logos(), 'player');
-      const state = mind.create_state(200, null);
+      const state = mind.create_state(logos().origin_state, {tt: 200});
 
       const magic_sword = Belief.from_template(state, {
         traits: {
@@ -715,7 +715,7 @@ describe('Belief', () => {
       });
 
       const mind = new Mind(logos(), 'player');
-      const state = mind.create_state(200, null);
+      const state = mind.create_state(logos().origin_state, {tt: 200});
 
       // Create regular belief inheriting from shared belief
       const hammer_v1 = Belief.from_template(state, {
@@ -758,7 +758,7 @@ describe('Belief', () => {
 
       // Create state in mind (no belief for default_item in this mind)
       const mind = new Mind(logos(), 'player');
-      const state = mind.create_state(150, null);
+      const state = mind.create_state(logos().origin_state, {tt: 150});
 
       // subject.get_shared_belief_by_state should find the shared belief
       const found = default_item.subject.get_shared_belief_by_state(state);
@@ -791,7 +791,7 @@ describe('Belief', () => {
 
       // Create regular belief in a mind
       const mind = new Mind(logos(), 'player');
-      const state = mind.create_state(200, null);
+      const state = mind.create_state(logos().origin_state, {tt: 200});
       const regular_belief = Belief.from_template(state, {
         traits: {
           '@label': 'regular_item'
@@ -811,7 +811,7 @@ describe('Belief', () => {
     it('shared belief scoped to parent mind is accessible from child minds', () => {
       // Create parent mind with initial state
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(100, null);
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 100});
 
       // Create shared belief scoped to world_mind (use existing Thing archetype)
       const cultural_knowledge = Belief.create_shared_from_template(world_mind, ['Thing'], {
@@ -823,7 +823,7 @@ describe('Belief', () => {
 
       // Create child mind (NPC under world)
       const npc_mind = new Mind(world_mind, 'npc1');
-      const npc_state = npc_mind.create_state(200, world_state);
+      const npc_state = npc_mind.create_state(world_state);
 
       // NPC should be able to access shared belief via from_template
       const npc_belief = Belief.from_template(npc_state, {
@@ -839,7 +839,7 @@ describe('Belief', () => {
     it('shared belief NOT accessible from different parent mind hierarchy', () => {
       // Create first parent mind (world)
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(100, null);
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 100});
 
       // Create shared belief scoped to world_mind
       const world_culture = Belief.create_shared_from_template(world_mind, ['Thing'], {
@@ -849,9 +849,9 @@ describe('Belief', () => {
 
       // Create second parent mind (dream)
       const dream_mind = new Mind(logos(), 'dream');
-      const dream_state = dream_mind.create_state(100, null);
+      const dream_state = dream_mind.create_state(logos().origin_state, {tt: 100});
       const dream_child_mind = new Mind(dream_mind, 'dreamer');
-      const dream_child_state = dream_child_mind.create_state(200, dream_state);
+      const dream_child_state = dream_child_mind.create_state(dream_state);
 
       // Dream hierarchy should NOT be able to access world's shared belief
       expect(() => {
@@ -865,9 +865,9 @@ describe('Belief', () => {
     it('multiple parents can create different shared beliefs with same subject label', () => {
       // Create two parent minds with states
       const world_mind = new Mind(logos(), 'world');
-      const world_parent_state = world_mind.create_state(100, null);
+      const world_parent_state = world_mind.create_state(logos().origin_state, {tt: 100});
       const dream_mind = new Mind(logos(), 'dream');
-      const dream_parent_state = dream_mind.create_state(100, null);
+      const dream_parent_state = dream_mind.create_state(logos().origin_state, {tt: 100});
 
       // Each creates shared belief (different labels since labels must be globally unique)
       const world_tavern = Belief.create_shared_from_template(world_mind, ['Thing'], {
@@ -886,7 +886,7 @@ describe('Belief', () => {
 
       // World child sees world version
       const world_child = new Mind(world_mind, 'world_npc');
-      const world_state = world_child.create_state(200, world_parent_state);
+      const world_state = world_child.create_state(world_parent_state);
       const world_belief = Belief.from_template(world_state, {
         bases: ['WorldTavern'],
         traits: {'@label': 'world_tavern_instance'}
@@ -895,7 +895,7 @@ describe('Belief', () => {
 
       // Dream child sees dream version
       const dream_child = new Mind(dream_mind, 'dreamer');
-      const dream_state = dream_child.create_state(200, dream_parent_state);
+      const dream_state = dream_child.create_state(dream_parent_state);
       const dream_belief = Belief.from_template(dream_state, {
         bases: ['DreamTavern'],
         traits: {'@label': 'dream_tavern_instance'}
@@ -920,14 +920,14 @@ describe('Belief', () => {
 
       // Create two separate parent hierarchies
       const world_mind = new Mind(logos(), 'world');
-      const world_parent_state = world_mind.create_state(100, null);
+      const world_parent_state = world_mind.create_state(logos().origin_state, {tt: 100});
       const world_npc = new Mind(world_mind, 'guard');
-      const world_state = world_npc.create_state(200, world_parent_state);
+      const world_state = world_npc.create_state(world_parent_state);
 
       const dream_mind = new Mind(logos(), 'dream');
-      const dream_parent_state = dream_mind.create_state(100, null);
+      const dream_parent_state = dream_mind.create_state(logos().origin_state, {tt: 100});
       const dream_npc = new Mind(dream_mind, 'phantom');
-      const dream_state = dream_npc.create_state(200, dream_parent_state);
+      const dream_state = dream_npc.create_state(dream_parent_state);
 
       // Both should be able to access the global shared belief
       const world_weapon = Belief.from_template(world_state, {

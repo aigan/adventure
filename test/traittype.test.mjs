@@ -221,7 +221,7 @@ describe('Traittype', () => {
     it('resolves array of Minds from templates', () => {
       // Setup world with beliefs to learn about
       const world_mind = new Mind(logos(), 'world');
-      const world_state = world_mind.create_state(1, null);
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const workshop = world_state.add_belief_from_template({
         bases: ['Location'],

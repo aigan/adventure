@@ -35,8 +35,8 @@ import { Serialize } from './serialize.mjs'
  * @typedef {object} StateJSON
  * @property {string} _type - Always "State"
  * @property {number} _id - State identifier
- * @property {number} tt - State transaction time/tick
- * @property {number} vt - State valid time (what time this state is thinking about)
+ * @property {number|null} tt - State transaction time/tick (null for timeless states like logos)
+ * @property {number|null} vt - State valid time (null for timeless states like logos)
  * @property {number|null} base - Base state _id (null for root states)
  * @property {number|null} ground_state - Ground state _id (null if no external reference)
  * @property {number|null} self - Subject sid (null if no self identity)
@@ -55,10 +55,10 @@ import { Serialize } from './serialize.mjs'
  * Immutable state snapshot with differential updates
  * @property {number} _id - Unique identifier
  * @property {Mind} in_mind - Mind this state belongs to
- * @property {number} tt - State transaction time/tick
- * @property {number} vt - State valid time (what time this state is thinking about, defaults to tt)
+ * @property {number|null} tt - State transaction time/tick (null for timeless states like logos)
+ * @property {number|null} vt - State valid time (null for timeless states like logos)
  * @property {State|null} base - Parent state (inheritance chain)
- * @property {State|null} ground_state - External world state this references
+ * @property {State} ground_state - External world state this references (required except logos)
  * @property {Belief[]} insert - Beliefs added/present in this state
  * @property {Belief[]} remove - Beliefs removed in this state
  * @property {boolean} locked - Whether state can be modified
@@ -73,35 +73,56 @@ export class State {
 
   /**
    * @param {Mind} mind
-   * @param {number} tt
+   * @param {State} ground_state - Required (except logos_state which bypasses constructor)
    * @param {State|null} base
-   * @param {State|null} ground_state
-   * @param {Subject|null} self
-   * @param {number|null} vt - Valid time (defaults to tt if not specified)
+   * @param {object} options - Optional meta-parameters
+   * @param {number|null} [options.tt] - Transaction time (only when ground_state.vt is null)
+   * @param {number|null} [options.vt] - Valid time (defaults to tt)
+   * @param {Subject|null} [options.self] - Self identity (defaults to base.self)
    */
-  constructor(mind, tt, base=null, ground_state=null, self=null, vt=null) {
+  constructor(mind, ground_state, base=null, {tt: tt_option, vt, self} = {}) {
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
-    assert(self === null || self instanceof Subject, 'self must be Subject or null')
-    assert(ground_state === null || ground_state instanceof State, 'ground_state must be State or null')
+    assert(ground_state instanceof State, 'ground_state is required and must be a State')
+
+    // TODO: simplify
 
     // Validate ground_state is in parent mind
-    if (ground_state) {
-      /** @type {State} */
-      const gs = ground_state
+    /** @type {State} */ const gs = ground_state
+    assert(
+      gs.in_mind === mind.parent,
+      'ground_state must be in parent mind',
+      {
+        mind: mind.label,
+        parent: mind.parent?.label ?? null,
+        ground_state_mind: gs.in_mind?.label ?? 'unknown'
+      }
+    )
+
+    // Derive tt from ground_state.vt (fork invariant)
+    // Exception: When ground_state is logos_state, allow explicit tt
+    const tt = ground_state.vt ?? tt_option
+
+    // If tt was explicitly provided, validate it's only for logos ground_state
+    if (tt_option != null) {
       assert(
-        gs.in_mind === mind.parent,
-        'ground_state must be in parent mind',
-        {
-          mind: mind.label,
-          parent: mind.parent?.label ?? null,
-          ground_state_mind: gs.in_mind.label
-        }
+        ground_state.ground_state === null,
+        'tt can only be provided explicitly when ground_state is logos_state (fork invariant)',
+        {provided_tt: tt_option, is_logos_ground: ground_state.ground_state === null}
       )
     }
 
+    assert(tt !== undefined, 'tt must be derivable from ground_state.vt or provided for logos ground_state')
+
+    // Default self to base.self, vt to tt
+    const effective_self = self ?? base?.self ?? null
+    const effective_vt = vt ?? tt
+
+    // Validate self and vt
+    assert(effective_self === null || effective_self instanceof Subject, 'self must be Subject or null')
+
     // Check if self belief is unlocked (only for initial states, not versioning)
-    if (self !== null && ground_state !== null && base === null) {
-      const self_belief = ground_state.get_belief_by_subject(self)
+    if (effective_self !== null && base === null) {
+      const self_belief = ground_state.get_belief_by_subject(effective_self)
       assert(self_belief === null || !self_belief.locked, 'Cannot create state for locked self')
     }
 
@@ -109,11 +130,11 @@ export class State {
     this.in_mind = mind
     /** @type {State|null} */ this.base = base
     this.tt = tt
-    this.vt = vt ?? tt  // Default vt to tt
+    this.vt = effective_vt
     /** @type {Belief[]} */ this.insert = []
     /** @type {Belief[]} */ this.remove = []
-    /** @type {State|null} */ this.ground_state = ground_state
-    /** @type {Subject|null} */ this.self = self
+    /** @type {State} */ this.ground_state = ground_state
+    /** @type {Subject|null} */ this.self = effective_self
     this.locked = false
 
     /**
@@ -192,26 +213,34 @@ export class State {
 
   /**
    * Create a new branched state from this state (low-level)
-   * @param {State|null} [ground_state] - External world state this mind observes (for resolving beliefs in learn_about)
+   * @param {State} ground_state - External world state this mind observes (required)
    * @param {number|null} [vt] - Valid time override (for temporal reasoning about past/future)
    * @returns {State} New unlocked state
    */
   branch_state(ground_state, vt) {
-    // Assert ground_state is in parent mind (or null for root minds)
-    assert(
-      ground_state === null || ground_state?.in_mind === this.in_mind.parent,
-      'ground_state must be in parent mind',
-      {mind: this.in_mind.label, parent: this.in_mind.parent?.label, ground_state_mind: ground_state?.in_mind?.label}
-    )
+    // Build options for State constructor
+    const options = {}
 
-    // Time coordination: tt from ground_state.vt, vt can be overridden
-    const next_tt = ground_state?.vt ?? vt
-    const next_vt = vt ?? next_tt
+    // If ground_state.vt is null (logos case), must provide tt explicitly
+    if (ground_state.vt === null) {
+      assert(vt != null, 'vt must be provided when ground_state.vt is null (world mind branching)')
+      options.tt = vt
+    }
 
-    assert(next_tt != null, 'next_tt must be set (world state must provide vt when branching)')
-    assert(next_tt >= this.tt, 'tt must not go backwards', {current_tt: this.tt, next_tt})
+    // If vt is provided, use it (for memory/planning scenarios)
+    if (vt !== undefined && vt !== null) {
+      options.vt = vt
+    }
 
-    const state = new State(this.in_mind, next_tt, this, ground_state, this.self, next_vt)
+    // self is inherited from this.self via base.self in constructor (no need to pass explicitly)
+
+    const state = new State(this.in_mind, ground_state, this, options)
+
+    // Validate time doesn't go backwards (skip check for timeless states)
+    if (state.tt != null && this.tt != null) {
+      assert(state.tt >= this.tt, 'tt must not go backwards', {current_tt: this.tt, next_tt: state.tt})
+    }
+
     this._branches.push(state)
     return state
   }

@@ -5,7 +5,7 @@
  * See docs/IMPLEMENTATION.md for implementation architecture
  */
 
-import { Mind, State, Belief, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
+import { Mind, State, Belief, Archetype, Traittype, save_mind, load, logos, logos_state } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 
 /**
@@ -17,8 +17,8 @@ import * as DB from '../public/worker/db.mjs';
  */
 export function createStateInNewMind(label = 'test', tt = 1, parent_mind = logos()) {
   const mind = new Mind(parent_mind, label);
-  const ground_state = parent_mind ? parent_mind.origin_state : null;
-  return mind.create_state(tt, ground_state);
+  const ground_state = parent_mind === logos() ? logos_state() : parent_mind.origin_state;
+  return mind.create_state(ground_state, {tt});
 }
 
 /**
@@ -30,8 +30,8 @@ export function createStateInNewMind(label = 'test', tt = 1, parent_mind = logos
  */
 export function createMindWithBeliefs(label, beliefs = {}, parent_mind = logos()) {
   const mind = new Mind(parent_mind, label);
-  const ground_state = parent_mind ? parent_mind.origin_state : null;
-  const state = mind.create_state(1, ground_state);
+  const ground_state = parent_mind === logos() ? logos_state() : parent_mind.origin_state;
+  const state = mind.create_state(ground_state, {tt: 1});
 
   for (const [belief_label, def] of Object.entries(beliefs)) {
     const existing_traits = 'traits' in def ? def.traits : {};

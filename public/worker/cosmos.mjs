@@ -90,8 +90,8 @@ export function logos_state() {
 export function eidos() {
   if (_eidos_mind === null) {
     _eidos_mind = new Mind(logos(), 'Eidos')
-    // Create origin_state for Eidos
-    _eidos_mind.origin_state = _eidos_mind.create_state(0, logos_state())
+    // Create origin_state for Eidos - exists beyond time like logos
+    _eidos_mind.origin_state = _eidos_mind.create_state(logos_state(), {tt: 0})
   }
   return _eidos_mind
 }
