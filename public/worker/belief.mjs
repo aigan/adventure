@@ -230,11 +230,11 @@ export class Belief {
    * @param {State} state - State context for resolution
    * @param {string} label - Trait label
    * @param {*} data - Raw data to be resolved by traittype
+   * @param {object} options - Optional parameters
+   * @param {State|null} [options.about_state] - State context for belief resolution (for prototype minds)
    */
-  add_trait_from_template(state, label, data) {
+  add_trait_from_template(state, label, data, {about_state=null} = {}) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
-
-    //log("add_trait", label)
 
     // Parse trait key to check for operation syntax (e.g., 'mind.append')
     const {trait, subprop} = parse_trait_key(label)
@@ -255,7 +255,7 @@ export class Belief {
     const traittype = Traittype.get_by_label(label)
     assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
 
-    const value = /** @type {Traittype} */ (traittype).resolve_trait_value_from_template(this, data)
+    const value = /** @type {Traittype} */ (traittype).resolve_trait_value_from_template(this, data, {about_state})
 
     // Call add_trait with resolved value
     this.add_trait(label, value)
@@ -807,16 +807,13 @@ export class Belief {
   /**
    * Create belief from template with string resolution and trait templates
    * @param {State} state - State context (provides mind and creator_state)
-   * @param {object} template
-   * @param {number|null} [template.sid] - Subject ID (optional, for explicit versioning)
-   * @param {Array<string|Belief|Archetype>} [template.bases]
-   * @param {Object<string, any>} [template.traits] - Traits (including optional @label)
+   * @param {any} template - Template with sid, bases, traits, about_state
    * @returns {Belief}
    */
-  static from_template(state, {sid=null, bases=[], traits={}}) {
+  static from_template(state, {sid=null, bases=[], traits={}, about_state=null} = {}) {
     assert(state instanceof State, 'from_template requires State as first argument', {state})
 
-    const resolved_bases = bases.map(base_in => {
+    const resolved_bases = bases.map((/** @type {string|Belief|Archetype} */ base_in) => {
       if (typeof base_in === 'string') {
 
         // Try archetype first (lighter)
@@ -828,7 +825,21 @@ export class Belief {
         const subject = DB.get_subject_by_label(base_in)
         const base = subject?.get_shared_belief_by_state(state)
         if (base) {
-          assert(base.locked, 'Cannot add belief with unlocked base', {belief_id: base._id, label: base.get_label()})
+          const origin_state_label = base.origin_state?.in_mind?.label ?? 'unknown'
+          assert(base.locked,
+            `Cannot add belief with unlocked base '${base.get_label()}' (in ${base.in_mind?.label}) - ` +
+            `must lock in ${origin_state_label}.origin_state before using as base`,
+            {
+              unlocked_base_id: base._id,
+              unlocked_base_label: base.get_label(),
+              unlocked_base_in_state: base.origin_state?._id,
+              unlocked_base_in_mind: base.in_mind?.label,
+              needs_lock_call: `${base.get_label()}.lock(${origin_state_label}.origin_state)`,
+              creating_belief_label: traits['@label'] ?? 'unlabeled',
+              creating_belief_in_state: state._id,
+              creating_belief_in_mind: state.in_mind?.label,
+              base_name_resolved: base_in
+            })
           return base
         }
 
@@ -853,7 +864,7 @@ export class Belief {
     // Add remaining traits
     for (const [trait_label, trait_data] of Object.entries(traits)) {
       //log("  add trait", trait_label)
-      belief.add_trait_from_template(state, trait_label, trait_data)
+      belief.add_trait_from_template(state, trait_label, trait_data, {about_state})
     }
 
     // Add belief to state's insert list (validates locked state and origin_state)

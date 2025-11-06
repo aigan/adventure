@@ -34,18 +34,35 @@ export class Timeless {
    * @param {Mind} mind - Mind this timeless state belongs to
    */
   constructor(mind) {
+    this.ground_state = mind.parent.origin_state  // Ground state is parent mind's origin_state
+    this._init(mind)
+  }
+
+  /**
+   * Initialize Timeless state (used by constructor and Logos bootstrap)
+   * NOTE: ground_state must be set before calling this
+   * @param {Mind} mind - Mind this timeless state belongs to
+   */
+  _init(mind) {
     // Initialize all State properties without calling State constructor
     this._id = next_id()
     this.in_mind = mind
-    this.ground_state = null  // Timeless - no external ground
+    /** @type {number|null} */
     this.tt = null            // Timeless - no transaction time
+    /** @type {number|null} */
     this.vt = null            // Timeless - no valid time
+    /** @type {import('./state.mjs').State|null} */
     this.base = null
+    /** @type {import('./subject.mjs').Subject|null} */
     this.self = null
+    /** @type {number[]} */
     this.insert = []
+    /** @type {number[]} */
     this.remove = []
     this.locked = false
+    /** @type {import('./state.mjs').State[]} */
     this._branches = []
+    /** @type {Map<number, import('./belief.mjs').Belief>|null} */
     this._subject_index = null
 
     // Register with mind and global DB

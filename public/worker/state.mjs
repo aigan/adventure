@@ -80,8 +80,9 @@ export class State {
    * @param {number|null} [options.tt] - Transaction time (only when ground_state.vt is null)
    * @param {number|null} [options.vt] - Valid time (defaults to tt)
    * @param {Subject|null} [options.self] - Self identity (defaults to base.self)
+   * @param {State|null} [options.about_state] - State context for belief resolution (for prototype minds)
    */
-  constructor(mind, ground_state, base=null, {tt: tt_option, vt, self} = {}) {
+  constructor(mind, ground_state, base=null, {tt: tt_option, vt, self, about_state} = {}) {
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
     assert(ground_state instanceof State, 'ground_state is required and must be a State')
 
@@ -136,6 +137,7 @@ export class State {
     /** @type {Belief[]} */ this.remove = []
     /** @type {State} */ this.ground_state = ground_state
     /** @type {Subject|null} */ this.self = effective_self
+    /** @type {State|null} */ this.about_state = about_state ?? null
     this.locked = false
 
     /**
@@ -201,15 +203,41 @@ export class State {
 
   /**
    * @param {Object<string, object>} beliefs - Object mapping labels to belief definitions
+   * @param {object} options - Optional parameters
+   * @param {State|null} [options.about_state] - State context for belief resolution (for prototype minds)
    */
-  add_beliefs_from_template(beliefs) {
+  add_beliefs_from_template(beliefs, {about_state=null} = {}) {
+    const created_beliefs = []
     for (const [label, def] of Object.entries(beliefs)) {
       const existing_traits = /** @type {Record<string, any>} */ ('traits' in def ? def.traits : {})
-      Belief.from_template(this, {
+      const belief = Belief.from_template(this, {
         ...def,
+        about_state,
         traits: {...existing_traits, '@label': label}
       })
+      created_beliefs.push(belief)
     }
+
+    // Auto-lock each created belief (matches create_shared_from_template behavior)
+    for (const belief of created_beliefs) {
+      belief.lock(this)
+    }
+  }
+
+  /**
+   * Create shared beliefs (prototypes) in Eidos that reference beliefs in this state
+   * Convenience wrapper for eidos_state.add_beliefs_from_template() with about_state=this
+   * @param {Object<string, object>} beliefs - Object mapping labels to belief definitions
+   */
+  add_shared_from_template(beliefs) {
+    const eidos_mind = Cosmos.eidos()
+    const eidos_state = eidos_mind.origin_state
+    assert(eidos_state instanceof State, 'Eidos origin_state must be State', {eidos_state})
+
+    // TypeScript null-check (assert doesn't narrow types)
+    if (!eidos_state) throw new Error('Eidos origin_state is null')
+
+    eidos_state.add_beliefs_from_template(beliefs, {about_state: this})
   }
 
   /**
@@ -475,12 +503,14 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
     assert(this.ground_state instanceof State, 'learn_about requires ground_state', {state_id: this._id})
 
-    const source_state = this.ground_state
+    // Use about_state if available, otherwise ground_state
+    const source_state = this.about_state ?? this.ground_state
 
-    // Verify source_belief exists in ground_state
-    const belief_in_ground = source_state.get_belief_by_subject(source_belief.subject)
-    assert(belief_in_ground === source_belief, 'source_belief must exist in ground_state',
-      {source_belief_id: source_belief._id, ground_state_id: source_state._id})
+    // Verify source_belief exists in source_state (either about_state or ground_state)
+    const belief_in_source = source_state.get_belief_by_subject(source_belief.subject)
+    assert(belief_in_source === source_belief, 'source_belief must exist in source_state',
+      {source_belief_id: source_belief._id, source_state_id: source_state._id,
+       source_state_mind: source_state.in_mind?.label, using_about_state: this.about_state != null})
 
     // Step 1: Recognize existing knowledge
     const existing_beliefs = this.recognize(source_belief)

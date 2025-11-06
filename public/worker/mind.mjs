@@ -25,6 +25,7 @@ import * as DB from './db.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
 import { Traittype } from './traittype.mjs'
+import { Timeless } from './timeless.mjs'
 import { assert, log } from '../lib/debug.mjs'
 
 /**
@@ -367,9 +368,11 @@ export class Mind {
    * @param {Traittype} traittype - Traittype definition with metadata
    * @param {Belief} belief - Belief being constructed
    * @param {*} data - Raw template data or Mind instance
+   * @param {object} options - Optional parameters
+   * @param {State|null} [options.about_state] - State context for belief resolution (for prototype minds)
    * @returns {Mind|*} Resolved Mind instance or data as-is
    */
-  static resolve_trait_value_from_template(traittype, belief, data) {
+  static resolve_trait_value_from_template(traittype, belief, data, {about_state} = {}) {
     assert(belief.is_shared || belief.origin_state instanceof State, "belief must have origin_state", {belief})
     const creator_state = /** @type {State} */ (belief.origin_state)
 
@@ -380,7 +383,7 @@ export class Mind {
         !data._type &&
         !(data._states instanceof Set)) {
       // It's a learn spec - call create_from_template
-      const mind = Mind.create_from_template(creator_state, belief, data)
+      const mind = Mind.create_from_template(creator_state, belief, data, {about_state})
       assert(mind.state instanceof State, 'create_from_template must create unlocked state', {mind})
       return mind.state.lock().in_mind
     }
@@ -389,7 +392,7 @@ export class Mind {
     if (data?._type === 'Mind') {
       // Strip _type from template before passing to create_from_template
       const {_type, ...traits} = data
-      const mind = Mind.create_from_template(creator_state, belief, traits)
+      const mind = Mind.create_from_template(creator_state, belief, traits, {about_state})
       assert(mind.state instanceof State, 'create_from_template must create unlocked state', {mind})
       return mind.state.lock().in_mind
     }
@@ -449,9 +452,11 @@ export class Mind {
    * @param {State} ground_state - State context for belief resolution and ground_state
    * @param {Belief} ground_belief - The belief that owns this mind trait
    * @param {Object<string, string[]>} traits - {belief_label: [trait_names]} to learn
+   * @param {object} options - Optional meta-parameters
+   * @param {State|null} [options.about_state] - State context for belief resolution (where beliefs exist)
    * @returns {Mind} The created mind (access unlocked state via mind.state)
    */
-  static create_from_template(ground_state, ground_belief, traits) {
+  static create_from_template(ground_state, ground_belief, traits, {about_state} = {}) {
     const assert = (/** @type {any} */ condition, /** @type {string} */ message, /** @type {any} */ context) => {
       if (!condition) throw new Error(message + (context ? ': ' + JSON.stringify(context) : ''))
     }
@@ -462,36 +467,42 @@ export class Mind {
     // Extract self_subject from ground_belief
     const self_subject = ground_belief.subject
 
-    //console.trace('create mind with subj', self_subject.get_label());
-
-    // Create the mind (parent is the mind that contains ground_belief)
-    // For shared beliefs, use subject.ground_mind; for regular beliefs, use in_mind
-    const parent_mind = ground_belief.is_shared
-      ? ground_belief.subject.ground_mind
-      : ground_belief.in_mind
+    // Create the mind (parent is the mind where ground_state exists)
+    const parent_mind = ground_state.in_mind
     const entity_mind = new Mind(parent_mind, self_subject.get_label())
 
     // Create initial state with self reference - fork invariant: child.tt = parent_state.vt
+    // When ground_state is Timeless (vt=null), must provide explicit tt
     const state = new State(
       entity_mind,
       ground_state,      // ground_state (where body exists)
       null,              // no base
       {
-        self: self_subject  // self (WHO is experiencing this)
-        // tt and vt both derive from ground_state.vt (fork invariant)
+        self: self_subject,  // self (WHO is experiencing this)
+        about_state,  // State context for belief resolution (where beliefs to learn about exist)
+        // When ground_state is Timeless (vt=null), must provide explicit tt
+        ...(ground_state instanceof Timeless ? { tt: 0 } : {})
+        // Otherwise tt and vt both derive from ground_state.vt (fork invariant)
       }
     )
 
     // Execute learning
     for (const [label, trait_names] of Object.entries(traits)) {
-      const belief = ground_state.get_belief_by_label(label)
+      // Search in about_state first (if provided), then ground_state, then shared beliefs
+      const belief = about_state?.get_belief_by_label(label) ?? ground_state.get_belief_by_label(label)
+
       if (!belief) {
-        throw new Error(`Cannot learn about '${label}': belief not found`)
+        throw new Error(
+          `Cannot learn about '${label}': belief not found in ` +
+          (about_state ? `about_state (${about_state.in_mind?.label}) or ` : '') +
+          `ground_state (${ground_state.in_mind?.label})`
+        )
       }
-      // Assert belief is in ground_state's mind, not a shared belief
-      assert(belief.in_mind === ground_state.in_mind,
-        `Cannot learn about belief '${label}': must be in ground_state's mind (not shared belief)`,
-        {belief_in_mind: belief.in_mind?.label ?? null, ground_state_mind: ground_state.in_mind?.label ?? null})
+      // Assert belief is in the correct mind context
+      const valid_mind = about_state ? about_state.in_mind : ground_state.in_mind
+      assert(belief.in_mind === valid_mind,
+        `Cannot learn about belief '${label}': must be in ${about_state ? 'about_state' : 'ground_state'}'s mind (not shared belief)`,
+        {belief_in_mind: belief.in_mind?.label ?? null, expected_mind: valid_mind?.label ?? null})
       if (trait_names.length > 0) {
         state.learn_about(belief, trait_names)
       }

@@ -162,8 +162,8 @@ export class Traittype {
     // Type class (Mind, State, Belief, Subject)
     const type_class = /** @type {any} */ (Traittype.type_class_by_name[this.data_type] ?? null)
     if (type_class?.resolve_trait_value_from_template) {
-      item_resolver = (/** @type {Belief} */ belief, /** @type {any} */ data) =>
-        type_class.resolve_trait_value_from_template(this, belief, data)
+      item_resolver = (/** @type {Belief} */ belief, /** @type {any} */ data, /** @type {any} */ options = {}) =>
+        type_class.resolve_trait_value_from_template(this, belief, data, options)
     }
     // Literal type (string, number, boolean)
     else if (Traittype.literal_type_map[this.data_type]) {
@@ -243,8 +243,9 @@ export class Traittype {
     if (typeof value?.to_inspect_view === 'function') {
       // Determine which state to resolve in based on mind_scope
       let resolve_state = state
-      if (this.mind_scope === 'parent' && state?.ground_state) {
-        resolve_state = state.ground_state
+      if (this.mind_scope === 'parent') {
+        // Check about_state first (for prototypes referencing world beliefs), then ground_state
+        resolve_state = state.about_state ?? state.ground_state
       }
       return value.to_inspect_view(resolve_state)
     }

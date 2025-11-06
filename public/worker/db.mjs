@@ -476,7 +476,7 @@ export function reset_registries() {
  * @param {Object<string, ArchetypeDefinition>} archetypes - Archetype definitions {label: definition}
  * @param {Object<string, {bases: string[], traits?: Object}>} prototypes - Prototype definitions (timeless shared beliefs)
  */
-export function register(traittypes, archetypes, prototypes) {
+export function register(traittypes, archetypes, prototypes = {}) {
   // Register trait types first
   for (const [label, def] of Object.entries(traittypes)) {
     const traittype = new Traittype(label, def)

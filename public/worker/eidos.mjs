@@ -40,7 +40,7 @@ export class Eidos extends Mind {
     // Create timeless origin state for holding shared beliefs
     // Timeless extends State via runtime prototype manipulation
     /** @type {State} */
-    this.origin_state = /** @type {State} */ (new Timeless(this))
+    this.origin_state = /** @type {State} */ (/** @type {unknown} */ (new Timeless(this)))
   }
 
   /**

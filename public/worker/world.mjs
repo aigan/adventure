@@ -6,11 +6,13 @@
  * See docs/ALPHA-1.md for development stages
  */
 
-import * as Cosmos from "./cosmos.mjs";
-import * as DB from "./db.mjs";
-import { Session } from "./session.mjs";
-import { Subject } from "./subject.mjs";
-import { log, assert, sysdesig } from "../lib/debug.mjs";
+import * as Cosmos from "./cosmos.mjs"
+import * as DB from "./db.mjs"
+import { Session } from "./session.mjs"
+import { Subject } from "./subject.mjs"
+import { log, assert, sysdesig } from "../lib/debug.mjs"
+import { eidos } from './eidos.mjs'
+
 //import {observation,observation_text} from "./observation.mjs";
 //import Time from "./time.mjs";
 //import * as Ponder from "./ponder.mjs";
@@ -21,144 +23,91 @@ import { log, assert, sysdesig } from "../lib/debug.mjs";
  */
 
 
-export function setupStandardArchetypes() {
-  /** @type {Record<string, string|TraitTypeSchema>} */
-  const traittypes = {
-    '@about': {
-      type: 'Subject',
-      mind: 'parent'  // Resolve in parent mind's ground state
-    },
-    '@tt': 'number',
-    location: 'Location',
-    mind: 'Mind',  // Singular Mind reference
-    color: 'string',
-    name: 'string',
-    inventory: 'PortableObject',
-  };
+/** @type {Record<string, string|TraitTypeSchema>} */
+const traittypes = {
+  '@about': {
+    type: 'Subject',
+    mind: 'parent'  // Resolve in parent mind's ground state
+  },
+  '@tt': 'number',
+  location: 'Location',
+  mind: 'Mind',  // Singular Mind reference
+  color: 'string',
+  name: 'string',
+  inventory: 'PortableObject',
+};
 
-  /** @type {Record<string, ArchetypeDefinition>} */
-  const archetypes = {
-    Thing: {
-      traits: {
-        '@about': null,
-        '@tt': null,
-      },
+/** @type {Record<string, ArchetypeDefinition>} */
+const archetypes = {
+  Thing: {
+    traits: {
+      '@about': null,
+      '@tt': null,
     },
+  },
 
-    ObjectPhysical: {
-      bases: ['Thing'],
-      traits: {
-        location: null,
-        color: null,
-      },
+  ObjectPhysical: {
+    bases: ['Thing'],
+    traits: {
+      location: null,
+      color: null,
     },
+  },
 
-    Mental: {
-      bases: ['Thing'],
-      traits: {
-        mind: null,
-      },
+  Mental: {
+    bases: ['Thing'],
+    traits: {
+      mind: null,
     },
-    Location: {
-      bases: ['ObjectPhysical'],
-    },
-    PortableObject: {
-      bases: ['ObjectPhysical'],
-    },
-  };
-
-  /** @type {Record<string, {bases: string[], traits?: Object}>} */
-  const prototypes = {
-    Person: {
-      bases: ['ObjectPhysical', 'Mental'],
-    },
-
-    Villager: {
-      bases: ['Person'],
-      traits: {
-        //mind: {
-        //  workshop: ['location'],
-        //}
-      },
-    },
-
-    //Blacksmith: {
-    //  bases: ['Mental'],
-    //  traits: {
-    //    mind: {
-    //      forge: ['location'],
-    //      tools: ['inventory']
-    //    }
-    //  },
-    //},
-    //
-    //// Demonstrates trait composition from multiple archetypes
-    //blacksmith_villager: {
-    //  bases: ['Person', 'Villager', 'Blacksmith'],
-    //  traits: {
-    //    location: 'forge',
-    //  },
-    //},
-
-  };
-
-  DB.register(traittypes, archetypes, prototypes);
+  },
+  Location: {
+    bases: ['ObjectPhysical'],
+  },
+  PortableObject: {
+    bases: ['ObjectPhysical'],
+  },
 }
 
-setupStandardArchetypes();
+/** @type {Record<string, {bases: string[], traits?: Object}>} */
+const prototypes_1 = {
+  Person: {
+    bases: ['ObjectPhysical', 'Mental'],
+  },
+}
+
+DB.register(traittypes, archetypes, prototypes_1)
 
 // Create world mind and initial state
 const world_mind = new Cosmos.Mind(Cosmos.logos(), 'world');
 const state = world_mind.create_state(Cosmos.logos_state(), {tt: 1});
 
-// Create world beliefs (entities in the world)
-const world_belief = {
+
+state.add_beliefs_from_template({
   workshop: {
     bases: ['Location'],
   },
-
-  //market: {
-  //  bases: ['Location'],
-  //},
-  //
-  //tavern: {
-  //  bases: ['Location'],
-  //},
-  //
-  //forge: {
-  //  bases: ['Location'],
-  //},
 
   hammer: {
     bases: ['PortableObject'],
     traits: {
       location: 'workshop',
     },
+  }
+})
+
+
+state.add_shared_from_template({
+  Villager: {
+    bases: ['Person'],
+    traits: {
+      mind: {
+        workshop: ['location'],
+      }
+    },
   },
+});
 
-  //tools: {
-  //  bases: ['PortableObject'],
-  //  traits: {
-  //    location: 'forge',
-  //  },
-  //},
-  //
-  //mayor: {
-  //  bases: ['Person'],
-  //  traits: {
-  //    location: 'tavern',
-  //  },
-  //},
-
-  //npc1: {
-  //  bases: ['Villager'],
-  //  traits: {
-  //    mind: {
-  //      workshop: ['location']
-  //    }
-  //  },
-  //},
-
+state.add_beliefs_from_template({
   player: {
     bases: ['Villager'],
     traits: {
@@ -167,10 +116,12 @@ const world_belief = {
       //  workshop: ['location']
       //}
     },
-  },
-}
+  }
+})
 
-state.add_beliefs_from_template(world_belief);
+
+
+
 
 const player = state.get_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
@@ -219,3 +170,61 @@ export const session = new Session(world_mind, state, player);
 //  const e = obj.versions ? obj.versions.slice(-1)[0] : obj;
 //  log('👁️', world.sysdesig(obj), e.bake());
 //}
+
+
+
+  //market: {
+  //  bases: ['Location'],
+  //},
+  //
+  //tavern: {
+  //  bases: ['Location'],
+  //},
+  //
+  //forge: {
+  //  bases: ['Location'],
+  //},
+
+
+
+  //Blacksmith: {
+  //  bases: ['Mental'],
+  //  traits: {
+  //    mind: {
+  //      forge: ['location'],
+  //      tools: ['inventory']
+  //    }
+  //  },
+  //},
+  //
+  //// Demonstrates trait composition from multiple archetypes
+  //blacksmith_villager: {
+  //  bases: ['Person', 'Villager', 'Blacksmith'],
+  //  traits: {
+  //    location: 'forge',
+  //  },
+  //},
+
+
+  //tools: {
+  //  bases: ['PortableObject'],
+  //  traits: {
+  //    location: 'forge',
+  //  },
+  //},
+  //
+  //mayor: {
+  //  bases: ['Person'],
+  //  traits: {
+  //    location: 'tavern',
+  //  },
+  //},
+
+  //npc1: {
+  //  bases: ['Villager'],
+  //  traits: {
+  //    mind: {
+  //      workshop: ['location']
+  //    }
+  //  },
+  //},

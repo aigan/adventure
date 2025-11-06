@@ -42,9 +42,13 @@ export class Logos {
     this._states_by_ground_state = new Map()
     this.state = null
 
-    // Timeless extends State via runtime prototype manipulation
+    // Bootstrap: Create Timeless state using Object.create and _init
+    const timeless = Object.create(Timeless.prototype)
+    timeless.ground_state = null  // Bootstrap: Logos has no parent
+    timeless._init(/** @type {any} */ (this))
+
     /** @type {State} */
-    this.origin_state = /** @type {State} */ (new Timeless(/** @type {any} */ (this)))
+    this.origin_state = /** @type {State} */ (timeless)
 
     // Register with DB - Logos inherits Mind methods via prototype
     DB.register_mind(/** @type {any} */ (this))
