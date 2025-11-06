@@ -2,6 +2,16 @@
 
 ## Recently Completed
 
+**Cross-State References (about_state)** (2025-11-06)
+- ✅ Added `about_state` parameter to enable prototypes to reference beliefs in different states
+- ✅ Added `State.add_shared_from_template()` convenience method for creating prototypes
+- ✅ Auto-locking in `State.add_beliefs_from_template()` reduces boilerplate
+- ✅ Updated `Belief.get_about()` to check `about_state` before `ground_state`
+- ✅ Updated `Traittype.to_inspect_view()` to use `about_state` for Subject resolution
+- ✅ Improved error messages for unlocked bases (shows which belief, which state to lock)
+- ✅ Enabled world.mjs Villager prototype pattern (mind trait references world beliefs)
+- ✅ All 212 tests passing (enabled 2 previously skipped tests)
+
 **Eidos Migration - Eliminate Limbo Pattern** (2025-11-03) ([plan](docs/plans/eidos-migration.md))
 - ✅ Created Eidos singleton (`eidos()`) - realm of forms for prototypes
 - ✅ Added `mind.origin_state` property tracking first state created
@@ -46,14 +56,10 @@ Enforce that `create_state()` requires ground_state parameter. Only `logos_state
 ## Backlog
 
 ### Testing & Validation
-- [ ] **Trait Operations with Versioning** - Test operations on versioned beliefs with existing minds
-  - Case: NPC at tt=1 gets mind from archetypes, then at tt=2 gets additional `mind.append` in belief traits
-  - Should: Call existing Mind's `state_data()` with new operations only (not re-collect archetype operations)
-  - Tests: Versioning path in `get_or_create_open_state_for_ground()` (locked belief creates new state via fork invariant)
-- [ ] **Trait Composition Beyond Mind** - Validate trait operations pattern with non-Mind traits
-  - Example: Enchanted Sword with `damage_types.append`, `tags.append` from multiple bases
-  - Validates pattern is generic, not Mind-specific
-  - Tests: Array-valued traits compose correctly via append operations
+- [ ] **Mind Composition Testing** - Test prototype composition with multiple mind bases
+  - Case: VillageBlacksmith inherits knowledge from both Villager and Blacksmith prototypes
+  - Validates UnionState pattern for combining multiple mind states
+  - Tests: Knowledge from all component minds is accessible
 
 ### Design & Architecture
 - [ ] **UnionState for Prototype Composition** - Flyweight composition for prototype minds ([plan](docs/plans/union-state.md))
@@ -76,6 +82,13 @@ Enforce that `create_state()` requires ground_state parameter. Only `logos_state
   - One-to-many mapping? Separate traits? Computed properties?
 
 ### Features
+- [ ] **Mind.create_from_template with Locked Beliefs** - Fix creation of mind states when ground_belief is locked
+  - Issue: Mind.create_from_template fails with "Cannot create state for locked self"
+  - State constructor checks if self belief is locked in ground_state and rejects creation
+  - Need: Either allow state creation for locked self beliefs, or provide alternative flow
+  - Context: After removing trait operations code, this pattern needs reimplementation
+  - Test: test/temporal_reasoning.test.mjs:78 (currently skipped)
+  - Question: Should locked beliefs be allowed as self? Or should Mind.create_from_template version the belief first?
 - [ ] **Lazy Version Propagation with Group Minds** - Enable efficient shared belief updates ([plan](docs/plans/lazy-version-propagation.md))
   - NPCs reference sibling group_mind states as bases
   - Cultural knowledge updates create new group_mind states

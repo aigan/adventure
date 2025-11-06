@@ -10,22 +10,13 @@ describe('Integration', () => {
   });
 
   describe('Complex Scenarios from world.mjs', () => {
-    it.skip('world.mjs setupStandardArchetypes with Villager prototype - NOT IMPLEMENTED', () => {
-      // This test documents that prototypes with mind traits are NOT YET SUPPORTED
-      // Issue: Villager prototype tries to resolve 'workshop' belief which doesn't exist in Eidos
-      // The feature needs to be designed and implemented before this can work
-      //
-      // Error progression so far:
-      // 1. ✓ Fixed: ground_state must be in parent mind - Timeless now uses parent.origin_state
-      // 2. ✓ Fixed: tt must be derivable - State creation now provides tt=0 for Timeless
-      // 3. ✗ Current: Cannot learn about 'workshop': belief not found
-      //    - Mind.create_from_template tries to resolve workshop in ground_state
-      //    - But workshop doesn't exist in Eidos, only in world_state later
-      //    - Need to design how mind traits in prototypes should work
+    it('world.mjs setupStandardArchetypes with Villager prototype', () => {
+      // Tests prototypes with mind traits that reference world beliefs
+      // Uses about_state to allow Villager prototype in Eidos to reference workshop in world
 
       DB.reset_registries();
 
-      // Exact traittypes/archetypes/prototypes from world.mjs
+      // Register archetypes and Person prototype (no mind trait yet)
       const traittypes = {
         '@about': {
           type: 'Subject',
@@ -71,24 +62,15 @@ describe('Integration', () => {
         Person: {
           bases: ['ObjectPhysical', 'Mental'],
         },
-        Villager: {
-          bases: ['Person'],
-          traits: {
-            mind: {
-              workshop: ['location']
-            }
-          },
-        },
       };
 
-      // This line causes the failure
       DB.register(traittypes, archetypes, prototypes);
 
-      // If we get here, the bug is fixed and we can continue with world setup
+      // Create world state with workshop
       const world_mind = new Mind(logos(), 'world');
       const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
-      const world_belief = {
+      state.add_beliefs_from_template({
         workshop: {
           bases: ['Location'],
         },
@@ -98,18 +80,151 @@ describe('Integration', () => {
             location: 'workshop',
           },
         },
+      });
+
+      // Now create Villager prototype that references workshop via about_state
+      state.add_shared_from_template({
+        Villager: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              workshop: ['location']
+            }
+          },
+        },
+      });
+
+      // Create player using Villager prototype
+      state.add_beliefs_from_template({
         player: {
           bases: ['Villager'],
           traits: {
             location: 'workshop',
           },
         },
-      };
-
-      state.add_beliefs_from_template(world_belief);
+      });
 
       const player = state.get_belief_by_label('player');
       expect(player).to.exist;
+
+      // Verify player inherits from Villager prototype
+      expect([...player.get_prototypes()].map(p => p.label)).to.include('Villager');
+
+      // Verify player has archetypes from Person (Mental, ObjectPhysical)
+      expect([...player.get_archetypes()].map(a => a.label)).to.include('Mental');
+      expect([...player.get_archetypes()].map(a => a.label)).to.include('ObjectPhysical');
+
+      // Verify player has mind trait inherited from Villager
+      const player_mind = player.get_trait(state, 'mind');
+      expect(player_mind).to.be.instanceOf(Mind);
+
+      // Verify the Villager prototype's mind knows about workshop (via about_state)
+      const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(state);
+      const villager_mind = villager.get_trait(state, 'mind');
+      expect(villager_mind).to.be.instanceOf(Mind);
+
+      // Verify villager mind has a state with beliefs (learned about workshop)
+      const villager_mind_state = [...villager_mind.states_at_tt(0)][0];
+      expect(villager_mind_state).to.exist;
+      const beliefs = [...villager_mind_state.get_beliefs()];
+      expect(beliefs.length).to.be.greaterThan(0);
+
+      // Verify at least one belief has @about pointing to workshop
+      const workshop = state.get_belief_by_label('workshop');
+      const workshop_knowledge = beliefs.find(b =>
+        b.get_trait(villager_mind_state, '@about') === workshop.subject
+      );
+      expect(workshop_knowledge).to.exist;
+
+      state.lock();
+    });
+
+    it('prototypes with mind traits use find_beliefs_about_subject_in_state()', () => {
+      // Tests that knowledge about a subject can be queried using the helper
+      DB.reset_registries();
+
+      const traittypes = {
+        '@about': {
+          type: 'Subject',
+          mind: 'parent'
+        },
+        '@tt': 'number',
+        location: 'Location',
+        mind: 'Mind',
+      };
+
+      const archetypes = {
+        Thing: {
+          traits: {
+            '@about': null,
+            '@tt': null,
+          },
+        },
+        Location: {
+          bases: ['Thing'],
+          traits: {
+            location: null,
+          },
+        },
+        Mental: {
+          bases: ['Thing'],
+          traits: {
+            mind: null,
+          },
+        },
+        Person: {
+          bases: ['Mental'],
+        },
+      };
+
+      DB.register(traittypes, archetypes, {});
+
+      // Create world with workshop
+      const world_mind = new Mind(logos(), 'world');
+      const state = world_mind.create_state(logos().origin_state, {tt: 1});
+
+      state.add_beliefs_from_template({
+        workshop: {
+          bases: ['Location'],
+        },
+      });
+
+      // Create Villager prototype that knows about workshop
+      state.add_shared_from_template({
+        Villager: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              workshop: ['location']
+            }
+          },
+        },
+      });
+
+      // Verify using find_beliefs_about_subject_in_state()
+      const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(state);
+      const villager_mind = villager.get_trait(state, 'mind');
+      const villager_mind_state = [...villager_mind.states_at_tt(0)][0];
+
+      const workshop = state.get_belief_by_label('workshop');
+      const knowledge_about_workshop = DB.find_beliefs_about_subject_in_state(
+        villager_mind,
+        workshop.subject,
+        villager_mind_state
+      );
+
+      // Villager mind should have exactly one belief about workshop
+      expect(knowledge_about_workshop.length).to.equal(1);
+      expect(knowledge_about_workshop[0].get_trait(villager_mind_state, '@about')).to.equal(workshop.subject);
+
+      // Verify this is knowledge ABOUT workshop, not workshop itself
+      expect(knowledge_about_workshop[0]).to.not.equal(workshop);
+      expect(knowledge_about_workshop[0].subject).to.not.equal(workshop.subject);
+
+      // Verify the knowledge has the location trait slot (from learning spec)
+      const knowledge_archetypes = [...knowledge_about_workshop[0].get_archetypes()].map(a => a.label);
+      expect(knowledge_archetypes).to.include('Location');
+
       state.lock();
     });
 

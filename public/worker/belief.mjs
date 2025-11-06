@@ -53,49 +53,6 @@ import { State } from './state.mjs'
  */
 
 /**
- * Parse trait key into base trait and sub-property
- * @param {string} key - Trait key (e.g., 'mind' or 'mind.append')
- * @returns {{trait: string, subprop: string|null}} Parsed components
- */
-function parse_trait_key(key) {
-  const parts = key.split('.')
-  return {
-    trait: parts[0],
-    subprop: parts.slice(1).join('.') || null
-  }
-}
-
-/**
- * Get class constructor by data type name
- * @param {string} data_type - Type name (e.g., 'Mind', 'State')
- * @returns {Function|null} Class constructor or null
- */
-function get_class_by_name(data_type) {
-  // FIXME: move to Traittype
-  return Traittype.type_class_by_name[data_type] ?? null
-}
-
-/**
- * Collect trait operations from iterator of [key, value] pairs
- * Shared helper for both Belief and Archetype operation collection
- * @param {string} trait_name - Base trait name (e.g., 'mind')
- * @param {Iterable<[string, any]>} entries - Iterable of [key, value] pairs
- * @param {Belief|Archetype} source - Source object for operation tracking
- * @returns {Array<{key: string, value: any, source: Belief|Archetype}>} Operations
- */
-function _collect_operations_from_entries(trait_name, entries, source) {
-  //console.warn('remove')
-  const operations = []
-  for (const [key, value] of entries) {
-    const {trait, subprop} = parse_trait_key(key)
-    if (trait === trait_name && subprop) {
-      operations.push({key: subprop, value, source})
-    }
-  }
-  return operations
-}
-
-/**
  * Represents a belief about an entity with versioning support
  * @property {number} _id - Unique version identifier
  * @property {Subject} subject - Canonical Subject (identity holder)
@@ -137,74 +94,6 @@ export class Belief {
 
     DB.register_belief_by_id(this)
     DB.register_belief_by_subject(this)
-
-    /*
-    // collect dynamic props
-    //log("Resolve dynamic props from prototypes", this);
-
-    //const beliefs = []
-    const queue = []
-    if (mind !== null) {
-      for (const base of this._bases) {
-        if (base instanceof Belief) {
-          if (base.in_mind === mind) continue
-        }
-        queue.push(base);
-      }
-    }
-
-    const ops = []
-    const targets = new Set()
-    const seen = new Set()
-    while (queue.length > 0) {
-      const base = queue.shift()
-      if (!base || seen.has(base)) continue
-      seen.add(base)
-
-      //log("Consider", base);
-
-      for (const [key, value_in] of base.get_trait_entries()) {
-        const [trait, subprop] = key.split(/\.(.+)/)
-        if (typeof subprop === 'string') {
-          //log("Add op", trait, subprop );
-          ops.push({
-            key: subprop,
-            value: value_in,
-            source: base,
-          })
-          targets.add(trait)
-          continue
-        }
-
-        if (value_in === null) continue
-
-        let value_out = value_in
-        if (value_in._call) {
-          //log ("resolve _call", value_in);
-          const {_call, ...props} = value_in
-          const traittype = Traittype.get_by_label(trait)
-          assert(traittype, `Traittype '${trait}' not found for _call constructor pattern`, {trait, _call})
-          const ValueClass = Traittype.type_class_by_name[traittype.data_type]
-          assert(ValueClass, `No class registered for data type '${traittype.data_type}' (trait: ${trait})`, {trait, data_type: traittype.data_type, _call})
-          // @ts-ignore - Dynamic method lookup validated by assert
-          const method = ValueClass[_call]
-          assert(typeof method === 'function', `Method '${_call}' not found on class for trait '${trait}'`, {trait, _call, ValueClass: ValueClass.name})
-          value_out = method(state, this, props)
-        }
-
-        if(targets.has(trait) && (typeof value_out.state_data === 'function')) {
-          value_out = value_out.state_data(state, this, ops)
-        }
-
-        if (value_out !== value_in) {
-          this.add_trait(trait, value_out)
-          //log("added", trait, value_out)
-        }
-      }
-
-      queue.push(... base._bases);
-    }
-*/
   }
 
   /**
@@ -236,22 +125,7 @@ export class Belief {
   add_trait_from_template(state, label, data, {about_state=null} = {}) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
-    // Parse trait key to check for operation syntax (e.g., 'mind.append')
-    const {trait, subprop} = parse_trait_key(label)
-
-/*
-    // FIXME: handle operations in the right place
-    // If this is an operation (has subprop), store it directly without traittype resolution
-    if (subprop) {
-      // Operations are stored as-is and collected by get_trait_data()
-      // Validate that the base trait can be had
-      assert(this.can_have_trait(trait), `Belief can't have trait ${trait}`, {label, trait, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
-      this._traits.set(label, data)
-      return
-      }
-*/
-
-    // Regular trait - resolve via traittype, then call add_trait with resolved value
+    // Resolve via traittype, then call add_trait with resolved value
     const traittype = Traittype.get_by_label(label)
     assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
 
@@ -307,24 +181,16 @@ export class Belief {
   }
 
   /**
-   * Collect trait value and operations from belief chain
-   * Walks bases breadth-first, stops at first value found, collects all operations
+   * Get trait value (Subject/primitive/State/Mind/array) including inherited
+   * Walks the bases chain to find inherited trait values (prototype pattern)
+   * @param {State} state - State context for trait resolution
    * @param {string} trait_name - Name of the trait to get
-   * @returns {{value: any, operations: Array<{key: string, value: any, source: Belief|Archetype}>}} Trait data
+   * @returns {*} trait value (Subject, not Belief), or null if not found
    */
-  get_trait_data(trait_name) {
-    const operations = []
-
-    // Collect own operations
-    operations.push(..._collect_operations_from_entries(
-      trait_name,
-      this.get_trait_entries(),
-      this
-    ))
-
+  get_trait(state, trait_name) {
     // Check own value - early return if found
     if (this._traits.has(trait_name)) {
-      return {value: this._traits.get(trait_name), operations}
+      return this._traits.get(trait_name)
     }
 
     // Walk bases queue (polymorphic - same for Belief and Archetype)
@@ -336,17 +202,10 @@ export class Belief {
       if (!base || seen.has(base)) continue
       seen.add(base)
 
-      // Collect operations from this base
-      operations.push(..._collect_operations_from_entries(
-        trait_name,
-        base.get_trait_entries(),
-        base
-      ))
-
       // Check for value - early return when found
       const value = base.get_trait_value(trait_name)
       if (value !== undefined) {
-        return {value, operations}
+        return value
       }
 
       // Continue to next level
@@ -354,60 +213,7 @@ export class Belief {
     }
 
     // Not found
-    return {value: undefined, operations}
-  }
-
-  /**
-   * Get trait value (Subject/primitive/State/Mind/array) including inherited
-   * Walks the bases chain to find inherited trait values (prototype pattern)
-   * Supports trait operations pattern for composable value construction
-   * @param {State} state - State context for trait resolution
-   * @param {string} trait_name - Name of the trait to get
-   * @returns {*} trait value (Subject, not Belief), or null if not found
-   */
-  get_trait(state, trait_name) {
-    // Collect value and operations using polymorphic delegation
-    const {value, operations} = this.get_trait_data(trait_name)
-
-    // Return null if no value found
-    if (value === undefined) return null
-
-    return value; // DEBUG: see whats need op. FIXME
-    /* eslint-disable no-unreachable */
-
-    let result = value
-
-    // FIXME: move to some place that dont expect side effects
-    // Process constructor marker {_call: 'method_name'}
-    if (result && typeof result === 'object' && '_call' in result && !Array.isArray(result)) {
-      const {_call, ...props} = result
-      const traittype = Traittype.get_by_label(trait_name)
-      // @ts-ignore - TypeScript doesn't narrow type correctly in .mjs files
-      if (traittype?.data_type) {
-        // @ts-ignore - TypeScript doesn't narrow type correctly in .mjs files
-        const ValueClass = get_class_by_name(traittype.data_type)
-        // @ts-ignore - Dynamic method call on class
-        if (ValueClass && typeof ValueClass[_call] === 'function') {
-          // @ts-ignore - Dynamic method call on class
-          // Pass ground_state, ground_belief, props
-          result = ValueClass[_call](state, this, props)
-
-          // If constructor returns a State (e.g., from Mind.create_from_template),
-          // extract the value (Mind) and let operations work with it
-          if (result instanceof State) {
-            result = result.in_mind // FIXME: should return consistent type
-          }
-        }
-      }
-    }
-
-    // Apply operations if value has state_data() method
-    if (operations.length > 0 && result && typeof result.state_data === 'function') {
-      // Pass ground_state, ground_belief, operations
-      result = result.state_data(state, this, operations)
-    }
-
-    return result
+    return null
   }
 
   /**
@@ -452,7 +258,7 @@ export class Belief {
    * Shows what traits CAN be set based on archetype composition
    * @returns {Generator<string>} Yields trait names available from archetypes
    */
-  *get_slots() { // FIXME: supposed to get all slots. Not just from archetypes
+  *get_slots() {
     const yielded = new Set()
 
     for (const archetype of this.get_archetypes()) {
@@ -477,10 +283,13 @@ export class Belief {
     if (!(about_trait instanceof Subject)) return null
 
     assert(belief_state instanceof State, 'get_about requires State where belief exists', {belief_state})
-    assert(belief_state.ground_state instanceof State, 'belief_state with @about must have ground_state', {belief_state})
 
-    const belief = belief_state.ground_state.get_belief_by_subject(about_trait)
-    assert(belief instanceof Belief, 'Belief referenced by @about must exist in ground_state', {about_trait, ground_state: belief_state.ground_state})
+    // Check about_state first (for prototypes referencing world beliefs), then ground_state
+    const resolve_state = belief_state.about_state ?? belief_state.ground_state
+    assert(resolve_state instanceof State, 'belief_state with @about must have about_state or ground_state', {belief_state})
+
+    const belief = resolve_state.get_belief_by_subject(about_trait)
+    assert(belief instanceof Belief, 'Belief referenced by @about must exist in resolve_state', {about_trait, resolve_state_id: resolve_state._id, resolve_state_mind: resolve_state.in_mind?.label})
     return belief
   }
 
