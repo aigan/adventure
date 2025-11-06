@@ -5,7 +5,7 @@
  * It represents the realm of eternal forms - templates and prototypes that exist
  * outside of individual minds and time.
  *
- * Eidos has a Pleroma (timeless state) as its origin_state, allowing it to hold
+ * Eidos has a Timeless (timeless state) as its origin_state, allowing it to hold
  * shared beliefs that exist beyond temporal constraints.
  *
  * Key responsibilities:
@@ -15,7 +15,7 @@
  */
 
 import { Mind } from './mind.mjs'
-import { Pleroma } from './pleroma.mjs'
+import { Timeless } from './timeless.mjs'
 import { logos } from './logos.mjs'
 
 /**
@@ -38,18 +38,18 @@ export class Eidos extends Mind {
     super(logos(), 'Eidos', null)
 
     // Create timeless origin state for holding shared beliefs
-    // Pleroma extends State via runtime prototype manipulation
+    // Timeless extends State via runtime prototype manipulation
     /** @type {State} */
-    this.origin_state = /** @type {State} */ (new Pleroma(this))
+    this.origin_state = /** @type {State} */ (new Timeless(this))
   }
 
   /**
    * Create additional timeless states for shared belief prototypes
-   * Eidos can have multiple Pleroma instances for organizing shared knowledge
-   * @returns {Pleroma}
+   * Eidos can have multiple Timeless instances for organizing shared knowledge
+   * @returns {Timeless}
    */
   create_timeless_state() {
-    return new Pleroma(this)
+    return new Timeless(this)
   }
 }
 

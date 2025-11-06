@@ -4,12 +4,12 @@
  * Logos is the ONE mind with parent=null. All other minds descend from Logos.
  * It represents the ultimate ground of existence in the mind hierarchy.
  *
- * Logos has a Pleroma (timeless state) as its origin_state, which is the
+ * Logos has a Timeless (timeless state) as its origin_state, which is the
  * only state with ground_state=null.
  */
 
 import { Mind } from './mind.mjs'
-import { Pleroma } from './pleroma.mjs'
+import { Timeless } from './timeless.mjs'
 import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
 
@@ -42,9 +42,9 @@ export class Logos {
     this._states_by_ground_state = new Map()
     this.state = null
 
-    // Pleroma extends State via runtime prototype manipulation
+    // Timeless extends State via runtime prototype manipulation
     /** @type {State} */
-    this.origin_state = /** @type {State} */ (new Pleroma(/** @type {any} */ (this)))
+    this.origin_state = /** @type {State} */ (new Timeless(/** @type {any} */ (this)))
 
     // Register with DB - Logos inherits Mind methods via prototype
     DB.register_mind(/** @type {any} */ (this))

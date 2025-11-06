@@ -913,7 +913,7 @@ export class Belief {
 
     // Create belief in Eidos (realm of forms)
     const eidos_state = eidos().origin_state
-    assert(eidos_state !== null, 'Eidos origin_state must exist')
+    assert(eidos_state instanceof State, 'Eidos origin_state must be State', {eidos_state})
     const belief = new Belief(eidos_state, null, resolved_bases)
 
     // Set ground_mind on auto-created subject for scoping

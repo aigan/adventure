@@ -492,7 +492,7 @@ export function register(traittypes, archetypes, prototypes) {
 
   // Register prototypes third (shared beliefs in Eidos)
   const eidos_mind = eidos()
-  assert(eidos_mind.origin_state !== null, 'Eidos origin_state must exist')
+  assert(eidos_mind.origin_state instanceof State, 'Eidos origin_state must be State', {eidos_mind})
 
   for (const [label, def] of Object.entries(prototypes)) {
     // Validate required fields

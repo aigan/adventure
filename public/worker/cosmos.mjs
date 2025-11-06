@@ -13,7 +13,7 @@ export { Belief } from './belief.mjs'
 export { Subject } from './subject.mjs'
 export { Session } from './session.mjs'
 export { Serialize, save_mind, load } from './serialize.mjs'
-export { Pleroma } from './pleroma.mjs'
+export { Timeless } from './timeless.mjs'
 export { Logos, logos, logos_state, _reset_logos } from './logos.mjs'
 export { Eidos, eidos, _reset_eidos } from './eidos.mjs'
 export { DB }

@@ -381,7 +381,7 @@ export class Mind {
         !(data._states instanceof Set)) {
       // It's a learn spec - call create_from_template
       const mind = Mind.create_from_template(creator_state, belief, data)
-      assert(mind.state !== null, 'create_from_template must create unlocked state')
+      assert(mind.state instanceof State, 'create_from_template must create unlocked state', {mind})
       return mind.state.lock().in_mind
     }
 
@@ -390,7 +390,7 @@ export class Mind {
       // Strip _type from template before passing to create_from_template
       const {_type, ...traits} = data
       const mind = Mind.create_from_template(creator_state, belief, traits)
-      assert(mind.state !== null, 'create_from_template must create unlocked state')
+      assert(mind.state instanceof State, 'create_from_template must create unlocked state', {mind})
       return mind.state.lock().in_mind
     }
 
