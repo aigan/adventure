@@ -597,7 +597,7 @@ export class Belief {
         }
         belief._bases.add(archetype)
       } else if (typeof base_ref === 'number') {
-        const base_belief = DB.get_belief(base_ref)
+        const base_belief = DB.get_belief_by_id(base_ref)
         if (!base_belief) {
           throw new Error(`Cannot resolve base belief ${base_ref} for belief ${belief._id}`)
         }
@@ -799,7 +799,7 @@ function deserialize_trait_value(value) {
     // Handle nested references
     if (value._type === 'Belief') {
       // Use ID lookup (exact version), fall back to label lookup if needed
-      const belief = DB.get_belief(value._id)
+      const belief = DB.get_belief_by_id(value._id)
       if (!belief) {
         throw new Error(`Cannot resolve belief reference ${value._id} in trait`)
       }

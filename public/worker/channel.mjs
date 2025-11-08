@@ -145,7 +145,7 @@ export const dispatch = {
 		const belief_id = Number(belief);
 
 		// Find belief by id in global registry
-		const belief_obj = DB.get_belief(belief_id);
+		const belief_obj = DB.get_belief_by_id(belief_id);
 
 		assert(belief_obj instanceof Belief, `Belief not found: ${belief_id}`);
 

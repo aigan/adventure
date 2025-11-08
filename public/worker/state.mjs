@@ -35,7 +35,7 @@ import { Timeless } from './timeless.mjs'
 
 /**
  * @typedef {object} StateJSON
- * @property {string} _type - Always "State"
+ * @property {string} _type - "State" or "UnionState"
  * @property {number} _id - State identifier
  * @property {number|null} tt - State transaction time/tick (null for timeless states like logos)
  * @property {number|null} vt - State valid time (null for timeless states like logos)
@@ -45,6 +45,7 @@ import { Timeless } from './timeless.mjs'
  * @property {number[]} insert - Belief _ids present in this state
  * @property {number[]} remove - Belief _ids removed in this state
  * @property {number} in_mind - Mind _id this state belongs to
+ * @property {number[]} [component_states] - Component state _ids (only for UnionState)
  */
 
 /**
@@ -598,10 +599,15 @@ export class State {
   /**
    * Create State from JSON data (fully materialized)
    * @param {Mind} mind - Mind this state belongs to (or context for resolution)
-   * @param {StateJSON} data - JSON data with _type: 'State'
+   * @param {StateJSON} data - JSON data with _type: 'State' or 'UnionState'
    * @returns {State}
    */
   static from_json(mind, data) {
+    // Check if this is a UnionState and delegate to UnionState.from_json
+    if (data._type === 'UnionState') {
+      return Cosmos.UnionState.from_json(mind, data)
+    }
+
     // Resolve in_mind reference (if present in data, otherwise use parameter)
     let resolved_mind = mind
     if (data.in_mind != null) {
@@ -640,7 +646,7 @@ export class State {
     // Resolve insert/remove belief references
     const insert = []
     for (const belief_id of data.insert) {
-      const belief = DB.get_belief(belief_id)
+      const belief = DB.get_belief_by_id(belief_id)
       if (!belief) {
         throw new Error(`Cannot resolve insert belief ${belief_id} for state ${data._id}`)
       }
@@ -649,7 +655,7 @@ export class State {
 
     const remove = []
     for (const belief_id of data.remove) {
-      const belief = DB.get_belief(belief_id)
+      const belief = DB.get_belief_by_id(belief_id)
       if (!belief) {
         throw new Error(`Cannot resolve remove belief ${belief_id} for state ${data._id}`)
       }

@@ -226,7 +226,7 @@ export function register_belief_by_id(belief) {
  * @param {number} id
  * @returns {Belief|undefined}
  */
-export function get_belief(id) {
+export function get_belief_by_id(id) {
   return belief_by_id.get(id)
 }
 

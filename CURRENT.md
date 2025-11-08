@@ -2,7 +2,12 @@
 
 ## Active Plan
 
-None - ready for next feature
+**Trait Composition from Multiple Bases** - Design needed ([plan](docs/plans/trait-composition-from-multiple-bases.md))
+- Problem: When belief has multiple bases with same trait, which value is used?
+- Context: Discovered during UnionState implementation (P1.1 test)
+- Question: Should VillageBlacksmith (bases: [Villager, Blacksmith]) compose both minds automatically?
+- Options: First wins, last wins, opt-in composition, automatic composition, traittype-defined
+- Blocking: UnionState tests (P1.1, P1.2) until design decision made
 
 ## Recently Completed
 
@@ -20,15 +25,18 @@ None - ready for next feature
 - [ ] **Mind Composition Testing** - Test prototype composition with multiple mind bases
   - Case: VillageBlacksmith inherits knowledge from both Villager and Blacksmith prototypes
   - Validates UnionState pattern for combining multiple mind states
-  - Tests: Knowledge from all component minds is accessible
+  - Tests: P1.1 (multi-base composition), P1.2 (override semantics)
+  - Status: Tests written but skipped, blocked by trait composition design decision
 
 ### Design & Architecture
-- [ ] **UnionState for Prototype Composition** - Flyweight composition for prototype minds ([plan](docs/plans/union-state.md))
-  - Enable VillageBlacksmith = Villager + Blacksmith without multiple base states
-  - UnionState holds ordered array of component_states
-  - Trait resolution: last wins (override pattern)
-  - Restrictions: no delete operations (only insert/replace)
-  - Used for prototype minds with composed knowledge
+- [x] **UnionState for Prototype Composition** - Flyweight composition for prototype minds ([plan](docs/plans/union-state.md))
+  - ✅ UnionState class created with iterator-based get_beliefs()
+  - ✅ Multi-parent mind detection in Mind.resolve_trait_value_from_template
+  - ✅ UnionState creation in Mind.create_from_template
+  - ✅ Serialization support (toJSON/from_json)
+  - ⚠️ **BLOCKED**: Needs trait composition design (see active plan)
+  - Issue: When bases have same trait, which value used? (first-wins vs compose)
+  - Tests: P1.1 expects auto-composition, P1.2 expects override semantics
 - [ ] **Trait Merge Semantics** - Document when traits update vs create new belief version
   - Why Mind is mutable reference (contains States, modified in place)
   - Contrast with immutable trait values (primitives, Subjects)

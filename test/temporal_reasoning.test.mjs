@@ -75,30 +75,37 @@ describe('Temporal Reasoning', () => {
       expect(npc_state.tt).to.equal(100) // world_state.vt defaults to tt
     })
 
-    it.skip('Mind.create_from_template follows fork invariant', () => {
-      // SKIPPED: Mind.create_from_template needs implementation work
-      // Error: "Cannot create state for locked self" - belief locking logic needs review
+    it('Mind.create_from_template follows fork invariant', () => {
+      // Was skipped due to "Cannot create state for locked self" error
+      // Reactivated to test if issue has been resolved
       setupArchetypes()
 
       const world_mind = new Mind(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 200})
 
       world_state.add_belief_from_template({
-        label: 'tavern',
+        traits: {'@label': 'tavern'},
         bases: ['Location']
       })
 
-      const npc = world_state.add_belief_from_template({
-        label: 'npc',
-        bases: ['Person']
-        // Mind will be created by Mind.create_from_template
+      // Create npc with mind trait - mind will be auto-created via template
+      const npc = Belief.from_template(world_state, {
+        bases: ['Person'],
+        traits: {
+          '@label': 'npc',
+          mind: { tavern: ['location'] }  // Mind template with learning spec
+        }
       })
 
-      const learn_spec = { tavern: ['location'] }
-      const npc_mind = Mind.create_from_template(world_state, npc, learn_spec, {about_state: world_state})
+      world_state.lock()
+
+      // Get the npc's mind
+      const npc_mind = npc.get_trait(world_state, 'mind')
+      expect(npc_mind).to.be.instanceOf(Mind)
 
       // Get the created mind state
       const npc_mind_state = npc_mind.origin_state
+      expect(npc_mind_state).to.exist
 
       // Fork invariant: child state's tt = parent_state.vt
       expect(npc_mind_state.tt).to.equal(world_state.vt)

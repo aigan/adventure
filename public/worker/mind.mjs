@@ -24,6 +24,7 @@ import { assert, log, debug, sysdesig } from './debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
 import { State } from './state.mjs'
+import * as Cosmos from './cosmos.mjs'
 import { Belief } from './belief.mjs'
 import { Traittype } from './traittype.mjs'
 import { Timeless } from './timeless.mjs'
@@ -33,6 +34,7 @@ import { Timeless } from './timeless.mjs'
  * @typedef {import('./state.mjs').StateJSON} StateJSON
  * @typedef {import('./subject.mjs').Subject} Subject
  * @typedef {import('./archetype.mjs').Archetype} Archetype
+ * @typedef {import('./union_state.mjs').UnionState} UnionState
  */
 
 /**
@@ -109,14 +111,14 @@ export class Mind {
      * Latest unlocked state, or null if all states are locked
      * Updated by register_state() when unlocked state is registered
      * Cleared by State.lock() when this state is locked
-     * @type {State|null}
+     * @type {State|UnionState|null}
      */
     this.state = null
 
     /**
      * Origin state - primordial state for this mind (used for prototypes)
      * Set on first create_state() call or explicitly during initialization
-     * @type {State|null}
+     * @type {State|UnionState|null}
      */
     this.origin_state = null
 
@@ -353,7 +355,7 @@ export class Mind {
     // Finalize beliefs for THIS mind (resolve State/Mind references in traits)
     // Do this AFTER loading nested minds so all State/Mind references can be resolved
     for (const belief_data of data.belief) {
-      const belief = DB.get_belief(belief_data._id)
+      const belief = DB.get_belief_by_id(belief_data._id)
       if (belief) {
         belief._finalize_traits()
       }
@@ -376,13 +378,28 @@ export class Mind {
     assert(belief.is_shared || belief.origin_state instanceof State, "belief must have origin_state", {belief})
     const creator_state = /** @type {State} */ (belief.origin_state)
 
-    // Check for base Mind trait from bases
+    // Check for Mind traits from ALL bases (for multi-parent composition)
     // belief._bases is set before traits are resolved, so get_trait works here
-    const base_mind = belief.get_trait(creator_state, 'mind')
-    const base_mind_state = base_mind?.state ?? base_mind?.origin_state ?? null
+    // Filter to only Belief bases (skip Archetypes which don't have get_trait)
+    const base_minds = []
+    for (const base of belief._bases) {
+      // Skip archetypes - they don't have mind traits
+      if (!(base instanceof Belief)) continue
 
-    if (base_mind_state) {
-      debug(`Mind extension: ${belief.get_label()} extending Mind#${base_mind._id} state#${base_mind_state._id}`)
+      const mind = base.get_trait(creator_state, 'mind')
+      if (mind) {
+        base_minds.push(mind)
+      }
+    }
+
+    // Extract states from base minds
+    const base_mind_states = base_minds.map(m => m.state ?? m.origin_state).filter(s => s !== null)
+
+    // For backward compatibility: single base_mind_state
+    const base_mind_state = base_mind_states.length === 1 ? base_mind_states[0] : null
+
+    if (base_mind_states.length > 0) {
+      debug(`Mind extension: ${belief.get_label()} extending ${base_mind_states.length} Mind(s): ${base_minds.map(m => `Mind#${m._id}`).join(', ')}`)
     }
 
     // Detect plain object Mind template (learn spec)
@@ -395,7 +412,12 @@ export class Mind {
       debug("create mind from template with", sysdesig(creator_state, data))
 
       // It's a learn spec - call create_from_template
-      const mind = Mind.create_from_template(creator_state, belief, data, {about_state, base_mind_state})
+      // Pass component_states for multi-parent composition
+      const mind = Mind.create_from_template(creator_state, belief, data, {
+        about_state,
+        base_mind_state,
+        component_states: base_mind_states.length > 1 ? base_mind_states : undefined
+      })
       assert(mind.state instanceof State, 'create_from_template must create unlocked state', {mind})
       return mind.state.lock().in_mind
     }
@@ -404,7 +426,11 @@ export class Mind {
     if (data?._type === 'Mind') {
       // Strip _type from template before passing to create_from_template
       const {_type, ...traits} = data
-      const mind = Mind.create_from_template(creator_state, belief, traits, {about_state, base_mind_state})
+      const mind = Mind.create_from_template(creator_state, belief, traits, {
+        about_state,
+        base_mind_state,
+        component_states: base_mind_states.length > 1 ? base_mind_states : undefined
+      })
       assert(mind.state instanceof State, 'create_from_template must create unlocked state', {mind})
       return mind.state.lock().in_mind
     }
@@ -467,9 +493,10 @@ export class Mind {
    * @param {object} options - Optional meta-parameters
    * @param {State|null} [options.about_state] - State context for belief resolution (where beliefs exist)
    * @param {State|null} [options.base_mind_state] - State from base mind to use as base for knowledge inheritance
+   * @param {State[]|null} [options.component_states] - States for multi-parent composition (creates UnionState)
    * @returns {Mind} The created mind (access unlocked state via mind.state)
    */
-  static create_from_template(ground_state, ground_belief, traits, {about_state, base_mind_state} = {}) {
+  static create_from_template(ground_state, ground_belief, traits, {about_state, base_mind_state, component_states} = {}) {
     const assert = (/** @type {any} */ condition, /** @type {string} */ message, /** @type {any} */ context) => {
       if (!condition) throw new Error(message + (context ? ': ' + JSON.stringify(context) : ''))
     }
@@ -489,6 +516,21 @@ export class Mind {
       // State.base can reference states in different minds (e.g., Eidos prototypes)
     }
 
+    // Validate component_states if provided (for multi-parent composition)
+    if (component_states) {
+      assert(Array.isArray(component_states),
+        `component_states must be array`,
+        {component_states})
+      for (const component of component_states) {
+        assert(component instanceof State,
+          `All component_states must be State`,
+          {component})
+        assert(component.locked,
+          `All component_states must be locked`,
+          {state_id: component._id, locked: component.locked})
+      }
+    }
+
     // Extract self_subject from ground_belief
     const self_subject = ground_belief.subject
 
@@ -498,19 +540,36 @@ export class Mind {
 
     // Create initial state with self reference - fork invariant: child.tt = parent_state.vt
     // When ground_state is Timeless (vt=null), must provide explicit tt
-    // If base_mind_state provided, use it as base for knowledge inheritance
-    const state = new State(
-      entity_mind,
-      ground_state,             // ground_state (where body exists)
-      base_mind_state ?? null,  // base state for knowledge inheritance
-      {
-        self: self_subject,  // self (WHO is experiencing this)
-        about_state,  // State context for belief resolution (where beliefs to learn about exist)
-        // When ground_state is Timeless (vt=null), must provide explicit tt
-        ...(ground_state instanceof Timeless ? { tt: 0 } : {})
-        // Otherwise tt and vt both derive from ground_state.vt (fork invariant)
-      }
-    )
+    // If component_states provided (multi-parent), use UnionState, otherwise use State
+    let state
+    if (component_states && component_states.length > 1) {
+      // Multi-parent composition - create UnionState
+      const { UnionState } = Cosmos
+      const tt = ground_state.vt ?? (ground_state instanceof Timeless ? 0 : null)
+      state = new UnionState(
+        entity_mind,
+        tt,
+        component_states,
+        ground_state,
+        self_subject,
+        tt  // vt defaults to tt
+      )
+      state.about_state = about_state ?? null
+    } else {
+      // Single or no base - use regular State
+      state = new State(
+        entity_mind,
+        ground_state,             // ground_state (where body exists)
+        base_mind_state ?? null,  // base state for knowledge inheritance
+        {
+          self: self_subject,  // self (WHO is experiencing this)
+          about_state,  // State context for belief resolution (where beliefs to learn about exist)
+          // When ground_state is Timeless (vt=null), must provide explicit tt
+          ...(ground_state instanceof Timeless ? { tt: 0 } : {})
+          // Otherwise tt and vt both derive from ground_state.vt (fork invariant)
+        }
+      )
+    }
 
     // Track as origin state (first state created for this mind)
     entity_mind.origin_state = state
