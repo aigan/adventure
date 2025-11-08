@@ -32,7 +32,7 @@ npm test                 # Run tests + linting (see test/.CONTEXT.md)
 
 ## Critical Patterns
 
-**Immutability**: Never mutate - create new versions via `state.tick({insert, replace})` with `base` inheritance
+**Immutability**: Never mutate - create new versions via `state.branch_state(ground_state, vt)` with `base` inheritance
 
 **Archetype composition**: Multiple inheritance via `bases: ['Actor', 'Mental']`
 

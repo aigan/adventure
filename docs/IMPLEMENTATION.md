@@ -53,10 +53,10 @@ The application uses a **Web Worker architecture** to separate game logic from U
 - `Mind`: Container for beliefs with label-based lookup and nested mind support
 - `Belief`: Represents game entities with archetypes and traits
 - `State`: Immutable state snapshots with tick-based progression
-  - States track `insert`, `remove`, `replace` operations (differential updates)
+  - States track `insert`, `remove` operations via differential updates (base chain)
   - Multiple states can exist at same tick (superposition/branching)
   - States inherit via `base` from any previous state
-  - `State.resolve_template()` constructs states declaratively with learning specs
+  - Declarative state construction via Mind templates with learning specs
 
 **Archetype Composition**:
 - Entities inherit traits from multiple archetypes via `bases` array
@@ -137,21 +137,21 @@ The implementation uses **bi-temporal database concepts** with Transaction Time 
   - Ground state owns canonical valid time
 - **No Time Arithmetic**: Never use `tt + 1` or similar
   - Always coordinate via explicit ground_state.vt reference
-  - Time parameters must be passed explicitly to tick()
+  - Time parameters must be passed explicitly to branch_state()
 
 **Method Signatures:**
 ```javascript
-// Create new state with explicit time coordination
-state.tick(ground_state, vt, {insert, remove, replace})
-
-// World mind (no ground state)
-world_state.tick(null, 2)  // Must provide explicit vt
-
-// Child mind (inherits vt from ground_state.vt)
-npc_state.tick(world_state)  // vt comes from world_state.vt
-
-// Branch state directly
+// Create new state (branching from existing state)
 state.branch_state(ground_state, vt)
+
+// World mind (no ground state, must provide explicit vt)
+world_state.branch_state(null, 2)
+
+// Child mind (vt inherited from ground_state.vt if not specified)
+npc_state.branch_state(world_state)
+
+// Helper for versioning a belief with new traits
+state.tick_with_traits(belief, vt, {trait: value})
 ```
 
 **Temporal Querying:**
@@ -184,7 +184,7 @@ state.branch_state(ground_state, vt)
 ## Key Implementation Patterns
 
 ### State Immutability
-- States are immutable - changes create new state via `state.tick({insert, remove, replace})`
+- States are immutable - changes create new state via `state.branch_state(ground_state, vt)`
 - Objects never change, only new versions created with `base` inheritance
 - Property lookup follows prototype chain: `hammer_1 → hammer_1_v2 → hammer_1_v3`
 
@@ -206,7 +206,9 @@ state.branch_state(ground_state, vt)
 - Automatically dereferences belief references in learned traits
 - Used for NPC and player mind initialization
 
-### Lazy Version Propagation
+## Future Architecture
+
+### Lazy Version Propagation (Planned)
 
 **Problem**: When shared cultural beliefs update (e.g., country announces winter), thousands of NPCs inherit this knowledge. Eager propagation would require creating new versions for every intermediate node (cities, NPCs), causing version cascade explosion.
 
@@ -235,7 +237,7 @@ state.branch_state(ground_state, vt)
    - If resolver returns array, return `{type: 'superposition', branches: [...]}`
    - Cache concrete resolutions in `_resolved_cache[state_id][trait_name]`
 
-4. **Materialization** (`Belief.from_template()`, `State.tick()`):
+4. **Materialization** (`Belief.from_template()`, `State.branch_state()`):
    - When explicitly creating new belief version, walk bases chain
    - Detect branches and resolve via state
    - Create intermediate materialized nodes as needed
@@ -254,9 +256,12 @@ state.branch_state(ground_state, vt)
 
 ```javascript
 // Country updates (1 new belief)
-country_v2 = new Belief({subject: country_sid, bases: [country_v1], traits: {season: 'winter'}})
-country_v1.branches.add(country_v2)
-state.insert(country_v2)
+country_v2 = Belief.from_template(state, {
+  sid: country_sid,
+  bases: [country_v1],
+  traits: {season: 'winter'}
+})
+// Belief is automatically added to state.insert during from_template()
 
 // NPC queries season (lazy resolution)
 npc_belief.get_trait(state, 'season')
@@ -332,16 +337,14 @@ This enables narrative-driven collapse instead of arbitrary selection.
 
 **See also**: `docs/plans/lazy-version-propagation.md` for implementation roadmap
 
-## Future Architecture
-
-### Template System (not yet implemented)
+### Template System (Planned)
 - Templates implement `is_applicable(template, belief_state)` returning fit quality
 - Templates return iterators yielding `{state, events}` pairs
 - Multi-template sampling and combination for story generation
 - Variables can match against possibility distributions
 - Hierarchical templates for theme and pacing coordination
 
-### Constraint Satisfaction Engine (partially implemented)
+### Constraint Satisfaction Engine (Partially Implemented)
 - Constraints operate on possibility distributions, never single values
 - Player observations automatically generate constraints that narrow possibilities
 - Multi-perspective constraints evaluated from any entity's belief perspective

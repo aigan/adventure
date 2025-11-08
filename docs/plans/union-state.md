@@ -56,12 +56,10 @@ class UnionState extends State {
   }
 
   // Restricted operations
-  tick({insert, replace, remove}) {
-    if (remove && remove.length > 0) {
-      throw new Error('UnionState does not support remove operations')
-    }
-    // insert and replace allowed
-    return super.tick({insert, replace})
+  branch_state(ground_state, vt) {
+    // UnionState can branch, creating a new state with this union as base
+    // The new state can insert/replace, but the union view itself is immutable
+    return super.branch_state(ground_state, vt)
   }
 }
 ```
@@ -162,7 +160,7 @@ bob_mind.state.ground_state = world_state  // Where Bob belief exists
 
 - [ ] Create UnionState class extending State
 - [ ] Implement get_beliefs() with ordered merging
-- [ ] Restrict tick() to disallow remove operations
+- [ ] Ensure branch_state() works correctly (union itself is immutable view)
 - [ ] Add toJSON() / from_json() for serialization
 - [ ] Update Mind.resolve_trait_value_from_template() to detect union patterns
 - [ ] Add tests for trait resolution order

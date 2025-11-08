@@ -208,9 +208,8 @@ describe('Integration', () => {
 
       const workshop = state.get_belief_by_label('workshop');
       const knowledge_about_workshop = DB.find_beliefs_about_subject_in_state(
-        villager_mind,
-        workshop.subject,
-        villager_mind_state
+        villager_mind_state,
+        workshop.subject
       );
 
       // Villager mind should have exactly one belief about workshop
@@ -331,7 +330,7 @@ describe('Integration', () => {
         },
         hammer: {
           bases: ['PortableObject'],
-          traits: {color: 'blue'}
+          traits: {color: 'blue', location: 'workshop'}
         }
       });
 
@@ -379,6 +378,27 @@ describe('Integration', () => {
 
       // get_beliefs() walks the base chain, so should include beliefs from Villager's state
       expect(beliefs_in_player_mind.length).to.be.at.least(3);
+
+      // Verify exactly ONE belief about workshop (inherited from Villager)
+      const workshop = world_state.get_belief_by_label('workshop');
+      const workshop_beliefs = beliefs_in_player_mind.filter(b => {
+        const about = b.get_about(player_state);
+        return about && about.subject === workshop.subject;
+      });
+      expect(workshop_beliefs.length).to.equal(1);
+
+      // Verify exactly ONE belief about hammer (versioned from Villager's belief)
+      const hammer = world_state.get_belief_by_label('hammer');
+      const hammer_beliefs = beliefs_in_player_mind.filter(b => {
+        const about = b.get_about(player_state);
+        return about && about.subject === hammer.subject;
+      });
+      expect(hammer_beliefs.length).to.equal(1);
+
+      // Verify the hammer belief has BOTH traits (inherited color + own location)
+      const player_hammer = hammer_beliefs[0];
+      expect(player_hammer.get_trait(player_state, 'color')).to.equal('blue'); // inherited from Villager
+      expect(player_hammer.get_trait(player_state, 'location')).to.not.be.null; // added by player
     });
   });
 });

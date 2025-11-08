@@ -168,7 +168,7 @@ describe('State', () => {
       expect(npc_state.ground_state).to.equal(world_state);
     });
 
-    it('tick() inherits ground_state from parent', () => {
+    it('branch_state() inherits ground_state from parent', () => {
       const world_mind = new Mind(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
@@ -181,7 +181,7 @@ describe('State', () => {
       expect(npc_state2.ground_state).to.equal(world_state);
     });
 
-    it('tick() can override ground_state', () => {
+    it('branch_state() can override ground_state', () => {
       const world_mind = new Mind(logos(), 'world');
       const world_state1 = world_mind.create_state(logos().origin_state, {tt: 1});
       world_state1.lock();

@@ -128,20 +128,30 @@ export class Subject {
    * Shallow inspection view for the inspect UI
    * Resolves subject to belief in the given state context
    * @param {State} state - State where this subject should be resolved
-   * @returns {object} Belief reference
+   * @returns {{_ref: number, _type: string, label: string|null, mind_id: number|null, mind_label: string|null, about_label?: string|null}} Belief reference with optional about label for knowledge beliefs
    */
   to_inspect_view(state) {
     const belief = state.get_belief_by_subject(this)
 
     assert(belief instanceof Belief, 'Subject must have belief in inspection state', {sid: this.sid, state_id: state._id, mind: state.in_mind.label})
 
-    return {
+    const result = /** @type {{_ref: number, _type: string, label: string|null, mind_id: number|null, mind_label: string|null, about_label?: string|null}} */ ({
       _ref: belief._id,
       _type: 'Belief',
       label: belief.get_label(),
       mind_id: belief.in_mind?._id ?? null,
       mind_label: belief.in_mind?.label ?? null
+    })
+
+    // Add "about" info if this is knowledge about something
+    // For cross-mind beliefs, use the belief's own state context to resolve @about
+    const belief_state = belief.origin_state ?? state
+    const about_belief = belief.get_about(belief_state)
+    if (about_belief) {
+      result.about_label = about_belief.get_label()
     }
+
+    return result
   }
 
   /**

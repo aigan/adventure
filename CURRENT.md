@@ -2,15 +2,17 @@
 
 ## Active Plan
 
-**Mind Extension via State Base** ([plan](docs/plans/mind-extension-via-state-base.md))
+None - ready for next feature
 
-Enable minds to inherit cultural knowledge via State.base chain. When a belief inherits from another belief with a mind (e.g., player inherits from Villager prototype), the new mind's state should use the inherited mind's state as its base, preserving cultural knowledge while maintaining independent mind instances.
+## Recently Completed
 
-**Current Status**: Not started
-- [ ] Modify mind template resolution to detect inherited minds
-- [ ] Create new mind's state with inherited state as base
-- [ ] Adjust asserts for cross-mind state bases
-- [ ] Test with tools/test_world.mjs diagnostic
+**Mind Extension via State Base** - 2025-01-08 ([plan](docs/plans/archive/mind-extension-via-state-base.md))
+- Minds created from templates inherit knowledge from base beliefs via State.base chain
+- `Mind.create_from_template()` detects inherited minds and uses their state as base
+- Cross-mind state bases validated and tested
+- Fixed `recognize()` to properly identify inherited beliefs (avoids duplicates)
+- Enhanced inspection UI to show "about" labels for knowledge beliefs
+- Updated all documentation from removed `tick()` to `branch_state()`
 
 ## Backlog
 

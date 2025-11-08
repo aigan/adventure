@@ -191,7 +191,9 @@ function render_entity(a, target = $main){
               const mind_prefix = (item.mind_id && item.mind_id !== belief_mind_id)
                 ? `${item.mind_label || 'Mind #' + item.mind_id}: `
                 : '';
-              return `<a href="${link}">${mind_prefix}#${item._ref}${label_text}</a>`;
+              // Add "about" label for knowledge beliefs
+              const about_text = item.about_label ? ` about ${item.about_label}` : '';
+              return `<a href="${link}">${mind_prefix}#${item._ref}${label_text}${about_text}</a>`;
             } else {
               return JSON.stringify(item);
             }
@@ -219,7 +221,9 @@ function render_entity(a, target = $main){
             const mind_prefix = (value.mind_id && value.mind_id !== belief_mind_id)
               ? `${value.mind_label || 'Mind #' + value.mind_id}: `
               : '';
-            display_value = `<a href="${link}">${mind_prefix}#${value._ref}${label_text}</a>`;
+            // Add "about" label for knowledge beliefs
+            const about_text = value.about_label ? ` about ${value.about_label}` : '';
+            display_value = `<a href="${link}">${mind_prefix}#${value._ref}${label_text}${about_text}</a>`;
           }
         } else {
           display_value = JSON.stringify(value, null, 2);

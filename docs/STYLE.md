@@ -114,7 +114,7 @@ for (const belief of beliefs) {  // Don't comment obvious things
 
 - ✓ Never mutate objects - create new versions
 - ✓ Use `base` property for prototype chains
-- ✓ `state.tick()` for state changes, not direct mutation
+- ✓ `state.branch_state()` for state changes, not direct mutation
 - ✓ Spread operator for shallow copies: `{...obj, prop: newValue}`
 
 ## Error Handling

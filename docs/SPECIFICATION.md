@@ -604,7 +604,7 @@ npc1_model_of_npc2.state_3:
 
 **Properties**:
 - Tracks which version of outer reality a nested mind is reasoning about
-- Inherited automatically by child states via `tick()` unless explicitly overridden
+- Passed explicitly when creating new states via `branch_state(ground_state, vt)`
 - Root states (world_mind) have `ground_state: null`
 - Enables temporal coordination between nested minds
 

@@ -457,9 +457,11 @@ describe('learn_about', () => {
       expect(player_hammer_v1._traits.has('location')).to.be.false;
       expect(player_hammer_v1.get_trait(player_state1, 'color')).to.equal('grey');
 
+      player_state1.lock();
+
       // T2: Player learns location (new observation)
-      // Create new state and learn additional trait
-      const player_state2 = player_mind.create_state(world_state);
+      // Chain from player_state1 so v2 can inherit from v1 through base chain
+      const player_state2 = player_state1.branch_state(world_state);
       const player_hammer_v2 = player_state2.learn_about(hammer, ['location']);
 
       // v2 has location in _traits, color inherited from v1

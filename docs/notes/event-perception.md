@@ -142,24 +142,32 @@ export function cmd_look() {
     learned.push(knowledge)                                                                     
   }                                                                                             
                                                                                                 
-  // Lock state and update player entity                                                        
-  current_state.lock()                                                                          
-  const updated_player = player.with_traits({                                                   
-    mind_states: [current_state]                                                                
-  })                                                                                            
-  Adventure.state = Adventure.state.tick({replace: [updated_player]})                           
-                                                                                                
-  // Return description for GUI                                                                 
-  return {                                                                                      
-    text: "You see: " + learned.map(b => b.label || "something").join(", ")                     
-  }                                                                                             
-}                                                                                               
-                                                                                                
-Why this flow?                                                                                  
-1. Perception first - Records that observation happened (evidence)                              
-2. Learn_about after - Extracts knowledge with source link                                      
-3. Lock state - Prevents further modifications to this snapshot                                 
-4. Update player - New player version with new mind state                                       
+  // Lock state and update player entity
+  current_state.lock()
+
+  // Create new world state with updated player
+  const new_world_state = Adventure.state.branch_state(Adventure.state.ground_state)
+  const updated_player = Belief.from_template(new_world_state, {
+    bases: [player],
+    traits: {
+      mind: player_mind  // Mind now has the locked current_state
+    }
+  })
+  new_world_state.remove.push(player)
+  new_world_state.lock()
+  Adventure.state = new_world_state
+
+  // Return description for GUI
+  return {
+    text: "You see: " + learned.map(b => b.label || "something").join(", ")
+  }
+}
+
+Why this flow?
+1. Perception first - Records that observation happened (evidence)
+2. Learn_about after - Extracts knowledge with source link
+3. Lock state - Prevents further modifications to this snapshot
+4. Update player - New player version with updated mind state via branch_state()                                       
                                                                                                 
 5. Wire LOOK to Worker Message Handler                                                          
                                                                                                 

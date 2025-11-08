@@ -162,9 +162,10 @@ state.lock();
 //  },
 //});
 //
-//state = state.tick({});
+//state.lock();
+//state = state.branch_state(DB.get_logos_state(), 2);
 //
-//state = state.tick_with_traits(ball, {
+//state = state.tick_with_traits(ball, 3, {
 //  color: 'blue',
 //});
 

@@ -342,5 +342,41 @@ describe('inspect.mjs', () => {
       // Verify comma-separated
       expect(html).to.match(/state=301.*,.*state=302.*,.*state=303/);
     });
+
+    it('renders trait value with knowledge belief showing about label', () => {
+      const input = {
+        entity: {
+          data: {
+            data: {
+              _id: 30,
+              traits: {
+                '@label': 'hammer_knowledge',
+                location: {
+                  _ref: 22,
+                  _type: 'Belief',
+                  mind_id: 5,
+                  mind_label: 'Villager',
+                  about_label: 'workshop'
+                }
+              }
+            }
+          },
+          mind: {
+            id: 6,
+            label: 'player'
+          }
+        },
+        state_id: 28
+      };
+
+      render_entity(input, mockTarget);
+
+      const html = mockTarget.innerHTML;
+      expect(html).to.include('<dt>location</dt>');
+      expect(html).to.include('href="?belief=22&state=28"');
+      expect(html).to.include('Villager:');
+      expect(html).to.include('#22');
+      expect(html).to.include('about workshop');
+    });
   });
 });

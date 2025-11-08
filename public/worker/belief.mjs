@@ -284,7 +284,8 @@ export class Belief {
    * @returns {Belief|null} The belief this is about, or null
    */
   get_about(belief_state) {
-    const about_trait = this._traits.get('@about')
+    // Use get_trait to check own and inherited @about trait
+    const about_trait = this.get_trait(belief_state, '@about')
 
     //log("belief about", this, about_trait);
     if (!(about_trait instanceof Subject)) return null
@@ -489,11 +490,11 @@ export class Belief {
   /**
    * Create shallow inspection view of this belief for the inspect UI
    * @param {State} state - State context for resolving trait sids
-   * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string, type: string}>, bases: (string|number)[], traits: any, locked?: boolean}} Shallow representation with references
+   * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string, type: string}>, bases: (string|number)[], traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean}} Shallow representation with references, including mind context and what this knowledge is about (for cross-mind knowledge beliefs)
    */
   to_inspect_view(state) {
     assert(state instanceof State, "should be State", state);
-    const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string, type: string}>, bases: (string|number)[], traits: any, locked?: boolean}} */ ({
+    const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string, type: string}>, bases: (string|number)[], traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean}} */ ({
       _type: 'Belief',
       _id: this._id,
       label: this.get_label(),
@@ -508,6 +509,21 @@ export class Belief {
         })
       )
     })
+
+    // Add mind info if this belief is in a mind
+    if (this.in_mind) {
+      result.mind_id = this.in_mind._id
+      result.mind_label = this.in_mind.label
+    }
+
+    // Add "about" info if this is knowledge about something
+    // For cross-mind beliefs, use the belief's own state context to resolve @about
+    const belief_state = this.origin_state ?? state
+    const about_belief = this.get_about(belief_state)
+    if (about_belief) {
+      result.about_label = about_belief.get_label()
+    }
+
     // Only include locked field if unlocked (to highlight mutable state)
     if (!this.locked) {
       result.locked = false

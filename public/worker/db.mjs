@@ -326,27 +326,45 @@ export function get_or_create_subject(ground_mind, sid = null) {
 }
 
 /**
- * Find beliefs in a mind that are about a specific subject
- * NOTE: O(n) iteration over beliefs in mind - candidate for compound index
- * With external DB, would use: SELECT * FROM beliefs WHERE mind_id = ? AND about_subject = ?
- * Compound index: belief_by_mind_and_about: Map<Mind, Map<Subject, Set<Belief>>>
+ * Find all beliefs in a state that are about a given subject
+ * Returns ONLY beliefs visible in the state (through base chain, insert, remove)
  *
- * @param {Mind} mind - Mind to search in
+ * PERFORMANCE: O(n) iteration over all beliefs in state - REQUIRES INDEX FOR SCALE
+ * Current: Iterates state.get_beliefs() which walks base chain + insert/remove
+ * Problem: With millions of beliefs, this is too slow even for a single query
+ * Solution needed: belief_by_about index
+ *
+ * Future implementation with index:
+ *   1. belief_by_about.get(about_subject) → Set<Belief> (all beliefs about this subject)
+ *   2. Filter by state.is_visible(belief) → only beliefs visible in this state
+ *   3. Complexity: O(beliefs about subject) instead of O(all beliefs)
+ *
+ * With external DB:
+ *   SELECT b.* FROM beliefs b
+ *   JOIN belief_about_index i ON b.id = i.belief_id
+ *   WHERE i.about_subject = ?
+ *   AND visible_in_state(?, b.id)
+ *
+ * @param {State} state - State to search in
  * @param {Subject} about_subject - Subject to find beliefs about
- * @param {State} state - State context for resolving @about trait
- * @returns {Array<Belief>} Array of beliefs about the subject (may be empty)
+ * @returns {Array<Belief>} Array of beliefs about the subject visible in this state
  */
-export function find_beliefs_about_subject_in_state(mind, about_subject, state) {
-  const mind_beliefs = belief_by_mind.get(mind)
-  if (!mind_beliefs) return []
-
+export function find_beliefs_about_subject_in_state(state, about_subject) {
   const results = []
-  for (const belief of mind_beliefs) {
-    const b_about = belief.get_about(state)
-    if (b_about?.subject === about_subject) {
+
+  // Search beliefs visible in this state (includes inherited knowledge from base chain)
+  // TODO: Replace with index lookup when belief_by_about is implemented
+  for (const belief of state.get_beliefs()) {
+    // Compare what the belief is ABOUT, not the belief's own subject
+    // Mind beliefs are "knowledge about X", so we check @about trait
+    const about_belief = belief.get_about(state)
+    const found_subject = about_belief?.subject
+
+    if (found_subject === about_subject) {
       results.push(belief)
     }
   }
+
   return results
 }
 
@@ -358,7 +376,7 @@ export function find_beliefs_about_subject_in_state(mind, about_subject, state) 
  * @returns {Belief|null} The belief about the subject, or null
  */
 export function get_belief_for_state_subject(state, about_subject) {
-  const results = find_beliefs_about_subject_in_state(state.in_mind, about_subject, state)
+  const results = find_beliefs_about_subject_in_state(state, about_subject)
   return results.length > 0 ? results[0] : null
 }
 

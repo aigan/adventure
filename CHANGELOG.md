@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-01-08
+
+### Mind Extension via State Base
+- Minds created from templates automatically inherit cultural knowledge via `State.base` chain
+- When belief inherits from prototype with mind trait, new mind's state uses inherited mind's state as base
+- `Mind.create_from_template()` detects inherited minds and establishes cross-mind state inheritance
+- Enables prototype-based knowledge sharing (e.g., player inheriting Villager cultural knowledge)
+
+### Belief Recognition
+- `DB.find_beliefs_about_subject_in_state(state, about_subject)` - Changed signature to take state instead of mind
+- `recognize()` properly identifies inherited beliefs from base state chain (prevents duplicate beliefs)
+- Knowledge beliefs now version correctly when extending inherited knowledge
+
+### Inspection Enhancement
+- Belief inspection now includes `about_label` field showing what knowledge beliefs are about
+- Subject and Belief `to_inspect_view()` methods include mind context for cross-mind beliefs
+- Trait values display "about X" suffix when they are knowledge beliefs (e.g., "Villager: #22 about workshop")
+
 ## 2025-11-06
 
 ### Null Ground State Elimination

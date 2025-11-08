@@ -500,7 +500,7 @@ describe('Temporal Reasoning', () => {
       expect(npc2_model_state.ground_state).to.equal(npc1_state)
     })
 
-    it('tick() with explicit vt overrides ground_state.vt', () => {
+    it('branch_state() with explicit vt overrides ground_state.vt', () => {
       setupArchetypes()
 
       const world_mind = new Mind(logos(), 'world')

@@ -2,24 +2,25 @@
  * State - immutable snapshot of beliefs at a specific time/tick
  *
  * States represent "what exists at this moment" in a mind. Once finalized, they never mutate;
- * instead, create new states via tick() operations. This enables time travel,
+ * instead, create new states via branch_state() operations. This enables time travel,
  * branching possibilities, and maintaining observation history.
  *
  * Key concepts:
  * - Immutability: Changes create new states linked via `base` property
  * - Multi-stage creation: States are unlocked during creation, allowing gradual buildup
  * - Tick progression: Each state has a tick number showing temporal ordering
- * - Operations: insert (new beliefs), remove (beliefs), replace (belief updates)
+ * - Operations: insert (new beliefs), remove (beliefs) via base chain
  * - Superposition: Multiple states can exist at same tick with different certainty
  *
  * Usage pattern:
- *   const state2 = state1.tick({ insert: [new_belief], replace: [[old_id, new_belief]] })
+ *   const state2 = state1.branch_state(ground_state, vt)
+ *   // Add beliefs to state2 before locking
  *
  * See docs/SPECIFICATION.md for state architecture
  * See docs/ALPHA-1.md for how states track observations over time
  */
 
-import { assert, log } from './debug.mjs'
+import { assert, log, debug } from './debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'
@@ -143,7 +144,7 @@ export class State {
     /**
      * Forward links to child states branching from this one
      * Query: O(1) enumeration for possibility tree navigation
-     * Maintained by: branch_state(), tick() - adds child to parent's branches
+     * Maintained by: branch_state() - adds child to parent's branches
      * Scale: Essential - enables navigation of branching timelines and planning scenarios
      * @type {State[]}
      */
@@ -400,16 +401,18 @@ export class State {
   }
 
   /**
-   * Find existing beliefs about a subject in this state's mind
+   * Find existing beliefs about a subject visible in this state
+   * Searches beliefs in this state and all base states (via base chain)
    * @param {Belief} source_belief - Belief to find matches for
    * @returns {Array<Belief>} Ranked list of matching beliefs (max 3)
    */
   recognize(source_belief) {
-    // Query DB for all beliefs in this mind about the same subject
+    // Delegate to DB for efficient lookup
+    // DB handles searching both base chain (inherited knowledge) and
+    // beliefs in this mind (temporal knowledge accumulation)
     const beliefs_about_subject = DB.find_beliefs_about_subject_in_state(
-      this.in_mind,
-      source_belief.subject,
-      this
+      this,
+      source_belief.subject
     )
 
     // TODO: Sort by confidence (for now just return first 3)
