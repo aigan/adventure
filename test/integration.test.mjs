@@ -285,5 +285,100 @@ describe('Integration', () => {
       expect(workshop_inspected.traits['@about']._ref).to.equal(workshop._id);
       expect(workshop_inspected.archetypes).to.include('Location');
     });
+
+    it('mind extension via state.base inheritance', () => {
+      // Test that beliefs with mind templates inherit knowledge from base beliefs
+      DB.reset_registries();
+
+      // Setup traittypes and archetypes
+      DB.register({
+        '@about': {type: 'Subject', mind: 'parent'},
+        '@tt': 'number',
+        location: 'Location',
+        mind: 'Mind',
+        color: 'string',
+      }, {
+        Thing: {
+          traits: {'@about': null, '@tt': null}
+        },
+        Location: {
+          bases: ['Thing'],
+          traits: {location: null}
+        },
+        PortableObject: {
+          bases: ['Thing'],
+          traits: {location: null, color: null}
+        },
+        Mental: {
+          bases: ['Thing'],
+          traits: {mind: null}
+        },
+        Person: {
+          bases: ['Mental'],
+        },
+      }, {});
+
+      // Create world with entities
+      const world = Mind.create_world();
+      const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
+      world_state.add_beliefs_from_template({
+        village: {
+          bases: ['Location']
+        },
+        workshop: {
+          bases: ['Location'],
+          traits: {location: 'village'}
+        },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: {color: 'blue'}
+        }
+      });
+
+      // Create Villager prototype with mind template
+      // add_shared_from_template creates prototypes in Eidos that reference beliefs in world_state
+      world_state.add_shared_from_template({
+        Villager: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              workshop: ['location'],
+              hammer: ['color']
+            }
+          }
+        }
+      });
+
+      // Create player that inherits from Villager and extends with own knowledge
+      const player_belief = Belief.from_template(world_state, {
+        bases: ['Villager'],
+        traits: {
+          '@label': 'player',
+          mind: {
+            hammer: ['location']  // Player learns hammer location (extending Villager's knowledge)
+          }
+        }
+      });
+
+      const player = world_state.get_belief_by_label('player');
+      expect(player).to.not.be.null;
+      const player_mind = player.get_trait(world_state, 'mind');
+      const player_state = player_mind.origin_state;  // Use origin_state since mind is locked
+
+      // Verify state.base points to Villager's mind state
+      const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state);
+      expect(villager).to.not.be.null;
+      const villager_mind = villager.get_trait(world_state, 'mind');
+      const villager_state = villager_mind.origin_state;
+
+      // This is the key test - player's mind state should have Villager's state as base
+      expect(player_state.base).to.equal(villager_state);
+
+      // Verify player's mind has knowledge from BOTH Villager (via base) and own template
+      const beliefs_in_player_mind = [...player_state.get_beliefs()];
+
+      // get_beliefs() walks the base chain, so should include beliefs from Villager's state
+      expect(beliefs_in_player_mind.length).to.be.at.least(3);
+    });
   });
 });

@@ -1,57 +1,16 @@
 # Current Work
 
-## Recently Completed
-
-**Cross-State References (about_state)** (2025-11-06)
-- ✅ Added `about_state` parameter to enable prototypes to reference beliefs in different states
-- ✅ Added `State.add_shared_from_template()` convenience method for creating prototypes
-- ✅ Auto-locking in `State.add_beliefs_from_template()` reduces boilerplate
-- ✅ Updated `Belief.get_about()` to check `about_state` before `ground_state`
-- ✅ Updated `Traittype.to_inspect_view()` to use `about_state` for Subject resolution
-- ✅ Improved error messages for unlocked bases (shows which belief, which state to lock)
-- ✅ Enabled world.mjs Villager prototype pattern (mind trait references world beliefs)
-- ✅ All 212 tests passing (enabled 2 previously skipped tests)
-
-**Eidos Migration - Eliminate Limbo Pattern** (2025-11-03) ([plan](docs/plans/eidos-migration.md))
-- ✅ Created Eidos singleton (`eidos()`) - realm of forms for prototypes
-- ✅ Added `mind.origin_state` property tracking first state created
-- ✅ Updated `DB.register()` to create prototypes in Eidos.origin_state
-- ✅ Migrated all test files from `create_shared_from_template(null, ...)` to Eidos
-- ✅ Encapsulated `locked` property (getter with `._locked` internal field)
-- ✅ Changed to reference equality (`in_mind === eidos()`) from string comparison
-- ✅ Moved primordial singletons to cosmos.mjs (`logos()`, `logos_state()`, `eidos()`)
-- ✅ Updated all test imports to use `logos` directly from cosmos.mjs
-- ✅ Updated `is_shared` getter to recognize Eidos beliefs
-- ✅ Updated `get_shared_belief_by_state` to make Eidos beliefs globally accessible
-- ✅ All 210 tests passing with Eidos architecture
-- Note: Kept `create_shared_from_template()` for backward compatibility
-- Note: Kept `DB.get_eidos()` wrapper for backward compatibility
-
-**Logos Singleton & Null Elimination** (2025-11-03)
-- ✅ Created Logos singleton (`DB.get_logos_mind()`) - the ONE mind with `parent=null`
-- ✅ Created logos_state singleton - the ONE state with `ground_state=null`
-- ✅ Enforced Mind constructor: `parent` must be Mind (or null only for Logos)
-- ✅ Removed implicit `ground_state=null` default from `Mind.create_state()`
-- ✅ Migrated 194 test instances to use `Mind(logos(), ...)` pattern
-- ✅ Fixed `Mind.create_from_template()` to work with shared beliefs (uses `subject.ground_mind`)
-- ✅ All 210 tests passing with strict null enforcement
-
-**Remaining nulls (intentional)**:
-- `ground_mind: Mind|null` - null only for Logos (primordial mind has no parent)
-- `ground_state: State|null` - null only for logos_state (primordial state has no ground)
-
 ## Active Plan
 
-**Eliminate null ground_state** ([plan](docs/plans/eliminate-null-ground-state.md))
+**Mind Extension via State Base** ([plan](docs/plans/mind-extension-via-state-base.md))
 
-Enforce that `create_state()` requires ground_state parameter. Only `logos_state()` created in cosmos.mjs should have `ground_state=null`.
+Enable minds to inherit cultural knowledge via State.base chain. When a belief inherits from another belief with a mind (e.g., player inherits from Villager prototype), the new mind's state should use the inherited mind's state as its base, preserving cultural knowledge while maintaining independent mind instances.
 
-**Current Status**: Planning
-- [ ] Update Mind.create_state() to require ground_state (no null allowed)
-- [ ] Bulk update ~200 test instances: `.create_state(tt, null)` → `.create_state(tt, logos_state())`
-- [ ] Fix special cases (NPC minds use world_state, not logos_state)
-- [ ] Verify all 210 tests passing
-- [ ] Update CURRENT.md to remove ground_state from remaining nulls
+**Current Status**: Not started
+- [ ] Modify mind template resolution to detect inherited minds
+- [ ] Create new mind's state with inherited state as base
+- [ ] Adjust asserts for cross-mind state bases
+- [ ] Test with tools/test_world.mjs diagnostic
 
 ## Backlog
 
@@ -105,10 +64,6 @@ Enforce that `create_state()` requires ground_state parameter. Only `logos_state
   - Fix Mental archetype _call execution creating duplicate minds
   - Fix null trait values creating labeled subjects in learn_about
   - Add tests and asserts to prevent double-mind bugs
-
-## Next Up
-
-- **Exposure Metadata** - Add observation modality metadata to support perception system ([plan](docs/plans/exposure-metadata.md))
 
 ## Workflow
 

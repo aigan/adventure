@@ -211,6 +211,6 @@ npc2_state.base = world.group_mind.state_110
 
 ## Related
 
-- [Union State](union-state.md) - Composition for prototype minds
-- [Lazy Version Propagation](lazy-version-propagation.md) - Group mind bases
-- [Shared Belief Architecture](archive/shared-belief-architecture.md) - Previous limbo design
+- [Union State](../union-state.md) - Composition for prototype minds
+- [Lazy Version Propagation](../lazy-version-propagation.md) - Group mind bases
+- [Shared Belief Architecture](shared-belief-architecture.md) - Previous limbo design

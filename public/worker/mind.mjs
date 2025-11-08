@@ -376,6 +376,15 @@ export class Mind {
     assert(belief.is_shared || belief.origin_state instanceof State, "belief must have origin_state", {belief})
     const creator_state = /** @type {State} */ (belief.origin_state)
 
+    // Check for base Mind trait from bases
+    // belief._bases is set before traits are resolved, so get_trait works here
+    const base_mind = belief.get_trait(creator_state, 'mind')
+    const base_mind_state = base_mind?.state ?? base_mind?.origin_state ?? null
+
+    if (base_mind_state) {
+      debug(`Mind extension: ${belief.get_label()} extending Mind#${base_mind._id} state#${base_mind_state._id}`)
+    }
+
     // Detect plain object Mind template (learn spec)
     // Plain object: has properties but no _type field and no _states Set
     if (data &&
@@ -386,7 +395,7 @@ export class Mind {
       debug("create mind from template with", sysdesig(creator_state, data))
 
       // It's a learn spec - call create_from_template
-      const mind = Mind.create_from_template(creator_state, belief, data, {about_state})
+      const mind = Mind.create_from_template(creator_state, belief, data, {about_state, base_mind_state})
       assert(mind.state instanceof State, 'create_from_template must create unlocked state', {mind})
       return mind.state.lock().in_mind
     }
@@ -395,7 +404,7 @@ export class Mind {
     if (data?._type === 'Mind') {
       // Strip _type from template before passing to create_from_template
       const {_type, ...traits} = data
-      const mind = Mind.create_from_template(creator_state, belief, traits, {about_state})
+      const mind = Mind.create_from_template(creator_state, belief, traits, {about_state, base_mind_state})
       assert(mind.state instanceof State, 'create_from_template must create unlocked state', {mind})
       return mind.state.lock().in_mind
     }
@@ -457,15 +466,28 @@ export class Mind {
    * @param {Object<string, string[]>} traits - {belief_label: [trait_names]} to learn
    * @param {object} options - Optional meta-parameters
    * @param {State|null} [options.about_state] - State context for belief resolution (where beliefs exist)
+   * @param {State|null} [options.base_mind_state] - State from base mind to use as base for knowledge inheritance
    * @returns {Mind} The created mind (access unlocked state via mind.state)
    */
-  static create_from_template(ground_state, ground_belief, traits, {about_state} = {}) {
+  static create_from_template(ground_state, ground_belief, traits, {about_state, base_mind_state} = {}) {
     const assert = (/** @type {any} */ condition, /** @type {string} */ message, /** @type {any} */ context) => {
       if (!condition) throw new Error(message + (context ? ': ' + JSON.stringify(context) : ''))
     }
 
     assert(ground_state instanceof State, `create_from_template requires State for ground_state`, null)
     assert(ground_belief instanceof Belief, `create_from_template requires Belief for ground_belief`, null)
+
+    // Validate base_mind_state if provided
+    if (base_mind_state) {
+      assert(base_mind_state instanceof State,
+        `base_mind_state must be State`,
+        {base_mind_state})
+      assert(base_mind_state.locked,
+        `base_mind_state must be locked`,
+        {state_id: base_mind_state._id, locked: base_mind_state.locked})
+      // Note: No constraint on which mind the base state comes from
+      // State.base can reference states in different minds (e.g., Eidos prototypes)
+    }
 
     // Extract self_subject from ground_belief
     const self_subject = ground_belief.subject
@@ -476,10 +498,11 @@ export class Mind {
 
     // Create initial state with self reference - fork invariant: child.tt = parent_state.vt
     // When ground_state is Timeless (vt=null), must provide explicit tt
+    // If base_mind_state provided, use it as base for knowledge inheritance
     const state = new State(
       entity_mind,
-      ground_state,      // ground_state (where body exists)
-      null,              // no base
+      ground_state,             // ground_state (where body exists)
+      base_mind_state ?? null,  // base state for knowledge inheritance
       {
         self: self_subject,  // self (WHO is experiencing this)
         about_state,  // State context for belief resolution (where beliefs to learn about exist)
@@ -488,6 +511,9 @@ export class Mind {
         // Otherwise tt and vt both derive from ground_state.vt (fork invariant)
       }
     )
+
+    // Track as origin state (first state created for this mind)
+    entity_mind.origin_state = state
 
     // Execute learning
     for (const [label, trait_names] of Object.entries(traits)) {

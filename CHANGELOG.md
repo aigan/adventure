@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-11-06
+
+### Null Ground State Elimination
+- `Mind.create_state()` now requires ground_state parameter (null not allowed)
+- Only `logos_state()` singleton has `ground_state=null`
+- All test instances updated to use `logos_state()` or appropriate ground state
+
+### Cross-State References
+- `about_state` parameter enables prototypes to reference beliefs in different states
+- `State.add_shared_from_template()` convenience method for creating prototypes
+- `Belief.get_about()` checks `about_state` before `ground_state`
+- `Traittype.to_inspect_view()` uses `about_state` for Subject resolution
+- Auto-locking in `State.add_beliefs_from_template()` reduces boilerplate
+- Improved error messages for unlocked bases (shows which belief, which state to lock)
+
+## 2025-11-03
+
+### Logos Singleton
+- Mind constructor enforces parent parameter (null only allowed for Logos singleton)
+- `Mind.create_state()` no longer defaults to `ground_state=null`
+- Logos singleton (`logos()`) is the ONE mind with `parent=null`
+- logos_state singleton is the ONE state with `ground_state=null`
+
 ## 2025-11-03
 
 ### Eidos - Realm of Forms
