@@ -10,6 +10,7 @@ import * as Cosmos from "./cosmos.mjs"
 import * as DB from "./db.mjs"
 import { Session } from "./session.mjs"
 import { Subject } from "./subject.mjs"
+import { Traittype } from "./traittype.mjs"
 import { log, assert, sysdesig } from "./debug.mjs"
 import { eidos } from './eidos.mjs'
 
@@ -31,10 +32,17 @@ const traittypes = {
   },
   '@tt': 'number',
   location: 'Location',
-  mind: 'Mind',  // Singular Mind reference
+  mind: {
+    type: 'Mind',
+    composable: true  // Compose minds from multiple bases
+  },
   color: 'string',
   name: 'string',
-  inventory: 'PortableObject',
+  inventory: {
+    type: 'PortableObject',
+    container: Array,
+    composable: true  // Compose inventories from multiple bases
+  },
 };
 
 /** @type {Record<string, ArchetypeDefinition>} */
@@ -66,13 +74,16 @@ const archetypes = {
   PortableObject: {
     bases: ['ObjectPhysical'],
   },
+  Person: {
+    bases: ['ObjectPhysical', 'Mental'],
+    traits: {
+      inventory: null,
+    },
+  },
 }
 
 /** @type {Record<string, {bases: string[], traits?: Object}>} */
 const prototypes_1 = {
-  Person: {
-    bases: ['ObjectPhysical', 'Mental'],
-  },
 }
 
 DB.register(traittypes, archetypes, prototypes_1)
@@ -82,48 +93,78 @@ const world_mind = new Cosmos.Mind(Cosmos.logos(), 'world');
 const state = world_mind.create_state(Cosmos.logos_state(), {tt: 1});
 
 
-state.add_beliefs_from_template({
-  village: {
-    bases: ['Location'],
-  },
+//state.add_beliefs_from_template({
+//  village: {
+//    bases: ['Location'],
+//  },
+//
+//  workshop: {
+//    bases: ['Location'],
+//    traits: {
+//      location: 'village',
+//    },
+//  },
+//
+//  tavern: {
+//    bases: ['Location'],
+//    traits: {location: 'village'}
+//  },
+//
+//  hammer: {
+//    bases: ['PortableObject'],
+//    traits: {
+//      location: 'workshop',
+//      color: 'blue',
+//    },
+//  }
+//})
 
-  workshop: {
-    bases: ['Location'],
-    traits: {
-      location: 'village',
-    },
-  },
 
-  hammer: {
+// Create shared items for prototype inventories
+state.add_shared_from_template({
+  apprentice_token: {
     bases: ['PortableObject'],
-    traits: {
-      location: 'workshop',
-      color: 'blue',
-    },
-  }
+    traits: {color: 'bronze'},
+  },
+  basic_tools: {
+    bases: ['PortableObject'],
+    traits: {color: 'gray'},
+  },
+  guild_badge: {
+    bases: ['PortableObject'],
+    traits: {color: 'gold'},
+  },
 })
 
-
+// Create person prototypes with minds and inventories
 state.add_shared_from_template({
   Villager: {
     bases: ['Person'],
     traits: {
-      mind: {
-        workshop: ['location'],
-        hammer: ['color'],
-      }
+      //mind: {
+      //  tavern: ['location'],
+      //},
+      inventory: ['apprentice_token'],
+    },
+  },
+
+  Blacksmith: {
+    bases: ['Person'],
+    traits: {
+      //mind: {
+      //  workshop: ['location']
+      //},
+      inventory: ['basic_tools', 'guild_badge'],
     },
   },
 });
 
 state.add_beliefs_from_template({
+  // Player with multi-base: should compose mind AND inventory from both Villager and Blacksmith
   player: {
-    bases: ['Villager'],
+    bases: ['Villager', 'Blacksmith'],
     traits: {
-      location: 'workshop',
-      mind: {
-        hammer: ['location']
-      }
+//      location: 'workshop',
     },
   }
 })
@@ -137,7 +178,10 @@ if (!player) throw new Error('Player belief not found');
 
 log({player});
 for (const [name, value] of player.get_traits()) {
-  log(`  ${name}:`, sysdesig(state, value));
+  // Use get_trait() for composable traits to show composed value
+  const traittype = Traittype.get_by_label(name)
+  const final_value = traittype?.composable ? player.get_trait(state, name) : value
+  log(`  ${name}:`, sysdesig(state, final_value));
 }
 
 

@@ -464,6 +464,7 @@ export function reset_all_registries() {
  * @property {number} [min] - Minimum array length
  * @property {number} [max] - Maximum array length
  * @property {string} [mind] - Mind scope for Subject resolution ('parent', 'current', 'any')
+ * @property {boolean} [composable] - Whether to compose values from multiple bases (default: false)
  */
 
 /**

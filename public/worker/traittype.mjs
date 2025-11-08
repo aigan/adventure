@@ -45,6 +45,7 @@ import { Belief } from './belief.mjs'
  * @property {number} [min] - Minimum array length
  * @property {number} [max] - Maximum array length
  * @property {string} [mind] - Mind scope for Subject resolution ('parent', 'current', 'any')
+ * @property {boolean} [composable] - Whether to compose values from multiple bases (default: false)
  */
 
 /**
@@ -134,11 +135,13 @@ export class Traittype {
       this.container = null
       this.constraints = null
       this.mind_scope = null
+      this.composable = false
     } else {
-      // Object schema: {type: 'State', container: Array, min: 1, mind: 'parent'}
+      // Object schema: {type: 'State', container: Array, min: 1, mind: 'parent', composable: true}
       this.data_type = def.type
       this.container = def.container ?? null
       this.mind_scope = def.mind ?? null
+      this.composable = def.composable ?? false
       this.constraints = {
         min: def.min ?? null,
         max: def.max ?? null
@@ -148,6 +151,36 @@ export class Traittype {
     // Construct template resolver once during initialization
     // This method is built once here and reused for all template resolutions
     this.resolve_trait_value_from_template = this._build_trait_value_from_template_resolver()
+  }
+
+  /**
+   * Compose multiple values from bases into a single value
+   * Currently only implemented for Array containers
+   * @param {Array<any>} values - Values to compose (arrays of Subjects)
+   * @returns {any} Composed value
+   */
+  compose(values) {
+    if (this.container !== Array) {
+      throw new Error(`compose() only implemented for Array containers, not ${this.container}`)
+    }
+
+    // Deduplicate by subject.sid, maintain breadth-first order
+    const seen = new Set()
+    const result = []
+
+    for (const array of values) {
+      if (!Array.isArray(array)) continue
+
+      for (const subject of array) {
+        // Skip if not a Subject or already seen
+        if (!subject?.sid || seen.has(subject.sid)) continue
+
+        seen.add(subject.sid)
+        result.push(subject)
+      }
+    }
+
+    return result
   }
 
   /**

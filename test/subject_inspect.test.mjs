@@ -153,7 +153,7 @@ describe('Subject.to_inspect_view()', () => {
     // Trying to inspect workshop.subject in other_state should fail
     expect(() => {
       workshop.subject.to_inspect_view(other_state)
-    }).to.throw('Subject must have belief in inspection state')
+    }).to.throw('Subject must have belief in state or shared beliefs')
   })
 
   it('handles root state without ground_state', () => {

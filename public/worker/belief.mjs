@@ -89,6 +89,8 @@ export class Belief {
     this.in_mind = mind
     this._traits = new Map()
     this._locked = false
+    /** @type {Map<State, Map<string, any>>} */
+    this._cache = new Map()
     /** @type {State} */
     this.origin_state = state
 
@@ -129,9 +131,19 @@ export class Belief {
     const traittype = Traittype.get_by_label(label)
     assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
 
-    const value = /** @type {Traittype} */ (traittype).resolve_trait_value_from_template(this, data, {about_state})
+    let value = /** @type {Traittype} */ (traittype).resolve_trait_value_from_template(this, data, {about_state})
 
-    // Call add_trait with resolved value
+    // If composable and we have bases with this trait, compose with base values
+    if (traittype.composable && value !== null) {
+      const base_values = this._collect_all_trait_values(label)
+      if (base_values.length > 0) {
+        // Compose: base values first, then new value
+        const all_values = [...base_values, value]
+        value = traittype.compose(all_values)
+      }
+    }
+
+    // Call add_trait with resolved (and possibly composed) value
     this.add_trait(label, value)
   }
 
@@ -141,6 +153,9 @@ export class Belief {
    */
   add_trait(label, data) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
+
+    // Invalidate cache when trait is added/changed
+    this._cache.clear()
 
     const traittype = Traittype.get_by_label(label)
     assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
@@ -190,17 +205,49 @@ export class Belief {
   /**
    * Get trait value (Subject/primitive/State/Mind/array) including inherited
    * Walks the bases chain to find inherited trait values (prototype pattern)
+   * For composable traits, composes values from all bases and caches result
    * @param {State} state - State context for trait resolution
    * @param {string} trait_name - Name of the trait to get
    * @returns {*} trait value (Subject, not Belief), or null if not found
    */
   get_trait(state, trait_name) {
-    // Check own value - early return if found
-    if (this._traits.has(trait_name)) {
-      return this._traits.get(trait_name)
+    // Check cache first
+    const cached = this._get_cached(state, trait_name)
+    if (cached !== undefined) {
+      return cached
     }
 
-    // Walk bases queue (polymorphic - same for Belief and Archetype)
+    // Check own value - blocks base search (override)
+    if (this._traits.has(trait_name)) {
+      const value = this._traits.get(trait_name)
+      this._set_cache(state, trait_name, value)
+      return value
+    }
+
+    // Get traittype to check if composable
+    const traittype = Traittype.get_by_label(trait_name)
+
+    // If composable, collect all values and compose
+    if (traittype?.composable) {
+      const values = this._collect_all_trait_values(trait_name)
+
+      if (values.length === 0) {
+        this._set_cache(state, trait_name, null)
+        return null
+      }
+
+      if (values.length === 1) {
+        this._set_cache(state, trait_name, values[0])
+        return values[0]
+      }
+
+      // Compose multiple values
+      const composed = traittype.compose(values)
+      this._set_cache(state, trait_name, composed)
+      return composed
+    }
+
+    // Non-composable: first-wins breadth-first search (original behavior)
     const queue = [...this._bases]
     const seen = new Set()
 
@@ -212,6 +259,7 @@ export class Belief {
       // Check for value - early return when found
       const value = base.get_own_trait_value(trait_name)
       if (value !== undefined) {
+        this._set_cache(state, trait_name, value)
         return value
       }
 
@@ -220,7 +268,67 @@ export class Belief {
     }
 
     // Not found
+    this._set_cache(state, trait_name, null)
     return null
+  }
+
+  /**
+   * Collect all trait values from bases (breadth-first traversal)
+   * Used for composable traits
+   * @param {string} trait_name - Trait name to collect
+   * @returns {Array<any>} Array of values from all bases
+   * @private
+   */
+  _collect_all_trait_values(trait_name) {
+    const values = []
+    const queue = [...this._bases]
+    const seen = new Set()
+
+    while (queue.length > 0) {
+      const base = queue.shift()
+      if (!base || seen.has(base)) continue
+      seen.add(base)
+
+      const value = base.get_own_trait_value(trait_name)
+      if (value !== undefined) {
+        values.push(value)
+      }
+
+      queue.push(...base._bases)
+    }
+
+    return values
+  }
+
+  /**
+   * Get cached trait value for a state
+   * @param {State} state - State context
+   * @param {string} trait_name - Trait name
+   * @returns {any|undefined} Cached value or undefined if not cached
+   * @private
+   */
+  _get_cached(state, trait_name) {
+    if (!this._cache.has(state)) return undefined
+    const state_cache = this._cache.get(state)
+    if (!state_cache) return undefined
+    return state_cache.has(trait_name) ? state_cache.get(trait_name) : undefined
+  }
+
+  /**
+   * Set cached trait value for a state
+   * @param {State} state - State context
+   * @param {string} trait_name - Trait name
+   * @param {any} value - Value to cache
+   * @private
+   */
+  _set_cache(state, trait_name, value) {
+    if (!this._cache.has(state)) {
+      this._cache.set(state, new Map())
+    }
+    const state_cache = this._cache.get(state)
+    if (state_cache) {
+      state_cache.set(trait_name, value)
+    }
   }
 
   /**
@@ -494,6 +602,19 @@ export class Belief {
    */
   to_inspect_view(state) {
     assert(state instanceof State, "should be State", state);
+
+    // Build traits object using get_trait() for composable traits
+    const traits_obj = /** @type {Record<string, any>} */ ({})
+    for (const [k, v] of this.get_traits()) {
+      const traittype = Traittype.get_by_label(k)
+      assert(traittype instanceof Traittype, `Traittype '${k}' not found`)
+
+      // For composable traits, use get_trait() to trigger composition
+      // Otherwise use the value from get_traits() (first-wins)
+      const value = traittype.composable ? this.get_trait(state, k) : v
+      traits_obj[k] = traittype.to_inspect_view(state, value)
+    }
+
     const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string, type: string}>, bases: (string|number)[], traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean}} */ ({
       _type: 'Belief',
       _id: this._id,
@@ -501,13 +622,7 @@ export class Belief {
       archetypes: [...this.get_archetypes()].map(a => a.label),
       prototypes: [...this.get_prototypes()],
       bases: [...this._bases].map(b => b instanceof Archetype ? b.label : b._id),
-      traits: Object.fromEntries(
-        [...this.get_traits()].map(([k, v]) => {
-          const traittype = Traittype.get_by_label(k)
-          assert(traittype instanceof Traittype, `Traittype '${k}' not found`)
-          return [k, traittype.to_inspect_view(state, v)]
-        })
-      )
+      traits: traits_obj
     })
 
     // Add mind info if this belief is in a mind
@@ -586,6 +701,7 @@ export class Belief {
     belief.subject = DB.get_or_create_subject(ground_mind, data.sid)
     belief.in_mind = mind
     belief._locked = false
+    belief._cache = new Map()
 
     // Resolve 'bases' (archetype labels or belief IDs)
     belief._bases = new Set()

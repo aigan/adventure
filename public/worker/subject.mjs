@@ -131,9 +131,15 @@ export class Subject {
    * @returns {{_ref: number, _type: string, label: string|null, mind_id: number|null, mind_label: string|null, about_label?: string|null}} Belief reference with optional about label for knowledge beliefs
    */
   to_inspect_view(state) {
-    const belief = state.get_belief_by_subject(this)
+    // Try to find belief in state
+    let belief = state.get_belief_by_subject(this)
 
-    assert(belief instanceof Belief, 'Subject must have belief in inspection state', {sid: this.sid, state_id: state._id, mind: state.in_mind.label})
+    // If not found in state, try shared beliefs (prototypes)
+    if (!belief) {
+      belief = this.get_shared_belief_by_state(state)
+    }
+
+    assert(belief instanceof Belief, 'Subject must have belief in state or shared beliefs', {sid: this.sid, state_id: state._id, mind: state.in_mind.label})
 
     const result = /** @type {{_ref: number, _type: string, label: string|null, mind_id: number|null, mind_label: string|null, about_label?: string|null}} */ ({
       _ref: belief._id,
