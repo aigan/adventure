@@ -5,7 +5,7 @@ import { Mind } from '../public/worker/mind.mjs'
 import { State } from '../public/worker/state.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
-import { sysdesig } from '../public/lib/debug.mjs'
+import { sysdesig } from '../public/worker/debug.mjs'
 import { logos } from '../public/worker/cosmos.mjs';
 
 
@@ -16,9 +16,9 @@ describe('sysdesig', () => {
   })
 
   describe('sysdesig() helper function', () => {
-    it('calls obj.sysdesig() if method exists', () => {
+    it('calls obj.sysdesig(state) if method exists', () => {
       const mind = new Mind(logos(), 'test')
-      const result = sysdesig(mind)
+      const result = sysdesig(null, mind)
       expect(result).to.be.a('string')
       expect(result).to.include('test')
       expect(result).to.include('Mind')
@@ -26,19 +26,159 @@ describe('sysdesig', () => {
 
     it('returns object as-is if no sysdesig method', () => {
       const plain = { foo: 'bar' }
-      const result = sysdesig(plain)
-      expect(result).to.equal(plain)
+      const result = sysdesig(null, plain)
+      expect(result).to.deep.equal({ foo: 'bar' })
     })
 
-    it('passes additional arguments to sysdesig method', () => {
+    it('passes state to sysdesig method', () => {
       const state = createMindWithBeliefs('test', {
         hammer: { bases: ['PortableObject'] }
       })
       const hammer = get_first_belief_by_label('hammer')
 
-      const result = sysdesig(hammer, state)
+      const result = sysdesig(state, hammer)
       expect(result).to.be.a('string')
       expect(result).to.include('#')
+    })
+
+    it('handles multiple arguments', () => {
+      const mind1 = new Mind(logos(), 'alice')
+      const mind2 = new Mind(logos(), 'bob')
+
+      const result = sysdesig(null, mind1, mind2)
+      expect(result).to.be.an('array')
+      expect(result).to.have.lengthOf(2)
+      expect(result[0]).to.be.a('string')
+      expect(result[0]).to.include('alice')
+      expect(result[1]).to.be.a('string')
+      expect(result[1]).to.include('bob')
+    })
+
+    it('handles arrays by calling sysdesig on each element', () => {
+      const mind1 = new Mind(logos(), 'alice')
+      const mind2 = new Mind(logos(), 'bob')
+      const arr = [mind1, mind2]
+
+      const result = sysdesig(null, arr)
+      expect(result).to.be.an('array')
+      expect(result).to.have.lengthOf(2)
+      expect(result[0]).to.be.a('string')
+      expect(result[0]).to.include('alice')
+      expect(result[1]).to.be.a('string')
+      expect(result[1]).to.include('bob')
+    })
+
+    it('handles arrays with mixed types', () => {
+      const mind = new Mind(logos(), 'test')
+      const arr = [mind, 42, 'hello', { foo: 'bar' }]
+
+      const result = sysdesig(null, arr)
+      expect(result).to.be.an('array')
+      expect(result).to.have.lengthOf(4)
+      expect(result[0]).to.be.a('string')
+      expect(result[0]).to.include('test')
+      expect(result[1]).to.equal(42)
+      expect(result[2]).to.equal('hello')
+      expect(result[3]).to.deep.equal({ foo: 'bar' })
+    })
+
+    it('handles nested arrays', () => {
+      const mind1 = new Mind(logos(), 'alice')
+      const mind2 = new Mind(logos(), 'bob')
+      const arr = [[mind1], [mind2]]
+
+      const result = sysdesig(null, arr)
+      expect(result).to.be.an('array')
+      expect(result).to.have.lengthOf(2)
+      expect(result[0]).to.be.an('array')
+      expect(result[0][0]).to.be.a('string')
+      expect(result[0][0]).to.include('alice')
+      expect(result[1][0]).to.be.a('string')
+      expect(result[1][0]).to.include('bob')
+    })
+
+    it('handles plain objects by calling sysdesig on each value', () => {
+      const mind1 = new Mind(logos(), 'alice')
+      const mind2 = new Mind(logos(), 'bob')
+      const obj = { a: mind1, b: mind2 }
+
+      const result = sysdesig(null, obj)
+      expect(result).to.be.an('object')
+      expect(result.a).to.be.a('string')
+      expect(result.a).to.include('alice')
+      expect(result.b).to.be.a('string')
+      expect(result.b).to.include('bob')
+    })
+
+    it('handles plain objects with mixed value types', () => {
+      const mind = new Mind(logos(), 'test')
+      const obj = {
+        mind: mind,
+        number: 42,
+        string: 'hello',
+        nested: { foo: 'bar' }
+      }
+
+      const result = sysdesig(null, obj)
+      expect(result).to.be.an('object')
+      expect(result.mind).to.be.a('string')
+      expect(result.mind).to.include('test')
+      expect(result.number).to.equal(42)
+      expect(result.string).to.equal('hello')
+      expect(result.nested).to.deep.equal({ foo: 'bar' })
+    })
+
+    it('handles nested plain objects', () => {
+      const mind1 = new Mind(logos(), 'alice')
+      const mind2 = new Mind(logos(), 'bob')
+      const obj = {
+        level1: {
+          level2: {
+            a: mind1,
+            b: mind2
+          }
+        }
+      }
+
+      const result = sysdesig(null, obj)
+      expect(result).to.be.an('object')
+      expect(result.level1.level2.a).to.be.a('string')
+      expect(result.level1.level2.a).to.include('alice')
+      expect(result.level1.level2.b).to.be.a('string')
+      expect(result.level1.level2.b).to.include('bob')
+    })
+
+    it('passes arguments through arrays and objects', () => {
+      const state = createMindWithBeliefs('test', {
+        hammer: { bases: ['PortableObject'] },
+        anvil: { bases: ['PortableObject'] }
+      })
+      const hammer = get_first_belief_by_label('hammer')
+      const anvil = get_first_belief_by_label('anvil')
+
+      const result = sysdesig(state, hammer, anvil)
+
+      expect(result).to.be.an('array')
+      expect(result[0]).to.be.a('string')
+      expect(result[0]).to.include('hammer')
+      expect(result[1]).to.be.a('string')
+      expect(result[1]).to.include('anvil')
+    })
+
+    it('handles null and undefined', () => {
+      expect(sysdesig(null, null)).to.be.null
+      expect(sysdesig(null, undefined)).to.be.undefined
+    })
+
+    it('does not recurse into class instances without sysdesig', () => {
+      class Custom {
+        constructor() {
+          this.value = 42
+        }
+      }
+      const custom = new Custom()
+      const result = sysdesig(null, custom)
+      expect(result).to.equal(custom)
     })
   })
 

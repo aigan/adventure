@@ -18,7 +18,7 @@
  * See world.mjs for archetype definitions
  */
 
-import { assert } from '../lib/debug.mjs'
+import { assert } from './debug.mjs'
 
 /**
  * Archetype definition for beliefs
@@ -94,12 +94,12 @@ export class Archetype {
   }
 
   /**
-   * Get trait value from this archetype's template (does not check bases)
-   * Polymorphic interface - matches Belief.get_trait_value()
+   * Get trait value from this archetype only (does not check bases)
+   * Polymorphic interface - matches Belief.get_own_trait_value()
    * @param {string} name - Trait name
    * @returns {any} Trait template value or undefined if not found
    */
-  get_trait_value(name) {
+  get_own_trait_value(name) {
     return this._traits_template[name]
   }
 

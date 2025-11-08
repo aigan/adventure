@@ -22,7 +22,7 @@
  * See world.mjs for traittype definitions
  */
 
-import { assert } from '../lib/debug.mjs'
+import { assert } from './debug.mjs'
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
 import * as Cosmos from './cosmos.mjs'

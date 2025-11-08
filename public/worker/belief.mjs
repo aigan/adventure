@@ -13,7 +13,7 @@
  * See docs/ALPHA-1.md for how beliefs are used in gameplay
  */
 
-import { assert, log } from '../lib/debug.mjs'
+import { assert, log, sysdesig, debug } from './debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
@@ -147,16 +147,23 @@ export class Belief {
 
     assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
 
+    if (debug()) {
+      const old_value = this.get_trait(this.origin_state, label)
+      if (old_value !== null) {
+        debug([this.origin_state], 'Replacing trait', label, 'in', this.get_label() ?? `#${this._id}`, 'old:', old_value, 'new:', data)
+      }
+    }
+
     this._traits.set(label, data)
   }
 
   /**
-   * Get trait value from this belief (does not check bases)
-   * Polymorphic interface - matches Archetype.get_trait_value()
+   * Get trait value from this belief only (does not check bases)
+   * Polymorphic interface - matches Archetype.get_own_trait_value()
    * @param {string} name - Trait name
    * @returns {any} Trait value or undefined if not found
    */
-  get_trait_value(name) {
+  get_own_trait_value(name) {
     return this._traits.get(name)
   }
 
@@ -203,7 +210,7 @@ export class Belief {
       seen.add(base)
 
       // Check for value - early return when found
-      const value = base.get_trait_value(trait_name)
+      const value = base.get_own_trait_value(trait_name)
       if (value !== undefined) {
         return value
       }
@@ -668,11 +675,13 @@ export class Belief {
       subject.set_label(label_value)
     }
 
+    debug([state], "Create belief with", ...resolved_bases)
+
     const belief = new Belief(state, subject, resolved_bases)
 
     // Add remaining traits
     for (const [trait_label, trait_data] of Object.entries(traits)) {
-      //log("  add trait", trait_label)
+      debug("  add trait", trait_label)
       belief.add_trait_from_template(state, trait_label, trait_data, {about_state})
     }
 

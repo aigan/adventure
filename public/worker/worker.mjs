@@ -8,12 +8,12 @@ import { log } from "../lib/debug.mjs";
 /*
 	All imports async here in top worker for catching errors
 */
-let world,Cosmos;
 async function init(){
   const World = await import("./world.mjs");
   const session = World.session;
 
-  Cosmos = await import("./cosmos.mjs");
+  // Import cosmos.mjs for side effects (initializes singletons)
+  await import("./cosmos.mjs");
   const Channel = await import("./channel.mjs");
   await Channel.init_channel(session);
 

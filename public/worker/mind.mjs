@@ -20,13 +20,13 @@
  * See docs/ALPHA-1.md Stage 1 for basic usage, Stage 5 for NPC minds
  */
 
+import { assert, log, debug, sysdesig } from './debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
 import { Traittype } from './traittype.mjs'
 import { Timeless } from './timeless.mjs'
-import { assert, log } from '../lib/debug.mjs'
 
 /**
  * @typedef {import('./belief.mjs').BeliefJSON} BeliefJSON
@@ -382,6 +382,9 @@ export class Mind {
         typeof data === 'object' &&
         !data._type &&
         !(data._states instanceof Set)) {
+
+      debug("create mind from template with", sysdesig(creator_state, data))
+
       // It's a learn spec - call create_from_template
       const mind = Mind.create_from_template(creator_state, belief, data, {about_state})
       assert(mind.state instanceof State, 'create_from_template must create unlocked state', {mind})

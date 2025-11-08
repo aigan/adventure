@@ -134,6 +134,70 @@ for (const mind of all_minds) {
 }
 
 // ============================================================================
+// DIAGNOSTIC: Mind Inheritance
+// ============================================================================
+console.log('\n' + '='.repeat(80))
+console.log('DIAGNOSTIC: Mind Inheritance Analysis')
+console.log('='.repeat(80))
+
+const player_belief = [...state.get_beliefs()].find(b => b.get_label() === 'player')
+if (player_belief) {
+  console.log('\nPlayer belief:')
+  console.log(`  Has own 'mind' trait: ${player_belief._traits.has('mind')}`)
+  console.log(`  Inherited mind from bases: ${player_belief.get_trait(state, 'mind') !== player_belief._traits.get('mind') && player_belief.get_trait(state, 'mind') !== null}`)
+
+  const player_mind = player_belief._traits.get('mind')
+  if (player_mind) {
+    console.log(`\nPlayer's OWN mind (Mind#${player_mind._id}):`)
+    const player_mind_state = [...player_mind._states][0]
+    if (player_mind_state) {
+      const beliefs_in_player_mind = [...player_mind_state.get_beliefs()]
+      console.log(`  Beliefs count: ${beliefs_in_player_mind.length}`)
+      for (const b of beliefs_in_player_mind) {
+        const about = b.get_about(player_mind_state)
+        const traits_obj = {}
+        for (const [k, v] of b._traits) {
+          if (k.startsWith('@')) continue
+          traits_obj[k] = v?.get_label?.() || v
+        }
+        console.log(`    - ${about?.get_label() || '(unknown)'}: ${JSON.stringify(traits_obj)}`)
+      }
+    }
+  }
+
+  // Check inherited mind - find Villager belief dynamically
+  const villager_belief = [...player_belief._bases].find(b => b.get_label?.() === 'Villager')
+  if (villager_belief) {
+    console.log(`\nVillager prototype (player's base):`)
+    console.log(`  Has 'mind' trait: ${villager_belief._traits.has('mind')}`)
+
+    const villager_mind = villager_belief._traits.get('mind')
+    if (villager_mind) {
+      console.log(`  Villager's mind (Mind#${villager_mind._id}):`)
+      const villager_mind_state = [...villager_mind._states][0]
+      if (villager_mind_state) {
+        const beliefs_in_villager_mind = [...villager_mind_state.get_beliefs()]
+        console.log(`    Beliefs count: ${beliefs_in_villager_mind.length}`)
+        for (const b of beliefs_in_villager_mind) {
+          const about = b.get_about(villager_mind_state)
+          const traits_obj = {}
+          for (const [k, v] of b._traits) {
+            if (k.startsWith('@')) continue
+            traits_obj[k] = v?.get_label?.() || v
+          }
+          console.log(`      - ${about?.get_label() || '(unknown)'}: ${JSON.stringify(traits_obj)}`)
+        }
+      }
+    }
+  }
+
+  console.log(`\n⚠️  ISSUE: Player's mind REPLACES Villager's mind`)
+  console.log(`    Expected: Player knows workshop location + hammer color (from Villager) + hammer location (own)`)
+  console.log(`    Actual:   Player only has beliefs from its own mind template`)
+  console.log(`    Missing:  Villager's knowledge (workshop location, hammer color) is lost`)
+}
+
+// ============================================================================
 // SUMMARY
 // ============================================================================
 console.log('\n' + '='.repeat(80))

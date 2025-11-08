@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { Mind, State, Belief, Archetype, Traittype , logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
-import {log} from '../public/lib/debug.mjs'
+import {log} from '../public/worker/debug.mjs'
 import { stdTypes } from './helpers.mjs'
 
 

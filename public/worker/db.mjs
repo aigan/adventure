@@ -11,7 +11,7 @@ import { Archetype } from './archetype.mjs'
 import { Traittype } from './traittype.mjs'
 import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
-import { log, assert } from '../lib/debug.mjs';
+import { log, assert } from './debug.mjs';
 import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
 import { logos, logos_state, eidos, _reset_singletons } from './cosmos.mjs'

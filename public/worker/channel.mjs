@@ -1,4 +1,4 @@
-import { log, assert } from "../lib/debug.mjs";
+import { log, assert } from "./debug.mjs";
 import * as DB from './db.mjs';
 import { Mind } from './mind.mjs';
 import { State } from './state.mjs';

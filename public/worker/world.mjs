@@ -10,7 +10,7 @@ import * as Cosmos from "./cosmos.mjs"
 import * as DB from "./db.mjs"
 import { Session } from "./session.mjs"
 import { Subject } from "./subject.mjs"
-import { log, assert, sysdesig } from "../lib/debug.mjs"
+import { log, assert, sysdesig } from "./debug.mjs"
 import { eidos } from './eidos.mjs'
 
 //import {observation,observation_text} from "./observation.mjs";
@@ -83,14 +83,22 @@ const state = world_mind.create_state(Cosmos.logos_state(), {tt: 1});
 
 
 state.add_beliefs_from_template({
+  village: {
+    bases: ['Location'],
+  },
+
   workshop: {
     bases: ['Location'],
+    traits: {
+      location: 'village',
+    },
   },
 
   hammer: {
     bases: ['PortableObject'],
     traits: {
       location: 'workshop',
+      color: 'blue',
     },
   }
 })
@@ -102,6 +110,7 @@ state.add_shared_from_template({
     traits: {
       mind: {
         workshop: ['location'],
+        hammer: ['color'],
       }
     },
   },
@@ -112,9 +121,9 @@ state.add_beliefs_from_template({
     bases: ['Villager'],
     traits: {
       location: 'workshop',
-      //mind: {
-      //  workshop: ['location']
-      //}
+      mind: {
+        hammer: ['location']
+      }
     },
   }
 })
@@ -126,9 +135,9 @@ state.add_beliefs_from_template({
 const player = state.get_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
 
-//log(player);
+log({player});
 for (const [name, value] of player.get_traits()) {
-  log(`  ${name}:`, sysdesig(value));
+  log(`  ${name}:`, sysdesig(state, value));
 }
 
 

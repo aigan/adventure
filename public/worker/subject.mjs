@@ -2,7 +2,7 @@ import * as DB from './db.mjs'
 import { eidos, logos } from './cosmos.mjs'
 import { Belief } from './belief.mjs'
 import { Archetype } from './archetype.mjs'
-import { assert, log } from '../lib/debug.mjs'
+import { assert, log } from './debug.mjs'
 import { next_id } from './id_sequence.mjs'
 
 /**
