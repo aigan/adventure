@@ -47,6 +47,8 @@ import { deserialize_reference } from './serialize.mjs'
  * @property {number} [max] - Maximum array length
  * @property {string} [mind] - Mind scope for Subject resolution ('parent', 'current', 'any')
  * @property {boolean} [composable] - Whether to compose values from multiple bases (default: false)
+ * @property {string[]} [values] - Allowed values for enum validation (e.g., ['solid', 'liquid', 'vapor'])
+ * @property {string} [exposure] - Observation modality required to perceive this trait (e.g., 'visual', 'tactile', 'spatial', 'internal')
  */
 
 /**
@@ -137,12 +139,16 @@ export class Traittype {
       this.constraints = null
       this.mind_scope = null
       this.composable = false
+      this.values = null
+      this.exposure = null
     } else {
-      // Object schema: {type: 'State', container: Array, min: 1, mind: 'parent', composable: true}
+      // Object schema: {type: 'State', container: Array, min: 1, mind: 'parent', composable: true, values: ['a', 'b'], exposure: 'visual'}
       this.data_type = def.type
       this.container = def.container ?? null
       this.mind_scope = def.mind ?? null
       this.composable = def.composable ?? false
+      this.values = def.values ?? null
+      this.exposure = def.exposure ?? null
       this.constraints = {
         min: def.min ?? null,
         max: def.max ?? null
@@ -245,12 +251,21 @@ export class Traittype {
       item_resolver = (/** @type {Belief} */ belief, /** @type {any} */ data, /** @type {any} */ options = {}) =>
         type_class.resolve_trait_value_from_template(this, belief, data, options)
     }
-    // Literal type (string, number, boolean)
+    // Literal type (string, number, boolean) with optional enum validation
     else if (Traittype.literal_type_map[this.data_type]) {
       const expected_type = this.data_type
+      const allowed_values = this.values  // Capture in closure for enum validation
       item_resolver = (/** @type {Belief} */ belief, /** @type {any} */ data) => {
-        if (typeof data === expected_type) return data
-        throw new Error(`Expected ${expected_type} for trait '${this.label}', got ${typeof data}`)
+        if (typeof data !== expected_type) {
+          throw new Error(`Expected ${expected_type} for trait '${this.label}', got ${typeof data}`)
+        }
+
+        // Enum validation if values are specified
+        if (allowed_values && !allowed_values.includes(data)) {
+          throw new Error(`Invalid value '${data}' for trait '${this.label}'. Must be one of: ${allowed_values.join(', ')}`)
+        }
+
+        return data
       }
     }
     // Archetype or other - check archetype at runtime (lightweight map lookup)

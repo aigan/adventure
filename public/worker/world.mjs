@@ -28,15 +28,27 @@ import { eidos } from './eidos.mjs'
 const traittypes = {
   '@about': {
     type: 'Subject',
-    mind: 'parent'  // Resolve in parent mind's ground state
+    mind: 'parent',  // Resolve in parent mind's ground state
+    exposure: 'internal'  // Not directly observable
   },
   '@tt': 'number',
-  location: 'Location',
+  '@form': {
+    type: 'string',
+    values: ['solid', 'liquid', 'vapor', 'olfactory', 'auditory', 'intangible']
+  },
+  location: {
+    type: 'Location',
+    exposure: 'spatial'  // Observable through spatial awareness
+  },
   mind: {
     type: 'Mind',
-    composable: true  // Compose minds from multiple bases
+    composable: true,  // Compose minds from multiple bases
+    exposure: 'internal'  // Not physically observable
   },
-  color: 'string',
+  color: {
+    type: 'string',
+    exposure: 'visual'  // Observable by looking
+  },
   name: 'string',
   inventory: {
     type: 'PortableObject',
@@ -51,13 +63,13 @@ const archetypes = {
   Thing: {
     traits: {
       '@about': null,
-      '@tt': null,
     },
   },
 
   ObjectPhysical: {
     bases: ['Thing'],
     traits: {
+      '@form': 'solid',  // Common case: tangible visible objects
       location: null,
       color: null,
     },
@@ -67,6 +79,7 @@ const archetypes = {
     bases: ['Thing'],
     traits: {
       mind: null,
+      // No @form - intangible mental states
     },
   },
   Location: {

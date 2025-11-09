@@ -3,24 +3,24 @@ trait color is surface_visual
 
 traittypes: {
   color: {
-    type: 'string',
-    exposure: 'surface_visual'
+    type: string,
+    exposure: visual
   },
   weight: {
-    type: 'number', 
-    exposure: 'tactile_mass'  // requires holding
+    type: number,
+    exposure: tactile,  // requires holding
   },
   location: {
-    type: 'Location',
-    exposure: 'spatial_presence'
+    type: Location,
+    exposure: spatial,
   },
   mind: {
-    type: 'Mind',
-    exposure: 'internal_state'  // no physical exposure
+    type: Mind'
+    exposure: internal,  // no physical exposure
   },
   temperature: {
-    type: 'string',
-    exposure: 'surface_thermal'
+    type: string,
+    exposure: tactile,
   }
 }
 
@@ -29,8 +29,11 @@ entity: {
 }
 
 ObjectPhysical: {
-  meta: {exposure: 'physical_form'},
-  traits: {location: null, color: null}
+  traits: {
+    @form: 'solid',
+    location: null,
+    color: null,
+  }
 }
 
 

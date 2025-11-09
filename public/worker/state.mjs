@@ -418,6 +418,8 @@ export class State {
 
     // TODO: Sort by confidence (for now just return first 3)
     // TODO: Limit to explicit knowledge beliefs (not observation events, etc.)
+    // TODO: Filter by acquaintance threshold - beliefs with low acquaintance
+    //       may not trigger recognition during perception events
     return beliefs_about_subject.slice(0, 3)
   }
 

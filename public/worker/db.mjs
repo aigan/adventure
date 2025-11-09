@@ -447,7 +447,7 @@ export function reset_all_registries() {
 /**
  * @typedef {object} ArchetypeDefinition
  * @property {string[]} [bases] - Base archetype labels
- * @property {Object<string, *>} [traits] - Default trait values
+ * @property {Object<string, *>} [traits] - Default trait values (use @ prefix for meta-traits)
  */
 
 /**
@@ -465,6 +465,8 @@ export function reset_all_registries() {
  * @property {number} [max] - Maximum array length
  * @property {string} [mind] - Mind scope for Subject resolution ('parent', 'current', 'any')
  * @property {boolean} [composable] - Whether to compose values from multiple bases (default: false)
+ * @property {string[]} [values] - Allowed values for enum validation (e.g., ['solid', 'liquid', 'vapor'])
+ * @property {string} [exposure] - Observation modality required to perceive this trait (e.g., 'visual', 'tactile', 'spatial', 'internal')
  */
 
 /**

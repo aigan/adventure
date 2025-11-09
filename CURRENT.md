@@ -6,6 +6,14 @@ None - ready for next task from backlog
 
 ## Recently Completed
 
+**Exposure Metadata for Observation System** - 2025-01-09 ([plan](docs/plans/exposure-metadata.md))
+- Implemented enum datatype support with validation (values field on Traittype)
+- Added exposure metadata to traittypes (visual, tactile, spatial, internal)
+- Added @form meta-trait with enum values (solid, liquid, vapor, olfactory, auditory, intangible)
+- Applied @form: 'solid' to ObjectPhysical archetype (auto-inherits to all physical entities)
+- 297 tests passing (11 new tests added)
+- Foundation for observation mechanics and LOOK command
+
 **Mind Composition Testing - All Phases** - 2025-11-09 ([archived plan](docs/plans/archive/mind-composition-tests.md))
 - Comprehensive test coverage for composable mind traits (15 tests across 4 phases)
 - Phase 1: Basic coverage (null blocking, to_inspect_view, own trait composition, caching)
@@ -33,10 +41,6 @@ None - ready for next task from backlog
 ## Backlog
 
 ### Design & Architecture
-- [ ] **Learnable Trait Metadata** - Add visibility metadata to distinguish internal vs observable traits
-  - Add `learnable` field to TraitTypeSchema (default: true)
-  - Filter in State.integrate() to prevent learning internal traits
-  - Examples: `mind` (internal), `location` (observable)
 - [ ] **Observable Trait Mapping** - Design how internal traits map to observable perceptions
   - Internal `health: 50` → Observable `condition: 'wounded'`
   - Internal `inventory: [key]` → Observable `visible_items: []`

@@ -1,260 +1,233 @@
 # Exposure Metadata for Observation System
 
-**Goal**: Add exposure metadata to archetypes and traittypes to support observation mechanics - what can be seen, touched, or otherwise perceived about entities.
+**Status**: ✅ **COMPLETED** (2025-01-09)
+
+**Goal**: Add enum datatype and exposure metadata to support observation mechanics - what can be seen, touched, or otherwise perceived about entities.
 
 **Related**:
 - docs/notes/observations.md - Design notes on trait exposure system
+- docs/notes/observation_recognition_spec.md - Full observation and recognition system spec
 - docs/ALPHA-1.md Stage 1 - LOOK command implementation (needs exposure data)
 
-## Context
+## Summary of Implementation
 
-The observation system needs to know what traits are observable through different sensory modalities:
-- `color` requires seeing the surface (`exposure: 'surface_visual'`)
-- `weight` requires touching/holding (`exposure: 'tactile_mass'`)
-- `location` requires spatial awareness (`exposure: 'spatial_presence'`)
-- `mind` is not physically observable (`exposure: 'internal_state'`)
+Successfully implemented exposure metadata infrastructure with enum validation support. This provides the foundation for the observation system and future LOOK command.
 
-This metadata enables:
-- LOOK command filtering to visible traits
-- Realistic perception (can't see weight, can't feel color from distance)
-- Detective gameplay (what clues are observable?)
-- Stealth mechanics (spatial prominence affects observability)
+### What Was Built
 
-## Design Principles
+**Part 1: Enum Datatype Support**
+- Added `values` field to Traittype for enum validation
+- Enum validation in trait resolution with clear error messages
+- Works with any string-based trait type
 
-**Optimize for the common case:**
-- Most entities inherit exposure rules from archetypes automatically
-- Zero overhead for typical objects
-- Define once at archetype/traittype level, inherit everywhere
+**Part 2: Exposure Metadata**
+- Added `@form` meta-trait with enum values: `'solid'`, `'liquid'`, `'vapor'`, `'olfactory'`, `'auditory'`, `'intangible'`
+- Added `exposure` field to Traittype for sensory modalities: `'visual'`, `'tactile'`, `'spatial'`, `'internal'`
+- Applied exposure to core traittypes: `@about`, `location`, `color`, `mind`
+- Added `@form: 'solid'` to `ObjectPhysical` archetype (auto-inherits to all physical entities)
 
-**Support edge cases:**
-- Override exposure on specific archetypes (invisible ghost, hidden compartment)
-- Override at trait level for special instances (colorless poison)
-- Extensible for future needs (obscurement, detection difficulty)
+### Test Coverage
 
-## Implementation Steps
+- **297 tests passing** (11 new tests added)
+- Enum validation: accepts valid values, rejects invalid values, clear error messages
+- Exposure storage: correct defaults, inheritance through archetypes, override capability
+- All existing tests still pass, TypeScript and ESLint clean
 
-### 1. Add `exposure` to Traittype class
+## Implementation Details
+
+### Enum Support
 
 **File**: `public/worker/traittype.mjs`
 
-Add property to constructor:
+Added `values` field and validation:
 ```javascript
 constructor(label, def) {
   this.label = label
-
   if (typeof def === 'string') {
-    this.data_type = def
-    this.exposure = null  // No exposure specified
-    this.container = null
-    ...
+    this.values = null
+    this.exposure = null
+    // ...
   } else {
-    this.data_type = def.type
-    this.exposure = def.exposure ?? null  // NEW
-    this.container = def.container ?? null
-    this.mind_scope = def.mind ?? null
-    ...
+    this.values = def.values ?? null
+    this.exposure = def.exposure ?? null
+    // ...
   }
 }
 ```
 
-### 2. Add `meta` to Archetype class
-
-**File**: `public/worker/archetype.mjs`
-
-Add metadata storage to constructor:
+Validation in resolver:
 ```javascript
-constructor(label, {bases=[], traits={}, meta={}}) {
-  this.label = label
-  this.meta = meta  // NEW: Store archetype metadata (exposure, etc.)
-
-  this.bases = new Set()
-  for (const base_label of bases) {
-    const base = DB.archetype_by_label[base_label]
-    assert(base != null, ...)
-    this.bases.add(base)
-  }
-
-  this.traits_template = traits
+// Enum validation if values are specified
+if (allowed_values && !allowed_values.includes(data)) {
+  throw new Error(`Invalid value '${data}' for trait '${this.label}'. Must be one of: ${allowed_values.join(', ')}`)
 }
 ```
 
-### 3. Update type definitions
-
-**File**: `public/worker/db.mjs`
-
-Update JSDoc:
-```javascript
-/**
- * @typedef {object} ArchetypeDefinition
- * @property {string[]} [bases] - Base archetype labels
- * @property {Object<string, *>} [traits] - Default trait values
- * @property {object} [meta] - Archetype metadata (exposure, spatial_prominence, etc.)
- */
-
-/**
- * @typedef {object} TraitTypeSchema
- * @property {string} type - Base type
- * @property {Function} [container] - Container constructor
- * @property {number} [min] - Minimum array length
- * @property {number} [max] - Maximum array length
- * @property {string} [mind] - Mind scope for Subject resolution
- * @property {string} [exposure] - Observation modality required to perceive this trait
- */
-```
-
-### 4. Add example exposure definitions
+### Exposure Metadata
 
 **File**: `public/worker/world.mjs`
 
+Traittypes with exposure:
 ```javascript
 const traittypes = {
   '@about': {
     type: 'Subject',
     mind: 'parent',
-    exposure: 'internal_correspondence'  // Not directly observable
+    exposure: 'internal'  // Not directly observable
+  },
+  '@form': {
+    type: 'string',
+    values: ['solid', 'liquid', 'vapor', 'olfactory', 'auditory', 'intangible']
   },
   location: {
     type: 'Location',
-    exposure: 'spatial_presence'  // Observable through spatial awareness
+    exposure: 'spatial'  // Observable through spatial awareness
   },
   color: {
     type: 'string',
-    exposure: 'surface_visual'  // Observable by looking at surface
+    exposure: 'visual'  // Observable by looking
   },
-  mind_states: {
-    type: 'State',
-    container: Array,
-    min: 1,
-    exposure: 'internal_state'  // Not physically observable
+  mind: {
+    type: 'Mind',
+    composable: true,
+    exposure: 'internal'  // Not physically observable
   },
 };
+```
 
+Archetypes with @form:
+```javascript
 const archetypes = {
   ObjectPhysical: {
-    meta: {
-      exposure: 'physical_form'  // Has physical presence
-    },
+    bases: ['Thing'],
     traits: {
-      '@about': null,
+      '@form': 'solid',  // Common case: tangible visible objects
       location: null,
       color: null,
     },
   },
   Mental: {
-    meta: {
-      exposure: 'cognitive_state'  // Not physically observable
-    },
+    bases: ['Thing'],
     traits: {
-      mind_states: null,
+      mind: null,
+      // No @form - intangible mental states
     },
   },
-  // PortableObject, Location, etc. inherit from ObjectPhysical
-  // → automatically get exposure: 'physical_form'
 };
 ```
 
-### 5. Add TODO comment to recognize()
+### Type Definitions
+
+**File**: `public/worker/db.mjs`
+
+```javascript
+/**
+ * @typedef {object} TraitTypeSchema
+ * @property {string} type - Base type
+ * @property {ArrayConstructor} [container] - Container constructor
+ * @property {number} [min] - Minimum array length
+ * @property {number} [max] - Maximum array length
+ * @property {string} [mind] - Mind scope for Subject resolution
+ * @property {boolean} [composable] - Whether to compose values from multiple bases
+ * @property {string[]} [values] - Allowed values for enum validation
+ * @property {string} [exposure] - Observation modality required to perceive this trait
+ */
+```
+
+### Future Integration Hook
 
 **File**: `public/worker/state.mjs`
 
-Document future integration with acquaintance trait:
+Added TODO in `recognize()`:
 ```javascript
-recognize(belief) {
-  // Query DB for all beliefs in this mind about the same subject
-  const beliefs_about_subject = DB.find_beliefs_about_subject(
-    this.in_mind,
-    belief.subject,
-    this
-  )
-
-  // TODO: Sort by confidence (for now just return first 3)
-  // TODO: Limit to explicit knowledge beliefs (not observation events, etc.)
-  // TODO: Filter by acquaintance threshold - beliefs with low acquaintance
-  //       may not trigger recognition during perception events
-  return beliefs_about_subject.slice(0, 3)
-}
+// TODO: Sort by confidence (for now just return first 3)
+// TODO: Limit to explicit knowledge beliefs (not observation events, etc.)
+// TODO: Filter by acquaintance threshold - beliefs with low acquaintance
+//       may not trigger recognition during perception events
+return beliefs_about_subject.slice(0, 3)
 ```
 
-### 6. Add tests
+## Vocabulary
 
-**Files**: `test/traittype.test.mjs`, `test/archetype.test.mjs`
+### Trait Exposure (Sensory Modalities)
+- **'visual'** - color, surface appearance, shape, size
+- **'tactile'** - texture, temperature, weight, density (requires touch)
+- **'spatial'** - location, proximity (spatial awareness)
+- **'internal'** - thoughts, feelings, memories, @about (not observable)
+- **'olfactory'** - smell, scent (future)
+- **'auditory'** - sound, noise (future)
 
-Test exposure storage:
-- Traittype stores exposure from schema
-- Traittype defaults to null when no exposure
-- Archetype stores meta.exposure
-- Archetype defaults to empty object when no meta
+### Entity @form (Physical Nature)
+- **'solid'** - Common tangible visible objects (hammer, person, wall)
+- **'liquid'** - Water, oil (visible, flows, not solid)
+- **'vapor'** - Fog, smoke, steam (visible but intangible)
+- **'olfactory'** - Smell, odor (perceived via smell only, no visual/solid form)
+- **'auditory'** - Ambient sound (perceived via hearing only)
+- **'intangible'** - Thoughts, distant entities, abstract concepts
 
-## Exposure Vocabulary (Examples)
+## Design Principles
 
-**Visual modalities:**
-- `surface_visual` - color, surface appearance
-- `form_visual` - shape, size (from distance)
+### Optimize for the Common Case
+- Most entities inherit exposure rules automatically via archetypes
+- Zero overhead for typical objects
+- Define once at archetype/traittype level, inherit everywhere
+- Example: All descendants of `ObjectPhysical` get `@form: 'solid'` for free
 
-**Tactile modalities:**
-- `surface_tactile` - texture, temperature
-- `tactile_mass` - weight, density (requires holding)
+### Support Edge Cases
+- Override `@form` on specific entities (e.g., fog: `@form: 'vapor'`)
+- Enum validation prevents typos while staying flexible
+- Can migrate enums to Archetype + Class pattern when forms need behavior
 
-**Spatial:**
-- `spatial_presence` - location, proximity
-- `spatial_prominence` - how noticeable (prominent/exposed/obscured/hidden)
-
-**Internal/Cognitive:**
-- `internal_state` - thoughts, feelings, memories
-- `internal_correspondence` - identity references (@about)
-
-**Special:**
-- `chemical_analysis` - poison detection, material composition
-- `deep_investigation` - requires detailed examination
-- `concealed_physical` - hidden compartments, secret doors
-
-Vocabulary can evolve as game needs emerge.
-
-## How Inheritance Works
+### Inheritance Example
 
 ```javascript
 // Define once on archetype
 ObjectPhysical: {
-  meta: {exposure: 'physical_form'},
-  traits: {color: null, location: null}
+  traits: {
+    '@form': 'solid',  // Enum-validated
+    color: null,
+    location: null
+  }
 }
 
 // All descendants inherit automatically
-PortableObject extends ObjectPhysical  // ✓ physical_form
-Location extends ObjectPhysical        // ✓ physical_form
-Actor extends ObjectPhysical           // ✓ physical_form
+PortableObject extends ObjectPhysical  // ✓ @form: 'solid'
+Location extends ObjectPhysical        // ✓ @form: 'solid'
+Actor extends ObjectPhysical           // ✓ @form: 'solid'
 
 // Thousands of entities inherit for free
-hammer: {bases: ['PortableObject']}    // ✓ physical_form
-workshop: {bases: ['Location']}        // ✓ physical_form
+hammer: {bases: ['PortableObject']}    // ✓ @form: 'solid'
+workshop: {bases: ['Location']}        // ✓ @form: 'solid'
 
-// Override only when needed
-ghost: {
-  bases: ['Actor'],
-  meta: {exposure: 'spectral_presence'}  // Override
+// Override when needed
+fog: {
+  bases: ['Thing'],
+  traits: {
+    '@form': 'vapor',  // Validated against enum values
+    density: 'thick'
+  }
 }
 ```
 
 ## Future Integration
 
-Once exposure metadata exists:
+Once exposure metadata exists, these integrations become possible:
 
-**LOOK command** (Alpha 1 Stage 1):
+### LOOK Command (Alpha 1 Stage 1)
 ```javascript
 // Get all visible traits from entities in current location
-const visible_traits = entity.get_traits_with_exposure('surface_visual')
+const visible_traits = entity.get_traits_with_exposure('visual')
 ```
 
-**Perception events**:
+### Perception Events
 ```javascript
 // Create observation with only accessible traits
 const observation = observe(entity, {
-  modalities: ['surface_visual', 'spatial_presence']
+  modalities: ['visual', 'spatial']
 })
 ```
 
-**learn_about() integration**:
+### learn_about() Integration
 ```javascript
 // Filter trait_names by what the observation modality exposes
 const observable_traits = trait_names.filter(t =>
@@ -263,36 +236,50 @@ const observable_traits = trait_names.filter(t =>
 state.learn_about(belief, observable_traits, source_state)
 ```
 
-**Acquaintance/Recognition**:
+### Acquaintance/Recognition
 ```javascript
 // recognize() uses acquaintance threshold to determine recognition
 const candidates = recognize(perceived_entity)
   .filter(b => b.traits.get('acquaintance') > threshold)
 ```
 
-## Current Status
+## Migration Path: Enum to Archetype + Class
 
-- [ ] Add exposure to Traittype
-- [ ] Add meta to Archetype
-- [ ] Update type definitions
-- [ ] Add example definitions to world.mjs
-- [ ] Add TODO to recognize()
-- [ ] Add tests
-- [ ] Run test suite
+When @form values need behavior (e.g., `form.can_contain_objects()`), migrate from enum to Archetype pattern:
+
+```javascript
+// Current: Enum (lightweight, validation only)
+'@form': {
+  type: 'string',
+  values: ['solid', 'liquid', 'vapor']
+}
+
+// Future: Archetype + Class (when behavior needed)
+Form: {archetype with properties}
+solid: {bases: ['Form'], traits: {visual_accessible: true, tactile_accessible: true}}
+liquid: {bases: ['Form'], traits: {visual_accessible: true, tactile_accessible: false}}
+
+class Form {
+  get_accessible_modalities() { ... }
+  can_contain_objects() { ... }
+}
+```
 
 ## Notes
 
-**Why now?**
-- Just completed `learn_about()` → `recognize()` → `integrate()` refactor
-- Observation system needs this metadata to function
-- Foundation for LOOK command (Alpha 1 Stage 1)
+**Why this matters:**
+- Foundation for observation mechanics (LOOK command, perception events)
+- Enables realistic perception (can't see internal states, can't feel color from distance)
+- Supports detective gameplay (what clues are observable?)
+- Extensible for future needs (stealth, detection difficulty, etc.)
 
-**Design trade-off:**
-- Could make exposure required, but keeping it optional allows gradual adoption
-- Empty/null exposure means "no restrictions" for now, refine later
+**Design trade-offs:**
+- Kept exposure optional for gradual adoption
+- Empty/null exposure means "no restrictions" for now
+- Can add more exposure modalities as needed (olfactory, auditory already defined)
+- Enum approach is simple now, can migrate to Archetype+Class later if forms need behavior
 
-**Acquaintance trait:**
-- Future trait on knowledge beliefs: `acquaintance: 0.8`
-- Determines recognition probability during perception
-- High acquaintance → immediate recognition
-- Low acquaintance → might not recognize or create duplicate belief
+**Related systems:**
+- `@acquaintance` trait (future) - determines recognition probability
+- `spatial_prominence` (future) - how noticeable entity is in scene
+- Observation events (future) - track act of perceiving separately from resulting belief

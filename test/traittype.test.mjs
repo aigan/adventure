@@ -331,4 +331,278 @@ describe('Traittype', () => {
       expect(traittype.resolve_trait_value_from_template).to.be.a('function');
     });
   });
+
+  describe('Enum validation', () => {
+    beforeEach(() => {
+      DB.reset_registries();
+      const traittypes = {
+        ...stdTypes,
+        form: {
+          type: 'string',
+          values: ['solid', 'liquid', 'vapor', 'intangible']
+        },
+        size: {
+          type: 'string',
+          values: ['small', 'medium', 'large']
+        },
+      };
+
+      const archetypes = {
+        Thing,
+        Physical: {
+          bases: ['Thing'],
+          traits: {
+            form: null,
+            size: null,
+          },
+        },
+      };
+
+      DB.register(traittypes, archetypes, {});
+    });
+
+    it('accepts valid enum value', () => {
+      const state = createStateInNewMind('test_mind');
+      const obj = Belief.from_template(state, {
+        traits: { '@label': 'test_obj', form: 'solid' },
+        bases: ['Physical']
+      });
+
+      expect(obj._traits.get('form')).to.equal('solid');
+    });
+
+    it('accepts all valid enum values', () => {
+      const state = createStateInNewMind('test_mind');
+
+      for (const value of ['solid', 'liquid', 'vapor', 'intangible']) {
+        const obj = Belief.from_template(state, {
+          traits: { '@label': `test_${value}`, form: value },
+          bases: ['Physical']
+        });
+        expect(obj._traits.get('form')).to.equal(value);
+      }
+    });
+
+    it('rejects invalid enum value', () => {
+      const state = createStateInNewMind('test_mind');
+
+      expect(() => {
+        Belief.from_template(state, {
+          traits: { '@label': 'test_obj', form: 'plasma' },  // Not in enum values
+          bases: ['Physical']
+        });
+      }).to.throw(/Invalid value 'plasma' for trait 'form'/);
+    });
+
+    it('enum error message lists allowed values', () => {
+      const state = createStateInNewMind('test_mind');
+
+      expect(() => {
+        Belief.from_template(state, {
+          traits: { '@label': 'test_obj', form: 'invalid' },
+          bases: ['Physical']
+        });
+      }).to.throw(/Must be one of: solid, liquid, vapor, intangible/);
+    });
+
+    it('stores values property on traittype', () => {
+      const traittype = Traittype.get_by_label('form');
+
+      expect(traittype.values).to.be.an('array');
+      expect(traittype.values).to.deep.equal(['solid', 'liquid', 'vapor', 'intangible']);
+    });
+
+    it('values defaults to null when not specified', () => {
+      DB.reset_registries();
+      const traittypes = {
+        ...stdTypes,
+        name: 'string',  // No values specified
+      };
+
+      const archetypes = {
+        Thing,
+        Named: {
+          bases: ['Thing'],
+          traits: { name: null }
+        }
+      };
+
+      DB.register(traittypes, archetypes, {});
+
+      const traittype = Traittype.get_by_label('name');
+      expect(traittype.values).to.be.null;
+
+      // Should accept any string when no enum values
+      const state = createStateInNewMind('test_mind');
+      const obj = Belief.from_template(state, {
+        traits: { '@label': 'test_obj', name: 'anything' },
+        bases: ['Named']
+      });
+      expect(obj._traits.get('name')).to.equal('anything');
+    });
+  });
+
+  describe('Exposure metadata', () => {
+    beforeEach(() => {
+      DB.reset_registries();
+      const traittypes = {
+        ...stdTypes,
+        '@form': {
+          type: 'string',
+          values: ['solid', 'liquid', 'vapor', 'intangible']
+        },
+        color: {
+          type: 'string',
+          exposure: 'visual'
+        },
+        weight: {
+          type: 'number',
+          exposure: 'tactile'
+        },
+        location: {
+          type: 'Location',
+          exposure: 'spatial'
+        },
+        mind_states: {
+          type: 'State',
+          container: Array,
+          min: 1,
+          exposure: 'internal'
+        },
+      };
+
+      const archetypes = {
+        Thing: {
+          traits: {
+            '@label': null,
+            '@form': null,  // Allow @form trait on Thing
+          },
+        },
+        Location: {
+          bases: ['Thing'],
+        },
+        ObjectPhysical: {
+          bases: ['Thing'],
+          traits: {
+            '@form': 'solid',
+            location: null,
+            color: null,
+            weight: null,
+          },
+        },
+        PortableObject: {
+          bases: ['ObjectPhysical'],
+        },
+        Mental: {
+          bases: ['Thing'],
+          traits: {
+            mind_states: null,
+          },
+        },
+      };
+
+      DB.register(traittypes, archetypes, {});
+    });
+
+    it('stores exposure on traittype', () => {
+      const color_tt = Traittype.get_by_label('color');
+      expect(color_tt.exposure).to.equal('visual');
+
+      const weight_tt = Traittype.get_by_label('weight');
+      expect(weight_tt.exposure).to.equal('tactile');
+
+      const location_tt = Traittype.get_by_label('location');
+      expect(location_tt.exposure).to.equal('spatial');
+
+      const mind_states_tt = Traittype.get_by_label('mind_states');
+      expect(mind_states_tt.exposure).to.equal('internal');
+    });
+
+    it('exposure defaults to null when not specified', () => {
+      const form_tt = Traittype.get_by_label('@form');
+      expect(form_tt.exposure).to.be.null;
+    });
+
+    it('@form trait inherits through archetype bases', () => {
+      const state = createStateInNewMind('test_mind');
+
+      // PortableObject extends ObjectPhysical which has @form: 'solid'
+      const hammer = Belief.from_template(state, {
+        traits: { '@label': 'hammer' },
+        bases: ['PortableObject']
+      });
+
+      expect(hammer.get_trait(state, '@form')).to.equal('solid');
+    });
+
+    it('@form validates against enum values', () => {
+      const state = createStateInNewMind('test_mind');
+
+      // Valid value should work
+      const vapor_entity = Belief.from_template(state, {
+        traits: { '@label': 'fog', '@form': 'vapor' },
+        bases: ['Thing']
+      });
+      expect(vapor_entity._traits.get('@form')).to.equal('vapor');
+
+      // Invalid value should throw
+      expect(() => {
+        Belief.from_template(state, {
+          traits: { '@label': 'invalid', '@form': 'plasma' },
+          bases: ['Thing']
+        });
+      }).to.throw(/Invalid value 'plasma' for trait '@form'/);
+    });
+
+    it('@form can override inherited value', () => {
+      const state = createStateInNewMind('test_mind');
+
+      // Override solid with vapor
+      const fog = Belief.from_template(state, {
+        traits: { '@label': 'fog', '@form': 'vapor' },
+        bases: ['ObjectPhysical']  // Has @form: 'solid' by default
+      });
+
+      expect(fog._traits.get('@form')).to.equal('vapor');
+    });
+
+    it('@form appears in get_traits() iteration', () => {
+      const state = createStateInNewMind('test_mind');
+
+      const hammer = Belief.from_template(state, {
+        traits: { '@label': 'hammer', color: 'black' },
+        bases: ['PortableObject']  // Inherits @form: 'solid' from ObjectPhysical
+      });
+
+      // Should be accessible via get_trait
+      expect(hammer.get_trait(state, '@form')).to.equal('solid');
+
+      // Should appear when iterating with get_traits()
+      const traits = Array.from(hammer.get_traits());
+      const form_entry = traits.find(([name]) => name === '@form');
+
+      expect(form_entry).to.not.be.undefined;
+      expect(form_entry[1]).to.equal('solid');
+    });
+
+    it('archetype default values appear in iteration', () => {
+      const state = createStateInNewMind('test_mind');
+
+      const obj = Belief.from_template(state, {
+        traits: { '@label': 'test_obj', weight: 5 },
+        bases: ['ObjectPhysical']
+      });
+
+      const trait_map = new Map(obj.get_traits());
+
+      // Explicitly set trait
+      expect(trait_map.get('weight')).to.equal(5);
+
+      // Archetype default value
+      expect(trait_map.get('@form')).to.equal('solid');
+
+      // Archetype null value (shouldn't appear)
+      expect(trait_map.has('color')).to.be.false;
+    });
+  });
 });

@@ -348,6 +348,7 @@ export class Belief {
   /**
    * Iterate over all traits (own and inherited) with their values
    * Own traits shadow inherited traits with the same name
+   * Includes archetype default values (non-null values from archetype traits_template)
    * @returns {Generator<[string, *]>} Yields [trait_name, value] pairs
    */
   *get_traits() {
@@ -368,8 +369,8 @@ export class Belief {
       if (!base || seen.has(base)) continue
       seen.add(base)
 
-      // Only check Belief bases (Archetypes have definitions, not values)
       if (base instanceof Belief) {
+        // Belief bases: yield trait values
         for (const [name, value] of base._traits) {
           if (!yielded.has(name)) {
             yield [name, value]
@@ -377,6 +378,16 @@ export class Belief {
           }
         }
         // Add this belief's bases to search queue
+        queue.push(...base._bases)
+      } else {
+        // Archetype bases: yield traits with non-null default values
+        for (const [name, value] of Object.entries(base._traits_template)) {
+          if (value !== null && !yielded.has(name)) {
+            yield [name, value]
+            yielded.add(name)
+          }
+        }
+        // Add this archetype's bases to search queue
         queue.push(...base._bases)
       }
     }
@@ -430,7 +441,7 @@ export class Belief {
    */
   get_tt() {
     // Check meta-trait first (for shared beliefs)
-    const tt_trait = this._traits.get('@tt')
+    const tt_trait = this._traits.get('@tt') // FIXME: remove
     if (tt_trait !== undefined) {
       return tt_trait
     }
