@@ -31,7 +31,6 @@ const traittypes = {
     mind: 'parent',  // Resolve in parent mind's ground state
     exposure: 'internal'  // Not directly observable
   },
-  '@tt': 'number',
   '@form': {
     type: 'string',
     values: ['solid', 'liquid', 'vapor', 'olfactory', 'auditory', 'intangible']

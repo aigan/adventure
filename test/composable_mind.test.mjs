@@ -19,11 +19,10 @@ describe('Composable Mind Trait', () => {
       // Setup
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -71,11 +70,10 @@ describe('Composable Mind Trait', () => {
       // Setup
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -133,11 +131,10 @@ describe('Composable Mind Trait', () => {
       // Setup
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -207,11 +204,10 @@ describe('Composable Mind Trait', () => {
       // Setup
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -271,11 +267,10 @@ describe('Composable Mind Trait', () => {
 
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -341,11 +336,10 @@ describe('Composable Mind Trait', () => {
 
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -395,11 +389,10 @@ describe('Composable Mind Trait', () => {
 
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -465,11 +458,10 @@ describe('Composable Mind Trait', () => {
 
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -549,12 +541,11 @@ describe('Composable Mind Trait', () => {
 
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         size: 'number',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null, size: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -619,11 +610,10 @@ describe('Composable Mind Trait', () => {
 
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -691,11 +681,10 @@ describe('Composable Mind Trait', () => {
 
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -790,11 +779,10 @@ describe('Composable Mind Trait', () => {
 
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -853,11 +841,10 @@ describe('Composable Mind Trait', () => {
 
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -904,11 +891,10 @@ describe('Composable Mind Trait', () => {
 
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},
@@ -968,11 +954,10 @@ describe('Composable Mind Trait', () => {
 
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
       }, {
-        Thing: {traits: {'@about': null, '@tt': null}},
+        Thing: {traits: {'@about': null}},
         Location: {bases: ['Thing'], traits: {location: null}},
         Mental: {bases: ['Thing'], traits: {mind: null}},
         Person: {bases: ['Mental']},

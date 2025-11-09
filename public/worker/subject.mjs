@@ -165,7 +165,7 @@ export class Subject {
    * Yields the outermost belief on each branch at or before the given tt
    * (beliefs that have no descendants also at or before the tt)
    *
-   * Note: Shared beliefs without @tt have get_tt() === -Infinity, so they're always included
+   * Note: Timeless shared beliefs have get_tt() === -Infinity, so they're always included
    *
    * TODO: Refactor to walk tree from starting belief instead of scanning all versions
    * Current: O(n²) over all belief versions - doesn't scale to millions of versions per subject

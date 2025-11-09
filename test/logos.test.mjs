@@ -125,15 +125,15 @@ describe('Logos Singleton', () => {
       const world_mind = Mind.create_world()
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
-      // Create a shared belief (template) scoped to world
-      const shared_template = Belief.create_shared_from_template(
-        world_mind,
-        ['Thing'],
-        {
-          '@label': 'SharedTemplate',
-          '@tt': 100
+      // Create a shared belief (template) scoped to world with timed state
+      const eidos = DB.get_eidos()
+      const state_100 = eidos.create_timed_state(100)
+      const shared_template = state_100.add_belief_from_template({
+        bases: ['Thing'],
+        traits: {
+          '@label': 'SharedTemplate'
         }
-      )
+      })
 
       // Create a mind using the shared belief as ground_belief
       const mind = Mind.create_from_template(

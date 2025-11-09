@@ -435,19 +435,11 @@ export class Belief {
   }
 
   /**
-   * Get tt for this belief (supports both shared and regular beliefs)
-   * Checks @tt meta-trait first (for shared beliefs), falls back to origin_state.tt
+   * Get tt for this belief
+   * Returns transaction time from origin_state, or -Infinity for timeless prototypes
    * @returns {number} Transaction time when this belief was created, or -Infinity for timeless shared beliefs
    */
   get_tt() {
-    // Check meta-trait first (for shared beliefs)
-    const tt_trait = this._traits.get('@tt') // FIXME: remove
-    if (tt_trait !== undefined) {
-      return tt_trait
-    }
-
-    // Fall back to origin_state (for regular beliefs)
-    // Return -Infinity for shared beliefs without @tt (timeless prototypes)
     return this.origin_state?.tt ?? -Infinity
   }
 
@@ -852,7 +844,7 @@ export class Belief {
    * Create shared belief from template (limbo - no mind/state ownership)
    * @param {Mind} parent_mind - Parent mind context for scoping
    * @param {Array<string|Belief|Archetype>} bases - Base archetypes/beliefs (can be strings)
-   * @param {Object<string, any>} traits - Traits (including optional @tt and @label)
+   * @param {Object<string, any>} traits - Traits (including optional @label)
    * @param {((subject: Subject) => Belief|Archetype|null)|null} [decider] - Function to decide which belief to use for a subject
    * @returns {Belief}
    */

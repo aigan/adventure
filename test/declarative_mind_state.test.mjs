@@ -156,19 +156,18 @@ describe('Mind Trait', () => {
 
     // Create shared belief prototypes (templates for Location types)
     const eidos = DB.get_eidos();
-    const tavern_proto = eidos.origin_state.add_belief_from_template({
+    const state_100 = eidos.create_timed_state(100);
+    const tavern_proto = state_100.add_belief_from_template({
       bases: ['Location'],
       traits: {
-        '@tt': 100,
         '@label': 'TavernPrototype',
         size: 'large'  // Default size for taverns
       }
     });
 
-    const square_proto = eidos.origin_state.add_belief_from_template({
+    const square_proto = state_100.add_belief_from_template({
       bases: ['Location'],
       traits: {
-        '@tt': 100,
         '@label': 'SquarePrototype',
         size: 'huge'  // Default size for squares
       }
@@ -339,10 +338,10 @@ describe('Mind Trait', () => {
 
     // Create shared prototype
     const eidos = DB.get_eidos();
-    const tavern_proto = eidos.origin_state.add_belief_from_template({
+    const state_100 = eidos.create_timed_state(100);
+    const tavern_proto = state_100.add_belief_from_template({
       bases: ['Location'],
       traits: {
-        '@tt': 100,
         '@label': 'TavernPrototype',
         size: 'large'
       }
@@ -363,10 +362,10 @@ describe('Mind Trait', () => {
     // Create shared cultural knowledge (what villagers know about the tavern)
     // NOTE: Uses CulturalKnowledge archetype (non-spatial), not Location (spatial)
     // It's a template containing only the culturally known traits
-    const cultural_knowledge = eidos.origin_state.add_belief_from_template({
+    const state_200 = eidos.create_timed_state(200);
+    const cultural_knowledge = state_200.add_belief_from_template({
       bases: ['CulturalKnowledge'],
       traits: {
-        '@tt': 200,
         '@label': 'CulturalKnowledge_Tavern',
         size: 'large',  // Everyone knows it's large
         owner: 'blacksmith_guild'  // Everyone knows who owns it

@@ -65,7 +65,6 @@ export function createMindWithBeliefs(label, beliefs = {}, parent_mind = logos()
  * DB.register(traittypes, archetypes, {});
  */
 export const stdTypes = {
-  '@tt': 'number',
   '@about': {
     type: 'Subject',
     mind: 'parent'
@@ -80,7 +79,6 @@ export const stdTypes = {
  */
 export const Thing = {
   traits: {
-    '@tt': null,
     '@about': null,
   },
 }
@@ -118,9 +116,7 @@ export function setupStandardArchetypes() {
       },
     },
     Temporal: {
-      traits: {
-        '@tt': null,
-      },
+      traits: {},
     },
     Location: {
       bases: ['ObjectPhysical'],

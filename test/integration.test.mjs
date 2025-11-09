@@ -22,7 +22,6 @@ describe('Integration', () => {
           type: 'Subject',
           mind: 'parent'
         },
-        '@tt': 'number',
         location: 'Location',
         mind: 'Mind',
         color: 'string',
@@ -34,7 +33,6 @@ describe('Integration', () => {
         Thing: {
           traits: {
             '@about': null,
-            '@tt': null,
           },
         },
         ObjectPhysical: {
@@ -148,7 +146,6 @@ describe('Integration', () => {
           type: 'Subject',
           mind: 'parent'
         },
-        '@tt': 'number',
         location: 'Location',
         mind: 'Mind',
       };
@@ -157,7 +154,6 @@ describe('Integration', () => {
         Thing: {
           traits: {
             '@about': null,
-            '@tt': null,
           },
         },
         Location: {
@@ -292,13 +288,12 @@ describe('Integration', () => {
       // Setup traittypes and archetypes
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: 'Mind',
         color: 'string',
       }, {
         Thing: {
-          traits: {'@about': null, '@tt': null}
+          traits: {'@about': null}
         },
         Location: {
           bases: ['Thing'],
@@ -410,13 +405,12 @@ describe('Integration', () => {
       // Setup traittypes and archetypes
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: {type: 'Mind', composable: true},
         skill: 'string',
       }, {
         Thing: {
-          traits: {'@about': null, '@tt': null}
+          traits: {'@about': null}
         },
         Location: {
           bases: ['Thing'],
@@ -530,12 +524,11 @@ describe('Integration', () => {
       // Setup traittypes and archetypes
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: 'Mind',
       }, {
         Thing: {
-          traits: {'@about': null, '@tt': null}
+          traits: {'@about': null}
         },
         Location: {
           bases: ['Thing'],
@@ -617,12 +610,11 @@ describe('Integration', () => {
       // Setup traittypes and archetypes
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: 'Mind',
       }, {
         Thing: {
-          traits: {'@about': null, '@tt': null}
+          traits: {'@about': null}
         },
         Location: {
           bases: ['Thing'],
@@ -742,14 +734,13 @@ describe('Integration', () => {
       // Setup traittypes and archetypes
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: 'Mind',
         tools: {type: 'string', container: Array},
         size: 'number',
       }, {
         Thing: {
-          traits: {'@about': null, '@tt': null}
+          traits: {'@about': null}
         },
         Location: {
           bases: ['Thing'],
@@ -866,12 +857,11 @@ describe('Integration', () => {
       // Setup traittypes and archetypes
       DB.register({
         '@about': {type: 'Subject', mind: 'parent'},
-        '@tt': 'number',
         location: 'Location',
         mind: 'Mind',
       }, {
         Thing: {
-          traits: {'@about': null, '@tt': null}
+          traits: {'@about': null}
         },
         Location: {
           bases: ['Thing'],

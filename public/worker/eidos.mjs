@@ -51,6 +51,20 @@ export class Eidos extends Mind {
   create_timeless_state() {
     return new Timeless(this)
   }
+
+  /**
+   * Create a timed state in Eidos
+   * Convenience method that automatically uses logos().origin_state as ground_state
+   * @param {number} tt - Transaction time for the new state
+   * @returns {State}
+   */
+  create_timed_state(tt) {
+    const logos_state = logos().origin_state
+    if (!logos_state) {
+      throw new Error('Logos origin_state is not initialized')
+    }
+    return this.create_state(logos_state, { tt, vt: tt })
+  }
 }
 
 /**
