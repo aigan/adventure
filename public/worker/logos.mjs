@@ -28,13 +28,10 @@ let _logos = null
  * Manually initializes without calling Mind constructor to allow parent=null
  */
 export class Logos {
-  /** @type {Mind|null} */
-  parent = null
-
   constructor() {
     // Manual initialization of Mind properties (bypass Mind constructor)
     this._id = next_id()
-    this.parent = null  // Shadow Mind.parent - allows null for this special case
+    this._parent = null  // Logos has no parent (root of hierarchy)
     this.label = 'logos'
     this.self = null
     this._child_minds = new Set()
@@ -52,6 +49,14 @@ export class Logos {
 
     // Register with DB - Logos inherits Mind methods via prototype
     DB.register_mind(/** @type {any} */ (this))
+  }
+
+  /**
+   * Logos parent is always null (root of hierarchy)
+   * @returns {null}
+   */
+  get parent() {
+    return null
   }
 }
 

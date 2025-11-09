@@ -1,5 +1,7 @@
 import { set_id_sequence } from './id_sequence.mjs'
 import { Mind } from './mind.mjs'
+import { logos } from './cosmos.mjs'
+import * as DB from './db.mjs'
 
 /**
  * @typedef {import('./belief.mjs').Belief} Belief
@@ -8,6 +10,48 @@ import { Mind } from './mind.mjs'
  * @typedef {import('./belief.mjs').BeliefJSON} BeliefJSON
  * @typedef {import('./state.mjs').StateJSON} StateJSON
  */
+
+/**
+ * Deserialize reference object from JSON ({_type, _id} format)
+ * Handles nested Mind/State/Belief references
+ * @param {*} value - Serialized reference object
+ * @returns {*} Deserialized object (Mind, State, or Belief)
+ */
+export function deserialize_reference(value) {
+  if (Array.isArray(value)) {
+    return value.map(item => deserialize_reference(item))
+  }
+
+  if (value && typeof value === 'object' && value._type) {
+    if (value._type === 'Belief') {
+      const belief = DB.get_belief_by_id(value._id)
+      if (!belief) {
+        throw new Error(`Cannot resolve belief reference ${value._id} in trait`)
+      }
+      return belief
+    }
+
+    if (value._type === 'State') {
+      const state = DB.get_state_by_id(value._id)
+      if (!state) {
+        throw new Error(`Cannot resolve state reference ${value._id} in trait`)
+      }
+      return state
+    }
+
+    if (value._type === 'Mind') {
+      const mind = DB.get_mind_by_id(value._id)
+      if (!mind) {
+        throw new Error(`Cannot resolve mind reference ${value._id} in trait`)
+      }
+      return mind
+    }
+
+    throw new Error(`Unknown reference _type: ${value._type}`)
+  }
+
+  return value
+}
 
 /**
  * Serialization coordinator with dependency tracking
@@ -88,8 +132,7 @@ export function load(json_string) {
   switch (data._type) {
     case 'Mind':
       // When loading root mind, parent should be logos (or null only for logos itself)
-      // TODO: Check data.label === 'logos' and handle appropriately
-      result = Mind.from_json(/** @type {MindJSON} */ (data), null)
+      result = Mind.from_json(/** @type {MindJSON} */ (data),  logos())
       break
     case 'Belief':
       throw new Error('Loading individual Belief not yet implemented')

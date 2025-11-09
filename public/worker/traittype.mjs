@@ -30,6 +30,7 @@ import { Subject } from './subject.mjs'
 import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
+import { deserialize_reference } from './serialize.mjs'
 
 /**
  * @typedef {string|TraitTypeSchema} TraitTypeDefinition
@@ -151,6 +152,41 @@ export class Traittype {
     // Construct template resolver once during initialization
     // This method is built once here and reused for all template resolutions
     this.resolve_trait_value_from_template = this._build_trait_value_from_template_resolver()
+  }
+
+  /**
+   * Deserialize trait value from JSON (handles all JSON value types)
+   * Called during JSON deserialization only
+   * @param {Belief} belief - Belief being deserialized (for context)
+   * @param {*} value - JSON value (array, object reference, number sid, or primitive)
+   * @param {object} [options] - Optional parameters
+   * @returns {*} Deserialized value
+   */
+  deserialize_value(belief, value, options = {}) {
+    // Handle arrays recursively
+    if (Array.isArray(value)) {
+      return value.map(item => this.deserialize_value(belief, item, options))
+    }
+
+    // Handle object references ({_type, _id} format) - delegate to Serialize
+    if (value && typeof value === 'object' && value._type) {
+      return deserialize_reference(value)
+    }
+
+    // Handle number sids - convert to Subjects for reference types
+    if (typeof value === 'number') {
+      // Subject type or Archetype-based types (e.g., 'Location') are references
+      // Subject is not an Archetype, so needs explicit check
+      const is_reference_type = Archetype.get_by_label(this.data_type) || this.data_type === 'Subject'
+
+      if (is_reference_type) {
+        const ground_mind = belief.in_mind.parent
+        return DB.get_or_create_subject(ground_mind, value)
+      }
+    }
+
+    // Primitives and literal numbers
+    return value
   }
 
   /**

@@ -670,43 +670,16 @@ export class Belief {
   }
 
   /**
-   * Finalize traits after loading - resolve State/Mind reference objects
-   * Called after all entities are loaded
+   * Finalize traits after JSON deserialization - resolve State/Mind reference objects
+   * Called after all entities are loaded from JSON
    */
-  _finalize_traits() {
+  _finalize_traits_from_json() {
     for (const [trait_name, trait_value] of this._traits) {
-      this._traits.set(trait_name, this._resolve_final_trait_value(trait_name, trait_value))
-    }
-  }
-
-  /**
-   * Resolve trait value completely (including nested State/Mind references)
-   * @param {string} trait_name - Trait name for type lookup
-   * @param {*} value - Trait value (may contain {_type, _id} reference objects or raw sids)
-   * @returns {*} Fully resolved value
-   */
-  _resolve_final_trait_value(trait_name, value) {
-    if (Array.isArray(value)) {
-      return value.map(item => this._resolve_final_trait_value(trait_name, item))
-    } else if (value && typeof value === 'object' && value._type) {
-      // State/Mind reference object from JSON - deserialize it
-      return deserialize_trait_value(value)
-    } else if (typeof value === 'number') {
-      // Check if this trait type is a Belief reference or Subject
       const traittype = Traittype.get_by_label(trait_name)
       if (traittype) {
-        // TODO: Still need to check for Subject?
-        if (Archetype.get_by_label(traittype.data_type) || traittype.data_type === 'Subject') {
-          // It's a Belief/Subject reference - get canonical Subject
-          const ground_mind = this.in_mind.parent
-          return DB.get_or_create_subject(ground_mind, value)
-        }
+        this._traits.set(trait_name, traittype.deserialize_value(this, trait_value))
       }
-      // Literal number
-      return value
-    } else {
-      // Other primitives
-      return value
+      // If no traittype found, keep value as-is
     }
   }
 
@@ -746,7 +719,7 @@ export class Belief {
     }
 
     // Copy traits as-is - sids, primitives, and State/Mind reference objects
-    // Resolution happens lazily via _finalize_traits() or when accessed
+    // Resolution happens via _finalize_traits_from_json() after all entities loaded
     belief._traits = new Map()
     for (const [trait_name, trait_value] of Object.entries(data.traits)) {
       belief._traits.set(trait_name, trait_value)
@@ -925,43 +898,3 @@ export class Belief {
 
 }
 
-/**
- * Deserialize trait value (handle nested Mind/State/Belief references)
- * @param {*} value - Serialized value
- * @returns {*} Deserialized value
- */
-function deserialize_trait_value(value) {
-  if (Array.isArray(value)) {
-    return value.map(item => deserialize_trait_value(item))
-  }
-
-  if (value && typeof value === 'object' && value._type) {
-    // Handle nested references
-    if (value._type === 'Belief') {
-      // Use ID lookup (exact version), fall back to label lookup if needed
-      const belief = DB.get_belief_by_id(value._id)
-      if (!belief) {
-        throw new Error(`Cannot resolve belief reference ${value._id} in trait`)
-      }
-      return belief
-    }
-
-    if (value._type === 'State') {
-      const state = DB.get_state_by_id(value._id)
-      if (!state) {
-        throw new Error(`Cannot resolve state reference ${value._id} in trait`)
-      }
-      return state
-    }
-
-    if (value._type === 'Mind') {
-      const mind = DB.get_mind_by_id(value._id)
-      if (!mind) {
-        throw new Error(`Cannot resolve mind reference ${value._id} in trait`)
-      }
-      return mind
-    }
-  }
-
-  return value
-}

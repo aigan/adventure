@@ -131,7 +131,8 @@ export class Mind {
   }
 
   /**
-   * Get parent mind
+   * Get parent mind (never null - all Minds descend from Logos)
+   * Note: Logos overrides this to return null
    * @returns {Mind}
    */
   get parent() {
@@ -309,7 +310,7 @@ export class Mind {
   /**
    * Create Mind from JSON data with lazy loading
    * @param {MindJSON} data - JSON data with _type: 'Mind'
-   * @param {Mind|null} [parent_mind] - Parent mind (required for non-logos minds, null only for logos)
+   * @param {Mind} [parent_mind] - Parent mind (required for non-logos minds, null only for logos)
    * @returns {Mind}
    */
   static from_json(data, parent_mind) {
@@ -357,7 +358,7 @@ export class Mind {
     for (const belief_data of data.belief) {
       const belief = DB.get_belief_by_id(belief_data._id)
       if (belief) {
-        belief._finalize_traits()
+        belief._finalize_traits_from_json()
       }
     }
 

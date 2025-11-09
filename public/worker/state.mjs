@@ -89,9 +89,7 @@ export class State {
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
     assert(ground_state instanceof State, 'ground_state is required and must be a State')
 
-    // TODO: simplify
-
-    // Validate ground_state is in parent mind
+    // Type cast needed for TypeScript - assertion doesn't narrow types
     /** @type {State} */ const gs = ground_state
     assert(
       gs.in_mind === mind.parent,
@@ -99,7 +97,7 @@ export class State {
       {
         mind: mind.label,
         parent: mind.parent?.label ?? null,
-        ground_state_mind: gs.in_mind?.label ?? 'unknown'
+        ground_state_mind: gs.in_mind?.label ?? null
       }
     )
 
