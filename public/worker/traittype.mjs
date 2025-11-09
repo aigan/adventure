@@ -155,32 +155,43 @@ export class Traittype {
 
   /**
    * Compose multiple values from bases into a single value
-   * Currently only implemented for Array containers
-   * @param {Array<any>} values - Values to compose (arrays of Subjects)
+   * Delegates to type_class.compose() if available (e.g., Mind.compose())
+   * Falls back to Array deduplication logic for Array containers
+   * @param {Belief} belief - Belief context for composition
+   * @param {Array<any>} values - Values to compose
+   * @param {object} options - Optional parameters
    * @returns {any} Composed value
    */
-  compose(values) {
-    if (this.container !== Array) {
-      throw new Error(`compose() only implemented for Array containers, not ${this.container}`)
+  compose(belief, values, options = {}) {
+    // Delegate to type_class if it has a compose method (Mind, etc.)
+    const type_class = /** @type {any} */ (Traittype.type_class_by_name[this.data_type] ?? null)
+    if (type_class?.compose) {
+      return type_class.compose(this, belief, values, options)
     }
 
-    // Deduplicate by subject.sid, maintain breadth-first order
-    const seen = new Set()
-    const result = []
+    // Fallback: Array container logic
+    if (this.container === Array) {
+      // Deduplicate by subject.sid, maintain breadth-first order
+      const seen = new Set()
+      const result = []
 
-    for (const array of values) {
-      if (!Array.isArray(array)) continue
+      for (const array of values) {
+        if (!Array.isArray(array)) continue
 
-      for (const subject of array) {
-        // Skip if not a Subject or already seen
-        if (!subject?.sid || seen.has(subject.sid)) continue
+        for (const subject of array) {
+          // Skip if not a Subject or already seen
+          if (!subject?.sid || seen.has(subject.sid)) continue
 
-        seen.add(subject.sid)
-        result.push(subject)
+          seen.add(subject.sid)
+          result.push(subject)
+        }
       }
+
+      return result
     }
 
-    return result
+    // No compose method available
+    throw new Error(`compose() not implemented for type ${this.data_type}`)
   }
 
   /**

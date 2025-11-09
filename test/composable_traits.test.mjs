@@ -168,4 +168,7 @@ describe('Composable Traits', () => {
       expect(labels).to.deep.equal(['hammer', 'token'])
     })
   })
+
+  // Note: Mind composition tests are in integration.test.mjs (P1.1 test)
+  // as they require a full world setup with shared beliefs
 })

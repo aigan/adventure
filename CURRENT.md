@@ -2,12 +2,10 @@
 
 ## Active Plan
 
-**Trait Composition from Multiple Bases** - Design needed ([plan](docs/plans/trait-composition-from-multiple-bases.md))
-- Problem: When belief has multiple bases with same trait, which value is used?
-- Context: Discovered during UnionState implementation (P1.1 test)
-- Question: Should VillageBlacksmith (bases: [Villager, Blacksmith]) compose both minds automatically?
-- Options: First wins, last wins, opt-in composition, automatic composition, traittype-defined
-- Blocking: UnionState tests (P1.1, P1.2) until design decision made
+**Trait Composition from Multiple Bases** - Implemented ([archived plan](docs/plans/archive/trait-composition-from-multiple-bases.md))
+- ✅ Implemented traittype-defined composition strategy
+- ✅ Array composition working (inventory deduplication)
+- ⏳ Mind composition in progress (compose() method added, tests being fixed)
 
 ## Recently Completed
 

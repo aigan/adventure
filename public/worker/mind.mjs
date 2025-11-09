@@ -365,6 +365,59 @@ export class Mind {
   }
 
   /**
+   * Compose multiple Mind instances into a single Mind with UnionState
+   * Called by Traittype.compose() when a belief has multiple bases with mind traits
+   * @param {Traittype} traittype - The mind traittype
+   * @param {Belief} belief - The belief being composed for
+   * @param {Mind[]} minds - Array of Mind instances to compose
+   * @param {object} options - Optional parameters
+   * @returns {Mind} New Mind instance with UnionState merging all component states
+   */
+  static compose(traittype, belief, minds, options = {}) {
+    assert(Array.isArray(minds), 'compose() requires array of minds', {minds})
+    assert(minds.length >= 2, 'compose() requires at least 2 minds', {minds})
+
+    // Extract states from each Mind (use state or origin_state)
+    const component_states = minds.map(m => {
+      assert(m instanceof Mind, 'All values must be Mind instances', {mind: m})
+      const state = m.state ?? m.origin_state
+      assert(state instanceof State, 'Mind must have state or origin_state', {mind: m})
+      return state
+    })
+
+    // All component states must be locked (UnionState requirement)
+    for (const state of component_states) {
+      assert(state.locked, 'All component states must be locked', {state})
+    }
+
+    // Get ground_state from belief context
+    const ground_state = belief.origin_state
+    assert(ground_state instanceof State, 'belief.origin_state must be State', {belief})
+
+    const parent_mind = ground_state.in_mind
+    const self_subject = belief.subject
+
+    const { UnionState } = Cosmos
+
+    // Create composed mind (self_subject is Subject, belief.subject is the actual instance)
+    const composed_mind = new Mind(parent_mind, self_subject?.get_label() ?? null, null)
+
+    // UnionState will derive tt from ground_state.vt (fork invariant)
+    const union_state = new UnionState(
+      composed_mind,
+      ground_state,
+      component_states,
+      {self: /** @type {Subject|null} */ (self_subject)}
+    )
+
+    // Set as origin state and track
+    composed_mind.origin_state = union_state
+    composed_mind.state = union_state
+
+    return composed_mind
+  }
+
+  /**
    * Resolve trait value from template data (delegation pattern)
    * Called by Traittype to handle Mind-specific template resolution
    * @param {Traittype} traittype - Traittype definition with metadata
@@ -545,16 +598,17 @@ export class Mind {
     if (component_states && component_states.length > 1) {
       // Multi-parent composition - create UnionState
       const { UnionState } = Cosmos
-      const tt = ground_state.vt ?? (ground_state instanceof Timeless ? 0 : null)
       state = new UnionState(
         entity_mind,
-        tt,
-        component_states,
         ground_state,
-        self_subject,
-        tt  // vt defaults to tt
+        component_states,
+        {
+          self: self_subject,
+          about_state,
+          // When ground_state is Timeless (vt=null), must provide explicit tt
+          ...(ground_state instanceof Timeless ? { tt: null } : {})
+        }
       )
-      state.about_state = about_state ?? null
     } else {
       // Single or no base - use regular State
       state = new State(

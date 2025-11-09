@@ -145,7 +145,7 @@ export class Belief {
       if (base_values.length > 0) {
         // Compose: base values first, then new value
         const all_values = [...base_values, value]
-        value = traittype.compose(all_values)
+        value = traittype.compose(this, all_values)
       }
     }
 
@@ -248,7 +248,7 @@ export class Belief {
       }
 
       // Compose multiple values
-      const composed = traittype.compose(values)
+      const composed = traittype.compose(this, values)
       this._set_cache(state, trait_name, composed)
       return composed
     }

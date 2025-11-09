@@ -35,13 +35,15 @@ export class UnionState extends State {
 
   /**
    * @param {Mind} mind
-   * @param {number|null} tt - Transaction time
-   * @param {State[]} component_states - Array of states to merge (ordered, immutable)
    * @param {State} ground_state
-   * @param {Subject|null} self
-   * @param {number|null} vt
+   * @param {State[]} component_states - Array of states to merge (ordered, immutable)
+   * @param {object} options - Optional meta-parameters
+   * @param {number|null} [options.tt] - Transaction time (only when ground_state.vt is null)
+   * @param {number|null} [options.vt] - Valid time (defaults to tt)
+   * @param {Subject|null} [options.self] - Self identity
+   * @param {State|null} [options.about_state] - State context for belief resolution
    */
-  constructor(mind, tt, component_states, ground_state, self = null, vt = null) {
+  constructor(mind, ground_state, component_states, {tt, vt, self, about_state} = {}) {
     assert(Array.isArray(component_states), 'component_states must be an array')
     assert(component_states.length > 0, 'component_states cannot be empty')
 
@@ -63,14 +65,8 @@ export class UnionState extends State {
       }
     )
 
-    // Derive tt from ground_state.vt if not provided (fork invariant)
-    const effective_tt = tt ?? ground_state.vt
-    assert(effective_tt !== undefined && effective_tt !== null, 'tt must be derivable from ground_state.vt or provided')
-
-    const effective_vt = vt ?? effective_tt
-
     // Call State constructor with base=null (UnionState doesn't use base chain)
-    super(mind, ground_state, null, {tt: effective_tt, vt: effective_vt, self})
+    super(mind, ground_state, null, {tt, vt, self, about_state})
 
     // UnionState-specific properties
     this.component_states = Object.freeze([...component_states])
@@ -217,11 +213,9 @@ export class UnionState extends State {
     // Create UnionState instance
     const union_state = new UnionState(
       mind,
-      data.tt,
-      component_states,
       ground_state,
-      self,
-      data.vt
+      component_states,
+      {tt: data.tt, vt: data.vt, self}
     )
 
     // Override _id to match deserialized value

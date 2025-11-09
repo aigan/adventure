@@ -401,7 +401,7 @@ describe('Integration', () => {
       expect(player_hammer.get_trait(player_state, 'location')).to.not.be.null; // added by player
     });
 
-    it.skip('P1.1: multiple bases with mind traits (VillageBlacksmith = Villager + Blacksmith)', () => {
+    it('P1.1: multiple bases with mind traits (VillageBlacksmith = Villager + Blacksmith)', () => {
       // Tests UnionState composition with knowledge from multiple prototype bases
       // VillageBlacksmith inherits knowledge from BOTH Villager and Blacksmith minds
 
@@ -412,7 +412,7 @@ describe('Integration', () => {
         '@about': {type: 'Subject', mind: 'parent'},
         '@tt': 'number',
         location: 'Location',
-        mind: 'Mind',
+        mind: {type: 'Mind', composable: true},
         skill: 'string',
       }, {
         Thing: {

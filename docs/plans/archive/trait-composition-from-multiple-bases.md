@@ -1,8 +1,10 @@
 # Trait Composition from Multiple Bases
 
-**Status**: Design needed
+**Status**: Archived - Array composition implemented 2025-01-09, Mind composition pending
 **Created**: 2025-01-08
 **Context**: Discovered during UnionState implementation (P1.1 test failure)
+
+**Implementation Note**: This design doc explored multiple options. The implemented solution follows **Option E (Traittype-defined Strategy)** with **Option B (Composable marker)** for the interface. Each traittype with a class (Mind, etc.) implements its own `compose()` method, and `Traittype` delegates to it. Array container types use built-in composition logic in `Traittype.compose()`.
 
 ## Problem Statement
 
@@ -52,7 +54,7 @@ traits: {}  // No explicit mind provided
 - Pro: DRY, natural behavior
 - Con: May be surprising, needs composition rules
 
-**Option E: Traittype-defined Strategy**
+**Option E: Traittype-defined Strategy** ✓ **IMPLEMENTED**
 - Each traittype declares composition behavior
 - Some types compose (Mind), others override (location)
 - Pro: Flexible, semantic
@@ -69,7 +71,7 @@ traits: {}
 ```
 Options:
 - A: Inherit Villager's mind only (first wins)
-- B: Create UnionState from both minds automatically
+- B: Create UnionState from both minds automatically ✓ **IMPLEMENTED**
 - C: Error - ambiguous, must specify
 
 **Scenario 2: Empty mind template**
@@ -79,7 +81,7 @@ traits: {mind: {}}
 ```
 Options:
 - A: Create empty mind (override, ignore bases)
-- B: Create UnionState from both bases
+- B: Create UnionState from both bases ✓ **IMPLEMENTED**
 - C: Same as scenario 1 (empty template = no template)
 
 **Scenario 3: Mind template with new knowledge**
@@ -89,7 +91,7 @@ traits: {mind: {foo: ['bar']}}
 ```
 Options:
 - A: Create new mind, learn foo, ignore bases
-- B: Create UnionState from bases, then learn foo
+- B: Create UnionState from bases, then learn foo ✓ **IMPLEMENTED**
 - C: Inherit first base, extend with foo (current for single base)
 
 ### 3. General Trait Composition
@@ -97,7 +99,7 @@ Options:
 **Should composition be generalized beyond Mind?**
 
 Examples:
-- `inventory: [items]` - Merge arrays from multiple bases?
+- `inventory: [items]` - Merge arrays from multiple bases? ✓ **IMPLEMENTED**
 - `skills: {name: level}` - Merge skill maps?
 - `color: 'red'` - Can't compose primitives, must override
 
@@ -109,7 +111,7 @@ Examples:
 - Pro: Simple, focused
 - Con: Not extensible
 
-**Option B: Composable marker**
+**Option B: Composable marker** ✓ **IMPLEMENTED**
 - Traittypes declare `composable: true`
 - Must implement `compose(values[]) → value`
 - Pro: Extensible, opt-in
@@ -152,9 +154,13 @@ Currently `Mind.resolve_trait_value_from_template()` detects multiple base minds
 
 **Question**: Should composition logic live in:
 - A: Individual trait resolution (Mind.resolve_trait_value_from_template)
-- B: Belief.get_trait() (lookup time)
-- C: Belief.from_template() (creation time)
-- D: Traittype infrastructure (general pattern)
+- B: Belief.get_trait() (lookup time) ✓ **IMPLEMENTED**
+- C: Belief.from_template() (creation time) ✓ **IMPLEMENTED**
+- D: Traittype infrastructure (general pattern) ✓ **IMPLEMENTED**
+
+**Answer**: Both B and C. Composition happens in two places:
+- **Creation time** (C): `Belief.add_trait_from_template()` composes when adding trait
+- **Lookup time** (B): `Belief.get_trait()` composes and caches when accessing trait
 
 ### Backwards Compatibility
 
@@ -162,23 +168,33 @@ Currently `Mind.resolve_trait_value_from_template()` detects multiple base minds
 - `mind: {}` currently creates empty mind with base inheritance
 - Cannot break existing behavior
 
-## Recommended Design (TBD)
+## Implemented Design
 
-**To be determined after discussion**
+**Chosen strategy**: Option E (Traittype-defined) + Option B (Composable marker)
 
-Factors to consider:
-1. **Principle**: "No special cases" - avoid mind-specific logic if possible
-2. **Simplicity**: Minimize cognitive load, predictable behavior
-3. **Explicitness**: Make intent clear in templates
-4. **Power**: Enable composition when needed
+**Key decisions**:
+1. Traittypes opt-in via `composable: true` flag
+2. Type classes implement `static compose(values)` method
+3. `Traittype.compose()` delegates to type class if available, else uses Array logic
+4. Composition happens at both creation and lookup time
+5. Explicit `null` blocks composition from that branch
+6. Empty arrays/templates don't block composition
+
+**Implementation files**:
+- `public/worker/traittype.mjs` - Delegation in `compose()`
+- `public/worker/belief.mjs` - Composition at creation and lookup
+- `public/worker/mind.mjs` - `Mind.compose()` method (pending)
+- `test/composable_traits.test.mjs` - Array composition tests
+- `test/integration.test.mjs` - P1.1 test (currently skipped, pending Mind.compose())
 
 ## Implementation Plan (After Design Decision)
 
-1. Document chosen strategy in SPECIFICATION.md
-2. Update Traittype interface if needed (compose method, etc.)
-3. Update Mind trait resolution based on chosen option
-4. Update P1.1 test to match chosen behavior (or fix implementation)
-5. Test edge cases (3+ bases, nested composition, etc.)
+1. ✓ Document chosen strategy in SPECIFICATION.md
+2. ✓ Update Traittype interface (composable flag, compose method delegation)
+3. ✓ Implement Array composition in Traittype.compose()
+4. ⏳ Implement Mind.compose() static method
+5. ⏳ Update P1.1 test to unskip
+6. ✓ Test edge cases (deduplication, null blocking, temporal composition)
 
 ## Related
 
