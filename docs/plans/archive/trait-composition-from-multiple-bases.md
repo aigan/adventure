@@ -1,7 +1,7 @@
 # Trait Composition from Multiple Bases
 
-**Status**: Archived - Array composition implemented 2025-01-09, Mind composition pending
-**Created**: 2025-01-08
+**Status**: Archived - Array composition implemented 2025-11-09, Mind composition pending
+**Created**: 2025-11-08
 **Context**: Discovered during UnionState implementation (P1.1 test failure)
 
 **Implementation Note**: This design doc explored multiple options. The implemented solution follows **Option E (Traittype-defined Strategy)** with **Option B (Composable marker)** for the interface. Each traittype with a class (Mind, etc.) implements its own `compose()` method, and `Traittype` delegates to it. Array container types use built-in composition logic in `Traittype.compose()`.

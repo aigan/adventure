@@ -2,7 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
-## 2025-01-08
+## 2025-11-09
+
+### UnionState for Multi-Parent Prototype Composition
+- `UnionState` class enables flyweight composition from multiple parent states without data duplication
+- Beliefs compose knowledge from multiple prototype bases (e.g., VillageBlacksmith = Villager + Blacksmith)
+- Iterator-based `get_beliefs()` merges component states (last wins for overlaps)
+- Supports nested UnionStates (recursively traverses components)
+- Restricted operations: insert and replace only (no remove to avoid ambiguity)
+- Serialization support via `toJSON()` and `from_json()`
+- All component states must be locked before composition
+
+### Trait Composition from Multiple Bases
+- Traittypes can declare `composable: true` to enable multi-base trait composition
+- `Traittype.compose(values)` method delegates to type class if available
+- Array traits automatically compose (deduplicate by sid for Belief arrays)
+- Explicit `null` trait blocks composition from that inheritance branch
+- Empty arrays/templates don't block composition (additive)
+- Composition happens at both creation time and lookup time with caching
+
+### Mind Composition Testing
+- Comprehensive test coverage for composable mind traits (285 tests total)
+- Multi-level prototype inheritance scenarios (deep chains, 3+ bases)
+- Temporal evolution tests (versioning with additional bases, state branching)
+- Edge cases: nested UnionStates, overlapping knowledge, own trait overrides
+- Mind-specific validation: parent mind compatibility, self_subject, about_state
+
+## 2025-11-08
 
 ### Mind Extension via State Base
 - Minds created from templates automatically inherit cultural knowledge via `State.base` chain
@@ -139,7 +165,7 @@ Added `[MUTABLE]` indicator for unlocked states and beliefs
 - **Breaking change**: Save file format (pre-alpha, acceptable)
 - Details: [docs/plans/archive/mind-self-refactor.md](docs/plans/archive/mind-self-refactor.md)
 
-## 2025-01-24
+## 2024-10-24
 
 ### `learn_about()` Parameter Refactor
 - Made `source_state` parameter optional (defaults to `ground_state`)
@@ -148,7 +174,7 @@ Added `[MUTABLE]` indicator for unlocked states and beliefs
 - Added documentation clarifying `ground_state` relationship
 - All 110 tests passing
 
-## 2025-01-23
+## 2024-10-23
 
 ### `learn_about()` Refactor
 - Split knowledge acquisition into three phases:

@@ -111,14 +111,14 @@ export class Mind {
      * Latest unlocked state, or null if all states are locked
      * Updated by register_state() when unlocked state is registered
      * Cleared by State.lock() when this state is locked
-     * @type {State|UnionState|null}
+     * @type {State|null}
      */
     this.state = null
 
     /**
      * Origin state - primordial state for this mind (used for prototypes)
      * Set on first create_state() call or explicitly during initialization
-     * @type {State|UnionState|null}
+     * @type {State|null}
      */
     this.origin_state = null
 
@@ -403,11 +403,12 @@ export class Mind {
     const composed_mind = new Mind(parent_mind, self_subject?.get_label() ?? null, null)
 
     // UnionState will derive tt from ground_state.vt (fork invariant)
+    // Mark as derivation: this is a computed view, not a mutation of the knowledge base
     const union_state = new UnionState(
       composed_mind,
       ground_state,
       component_states,
-      {self: /** @type {Subject|null} */ (self_subject)}
+      {self: /** @type {Subject|null} */ (self_subject), derivation: true}
     )
 
     // Set as origin state and track

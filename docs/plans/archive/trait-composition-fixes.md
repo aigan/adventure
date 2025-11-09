@@ -2,7 +2,11 @@
 
 **Goal**: Fix double-mind bugs, prevent invalid trait composition, and clarify learnable vs internal traits
 
-**Status**: Active (2025-11-02, updated 2025-11-03)
+**Status**: Complete (architecture replaced)
+**Created**: 2025-11-02
+**Updated**: 2025-11-03
+**Completed**: 2025-11-09
+**Note**: The _call pattern described in this plan has been replaced with the composable trait + UnionState architecture. The bugs this plan addresses have been fixed in the new design.
 
 **Decision**: Returning to original design with data in shared nodes (Option 2 - materialize in source/archetype). Current implementation (Option 1 - materialize per-belief) was temporary workaround for locked state problem.
 

@@ -42,8 +42,9 @@ export class UnionState extends State {
    * @param {number|null} [options.vt] - Valid time (defaults to tt)
    * @param {Subject|null} [options.self] - Self identity
    * @param {State|null} [options.about_state] - State context for belief resolution
+   * @param {boolean} [options.derivation] - True if this is a derivation (computed view, non-mutating)
    */
-  constructor(mind, ground_state, component_states, {tt, vt, self, about_state} = {}) {
+  constructor(mind, ground_state, component_states, {tt, vt, self, about_state, derivation} = {}) {
     assert(Array.isArray(component_states), 'component_states must be an array')
     assert(component_states.length > 0, 'component_states cannot be empty')
 
@@ -66,7 +67,8 @@ export class UnionState extends State {
     )
 
     // Call State constructor with base=null (UnionState doesn't use base chain)
-    super(mind, ground_state, null, {tt, vt, self, about_state})
+    // UnionStates are derivations - computed views that don't mutate the knowledge base
+    super(mind, ground_state, null, {tt, vt, self, about_state, derivation: derivation ?? true})
 
     // UnionState-specific properties
     this.component_states = Object.freeze([...component_states])

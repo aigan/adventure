@@ -751,40 +751,6 @@ describe('Temporal Reasoning', () => {
       expect(state2.vt).to.equal(200)
     })
 
-    it.skip('locked belief versioning requires existing state', () => {
-      // SKIPPED: belief.locked is now a getter-only property derived from state
-      // This test was for old belief-level locking which no longer exists
-      setupArchetypes()
-
-      const world_mind = new Mind(logos(), 'world')
-      const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
-
-      const npc = world_state.add_belief_from_template({
-        label: 'npc',
-        bases: ['Person'],
-        traits: {
-          mind: {}  // Auto-create mind with empty learning spec
-        }
-      })
-
-      // Get NPC's mind (auto-created from trait spec)
-      const npc_mind = npc.get_trait(world_state, 'mind')
-
-      // Lock initial mind state
-      const initial_npc_state = [...npc_mind.states_at_tt(world_state.vt)][0]
-      initial_npc_state.lock()
-
-      world_state.lock()
-
-      // Create and lock first state (this should now be a NEW state since belief is locked)
-      const npc_state1 = npc_mind.get_or_create_open_state_for_ground(world_state, npc)
-      npc_state1.lock()
-
-      // Now get_or_create should work (existing state found)
-      const npc_state2 = npc_mind.get_or_create_open_state_for_ground(world_state, npc)
-      expect(npc_state2).to.exist
-    })
-
     it('branch_state requires vt parameter', () => {
       const mind = new Mind(logos(), 'world')
       const state1 = mind.create_state(logos().origin_state, {tt: 100})

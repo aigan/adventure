@@ -83,8 +83,9 @@ export class State {
    * @param {number|null} [options.vt] - Valid time (defaults to tt)
    * @param {Subject|null} [options.self] - Self identity (defaults to base.self)
    * @param {State|null} [options.about_state] - State context for belief resolution (for prototype minds)
+   * @param {boolean} [options.derivation] - True if this state is a derivation (computed view, non-mutating)
    */
-  constructor(mind, ground_state, base=null, {tt: tt_option, vt, self, about_state} = {}) {
+  constructor(mind, ground_state, base=null, {tt: tt_option, vt, self, about_state, derivation} = {}) {
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
     assert(ground_state instanceof State, 'ground_state is required and must be a State')
 
@@ -104,7 +105,7 @@ export class State {
 
     // Derive tt from ground_state.vt (fork invariant)
     // Exception: When ground_state is Timeless, allow explicit tt
-    const tt = ground_state.vt ?? tt_option
+    const tt = tt_option ?? ground_state.vt
 
     // If tt was explicitly provided, validate it's only for Timeless ground_state
     if (tt_option != null) {
@@ -125,7 +126,8 @@ export class State {
     assert(effective_self === null || effective_self instanceof Subject, 'self must be Subject or null')
 
     // Check if self belief is unlocked (only for initial states, not versioning)
-    if (effective_self !== null && base === null) {
+    // Skip this check for derivations (computed views that don't mutate)
+    if (effective_self !== null && base === null && !derivation) {
       const self_belief = ground_state.get_belief_by_subject(effective_self)
       assert(self_belief === null || !self_belief.locked, 'Cannot create state for locked self')
     }
@@ -579,6 +581,9 @@ export class State {
     return parts.join(' ')
   }
 
+  /**
+   * @returns {StateJSON}
+   */
   toJSON() {
     // Register in_mind as dependency if we're in a serialization context
     if (Serialize.active && this.in_mind) {

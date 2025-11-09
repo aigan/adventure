@@ -43,6 +43,7 @@ const traittypes = {
     container: Array,
     composable: true  // Compose inventories from multiple bases
   },
+  tools: {type: 'string', container: Array},
 };
 
 /** @type {Record<string, ArchetypeDefinition>} */
@@ -70,6 +71,7 @@ const archetypes = {
   },
   Location: {
     bases: ['ObjectPhysical'],
+    traits: {location: null, tools: null}
   },
   PortableObject: {
     bases: ['ObjectPhysical'],
@@ -93,31 +95,31 @@ const world_mind = new Cosmos.Mind(Cosmos.logos(), 'world');
 const state = world_mind.create_state(Cosmos.logos_state(), {tt: 1});
 
 
-//state.add_beliefs_from_template({
-//  village: {
-//    bases: ['Location'],
-//  },
-//
-//  workshop: {
-//    bases: ['Location'],
-//    traits: {
-//      location: 'village',
-//    },
-//  },
-//
-//  tavern: {
-//    bases: ['Location'],
-//    traits: {location: 'village'}
-//  },
-//
-//  hammer: {
-//    bases: ['PortableObject'],
-//    traits: {
-//      location: 'workshop',
-//      color: 'blue',
-//    },
-//  }
-//})
+state.add_beliefs_from_template({
+  village: {
+    bases: ['Location'],
+  },
+
+  workshop: {
+    bases: ['Location'],
+    traits: {
+      location: 'village',
+    },
+  },
+
+  tavern: {
+    bases: ['Location'],
+    traits: {location: 'village'}
+  },
+
+  hammer: {
+    bases: ['PortableObject'],
+    traits: {
+      location: 'workshop',
+      color: 'blue',
+    },
+  }
+})
 
 
 // Create shared items for prototype inventories
@@ -141,21 +143,22 @@ state.add_shared_from_template({
   Villager: {
     bases: ['Person'],
     traits: {
-      //mind: {
-      //  tavern: ['location'],
-      //},
-      inventory: ['apprentice_token', 'basic_tools'],
+      mind: {
+        workshop: ['location']
+        //tavern: ['location'],
+      },
+      //inventory: ['apprentice_token', 'basic_tools'],
     },
   },
 })
 
 state.add_shared_from_template({
   Blacksmith: {
-    bases: ['Person', 'Villager'],
+    bases: ['Person'],
     traits: {
-      //mind: {
-      //  workshop: ['location']
-      //},
+      mind: {
+        workshop: ['location', 'tools']
+      },
       inventory: ['guild_badge'],
     },
   },
@@ -168,7 +171,10 @@ state.add_beliefs_from_template({
   player: {
     bases: ['Blacksmith', 'Villager'],
     traits: {
-      inventory: ['apprentice_token'],
+      mind: {
+        hammer: ['color'],
+      },
+//      inventory: ['apprentice_token'],
 //      location: 'workshop',
     },
   }

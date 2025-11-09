@@ -5,7 +5,7 @@
 
 import { expect } from 'chai'
 import * as DB from '../public/worker/db.mjs'
-import { Mind } from '../public/worker/mind.mjs'
+import { Mind, Belief } from '../public/worker/cosmos.mjs'
 
 describe('Composable Traits - Complex Scenarios', () => {
   beforeEach(() => {
@@ -362,9 +362,76 @@ describe('Composable Traits - Complex Scenarios', () => {
   })
 
   describe('Temporal evolution', () => {
-    it.skip('NPC adds base from eidos at tick 2 (requires with_bases API)', () => {
-      // TODO: Implement with_bases() API to support dynamic base changes
-      // This would allow NPCs to gain new prototype bases over time
+    it('NPC adds base from eidos at tick 2 (versioning with additional bases)', () => {
+      DB.register(
+        {
+          inventory: {
+            type: 'PortableObject',
+            container: Array,
+            composable: true
+          }
+        },
+        {
+          Thing: {},
+          PortableObject: { bases: ['Thing'] },
+          Person: {
+            bases: ['Thing'],
+            traits: { inventory: null }
+          }
+        },
+        {
+          token: { bases: ['PortableObject'] },
+          sword: { bases: ['PortableObject'] },
+          Villager: {
+            bases: ['Person'],
+            traits: { inventory: ['token'] }
+          },
+          Guard: {
+            bases: ['Person'],
+            traits: { inventory: ['sword'] }
+          }
+        }
+      )
+
+      const world_mind = new Mind(DB.get_logos_mind(), 'world')
+      let state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
+
+      // Tick 1: Create NPC as just a Villager (has token)
+      const npc = state.add_belief_from_template({
+        bases: ['Villager'],
+        traits: {
+          '@label': 'npc'
+        }
+      })
+
+      const inv1 = npc.get_trait(state, 'inventory')
+      expect(inv1).to.have.lengthOf(1)
+      expect(inv1[0].get_label()).to.equal('token')
+
+      state.lock()
+
+      // Tick 2: NPC joins the guard (gains Guard base in addition to Villager)
+      // Create a new belief with same subject but additional bases
+      state = state.branch_state(DB.get_logos_state(), 2)
+
+      const npc_v2 = Belief.from_template(state, {
+        sid: npc.subject.sid,  // Same subject
+        bases: ['Villager', 'Guard'],  // Now has both bases
+        traits: {
+          '@label': 'npc'
+        }
+      })
+
+      state.replace_beliefs(npc_v2)
+
+      const npc_final = state.get_belief_by_subject(npc.subject)
+      const inv2 = npc_final.get_trait(state, 'inventory')
+
+      // Should compose from both Villager (token) and Guard (sword)
+      expect(inv2).to.be.an('array')
+      expect(inv2).to.have.lengthOf(2)
+      const labels = inv2.map(b => b.get_label()).sort()
+      expect(labels).to.deep.equal(['sword', 'token'])
     })
 
     it('NPC gains own inventory at tick 2 (composes with base)', () => {

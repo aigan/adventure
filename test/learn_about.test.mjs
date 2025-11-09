@@ -225,33 +225,6 @@ describe('learn_about', () => {
       expect(location_ref.in_mind).to.equal(npc_mind);
     });
 
-    // TODO: This test is skipped because learn_about() now requires source_belief to be in ground_state.
-    // Cross-NPC observation (learning about sibling mind's beliefs) is not currently supported.
-    // The @about trait has mind_scope='parent', so it only resolves in ground_state.
-    // Future: Cross-NPC communication will work via communication events in the world that NPCs observe and learn from.
-    it.skip('learn_about is not transitive - about points to the belief, not what it\'s about', () => {
-      const world_mind = new Mind(logos(), 'world');
-      const world_mind_state = world_mind.create_state(logos().origin_state, {tt: 1});
-      world_mind_state.add_belief_from_template({bases: ['Location'], traits: {'@label': 'workshop'}});
-
-      const npc1_mind = new Mind(world_mind, 'npc1');
-      const npc1_mind_state = npc1_mind.create_state(world_mind_state);
-      const workshop_from_npc1 = npc1_mind_state.add_belief_from_template({
-                bases: ['Location'],
-        traits: {'@label': 'workshop_knowledge', '@about': get_first_belief_by_label('workshop').subject}
-      });
-
-      const npc2_mind = new Mind(world_mind, 'npc2');
-      const npc2_mind_state = npc2_mind.create_state(world_mind_state);
-      // NPC2 learns about NPC1's belief - NO LONGER SUPPORTED
-      // This would require workshop_from_npc1 to be in world_mind_state (ground_state)
-      const workshop_from_npc2 = npc2_mind_state.learn_about(workshop_from_npc1, []);
-
-      // @about is not transitive: npc2's belief is about npc1's belief, not the workshop
-      expect(workshop_from_npc2.get_about(npc2_mind_state)).to.equal(workshop_from_npc1);
-      expect(workshop_from_npc2.get_about(npc2_mind_state)).to.not.equal(get_first_belief_by_label('workshop'));
-    });
-
     it('learn_about should walk belief chain to find archetypes', () => {
       const world_mind = new Mind(logos(), 'world');
       const world_mind_state = world_mind.create_state(logos().origin_state, {tt: 1});
