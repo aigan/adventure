@@ -71,9 +71,9 @@ describe('Markdown Links', () => {
   })
 
   it('should have valid relative links in .mjs file comments', () => {
-    // Find all .mjs files excluding node_modules, lab, and this test file
+    // Find all .mjs files excluding node_modules, lab, emacs lock/backup files, and this test file
     const mjs_files = execSync(
-      'find . -name "*.mjs" -not -path "./node_modules/*" -not -path "./lab/*" -not -path "./test/z_markdown_links.test.mjs"',
+      'find . -name "*.mjs" -not -path "./node_modules/*" -not -path "./lab/*" -not -name ".#*" -not -name "#*#" -not -path "./test/z_markdown_links.test.mjs"',
       { cwd: PROJECT_ROOT, encoding: 'utf-8' }
     )
       .trim()

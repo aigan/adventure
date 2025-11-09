@@ -235,12 +235,13 @@ describe('sysdesig', () => {
       expect(result).to.include('vt:75')
     })
 
-    it('shows 🔓 for unlocked states', () => {
+    it('does not show lock symbol for unlocked states', () => {
       const mind = new Mind(logos(), 'test')
       const state = mind.create_state(logos().origin_state, {tt: 1})
       const result = state.sysdesig()
 
-      expect(result).to.include('🔓')
+      expect(result).to.not.include('🔒')
+      expect(result).to.not.include('🔓')
     })
 
     it('shows 🔒 for locked states', () => {
@@ -254,7 +255,7 @@ describe('sysdesig', () => {
   })
 
   describe('Belief.sysdesig()', () => {
-    it('includes label, archetypes, ID, and lock status', () => {
+    it('includes label, archetypes, and ID', () => {
       const state = createMindWithBeliefs('test', {
         hammer: {
           bases: ['PortableObject'],
@@ -267,7 +268,8 @@ describe('sysdesig', () => {
       expect(result).to.include('hammer')
       expect(result).to.include('[PortableObject]')
       expect(result).to.include(`#${hammer._id}`)
-      expect(result).to.include('🔓')
+      // Unlocked beliefs don't show lock symbol
+      expect(result).to.not.include('🔒')
     })
 
     it('works without label', () => {

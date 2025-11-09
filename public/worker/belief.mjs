@@ -134,6 +134,12 @@ export class Belief {
     let value = /** @type {Traittype} */ (traittype).resolve_trait_value_from_template(this, data, {about_state})
 
     // If composable and we have bases with this trait, compose with base values
+    // TODO: Support template syntax for replace/remove operations on composable traits
+    //   - {replace: [...]} to ignore base values and use only provided values
+    //   - {remove: [...]} to compose from bases then filter out specified items
+    //   Current: Plain arrays always compose, null blocks composition
+    //   Example: inventory: {replace: ['sword']} → only sword, ignore Villager's token
+    //            inventory: {remove: ['token']} → compose then remove token
     if (traittype.composable && value !== null) {
       const base_values = this._collect_all_trait_values(label)
       if (base_values.length > 0) {
@@ -290,10 +296,18 @@ export class Belief {
       seen.add(base)
 
       const value = base.get_own_trait_value(trait_name)
+
+      // Explicit null blocks this branch (don't search further up)
+      if (value === null) {
+        continue
+      }
+
+      // Collect non-null, non-undefined values
       if (value !== undefined) {
         values.push(value)
       }
 
+      // Continue searching up the chain (only if value wasn't explicit null)
       queue.push(...base._bases)
     }
 
@@ -574,7 +588,16 @@ export class Belief {
     }
 
     parts.push(`#${this._id}`)
-    parts.push(this.locked ? '🔒' : '🔓')
+
+    // Add Eidos marker for shared beliefs
+    if (this.is_shared) {
+      parts.push('◊')
+    }
+
+    // Only show lock symbol when locked (unlocked is default)
+    if (this.locked) {
+      parts.push('🔒')
+    }
 
     return parts.join(' ')
   }
@@ -672,6 +695,7 @@ export class Belief {
       // Check if this trait type is a Belief reference or Subject
       const traittype = Traittype.get_by_label(trait_name)
       if (traittype) {
+        // TODO: Still need to check for Subject?
         if (Archetype.get_by_label(traittype.data_type) || traittype.data_type === 'Subject') {
           // It's a Belief/Subject reference - get canonical Subject
           const ground_mind = this.in_mind.parent

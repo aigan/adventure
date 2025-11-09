@@ -14,6 +14,8 @@ export default [
       "dist/**",
       "build/**",
       "public/worker/world*",
+      "**/.#*",      // Emacs lock files
+      "**/#*#",      // Emacs backup files
     ]
   },
   js.configs.recommended,

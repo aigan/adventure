@@ -571,7 +571,10 @@ export class State {
       parts.push(`tt:${this.tt}`)
     }
 
-    parts.push(this.locked ? '🔒' : '🔓')
+    // Only show lock symbol when locked (unlocked is default)
+    if (this.locked) {
+      parts.push('🔒')
+    }
 
     return parts.join(' ')
   }

@@ -28,7 +28,19 @@ Systemic story game where narrative emerges from simulated agents and constraint
 npm test                 # Run tests + linting (see test/.CONTEXT.md)
 ```
 
-**Temporary scripts**: Use `tools/` or `tmp/` instead of system `/tmp` - keeps everything visible in project. (`lab/` is for user experiments)
+## File Creation Rules
+
+**IMPORTANT**: Always create files, never use bash heredocs or pipes:
+- ✅ Use `Write` tool to create files in `tmp/` directory
+- ✅ Example: `Write` to `tmp/debug_test.mjs`, then `node tmp/debug_test.mjs`
+- ❌ NEVER use `cat > /tmp/file.mjs <<'EOF'` or similar bash heredocs
+- ❌ NEVER use system `/tmp` - files there are invisible in the project
+- ❌ NEVER use `cat <<< 'content'` or pipe commands to create content
+
+**Directories for temporary work**:
+- `tmp/` - Your temporary scripts and debugging files (gitignored)
+- `tools/` - Permanent utility scripts
+- `lab/` - User's experimental files (don't modify)
 
 ## Critical Patterns
 

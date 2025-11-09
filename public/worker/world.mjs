@@ -144,26 +144,31 @@ state.add_shared_from_template({
       //mind: {
       //  tavern: ['location'],
       //},
-      inventory: ['apprentice_token'],
+      inventory: ['apprentice_token', 'basic_tools'],
     },
   },
+})
 
+state.add_shared_from_template({
   Blacksmith: {
-    bases: ['Person'],
+    bases: ['Person', 'Villager'],
     traits: {
       //mind: {
       //  workshop: ['location']
       //},
-      inventory: ['basic_tools', 'guild_badge'],
+      inventory: ['guild_badge'],
     },
   },
 });
 
+//const eidos_state = eidos().origin_state
+
 state.add_beliefs_from_template({
   // Player with multi-base: should compose mind AND inventory from both Villager and Blacksmith
   player: {
-    bases: ['Villager', 'Blacksmith'],
+    bases: ['Blacksmith', 'Villager'],
     traits: {
+      inventory: ['apprentice_token'],
 //      location: 'workshop',
     },
   }
@@ -175,8 +180,8 @@ state.add_beliefs_from_template({
 
 const player = state.get_belief_by_label('player');
 if (!player) throw new Error('Player belief not found');
+//log({player});
 
-log({player});
 for (const [name, value] of player.get_traits()) {
   // Use get_trait() for composable traits to show composed value
   const traittype = Traittype.get_by_label(name)

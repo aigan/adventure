@@ -19,6 +19,7 @@
  */
 
 import { assert } from './debug.mjs'
+import * as DB from './db.mjs'
 
 /**
  * Archetype definition for beliefs
@@ -149,7 +150,15 @@ export class Archetype {
   static resolve_trait_value_from_template(traittype, belief, data) {
     // String input: lookup belief by label and return its subject
     if (typeof data === 'string') {
-      const found_belief = belief.origin_state.get_belief_by_label(data)
+      // First try local state
+      let found_belief = belief.origin_state.get_belief_by_label(data)
+
+      // If not found, try shared beliefs (prototypes in Eidos)
+      if (found_belief == null) {
+        const subject = DB.get_subject_by_label(data)
+        found_belief = subject?.get_shared_belief_by_state(belief.origin_state)
+      }
+
       if (found_belief == null) {
         throw new Error(`Belief not found for trait '${traittype.label}': ${data}`)
       }

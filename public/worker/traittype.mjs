@@ -223,6 +223,11 @@ export class Traittype {
     // Wrap in array container handler if needed
     if (this.container === Array) {
       return (/** @type {Belief} */ belief, /** @type {any} */ data) => {
+        // Allow null to explicitly clear inherited array values
+        if (data === null) {
+          return null
+        }
+
         if (!Array.isArray(data)) {
           throw new Error(`Expected array for trait '${this.label}', got ${typeof data}`)
         }
