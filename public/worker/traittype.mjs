@@ -344,8 +344,16 @@ export class Traittype {
       // Determine which state to resolve in based on mind_scope
       let resolve_state = state
       if (this.mind_scope === 'parent') {
-        // Check about_state first (for prototypes referencing world beliefs), then ground_state
-        resolve_state = state.about_state ?? state.ground_state
+        // Check about_state first (for prototypes referencing world beliefs)
+        if (state.about_state) {
+          resolve_state = state.about_state
+        } else if (value instanceof Subject) {
+          // For Subjects, try ground_state first, fall back to current state
+          const ground_belief = state.ground_state?.get_belief_by_subject(value) ?? value.get_shared_belief_by_state(state.ground_state)
+          resolve_state = ground_belief ? state.ground_state : state
+        } else {
+          resolve_state = state.ground_state
+        }
       }
       return value.to_inspect_view(resolve_state)
     }

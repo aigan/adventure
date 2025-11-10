@@ -292,7 +292,7 @@ describe('sysdesig', () => {
 
       const npc_mind = new Mind(world_state.in_mind, 'npc')
       const npc_state = npc_mind.create_state(world_state)
-      const knowledge = npc_state.learn_about(workshop, [])
+      const knowledge = npc_state.learn_about(workshop, {traits: []})
 
       const result = knowledge.sysdesig(npc_state)
       expect(result).to.include('about workshop')

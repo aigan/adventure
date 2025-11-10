@@ -28,6 +28,7 @@ import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
 import { Serialize } from './serialize.mjs'
 import { Timeless } from './timeless.mjs'
+import { Traittype } from './traittype.mjs'
 
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
@@ -495,6 +496,121 @@ export class State {
   }
 
   /**
+   * Get the core state for a nested mind hosted by an entity
+   *
+   * The core state is the mind's primary operational state: synchronized with
+   * this ground state (tt = this.vt), used as the starting point for belief
+   * allocation and tree walks.
+   *
+   * @param {Belief} host - Entity with mind trait (e.g., player, NPC)
+   * @returns {State} The core mind state
+   * @throws {Error} If host has no mind, or if no state or multiple states found
+   */
+  get_core_state_by_host(host) {
+    // Get the nested mind from the host entity
+    const host_mind = host.get_trait(this, 'mind')
+    assert(host_mind, `Entity ${host._id} has no mind trait`, {host_id: host._id, host_label: host.get_label()})
+
+    // Find the core state: latest state where tt <= this.vt and ground_state = this (or this's ancestry)
+    // Use states_at_tt to get outermost states, then filter by checking ground_state ancestry
+    const candidates = []
+    for (const s of host_mind.states_at_tt(this.vt)) {
+      // Check if s.ground_state is this or in this's ancestry
+      /** @type {State | null} */
+      let current_check = this
+      while (current_check) {
+        if (current_check === s.ground_state) {
+          candidates.push(s)
+          break
+        }
+        current_check = current_check.base
+      }
+    }
+
+    if (candidates.length === 0) {
+      assert(false,
+        `No core state found for host`,
+        {
+          host_id: host._id,
+          host_label: host.get_label(),
+          mind_label: host_mind.label,
+          vt: this.vt,
+          available_states: [...host_mind._states].map(s => ({id: s._id, tt: s.tt, ground_state_id: s.ground_state?._id}))
+        })
+    }
+
+    // Should be exactly one core state (no superposition)
+    const core_tt = candidates[0]?.tt
+    assert(candidates.length === 1,
+      `Expected single core state at tt=${core_tt}, found ${candidates.length} (superposition)`,
+      {
+        host_id: host._id,
+        host_label: host.get_label(),
+        mind_label: host_mind.label,
+        tt: core_tt,
+        vt: this.vt,
+        candidates: candidates.map(s => ({id: s._id, tt: s.tt, ground: s.ground_state?._id}))
+      })
+
+    return candidates[0]
+  }
+
+  /**
+   * Get an active (unlocked) state for a host entity
+   * Like get_core_state_by_host(), but ensures the returned state is unlocked.
+   * If the core state is locked, branches it forward to create a new unlocked state.
+   *
+   * @param {Belief} host - Entity with mind trait (e.g., player, NPC)
+   * @returns {State} An unlocked state in the host's mind
+   */
+  get_active_state_by_host(host) {
+    const core_state = this.get_core_state_by_host(host)
+
+    if (core_state.locked) {
+      // Branch forward to create unlocked state
+      return core_state.branch_state(this, this.vt)
+    }
+
+    return core_state
+  }
+
+  /**
+   * Get observable trait names from a belief based on exposure modalities
+   *
+   * Filters traits to only those matching the specified sensory modalities.
+   * Traits with exposure: 'internal' are never included (not physically observable).
+   *
+   * @param {Belief} belief - Belief to get observable traits from
+   * @param {string[]} modalities - Exposure types to include (e.g., ['visual', 'spatial'])
+   * @returns {string[]} Array of trait names with matching exposure
+   */
+  get_observable_traits(belief, modalities) {
+    const observable_traits = []
+
+    // Iterate through all traits on the belief
+    for (const [trait_name, _value] of belief.get_traits()) {
+      const traittype = Traittype.get_by_label(trait_name)
+
+      // Skip if traittype not found or has no exposure metadata
+      if (!traittype || !traittype.exposure) {
+        continue
+      }
+
+      // Skip internal traits (never physically observable)
+      if (traittype.exposure === 'internal') {
+        continue
+      }
+
+      // Include trait if its exposure matches any of the specified modalities
+      if (modalities.includes(traittype.exposure)) {
+        observable_traits.push(trait_name)
+      }
+    }
+
+    return observable_traits
+  }
+
+  /**
    * Learn about a belief from the parent mind (ground_state), copying it into this state's mind
    *
    * Models observation: NPCs forming inner knowledge about entities in the outer world.
@@ -502,10 +618,12 @@ export class State {
    * Shared beliefs (prototypes) cannot be learned about - they exist only for inheritance.
    *
    * @param {Belief} source_belief - Belief from parent mind to learn about (must be in ground_state)
-   * @param {string[]} [trait_names] - Traits to copy (empty = copy no traits, just archetypes)
+   * @param {Object} [options] - Learning options
+   * @param {string[]} [options.traits] - Specific traits to copy (overrides modalities)
+   * @param {string[]} [options.modalities] - Exposure modalities to observe (default: ['visual', 'spatial'])
    * @returns {Belief}
    */
-  learn_about(source_belief, trait_names = []) {
+  learn_about(source_belief, {traits, modalities = ['visual', 'spatial']} = {}) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
     assert(this.ground_state instanceof State, 'learn_about requires ground_state', {state_id: this._id})
 
@@ -517,6 +635,16 @@ export class State {
     assert(belief_in_source === source_belief, 'source_belief must exist in source_state',
       {source_belief_id: source_belief._id, source_state_id: source_state._id,
        source_state_mind: source_state.in_mind?.label, using_about_state: this.about_state != null})
+
+    // Determine which traits to learn
+    let trait_names
+    if (traits !== undefined) {
+      // Explicit traits specified - use them directly
+      trait_names = traits
+    } else {
+      // Auto-learn observable traits based on modalities
+      trait_names = this.get_observable_traits(source_belief, modalities)
+    }
 
     // Step 1: Recognize existing knowledge
     const existing_beliefs = this.recognize(source_belief)
@@ -539,7 +667,7 @@ export class State {
       // Learn about the referenced belief (creates belief in this mind)
       // Then return its Subject (traits store Subjects, not Beliefs)
       const source_belief = value.get_belief_by_state(source_state)
-      const learned_belief = this.learn_about(source_belief, [])
+      const learned_belief = this.learn_about(source_belief, {traits: []})
       return learned_belief.subject  // Return Subject, not Belief
     } else {
       return value  // Primitives, State, Mind pass through as-is

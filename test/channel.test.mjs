@@ -63,6 +63,11 @@ describe('Channel Message Handlers', () => {
     const traittypes = {
       ...stdTypes,
       location: 'Location',
+      mind: {
+        type: 'Mind',
+        composable: true,
+        exposure: 'internal'
+      },
       mind_states: {
         type: 'State',
         container: Array,
@@ -82,7 +87,7 @@ describe('Channel Message Handlers', () => {
       },
       Mental: {
         traits: {
-          mind_states: null,
+          mind: null,
         },
       },
       Location: {
@@ -314,7 +319,7 @@ describe('Channel Message Handlers', () => {
 
       const npc_mind = new Mind(world_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
-      const workshop_belief = npc_state.learn_about(workshop, []);
+      const workshop_belief = npc_state.learn_about(workshop, {traits: []});
 
       messages.length = 0;
 
@@ -350,6 +355,35 @@ describe('Channel Message Handlers', () => {
       expect(messages[0].bases).to.be.an('array');
       expect(messages[0].bases.some(b => b.label === 'PortableObject')).to.be.true;
       expect(messages[0].bases.some(b => b.type === 'Archetype')).to.be.true;
+    });
+
+    it('returns mind trait correctly for Person with mind', () => {
+      const world_mind = new Mind(logos(), 'world');
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
+
+      // Create player with mind trait (like in world.mjs)
+      const player = world_state.add_belief_from_template({
+        bases: ['Person'],
+        traits: {
+          '@label': 'player',
+          mind: {
+            // Empty mind knowledge for now
+          }
+        }
+      });
+
+      messages.length = 0;
+
+      Channel.dispatch.query_belief({
+        belief: String(player._id),
+        state_id: String(world_state._id),
+        client_id: 1
+      });
+
+      expect(messages).to.have.lengthOf(1);
+      expect(messages[0].data.data.traits.mind).to.not.be.null;
+      expect(messages[0].data.data.traits.mind._type).to.equal('Mind');
+      expect(messages[0].data.data.traits.mind.label).to.equal('player');
     });
   });
 

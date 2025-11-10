@@ -242,6 +242,9 @@ describe('Composable Mind Trait', () => {
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
 
+      // Lock state before testing caching (caching only works on locked states)
+      world_state.lock()
+
       // First call creates UnionState and caches Mind
       const mind1 = vb_belief.get_trait(world_state, 'mind')
 

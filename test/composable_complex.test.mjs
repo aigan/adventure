@@ -542,6 +542,7 @@ describe('Composable Traits - Complex Scenarios', () => {
 
       // Branch at different vt
       const state2 = state1.branch_state(DB.get_logos_state(), 2)
+      state2.lock()
 
       // Composition should work in both states
       const inv1 = npc.get_trait(state1, 'inventory')
@@ -552,7 +553,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       expect(inv1[0].get_label()).to.equal('token')
       expect(inv2[0].get_label()).to.equal('token')
 
-      // Cache should be separate per state
+      // Cache should be separate per state (only caches for locked states)
       expect(npc._cache.has(state1)).to.be.true
       expect(npc._cache.has(state2)).to.be.true
     })

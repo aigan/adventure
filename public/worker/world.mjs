@@ -6,6 +6,8 @@
  * See docs/ALPHA-1.md for development stages
  */
 
+// @ts-nocheck
+
 import * as Cosmos from "./cosmos.mjs"
 import * as DB from "./db.mjs"
 import { Session } from "./session.mjs"
@@ -104,7 +106,7 @@ DB.register(traittypes, archetypes, prototypes_1)
 
 // Create world mind and initial state
 const world_mind = new Cosmos.Mind(Cosmos.logos(), 'world');
-const state = world_mind.create_state(Cosmos.logos_state(), {tt: 1});
+let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1});
 
 
 state.add_beliefs_from_template({
@@ -181,32 +183,32 @@ state.add_shared_from_template({
 state.add_beliefs_from_template({
   // Player with multi-base: should compose mind AND inventory from both Villager and Blacksmith
   player: {
-    bases: ['Blacksmith', 'Villager'],
+    bases: ['Person'],
     traits: {
       mind: {
         hammer: ['color'],
       },
-//      inventory: ['apprentice_token'],
-//      location: 'workshop',
     },
   }
 })
 
-
-
-
+state.lock();
+state = state.branch_state(Cosmos.logos_state(), 2)
 
 const player = state.get_belief_by_label('player');
-if (!player) throw new Error('Player belief not found');
-//log({player});
+const player_state = state.get_active_state_by_host(player)
+const hammer = state.get_belief_by_label('hammer')
+player_state.learn_about(hammer)
 
-for (const [name, value] of player.get_traits()) {
-  // Use get_trait() for composable traits to show composed value
-  const traittype = Traittype.get_by_label(name)
-  const final_value = traittype?.composable ? player.get_trait(state, name) : value
-  log(`  ${name}:`, sysdesig(state, final_value));
-}
 
+log('player state', player_state)
+
+//for (const [name, value] of player.get_traits()) {
+//  // Use get_trait() for composable traits to show composed value
+//  const traittype = Traittype.get_by_label(name)
+//  const final_value = traittype?.composable ? player.get_trait(state, name) : value
+//  log(`  ${name}:`, sysdesig(state, final_value));
+//}
 
 
 //const player_mind = player.get_trait(state, 'mind');
@@ -214,11 +216,14 @@ for (const [name, value] of player.get_traits()) {
 //player_state.lock()
 
 //player_state = player_state.branch_state(state);
-//player_state.learn_about(state.get_belief_by_label('hammer'), ['location']);
-
-
 
 state.lock();
+//log('state', state._id);
+//log("player", player)
+//log('inspect', player.to_inspect_view(state));
+
+
+
 //log(player_state);
 
 //const ball = state.add_belief_from_template({

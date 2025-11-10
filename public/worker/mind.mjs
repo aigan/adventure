@@ -648,7 +648,7 @@ export class Mind {
         `Cannot learn about belief '${label}': must be in ${about_state ? 'about_state' : 'ground_state'}'s mind (not shared belief)`,
         {belief_in_mind: belief.in_mind?.label ?? null, expected_mind: valid_mind?.label ?? null})
       if (trait_names.length > 0) {
-        state.learn_about(belief, trait_names)
+        state.learn_about(belief, {traits: trait_names})
       }
     }
 
@@ -679,7 +679,7 @@ export class Mind {
           const belief = ground_state.get_belief_by_label(label)
           assert(belief, `Cannot find belief with label '${label}' in ground_state for mind.append operation`, {label, ground_state_id: ground_state._id, available_labels: [...ground_state.get_beliefs()].map(b => b.get_label()).filter(Boolean)})
           assert(trait_names.length > 0, `Empty trait_names array for mind.append operation on belief '${label}'`, {label, trait_names})
-          state.learn_about(belief, trait_names)
+          state.learn_about(belief, {traits: trait_names})
         }
         continue
       }

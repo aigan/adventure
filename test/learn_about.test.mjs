@@ -21,7 +21,7 @@ describe('learn_about', () => {
       const player_mind = new Mind(world_state.in_mind, 'player');
       const player_mind_state = player_mind.create_state(world_state);
       const workshop = get_first_belief_by_label('workshop');
-      const workshop_knowledge = player_mind_state.learn_about(workshop, []);
+      const workshop_knowledge = player_mind_state.learn_about(workshop, {traits: []});
 
       const inspected = workshop_knowledge.to_inspect_view(player_mind_state);
       expect(inspected.traits['@about']._ref).to.equal(workshop._id);
@@ -42,7 +42,7 @@ describe('learn_about', () => {
       const npc_mind = new Mind(world_state.in_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_state);
       const hammer = get_first_belief_by_label('hammer');
-      const hammer_belief = npc_mind_state.learn_about(hammer, ['color']);
+      const hammer_belief = npc_mind_state.learn_about(hammer, {traits: ['color']});
 
       expect(hammer_belief.can_have_trait('color')).to.be.true;
       expect(hammer_belief.can_have_trait('location')).to.be.true;
@@ -70,7 +70,7 @@ describe('learn_about', () => {
 
       const npc_mind = new Mind(world_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_mind_state);
-      const hammer_knowledge = npc_mind_state.learn_about(hammer_v2, []);
+      const hammer_knowledge = npc_mind_state.learn_about(hammer_v2, {traits: []});
 
       // hammer_v2._bases only contains hammer_v1 (Belief)
       // But learn_about walks the chain and finds PortableObject
@@ -96,8 +96,7 @@ describe('learn_about', () => {
       const player_mind_state = player_mind.create_state(world_state);
       const workshop_knowledge = player_mind_state.learn_about(
         get_first_belief_by_label('workshop'),
-        [],
-        world_state
+        {traits: []}
       );
 
       // Should be able to reference learned belief in traits
@@ -120,7 +119,7 @@ describe('learn_about', () => {
 
       const npc_mind = new Mind(world_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_mind_state);
-      const learned = npc_mind_state.learn_about(base_hammer, []);
+      const learned = npc_mind_state.learn_about(base_hammer, {traits: []});
 
       // Works when learning directly from belief with archetype bases
       const archetypes = [...learned.get_archetypes()].map(a => a.label);
@@ -141,7 +140,7 @@ describe('learn_about', () => {
       const npc_mind_state = npc_mind.create_state(world_state);
       const hammer_knowledge = npc_mind_state.learn_about(
         get_first_belief_by_label('hammer'),
-        ['location']
+        {traits: ['location']}
       );
 
       // Expected behavior: trait references should be dereferenced to npc_mind
@@ -178,7 +177,7 @@ describe('learn_about', () => {
 
       const hammer_knowledge = npc_mind_state.learn_about(
         get_first_belief_by_label('hammer'),
-        ['location']
+        {traits: ['location']}
       );
 
       // Should reuse existing belief about the workshop
@@ -215,8 +214,7 @@ describe('learn_about', () => {
       // New behavior: updates first belief (highest confidence in future)
       const hammer_knowledge = new_state.learn_about(
         get_first_belief_by_label('hammer'),
-        ['location'],
-        world_state
+        {traits: ['location']}
       );
 
       // Should have created hammer knowledge with location reference
@@ -239,7 +237,7 @@ describe('learn_about', () => {
 
       const npc_mind = new Mind(world_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_mind_state);
-      const hammer_knowledge = npc_mind_state.learn_about(hammer_v2, []);
+      const hammer_knowledge = npc_mind_state.learn_about(hammer_v2, {traits: []});
 
       // Should walk belief chain to find PortableObject
       const archetypes = [...hammer_knowledge.get_archetypes()].map(a => a.label);
@@ -259,8 +257,7 @@ describe('learn_about', () => {
       const npc_mind_state = npc_mind.create_state(world_state);
       const hammer_knowledge = npc_mind_state.learn_about(
         get_first_belief_by_label('hammer'),
-        ['color'],
-        world_state
+        {traits: ['color']}
       );
 
       // String trait should be copied as-is
@@ -329,7 +326,7 @@ describe('learn_about', () => {
       const npc_mind = new Mind(world_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_mind_state);
 
-      const chest_knowledge = npc_mind_state.learn_about(chest, ['items']);
+      const chest_knowledge = npc_mind_state.learn_about(chest, {traits: ['items']});
 
       // Array should be dereferenced - each item copied to npc_mind
       const items_raw = chest_knowledge.get_trait(npc_mind_state, 'items');
@@ -382,7 +379,7 @@ describe('learn_about', () => {
       const player_mind = new Mind(world_mind, 'player');
       const player_state = player_mind.create_state(world_state2);
 
-      const player_hammer = player_state.learn_about(hammer_v2, ['location']);
+      const player_hammer = player_state.learn_about(hammer_v2, {traits: ['location']});
 
       // Should have learned location (inherited from v1)
       expect(player_hammer._traits.has('location')).to.be.true;
@@ -424,7 +421,7 @@ describe('learn_about', () => {
       const player_mind = new Mind(world_mind, 'player');
       const player_state1 = player_mind.create_state(world_state);
 
-      const player_hammer_v1 = player_state1.learn_about(hammer, ['color']);
+      const player_hammer_v1 = player_state1.learn_about(hammer, {traits: ['color']});
 
       expect(player_hammer_v1._traits.has('color')).to.be.true;
       expect(player_hammer_v1._traits.has('location')).to.be.false;
@@ -435,7 +432,7 @@ describe('learn_about', () => {
       // T2: Player learns location (new observation)
       // Chain from player_state1 so v2 can inherit from v1 through base chain
       const player_state2 = player_state1.branch_state(world_state);
-      const player_hammer_v2 = player_state2.learn_about(hammer, ['location']);
+      const player_hammer_v2 = player_state2.learn_about(hammer, {traits: ['location']});
 
       // v2 has location in _traits, color inherited from v1
       expect(player_hammer_v2._traits.has('location')).to.be.true;
@@ -453,6 +450,173 @@ describe('learn_about', () => {
       expect(location_belief.get_trait(player_state2, '@about')).to.equal(workshop.subject);
 
       expect(player_hammer_v2.get_trait(player_state2, 'color')).to.equal('grey');  // inherited!
+    });
+  });
+
+  describe('Observable Trait Filtering', () => {
+    it('learns only visual traits when modality is visual', () => {
+      const world_state = createMindWithBeliefs('world', {
+        workshop: {
+          bases: ['Location']
+        },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: {
+            color: 'blue',     // visual exposure
+            location: 'workshop'  // spatial exposure
+          }
+        }
+      });
+
+      const npc_mind = new Mind(world_state.in_mind, 'npc');
+      const npc_state = npc_mind.create_state(world_state);
+
+      const hammer = get_first_belief_by_label('hammer');
+      const hammer_knowledge = npc_state.learn_about(hammer, {modalities: ['visual']});
+
+      // Should have color (visual)
+      expect(hammer_knowledge._traits.has('color')).to.be.true;
+      expect(hammer_knowledge.get_trait(npc_state, 'color')).to.equal('blue');
+
+      // Should NOT have location (spatial)
+      expect(hammer_knowledge._traits.has('location')).to.be.false;
+    });
+
+    it('learns both visual and spatial traits when modalities include both', () => {
+      const world_state = createMindWithBeliefs('world', {
+        workshop: {
+          bases: ['Location']
+        },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: {
+            color: 'blue',     // visual exposure
+            location: 'workshop'  // spatial exposure
+          }
+        }
+      });
+
+      const npc_mind = new Mind(world_state.in_mind, 'npc');
+      const npc_state = npc_mind.create_state(world_state);
+
+      const hammer = get_first_belief_by_label('hammer');
+      const hammer_knowledge = npc_state.learn_about(hammer, {modalities: ['visual', 'spatial']});
+
+      // Should have both color (visual) and location (spatial)
+      expect(hammer_knowledge._traits.has('color')).to.be.true;
+      expect(hammer_knowledge._traits.has('location')).to.be.true;
+    });
+
+    it('never learns internal traits even when explicitly requested', () => {
+      const world_state = createMindWithBeliefs('world', {
+        workshop: {
+          bases: ['Location']
+        },
+        player: {
+          bases: ['Person'],
+          traits: {
+            color: 'blue',  // visual exposure
+            mind: {         // internal exposure
+              workshop: ['location']
+            }
+          }
+        }
+      });
+
+      const npc_mind = new Mind(world_state.in_mind, 'npc');
+      const npc_state = npc_mind.create_state(world_state);
+
+      const player = get_first_belief_by_label('player');
+      const player_knowledge = npc_state.learn_about(player, {modalities: ['visual', 'internal']});
+
+      // Should have color (visual)
+      expect(player_knowledge._traits.has('color')).to.be.true;
+
+      // Should NOT have mind (internal) - internal traits are never observable
+      expect(player_knowledge._traits.has('mind')).to.be.false;
+    });
+
+    it('uses default modalities (visual + spatial) when none specified', () => {
+      const world_state = createMindWithBeliefs('world', {
+        workshop: {
+          bases: ['Location']
+        },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: {
+            color: 'blue',     // visual exposure
+            location: 'workshop'  // spatial exposure
+          }
+        }
+      });
+
+      const npc_mind = new Mind(world_state.in_mind, 'npc');
+      const npc_state = npc_mind.create_state(world_state);
+
+      const hammer = get_first_belief_by_label('hammer');
+      const hammer_knowledge = npc_state.learn_about(hammer, {});
+
+      // Should have both color and location (default modalities)
+      expect(hammer_knowledge._traits.has('color')).to.be.true;
+      expect(hammer_knowledge._traits.has('location')).to.be.true;
+    });
+
+    it('explicit traits parameter overrides modalities', () => {
+      const world_state = createMindWithBeliefs('world', {
+        workshop: {
+          bases: ['Location']
+        },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: {
+            color: 'blue',     // visual exposure
+            location: 'workshop'  // spatial exposure
+          }
+        }
+      });
+
+      const npc_mind = new Mind(world_state.in_mind, 'npc');
+      const npc_state = npc_mind.create_state(world_state);
+
+      const hammer = get_first_belief_by_label('hammer');
+      // Explicit traits should override modalities
+      const hammer_knowledge = npc_state.learn_about(hammer, {
+        traits: ['color'],
+        modalities: ['spatial']  // This should be ignored
+      });
+
+      // Should have color (explicitly specified)
+      expect(hammer_knowledge._traits.has('color')).to.be.true;
+
+      // Should NOT have location (not in explicit traits)
+      expect(hammer_knowledge._traits.has('location')).to.be.false;
+    });
+
+    it('skips traits without exposure metadata', () => {
+      const world_state = createMindWithBeliefs('world', {
+        workshop: {
+          bases: ['Location']
+        },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: {
+            color: 'blue',      // has exposure: visual
+            location: 'workshop' // has exposure: spatial
+          }
+        }
+      });
+
+      const npc_mind = new Mind(world_state.in_mind, 'npc');
+      const npc_state = npc_mind.create_state(world_state);
+
+      const hammer = get_first_belief_by_label('hammer');
+      const hammer_knowledge = npc_state.learn_about(hammer, {modalities: ['visual']});
+
+      // Should have color (has exposure metadata: visual)
+      expect(hammer_knowledge._traits.has('color')).to.be.true;
+
+      // Should NOT have location (has exposure metadata but wrong modality: spatial)
+      expect(hammer_knowledge._traits.has('location')).to.be.false;
     });
   });
 });

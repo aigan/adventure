@@ -72,8 +72,8 @@ export class Belief {
   constructor(state, subject = null, bases = []) {
     for (const base of bases) {
       assert(typeof base !== 'string',
-        'Constructor received string base - use Belief.from_template() instead',
-        {base})
+             'Constructor received string base - use Belief.from_template() instead',
+             {base})
     }
 
     assert(state instanceof State, "belief must be constructed with a state")
@@ -217,9 +217,16 @@ export class Belief {
    * @returns {*} trait value (Subject, not Belief), or null if not found
    */
   get_trait(state, trait_name) {
+    assert(state instanceof State, "get_trait requires State - shared beliefs must use origin_state or appropriate context state", {belief_id: this._id, trait_name, state})
+
+    // FIXME: simplify. Remove repeated _set_cache. Only cache at the end, and only if the value can
+    // not change, as for when the state is locked, and only for heavy lookups. Perhaps move to
+    // traittype.
+
     // Check cache first
     const cached = this._get_cached(state, trait_name)
     if (cached !== undefined) {
+      //log('  return cached trait', this._id, trait_name, cached)
       return cached
     }
 
@@ -336,6 +343,9 @@ export class Belief {
    * @private
    */
   _set_cache(state, trait_name, value) {
+    //console.warn('cached', this._id, trait_name, value)
+    if (!state.locked) return
+
     if (!this._cache.has(state)) {
       this._cache.set(state, new Map())
     }
@@ -353,6 +363,9 @@ export class Belief {
    */
   *get_traits() {
     const yielded = new Set()
+
+    // FIXME: Need to use the same logic as get_trait, for example for composed traits.  Also cache
+    // the result if it will not change, and if it was a heavy lookup
 
     // Yield own traits first
     for (const [name, value] of this._traits) {
@@ -377,8 +390,6 @@ export class Belief {
             yielded.add(name)
           }
         }
-        // Add this belief's bases to search queue
-        queue.push(...base._bases)
       } else {
         // Archetype bases: yield traits with non-null default values
         for (const [name, value] of Object.entries(base._traits_template)) {
@@ -387,9 +398,9 @@ export class Belief {
             yielded.add(name)
           }
         }
-        // Add this archetype's bases to search queue
-        queue.push(...base._bases)
       }
+
+      queue.push(...base._bases)
     }
   }
 
@@ -635,6 +646,8 @@ export class Belief {
       const traittype = Traittype.get_by_label(k)
       assert(traittype instanceof Traittype, `Traittype '${k}' not found`)
 
+      // FIXME: the get_traits must give the same result as get_trait. Should bot have to call get_trait() again
+
       // For composable traits, use get_trait() to trigger composition
       // Otherwise use the value from get_traits() (first-wins)
       const value = traittype.composable ? this.get_trait(state, k) : v
@@ -775,19 +788,19 @@ export class Belief {
         if (base) {
           const origin_state_label = base.origin_state?.in_mind?.label ?? 'unknown'
           assert(base.locked,
-            `Cannot add belief with unlocked base '${base.get_label()}' (in ${base.in_mind?.label}) - ` +
-            `must lock in ${origin_state_label}.origin_state before using as base`,
-            {
-              unlocked_base_id: base._id,
-              unlocked_base_label: base.get_label(),
-              unlocked_base_in_state: base.origin_state?._id,
-              unlocked_base_in_mind: base.in_mind?.label,
-              needs_lock_call: `${base.get_label()}.lock(${origin_state_label}.origin_state)`,
-              creating_belief_label: traits['@label'] ?? 'unlabeled',
-              creating_belief_in_state: state._id,
-              creating_belief_in_mind: state.in_mind?.label,
-              base_name_resolved: base_in
-            })
+                 `Cannot add belief with unlocked base '${base.get_label()}' (in ${base.in_mind?.label}) - ` +
+                 `must lock in ${origin_state_label}.origin_state before using as base`,
+                 {
+                   unlocked_base_id: base._id,
+                   unlocked_base_label: base.get_label(),
+                   unlocked_base_in_state: base.origin_state?._id,
+                   unlocked_base_in_mind: base.in_mind?.label,
+                   needs_lock_call: `${base.get_label()}.lock(${origin_state_label}.origin_state)`,
+                   creating_belief_label: traits['@label'] ?? 'unlabeled',
+                   creating_belief_in_state: state._id,
+                   creating_belief_in_mind: state.in_mind?.label,
+                   base_name_resolved: base_in
+                 })
           return base
         }
 

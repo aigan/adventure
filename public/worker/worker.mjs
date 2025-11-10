@@ -12,8 +12,6 @@ async function init(){
   const World = await import("./world.mjs");
   const session = World.session;
 
-  // Import cosmos.mjs for side effects (initializes singletons)
-  await import("./cosmos.mjs");
   const Channel = await import("./channel.mjs");
   await Channel.init_channel(session);
 

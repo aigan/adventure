@@ -42,7 +42,7 @@ describe('Subject.to_inspect_view()', () => {
     // NPC learns about workshop
     const npc_mind = new Mind(world_state.in_mind, 'npc')
     const npc_state = npc_mind.create_state(world_state)
-    const workshop_knowledge = npc_state.learn_about(workshop, [])
+    const workshop_knowledge = npc_state.learn_about(workshop, {traits: []})
 
     // The @about trait stores workshop.subject
     const about_subject = workshop_knowledge.get_trait(npc_state, '@about')
@@ -121,7 +121,7 @@ describe('Subject.to_inspect_view()', () => {
     // NPC learns about the hammer
     const npc_mind = new Mind(world_state.in_mind, 'npc')
     const npc_state = npc_mind.create_state(world_state)
-    const hammer_knowledge = npc_state.learn_about(world_hammer, [])
+    const hammer_knowledge = npc_state.learn_about(world_hammer, {traits: []})
 
     // The learned belief has its OWN subject (not the same as world hammer)
     expect(hammer_knowledge.subject).to.not.equal(world_hammer.subject)
@@ -185,7 +185,7 @@ describe('Subject.to_inspect_view()', () => {
 
     const npc_mind = new Mind(world_state.in_mind, 'npc')
     const npc_state = npc_mind.create_state(world_state)
-    const workshop_knowledge = npc_state.learn_about(workshop, [])
+    const workshop_knowledge = npc_state.learn_about(workshop, {traits: []})
 
     // Full inspection should handle @about trait correctly
     const inspected = workshop_knowledge.to_inspect_view(npc_state)

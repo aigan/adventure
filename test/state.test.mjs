@@ -219,6 +219,105 @@ describe('State', () => {
       const json = npc_state.toJSON();
       expect(json.ground_state).to.equal(world_state._id);
     });
+
+    it('get_core_state_by_host() returns synchronized mind state', () => {
+      DB.reset_registries();
+      setupStandardArchetypes();
+
+      const world_state = createMindWithBeliefs('world', {
+        workshop: { bases: ['Location'] },
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              workshop: ['location']
+            }
+          }
+        }
+      });
+
+      const player = get_first_belief_by_label('player');
+      const player_core_state = world_state.get_core_state_by_host(player);
+
+      // Core state should be synchronized with world state
+      expect(player_core_state.ground_state).to.equal(world_state);
+      expect(player_core_state.tt).to.equal(world_state.vt);
+
+      // Core state should contain player's knowledge
+      const beliefs_in_player_mind = [...player_core_state.get_beliefs()];
+      expect(beliefs_in_player_mind.length).to.be.greaterThan(0);
+    });
+
+    it('get_core_state_by_host() throws if no mind trait', () => {
+      DB.reset_registries();
+      setupStandardArchetypes();
+
+      const world_state = createMindWithBeliefs('world', {
+        hammer: { bases: ['PortableObject'] }
+      });
+
+      const hammer = get_first_belief_by_label('hammer');
+
+      expect(() => world_state.get_core_state_by_host(hammer))
+        .to.throw('has no mind trait');
+    });
+
+    it('get_core_state_by_host() throws if multiple core states exist', () => {
+      DB.reset_registries();
+      setupStandardArchetypes();
+
+      const world_mind = new Mind(logos(), 'world');
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
+
+      const player = Belief.from_template(world_state, {
+        bases: ['Person'],
+        traits: {
+          '@label': 'player',
+          mind: null
+        }
+      });
+
+      const player_mind = new Mind(world_mind, 'player');
+      player._traits.set('mind', player_mind);
+
+      // Create two states with same tt and ground_state (superposition)
+      const state1 = player_mind.create_state(world_state);
+      const state2 = player_mind.create_state(world_state);
+
+      expect(() => world_state.get_core_state_by_host(player))
+        .to.throw('Expected single core state at tt=1, found 2 (superposition)');
+    });
+
+    it('get_core_state_by_host() finds latest state when world branches forward', () => {
+      DB.reset_registries();
+      setupStandardArchetypes();
+
+      const world_state_v1 = createMindWithBeliefs('world', {
+        workshop: { bases: ['Location'] },
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              workshop: ['location']
+            }
+          }
+        }
+      });
+
+      const player = get_first_belief_by_label('player');
+      const player_state_v1 = world_state_v1.get_core_state_by_host(player);
+
+      // Branch world state to vt=2
+      world_state_v1.lock();
+      const world_state_v2 = world_state_v1.branch_state(logos().origin_state, 2);
+
+      // Should find player's state at tt=1 (latest available, even though world is now at vt=2)
+      const player_state_v2 = world_state_v2.get_core_state_by_host(player);
+
+      expect(player_state_v2).to.equal(player_state_v1);
+      expect(player_state_v2.tt).to.equal(1);
+      expect(player_state_v2.ground_state).to.equal(world_state_v1);
+    });
   });
 
   describe('SID Resolution', () => {

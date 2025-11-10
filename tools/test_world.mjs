@@ -12,9 +12,6 @@
 import * as DB from '../public/worker/db.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
 
-// Reset state
-DB.reset_registries()
-
 // Import world.mjs which will run setupStandardArchetypes()
 console.log('Loading world.mjs...')
 const world_module = await import('../public/worker/world.mjs')

@@ -67,7 +67,8 @@ export function createMindWithBeliefs(label, beliefs = {}, parent_mind = logos()
 export const stdTypes = {
   '@about': {
     type: 'Subject',
-    mind: 'parent'
+    mind: 'parent',
+    exposure: 'internal'
   },
 }
 
@@ -89,9 +90,18 @@ export const Thing = {
 export function setupStandardArchetypes() {
   const traittypes = {
     ...stdTypes,
-    location: 'Location',
-    mind: 'Mind',
-    color: 'string',
+    location: {
+      type: 'Location',
+      exposure: 'spatial'
+    },
+    mind: {
+      type: 'Mind',
+      exposure: 'internal'
+    },
+    color: {
+      type: 'string',
+      exposure: 'visual'
+    },
     // Semantic test traits
     damage: 'number',
     weight: 'number',

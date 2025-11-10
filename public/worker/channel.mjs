@@ -91,6 +91,7 @@ export const dispatch = {
 		if (!state.locked) {
 			state_info.locked = false;
 		}
+    //log('response', state_info);
 
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity_list",
@@ -155,7 +156,7 @@ export const dispatch = {
 
 		assert(state instanceof State, `State not found: ${state_id}`);
 
-		(/** @type {BroadcastChannel} */ (channel)).postMessage({
+    const response = {
 			msg: "world_entity",
 			server_id,
 			client_id,
@@ -170,7 +171,11 @@ export const dispatch = {
 				label: b instanceof Belief ? b.get_label() : b.label,
 				type: b instanceof Archetype ? 'Archetype' : 'Belief'
 			})),
-		});
+		};
+
+    //log('response', response);
+
+    (/** @type {BroadcastChannel} */ (channel)).postMessage(response);
 	},
 
 	/** @param {{id: string|number, client_id: number}} param0 */

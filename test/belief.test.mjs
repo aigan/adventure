@@ -636,12 +636,12 @@ describe('Belief', () => {
       // Query at timestamp 150 -> should find v1
       const at_150 = [...seasonal_v1.subject.beliefs_at_tt(150)];
       expect(at_150).to.have.lengthOf(1);
-      expect(at_150[0].get_trait(null, 'bonus')).to.equal(5);
+      expect(at_150[0].get_trait(at_150[0].origin_state, 'bonus')).to.equal(5);
 
       // Query at timestamp 250 -> should find v2
       const at_250 = [...seasonal_v1.subject.beliefs_at_tt(250)];
       expect(at_250).to.have.lengthOf(1);
-      expect(at_250[0].get_trait(null, 'bonus')).to.equal(10);
+      expect(at_250[0].get_trait(at_250[0].origin_state, 'bonus')).to.equal(10);
 
       // Query at timestamp 50 (before v1) -> should find nothing
       const at_50 = [...seasonal_v1.subject.beliefs_at_tt(50)];
@@ -952,6 +952,147 @@ describe('Belief', () => {
         traits: {'@label': 'phantom_blade'}
       });
       expect(dream_weapon._bases.has(generic_weapon)).to.be.true;
+    });
+  });
+
+  describe('Mind Trait Inspection', () => {
+    beforeEach(() => {
+      DB.reset_registries();
+      setupStandardArchetypes();
+    });
+
+    it('to_inspect_view() shows mind trait for Person with explicit mind', () => {
+      const world_state = createMindWithBeliefs('world', {
+        workshop: { bases: ['Location'] },
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              workshop: ['location']
+            }
+          }
+        }
+      });
+
+      const player = get_first_belief_by_label('player');
+      const view = player.to_inspect_view(world_state);
+
+      // Mind trait should appear in inspection
+      expect(view.traits.mind).to.exist;
+      expect(view.traits.mind._type).to.equal('Mind');
+      expect(view.traits.mind._ref).to.be.a('number');
+      expect(view.traits.mind.label).to.be.a('string');
+    });
+
+    it('to_inspect_view() omits mind trait when inherited mind: null from Mental', () => {
+      const world_state = createMindWithBeliefs('world', {
+        ghost: {
+          bases: ['Mental'],
+          traits: {}
+        }
+      });
+
+      const ghost = get_first_belief_by_label('ghost');
+      const view = ghost.to_inspect_view(world_state);
+
+      // Mental has mind: null in archetype, gets omitted from inspection
+      expect(view.traits.mind).to.be.undefined;
+    });
+  });
+
+  describe('Trait Caching', () => {
+    it('does not cache get_trait results for unlocked states', () => {
+      const world_state = createMindWithBeliefs('world', {
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {}
+          }
+        }
+      });
+
+      const player = get_first_belief_by_label('player');
+
+      // Get trait before locking - should not cache
+      const mind_before = player.get_trait(world_state, 'mind');
+      expect(mind_before).to.not.be.null;
+
+      // Cache should be empty for unlocked state
+      expect(player._cache.size).to.equal(0);
+    });
+
+    it('does cache get_trait results for locked states', () => {
+      const world_state = createMindWithBeliefs('world', {
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {}
+          }
+        }
+      });
+
+      const player = get_first_belief_by_label('player');
+      world_state.lock();
+
+      // Get trait after locking - should cache
+      const mind_before = player.get_trait(world_state, 'mind');
+      expect(mind_before).to.not.be.null;
+
+      // Cache should have the result
+      expect(player._cache.has(world_state)).to.be.true;
+      expect(player._cache.get(world_state).get('mind')).to.equal(mind_before);
+    });
+
+    it('to_inspect_view on unlocked state does not poison cache', () => {
+      const world_state = createMindWithBeliefs('world', {
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {}
+          }
+        }
+      });
+
+      const player = get_first_belief_by_label('player');
+
+      // Inspect BEFORE locking (simulates world.mjs debug log)
+      const view_unlocked = player.to_inspect_view(world_state);
+      expect(view_unlocked.traits.mind).to.not.be.null;
+
+      // Lock the state
+      world_state.lock();
+
+      // Inspect AFTER locking - should still work
+      const view_locked = player.to_inspect_view(world_state);
+      expect(view_locked.traits.mind).to.not.be.null;
+      expect(view_locked.traits.mind._type).to.equal('Mind');
+    });
+
+    it('composable trait inspection does not cache null for unlocked states', () => {
+      const world_state = createMindWithBeliefs('world', {
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {}
+          }
+        }
+      });
+
+      const player = get_first_belief_by_label('player');
+
+      // This is the bug scenario:
+      // 1. to_inspect_view calls get_trait for composable traits
+      // 2. If state is unlocked and caching happens anyway, null gets cached
+      // 3. Later inspection returns the cached null
+
+      const view1 = player.to_inspect_view(world_state);
+      expect(view1.traits.mind).to.not.be.null;
+
+      // Lock and inspect again - should not be affected by earlier call
+      world_state.lock();
+      const view2 = player.to_inspect_view(world_state);
+      expect(view2.traits.mind).to.not.be.null;
+      expect(view2.traits.mind._ref).to.equal(view1.traits.mind._ref);
     });
   });
 });
