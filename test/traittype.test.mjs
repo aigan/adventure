@@ -601,8 +601,9 @@ describe('Traittype', () => {
       // Archetype default value
       expect(trait_map.get('@form')).to.equal('solid');
 
-      // Archetype null value (shouldn't appear)
-      expect(trait_map.has('color')).to.be.false;
+      // Archetype null value (now appears as null)
+      expect(trait_map.has('color')).to.be.true;
+      expect(trait_map.get('color')).to.be.null;
     });
   });
 });

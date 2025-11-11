@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## 2025-11-09
 
+### Exposure Metadata for Observation System
+- Traittypes support `exposure` field for sensory modalities (visual, tactile, spatial, internal)
+- Traittypes support `values` field for enum validation with clear error messages
+- Added `@form` meta-trait with enum values: solid, liquid, vapor, olfactory, auditory, intangible
+- `ObjectPhysical` archetype includes `@form: 'solid'` (auto-inherits to all physical entities)
+- Foundation for LOOK command and observation mechanics
+
 ### UnionState for Multi-Parent Prototype Composition
 - `UnionState` class enables flyweight composition from multiple parent states without data duplication
 - Beliefs compose knowledge from multiple prototype bases (e.g., VillageBlacksmith = Villager + Blacksmith)

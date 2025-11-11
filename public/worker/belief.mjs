@@ -89,7 +89,7 @@ export class Belief {
     this.in_mind = mind
     this._traits = new Map()
     this._locked = false
-    /** @type {Map<State, Map<string, any>>} */
+    /** @type {Map<string, any>} */
     this._cache = new Map()
     /** @type {State} */
     this.origin_state = state
@@ -141,7 +141,7 @@ export class Belief {
     //   Example: inventory: {replace: ['sword']} → only sword, ignore Villager's token
     //            inventory: {remove: ['token']} → compose then remove token
     if (traittype.composable && value !== null) {
-      const base_values = this._collect_all_trait_values(label)
+      const base_values = this.collect_latest_value_from_all_bases(label)
       if (base_values.length > 0) {
         // Compose: base values first, then new value
         const all_values = [...base_values, value]
@@ -209,58 +209,18 @@ export class Belief {
   }
 
   /**
-   * Get trait value (Subject/primitive/State/Mind/array) including inherited
-   * Walks the bases chain to find inherited trait values (prototype pattern)
-   * For composable traits, composes values from all bases and caches result
-   * @param {State} state - State context for trait resolution
+   * Get inherited trait value from bases chain
+   * First checks if Traittype has a derivation strategy (composable, etc)
+   * Then walks the inheritance chain breadth-first to find the first defined value
+   * @param {State} state - State context (used by Traittype for derived values)
    * @param {string} trait_name - Name of the trait to get
    * @returns {*} trait value (Subject, not Belief), or null if not found
+   * @private
    */
-  get_trait(state, trait_name) {
-    assert(state instanceof State, "get_trait requires State - shared beliefs must use origin_state or appropriate context state", {belief_id: this._id, trait_name, state})
+  _get_inherited_trait(state, trait_name) {
+    let value = Traittype.get_by_label(trait_name)?.get_derived_value(this)
+    if (value !== undefined) return value
 
-    // FIXME: simplify. Remove repeated _set_cache. Only cache at the end, and only if the value can
-    // not change, as for when the state is locked, and only for heavy lookups. Perhaps move to
-    // traittype.
-
-    // Check cache first
-    const cached = this._get_cached(state, trait_name)
-    if (cached !== undefined) {
-      //log('  return cached trait', this._id, trait_name, cached)
-      return cached
-    }
-
-    // Check own value - blocks base search (override)
-    if (this._traits.has(trait_name)) {
-      const value = this._traits.get(trait_name)
-      this._set_cache(state, trait_name, value)
-      return value
-    }
-
-    // Get traittype to check if composable
-    const traittype = Traittype.get_by_label(trait_name)
-
-    // If composable, collect all values and compose
-    if (traittype?.composable) {
-      const values = this._collect_all_trait_values(trait_name)
-
-      if (values.length === 0) {
-        this._set_cache(state, trait_name, null)
-        return null
-      }
-
-      if (values.length === 1) {
-        this._set_cache(state, trait_name, values[0])
-        return values[0]
-      }
-
-      // Compose multiple values
-      const composed = traittype.compose(this, values)
-      this._set_cache(state, trait_name, composed)
-      return composed
-    }
-
-    // Non-composable: first-wins breadth-first search (original behavior)
     const queue = [...this._bases]
     const seen = new Set()
 
@@ -270,29 +230,49 @@ export class Belief {
       seen.add(base)
 
       // Check for value - early return when found
-      const value = base.get_own_trait_value(trait_name)
-      if (value !== undefined) {
-        this._set_cache(state, trait_name, value)
-        return value
-      }
+      value = base.get_own_trait_value(trait_name)
+      if (value !== undefined) return value
 
       // Continue to next level
       queue.push(...base._bases)
     }
 
-    // Not found
-    this._set_cache(state, trait_name, null)
     return null
   }
 
   /**
-   * Collect all trait values from bases (breadth-first traversal)
-   * Used for composable traits
-   * @param {string} trait_name - Trait name to collect
-   * @returns {Array<any>} Array of values from all bases
-   * @private
+   * Get trait value (Subject/primitive/State/Mind/array) including inherited
+   * Returns own trait immediately if present, otherwise looks up inherited value
+   * Delegates to Traittype for derived values (composable, etc)
+   * Caches inherited traits when belief is locked (cache is belief-level, not state-level)
+   * @param {State} state - State context (used by Traittype for derived values)
+   * @param {string} trait_name - Name of the trait to get
+   * @returns {*} trait value (Subject, not Belief), or null if not found
    */
-  _collect_all_trait_values(trait_name) {
+  get_trait(state, trait_name) {
+    assert(state instanceof State, "get_trait requires State - shared beliefs must use origin_state or appropriate context state", {belief_id: this._id, trait_name, state})
+
+    let value = this._traits.get(trait_name)
+    if (value !== undefined) return value
+
+    value = this._get_cached(trait_name)
+    if (value !== undefined) return value
+
+    value = this._get_inherited_trait(state, trait_name)
+    if (this.locked) this._set_cache(trait_name, value)
+
+    return value
+  }
+
+  /**
+   * Collect trait values from all direct bases for composition
+   * Called by Traittype.get_derived_value() for composable traits
+   * Collects ONE value per direct base (stops at first found in each base's chain)
+   * This implements the "latest version" semantics: each base's chain has one latest value
+   * @param {string} trait_name - Trait name to collect
+   * @returns {Array<any>} Array of values (one per direct base that has the trait)
+   */
+  collect_latest_value_from_all_bases(trait_name) {
     const values = []
     const queue = [...this._bases]
     const seen = new Set()
@@ -304,17 +284,12 @@ export class Belief {
 
       const value = base.get_own_trait_value(trait_name)
 
-      // Explicit null blocks this branch (don't search further up)
-      if (value === null) {
-        continue
-      }
-
-      // Collect non-null, non-undefined values
       if (value !== undefined) {
-        values.push(value)
+        if (value !== null) values.push(value)
+        continue  // Stop - found this base's value, don't search its ancestors
       }
 
-      // Continue searching up the chain (only if value wasn't explicit null)
+      // Not found - continue searching this base's ancestors
       queue.push(...base._bases)
     }
 
@@ -322,53 +297,43 @@ export class Belief {
   }
 
   /**
-   * Get cached trait value for a state
-   * @param {State} state - State context
+   * Get cached trait value
    * @param {string} trait_name - Trait name
    * @returns {any|undefined} Cached value or undefined if not cached
    * @private
    */
-  _get_cached(state, trait_name) {
-    if (!this._cache.has(state)) return undefined
-    const state_cache = this._cache.get(state)
-    if (!state_cache) return undefined
-    return state_cache.has(trait_name) ? state_cache.get(trait_name) : undefined
+  _get_cached(trait_name) {
+    return this._cache.get(trait_name)
   }
 
   /**
-   * Set cached trait value for a state
-   * @param {State} state - State context
+   * Set cached trait value
    * @param {string} trait_name - Trait name
    * @param {any} value - Value to cache
    * @private
    */
-  _set_cache(state, trait_name, value) {
-    //console.warn('cached', this._id, trait_name, value)
-    if (!state.locked) return
-
-    if (!this._cache.has(state)) {
-      this._cache.set(state, new Map())
-    }
-    const state_cache = this._cache.get(state)
-    if (state_cache) {
-      state_cache.set(trait_name, value)
-    }
+  _set_cache(trait_name, value) {
+    this._cache.set(trait_name, value)
   }
 
   /**
    * Iterate over all traits (own and inherited) with their values
    * Own traits shadow inherited traits with the same name
+   * Delegates to Traittype for derived values (composable, etc) - same logic as get_trait()
+   * Caches inherited traits when belief is locked (belief-level cache)
    * Includes archetype default values (non-null values from archetype traits_template)
    * @returns {Generator<[string, *]>} Yields [trait_name, value] pairs
    */
   *get_traits() {
     const yielded = new Set()
 
-    // FIXME: Need to use the same logic as get_trait, for example for composed traits.  Also cache
-    // the result if it will not change, and if it was a heavy lookup
-
     // Yield own traits first
     for (const [name, value] of this._traits) {
+      yield [name, value]
+      yielded.add(name)
+    }
+
+    for (const [name, value] of this._cache) {
       yield [name, value]
       yielded.add(name)
     }
@@ -382,21 +347,16 @@ export class Belief {
       if (!base || seen.has(base)) continue
       seen.add(base)
 
-      if (base instanceof Belief) {
-        // Belief bases: yield trait values
-        for (const [name, value] of base._traits) {
-          if (!yielded.has(name)) {
-            yield [name, value]
-            yielded.add(name)
-          }
-        }
-      } else {
-        // Archetype bases: yield traits with non-null default values
-        for (const [name, value] of Object.entries(base._traits_template)) {
-          if (value !== null && !yielded.has(name)) {
-            yield [name, value]
-            yielded.add(name)
-          }
+      for (const [name, trait_value] of base.get_trait_entries()) {
+        if (!yielded.has(name)) {
+
+          let value = trait_value
+          const derived_value = Traittype.get_by_label(name)?.get_derived_value(this)
+          if (derived_value !== undefined) value = derived_value
+          if (this.locked) this._set_cache(name, value)
+
+          yield [name, value]
+          yielded.add(name)
         }
       }
 

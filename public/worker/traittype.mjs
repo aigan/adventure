@@ -222,7 +222,7 @@ export class Traittype {
 
         for (const subject of array) {
           // Skip if not a Subject or already seen
-          if (!subject?.sid || seen.has(subject.sid)) continue
+          if (!subject?.sid || seen.has(subject.sid)) continue // FIXME: compare subject directly
 
           seen.add(subject.sid)
           result.push(subject)
@@ -234,6 +234,25 @@ export class Traittype {
 
     // No compose method available
     throw new Error(`compose() not implemented for type ${this.data_type}`)
+  }
+
+  /**
+   * Get derived trait value from bases (delegates to type-specific derivation logic)
+   * @param {Belief} belief - Belief to derive value for
+   * @returns {*} Derived value or undefined if no derivation needed
+   */
+  get_derived_value(belief) {
+    if (this.composable) {
+      const values = belief.collect_latest_value_from_all_bases(this.label)
+
+      if (values.length < 2) {
+        return values[0] ?? null
+      }
+
+      return this.compose(belief, values)
+    }
+
+    return undefined
   }
 
   /**

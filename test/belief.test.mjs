@@ -984,7 +984,7 @@ describe('Belief', () => {
       expect(view.traits.mind.label).to.be.a('string');
     });
 
-    it('to_inspect_view() omits mind trait when inherited mind: null from Mental', () => {
+    it('to_inspect_view() includes mind trait when inherited mind: null from Mental', () => {
       const world_state = createMindWithBeliefs('world', {
         ghost: {
           bases: ['Mental'],
@@ -995,8 +995,8 @@ describe('Belief', () => {
       const ghost = get_first_belief_by_label('ghost');
       const view = ghost.to_inspect_view(world_state);
 
-      // Mental has mind: null in archetype, gets omitted from inspection
-      expect(view.traits.mind).to.be.undefined;
+      // Mental has mind: null in archetype, now included in inspection
+      expect(view.traits.mind).to.be.null;
     });
   });
 
@@ -1021,26 +1021,25 @@ describe('Belief', () => {
       expect(player._cache.size).to.equal(0);
     });
 
-    it('does cache get_trait results for locked states', () => {
+    it('does cache get_trait results for locked beliefs', () => {
       const world_state = createMindWithBeliefs('world', {
         player: {
           bases: ['Person'],
           traits: {
-            mind: {}
+            // Don't set @about - it's inherited from Thing archetype
           }
         }
       });
 
       const player = get_first_belief_by_label('player');
-      world_state.lock();
+      player.lock(world_state);
 
-      // Get trait after locking - should cache
-      const mind_before = player.get_trait(world_state, 'mind');
-      expect(mind_before).to.not.be.null;
+      // Get inherited trait after locking - should cache
+      const about_value = player.get_trait(world_state, '@about');
 
-      // Cache should have the result
-      expect(player._cache.has(world_state)).to.be.true;
-      expect(player._cache.get(world_state).get('mind')).to.equal(mind_before);
+      // Cache should have the inherited trait (not own traits)
+      expect(player._cache.has('@about')).to.be.true;
+      expect(player._cache.get('@about')).to.equal(about_value);
     });
 
     it('to_inspect_view on unlocked state does not poison cache', () => {

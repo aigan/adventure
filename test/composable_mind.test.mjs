@@ -254,11 +254,11 @@ describe('Composable Mind Trait', () => {
       expect(mind1).to.equal(mind2, 'Should return same cached Mind instance')
       expect(mind1.origin_state).to.equal(mind2.origin_state, 'Should return same UnionState')
 
-      // Different state = different cache entry
+      // Different state still returns same cached Mind (belief-based caching)
       const world_state2 = world.create_state(DB.get_logos_state(), {tt: 2})
       const mind3 = vb_belief.get_trait(world_state2, 'mind')
 
-      expect(mind1).to.not.equal(mind3, 'Different state should create different Mind')
+      expect(mind1).to.equal(mind3, 'Same belief returns same cached Mind instance')
     })
 
   })

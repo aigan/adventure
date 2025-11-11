@@ -553,9 +553,12 @@ describe('Composable Traits - Complex Scenarios', () => {
       expect(inv1[0].get_label()).to.equal('token')
       expect(inv2[0].get_label()).to.equal('token')
 
-      // Cache should be separate per state (only caches for locked states)
-      expect(npc._cache.has(state1)).to.be.true
-      expect(npc._cache.has(state2)).to.be.true
+      // Cache is per belief (trait values are stable per belief)
+      expect(npc._cache.has('inventory')).to.be.true
+      // Same cached value for all states since traits don't change
+      const cached_inv = npc._cache.get('inventory')
+      expect(cached_inv).to.have.lengthOf(1)
+      expect(inv1).to.equal(cached_inv)
     })
   })
 

@@ -6,37 +6,15 @@ None - ready for next task from backlog
 
 ## Recently Completed
 
-**Exposure Metadata for Observation System** - 2025-01-09 ([plan](docs/plans/exposure-metadata.md))
-- Implemented enum datatype support with validation (values field on Traittype)
-- Added exposure metadata to traittypes (visual, tactile, spatial, internal)
-- Added @form meta-trait with enum values (solid, liquid, vapor, olfactory, auditory, intangible)
-- Applied @form: 'solid' to ObjectPhysical archetype (auto-inherits to all physical entities)
-- 297 tests passing (11 new tests added)
-- Foundation for observation mechanics and LOOK command
+**Trait Resolution Consistency** - 2025-11-11
+- Fixed `get_traits()` to compose from multiple bases consistently with `get_trait()`
+- Simplified caching from state-based to belief-based (traits immutable per belief)
+- Fixed `collect_latest_value_from_all_bases()` to collect one value per direct base chain
+- Separated concerns: Belief provides traversal, Traittype handles derivation strategy
+- Added `get_traits_composable.test.mjs` with consistency tests
+- 318 tests passing
 
-**Mind Composition Testing - All Phases** - 2025-11-09 ([archived plan](docs/plans/archive/mind-composition-tests.md))
-- Comprehensive test coverage for composable mind traits (15 tests across 4 phases)
-- Phase 1: Basic coverage (null blocking, to_inspect_view, own trait composition, caching)
-- Phase 2: Temporal & structural (component_states, is_union flag, state branching)
-- Phase 3: Edge cases (nested UnionStates, overlapping knowledge, 3+ bases, deep inheritance)
-- Phase 4: Mind-specific validation (parent mind compatibility, self_subject, about_state, read-only composition after lock)
-- 285 tests passing (8 new tests added in Phases 3-4)
-
-**Trait Composition from Multiple Bases** - 2025-11-09 ([archived plan](docs/plans/archive/trait-composition-from-multiple-bases.md))
-- Implemented traittype-defined composition strategy (composable flag)
-- Array composition working (inventory deduplication by sid)
-- Mind.compose() method creates UnionState from multiple base minds
-- Delegation pattern: Traittype.compose() delegates to type_class.compose()
-- Fixed UnionState constructor to match State signature
-- All tests passing (270 passing, P1.1 enabled)
-
-**Mind Extension via State Base** - 2025-11-08 ([plan](docs/plans/archive/mind-extension-via-state-base.md))
-- Minds created from templates inherit knowledge from base beliefs via State.base chain
-- `Mind.create_from_template()` detects inherited minds and uses their state as base
-- Cross-mind state bases validated and tested
-- Fixed `recognize()` to properly identify inherited beliefs (avoids duplicates)
-- Enhanced inspection UI to show "about" labels for knowledge beliefs
-- Updated all documentation from removed `tick()` to `branch_state()`
+See [CHANGELOG.md](CHANGELOG.md) for older completed work.
 
 ## Backlog
 
