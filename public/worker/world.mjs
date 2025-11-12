@@ -188,6 +188,7 @@ state.add_beliefs_from_template({
       mind: {
         hammer: ['color'],
       },
+      location: 'workshop',
     },
   }
 })
@@ -201,7 +202,7 @@ const hammer = state.get_belief_by_label('hammer')
 player_state.learn_about(hammer)
 
 
-log('player state', player_state)
+//log('player state', player_state)
 
 //for (const [name, value] of player.get_traits()) {
 //  // Use get_trait() for composable traits to show composed value

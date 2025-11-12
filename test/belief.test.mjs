@@ -984,7 +984,7 @@ describe('Belief', () => {
       expect(view.traits.mind.label).to.be.a('string');
     });
 
-    it('to_inspect_view() includes mind trait when inherited mind: null from Mental', () => {
+    it('to_inspect_view() excludes null traits from Mental archetype', () => {
       const world_state = createMindWithBeliefs('world', {
         ghost: {
           bases: ['Mental'],
@@ -995,8 +995,8 @@ describe('Belief', () => {
       const ghost = get_first_belief_by_label('ghost');
       const view = ghost.to_inspect_view(world_state);
 
-      // Mental has mind: null in archetype, now included in inspection
-      expect(view.traits.mind).to.be.null;
+      // Mental has mind: null in archetype, but null traits are excluded from inspection
+      expect(view.traits.mind).to.be.undefined;
     });
   });
 

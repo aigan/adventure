@@ -1,8 +1,18 @@
 /**
+ * Session - Player-facing game interface layer
+ *
+ * Manages the current game session including world state, player perspective,
+ * and game-facing operations like entity designation. This is the boundary
+ * between the internal data model and the game interface (text, 3D, UI, etc).
+ *
  * @typedef {import('./mind.mjs').Mind} Mind
  * @typedef {import('./state.mjs').State} State
  * @typedef {import('./belief.mjs').Belief} Belief
  */
+
+
+import { log, assert, sysdesig } from "./debug.mjs"
+import { Subject } from "./subject.mjs"
 
 /**
  * Session class - manages the current game state
@@ -12,9 +22,9 @@ export class Session {
   /**
    * @param {Mind} world_mind - The world mind
    * @param {State} initial_state - Initial game state
-   * @param {Belief|null} player - Player belief
+   * @param {Belief} player - Player belief
    */
-  constructor(world_mind, initial_state, player = null) {
+  constructor(world_mind, initial_state, player) {
     this.world = world_mind
     this._state = initial_state
     this.player = player
@@ -52,5 +62,40 @@ export class Session {
    */
   set_channel(channel) {
     this._channel = channel
+  }
+
+  /**
+   * Get designation for a belief or subject from the player's perspective
+   * Simple placeholder until cultural knowledge system is implemented
+   * @param {Belief|Subject} entity - Belief or Subject to get designation for
+   * @returns {string} Simple label designation
+   */
+  desig(entity) {
+    // If it's a Subject, resolve it to a Belief first
+    /** @type {Belief|null} */
+    let belief
+    if (entity instanceof Subject) {
+      belief = entity.get_belief_by_state(this.state)
+      if (!belief) return 'something'
+    } else {
+      belief = entity
+    }
+
+    const label = belief.get_label()
+    return label || 'something'
+  }
+
+  start() {
+    const st = this.state
+    const loc = this.player.get_trait(st, 'location')
+    log(loc);
+
+    if (loc) {
+      const loc_name = this.desig(loc)
+      postMessage(['main_add', `You are in ${loc_name}.`])
+    } else {
+      postMessage(['main_add', 'You are nowhere.'])
+    }
+
   }
 }

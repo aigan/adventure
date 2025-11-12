@@ -1,0 +1,126 @@
+import { expect } from 'chai'
+import { Session } from '../public/worker/session.mjs'
+import * as DB from '../public/worker/db.mjs'
+import { stdTypes, Thing, createMindWithBeliefs } from './helpers.mjs'
+
+describe('Session', () => {
+  beforeEach(() => {
+    DB.reset_registries()
+  })
+
+  describe('desig()', () => {
+    it('returns label from Subject', () => {
+      const traittypes = {
+        ...stdTypes,
+        location: 'Location',
+      }
+
+      const archetypes = {
+        Thing,
+        ObjectPhysical: {
+          bases: ['Thing'],
+          traits: {
+            location: null,
+          }
+        },
+        Location: {
+          bases: ['ObjectPhysical'],
+        }
+      }
+
+      DB.register(traittypes, archetypes, {})
+
+      const state = createMindWithBeliefs('world', {
+        workshop: {
+          bases: ['Location'],
+          traits: {}
+        },
+        player: {
+          bases: ['ObjectPhysical'],
+          traits: {
+            location: 'workshop'
+          }
+        }
+      })
+
+      const world = state.in_mind
+      const player = state.get_belief_by_label('player')
+      const session = new Session(world, state, player)
+
+      const loc_subject = player.get_trait(state, 'location')
+      const designation = session.desig(loc_subject)
+
+      expect(designation).to.equal('workshop')
+    })
+
+    it('returns label from Belief', () => {
+      const traittypes = {
+        ...stdTypes,
+      }
+
+      const archetypes = {
+        Thing,
+        ObjectPhysical: {
+          bases: ['Thing'],
+          traits: {}
+        },
+      }
+
+      DB.register(traittypes, archetypes, {})
+
+      const state = createMindWithBeliefs('world', {
+        hammer: {
+          bases: ['ObjectPhysical'],
+          traits: {}
+        },
+        player: {
+          bases: ['ObjectPhysical'],
+          traits: {}
+        }
+      })
+
+      const world = state.in_mind
+      const player = state.get_belief_by_label('player')
+      const hammer = state.get_belief_by_label('hammer')
+      const session = new Session(world, state, player)
+
+      const designation = session.desig(hammer)
+
+      expect(designation).to.equal('hammer')
+    })
+
+    it('returns "something" for Belief with no label', () => {
+      const traittypes = {
+        ...stdTypes,
+      }
+
+      const archetypes = {
+        Thing,
+      }
+
+      DB.register(traittypes, archetypes, {})
+
+      const state = createMindWithBeliefs('world', {
+        player: {
+          bases: ['Thing'],
+          traits: {}
+        }
+      })
+
+      const world = state.in_mind
+      const player = state.get_belief_by_label('player')
+
+      // Create a belief with explicitly no label (don't add to beliefs dict)
+      const unlabeled = state.add_belief_from_template({
+        bases: ['Thing'],
+        traits: {}
+      })
+
+      const session = new Session(world, state, player)
+
+      const designation = session.desig(unlabeled)
+
+      expect(designation).to.equal('something')
+    })
+  })
+})

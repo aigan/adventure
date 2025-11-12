@@ -593,7 +593,7 @@ describe('Traittype', () => {
         bases: ['ObjectPhysical']
       });
 
-      const trait_map = new Map(obj.get_traits());
+      const trait_map = new Map(obj.get_defined_traits());
 
       // Explicitly set trait
       expect(trait_map.get('weight')).to.equal(5);

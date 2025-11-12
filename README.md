@@ -28,9 +28,7 @@ Think of it like a table-top D&D module: locations, characters, scenarios descri
 
 **Pre-Alpha 1** - Building belief architecture foundation. Not playable yet.
 
-**Roadmap**: 9 Alphas building from data foundation → story systems
-- Alpha 1: **Beliefs** (current)
-- Alpha 2-9: Relationships → Quests → Goals → Threads → Psychology → Planning → Sociology → Grounding
+See [ROADMAP.md](docs/ROADMAP.md) for the full 9-Alpha development plan building from data foundation → story systems.
 
 ## ⚙️ The Architecture
 
@@ -161,6 +159,8 @@ The data model encodes the building blocks of drama.
 **Why detective stories**: Crime novels decompose into the primitives. Miscommunication (incomplete/wrong information), hidden agendas (lies, motivations), emotions driving action (jealousy → murder → cover-up). These aren't crime-specific - they're the building blocks of ALL stories. Start here, expand from the foundation.
 
 ## 📚 Learn More
+
+**Development roadmap**: [ROADMAP.md](docs/ROADMAP.md)
 
 **Systemic Story blog series**: https://blog.jonas.liljegren.org/tag/systemic/
 

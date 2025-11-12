@@ -1,15 +1,35 @@
 {
   "name": "adv",
-  "version": "0.0.2",
-  "description": "Adventure",
+  "version": "1.0.0",
+  "description": "A systemic story game engine - exploring how to make story interactive through simulation and emergent narrative",
+  "type": "module",
+  "private": true,
+  "main": "public/index.html",
   "browser": "public/client.mjs",
   "scripts": {
     "test": "NODE_ENV=test mocha test/**/*.test.mjs",
     "typecheck": "tsc",
     "postinstall": "gulp default"
   },
-  "author": "",
+  "keywords": [
+    "game-engine",
+    "narrative-engine",
+    "systemic-story",
+    "story-systems",
+    "simulation",
+    "bitemporal",
+    "framework"
+  ],
+  "author": "Jonas Liljegren <jonas@liljegren.org>",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aigan/adventure.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aigan/adventure/issues"
+  },
+  "homepage": "https://github.com/aigan/adventure#readme",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",

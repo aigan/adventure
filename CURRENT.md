@@ -18,13 +18,6 @@ See [CHANGELOG.md](CHANGELOG.md) for older completed work.
 
 ## Backlog
 
-### Design & Architecture
-- [ ] **Observable Trait Mapping** - Design how internal traits map to observable perceptions
-  - Internal `health: 50` → Observable `condition: 'wounded'`
-  - Internal `inventory: [key]` → Observable `visible_items: []`
-  - One-to-many mapping? Separate traits? Computed properties?
-
-### Features
 - [ ] **Lazy Version Propagation with Group Minds** - Enable efficient shared belief updates ([plan](docs/plans/lazy-version-propagation.md))
   - NPCs reference sibling group_mind states as bases
   - Cultural knowledge updates create new group_mind states

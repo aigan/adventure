@@ -16,6 +16,11 @@
     // "noUnusedLocals": true,
     // "noUnusedParameters": true,
   },
-  "include": ["public/worker/**/*.mjs"],
-  "exclude": ["node_modules"]
+  "include": [
+    "public/worker/**/*.mjs"
+  ],
+  "exclude": [
+    "node_modules",
+    "public/worker/session.mjs"
+  ]
 }

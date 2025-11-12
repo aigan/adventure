@@ -17,8 +17,11 @@ async function init(){
 
   //const world = Adventure.world;
   //world.player_enter_location();
-  postMessage(['header_set', `Potence`]);
-  postMessage(['main_add', 'Whirling...' ]);
+  postMessage(['header_set', `Waking`]);
+
+  session.start()
+
+  //postMessage(['main_add', 'Whirling...' ]);
 }
 
 /** @type {{[key: string]: (...args: any[]) => void|Promise<void>}} */

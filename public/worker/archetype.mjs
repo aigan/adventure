@@ -114,12 +114,22 @@ export class Archetype {
   }
 
   /**
-   * Iterate over all traits in this archetype's template (does not check bases)
+   * Iterate over all defined traits in this archetype's template including nulls (does not check bases)
    * @returns {Generator<[string, any]>} Yields [trait_name, value] pairs
    */
-  *get_traits() {
+  *get_defined_traits() {
     for (const [name, value] of Object.entries(this._traits_template)) {
       yield [name, value]
+    }
+  }
+
+  /**
+   * Iterate over traits with non-null values in this archetype's template (does not check bases)
+   * @returns {Generator<[string, any]>} Yields [trait_name, value] pairs for set traits only
+   */
+  *get_traits() {
+    for (const pair of Object.entries(this._traits_template)) {
+      if (pair[1] != null) yield pair
     }
   }
 

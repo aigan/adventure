@@ -317,14 +317,14 @@ export class Belief {
   }
 
   /**
-   * Iterate over all traits (own and inherited) with their values
+   * Iterate over all defined traits (own and inherited) including those with null values
    * Own traits shadow inherited traits with the same name
    * Delegates to Traittype for derived values (composable, etc) - same logic as get_trait()
    * Caches inherited traits when belief is locked (belief-level cache)
-   * Includes archetype default values (non-null values from archetype traits_template)
+   * Includes all trait definitions from archetypes (even null/unset values)
    * @returns {Generator<[string, *]>} Yields [trait_name, value] pairs
    */
-  *get_traits() {
+  *get_defined_traits() {
     const yielded = new Set()
 
     // Yield own traits first
@@ -361,6 +361,16 @@ export class Belief {
       }
 
       queue.push(...base._bases)
+    }
+  }
+
+  /**
+   * Iterate over traits that have non-null values (excludes null/undefined traits)
+   * @returns {Generator<[string, *]>} Yields [trait_name, value] pairs for set traits only
+   */
+  *get_traits() {
+    for (const pair of this.get_defined_traits()) {
+      if (pair[1] != null) yield pair
     }
   }
 
@@ -600,7 +610,7 @@ export class Belief {
   to_inspect_view(state) {
     assert(state instanceof State, "should be State", state);
 
-    // Build traits object from get_traits() (includes composed values)
+    // Build traits object from get_traits() (includes all traits, even nulls, for complete schema view)
     const traits_obj = /** @type {Record<string, any>} */ ({})
     for (const [k, v] of this.get_traits()) {
       const traittype = Traittype.get_by_label(k)
