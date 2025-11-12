@@ -166,11 +166,7 @@ The data model encodes the building blocks of drama.
 
 **Data model**: [SPECIFICATION.md](docs/SPECIFICATION.md)
 
-## 💬 Contact
-
-**Interested in systemic story games?** Looking to connect with developers exploring this space.
-
-[Add Discord/contact info if desired]
+**Contact**: https://blog.jonas.liljegren.org/contact/
 
 ## 🎮 Prior Work
 
