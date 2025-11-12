@@ -36,7 +36,7 @@ Think of it like a table-top D&D module: locations, characters, scenarios descri
 
 The system is built from interconnected classes. Each one addresses a fundamental challenge of interactive narrative.
 
-### Logos - Ground of Being
+### [Logos](public/worker/logos.mjs) - Ground of Being
 
 **Logos** is the primordial Mind. Parent of all minds. The One from which everything emerges.
 
@@ -46,7 +46,7 @@ The system is built from interconnected classes. Each one addresses a fundamenta
 
 **Why**: Stories happen in a context. That context needs a foundation. Logos is that foundation - the ground of being from which all narrative emerges. Not just philosophical - enables queries like "what exists in the universe?" to work structurally. Mind hierarchy needs a root. Completes the fractal design.
 
-### Mind - Where Stories Live
+### [Mind](public/worker/mind.mjs) - Where Stories Live
 
 **Mind** is where knowledge exists. The world is a Mind. Each NPC has a Mind. Those minds can contain other Minds - an NPC's model of what another NPC knows.
 
@@ -56,7 +56,7 @@ The system is built from interconnected classes. Each one addresses a fundamenta
 
 **Why**: Drama requires hidden agendas. Traditional "knowledge flags" per NPC don't scale - you'd need exponential combinations. Nested Minds make theory of mind structural. The data itself encodes who believes what about whom.
 
-### Belief - The Atoms of Knowledge
+### [Belief](public/worker/belief.mjs) - The Atoms of Knowledge
 
 **Belief** is one piece of knowledge about one thing, at one point in time. Immutable. Changes create new Beliefs that inherit from old ones.
 
@@ -66,7 +66,7 @@ The system is built from interconnected classes. Each one addresses a fundamenta
 
 **Why**: Detective stories need temporal reasoning. "When did the witness see the suspect?" requires queryable history. Mutation destroys that. Immutable versioning creates the history automatically - the chain of Beliefs *is* the timeline. The world and NPC minds are made of the same stuff because stories decompose the same way at every level. A season is episodes is scenes. The world is Minds is Beliefs. Fractal structure.
 
-### State - Snapshots of Possibility
+### [State](public/worker/state.mjs) - Snapshots of Possibility
 
 **State** is one Mind's knowledge at one moment. A container of Beliefs at specific transaction time (when created) and valid time (what moment it's about).
 
@@ -76,7 +76,7 @@ The system is built from interconnected classes. Each one addresses a fundamenta
 
 **Why**: "When did you learn X?" vs "What did you know then?" - simple timestamps conflate when-created and when-about. Bitemporal separation makes both queryable. Branching possibilities and alternate timelines work because States are immutable - timelines don't overwrite each other.
 
-### Subject - Identity Across Time
+### [Subject](public/worker/subject.mjs) - Identity Across Time
 
 **Subject** is the persistent identity of a thing. The suspect, the hammer, the location. Beliefs about that Subject version over time, but the Subject identity remains.
 
@@ -86,7 +86,7 @@ The system is built from interconnected classes. Each one addresses a fundamenta
 
 **Why**: Miscommunication drives investigation. Witnesses describe "someone in a hood" - that description can match multiple Subjects, or be wrong about which Subject. The identity persists while knowledge about it varies. Foundation for mystery.
 
-### Traittype - How Knowledge Composes
+### [Traittype](public/worker/traittype.mjs) - How Knowledge Composes
 
 **Traittype** defines what properties Beliefs can have and how they combine. Some traits are composable (merge from multiple inheritance paths). Some are singular (first-wins).
 
@@ -96,7 +96,7 @@ The system is built from interconnected classes. Each one addresses a fundamenta
 
 **Why**: Stories need characters with complex backgrounds. Single inheritance forces artificial choices. Composable traits make it natural - the detective IS both a cop and an informant's friend. The data model handles the combination structurally.
 
-### Archetype - Templates for Creation
+### [Archetype](public/worker/archetype.mjs) - Templates for Creation
 
 **Archetype** is a template for creating Beliefs. Cultural prototypes (Villager, Hunter, Merchant). No Mind, no State - pure template.
 
@@ -106,7 +106,7 @@ The system is built from interconnected classes. Each one addresses a fundamenta
 
 **Why**: Can't pre-generate every NPC. Archetypes are the "class definition" - Beliefs are instances. Create "Villager" archetype once, instantiate hundreds of villagers. Each gets default knowledge, override what matters. Scales because prototypes share structure.
 
-### Eidos - Realm of Universal Prototypes
+### [Eidos](public/worker/eidos.mjs) - Realm of Universal Prototypes
 
 **Eidos** is the Mind where universal prototypes live. Timeless, shared across all game worlds. The realm of forms - ideal templates that stories instantiate.
 
@@ -116,7 +116,7 @@ The system is built from interconnected classes. Each one addresses a fundamenta
 
 **Why**: Stories reuse patterns. The "jealous lover" exists as a pattern independent of any specific story. Eidos holds these universals. Each game world instantiates its own version (this jealous lover, in this village, with these details). Separation between universal patterns and specific instances. Like Plato's realm of forms - the perfect template exists outside any particular story.
 
-### Session - Your Connection to the World
+### [Session](public/worker/session.mjs) - Your Connection to the World
 
 **Session** represents your current connection to the game. What world you're in, what moment in time, what character you play.
 
@@ -126,7 +126,7 @@ The system is built from interconnected classes. Each one addresses a fundamenta
 
 **Why**: Players need entry points. Session is that interface - "this is your connection to the story." Not just data - active relationship. When state changes, observers get notified. Foundation for save/load and multiplayer.
 
-### Channel - Communication Architecture
+### [Channel](public/worker/channel.mjs) - Communication Architecture
 
 **Channel** is the communication layer using Web Workers and BroadcastChannel. Game logic runs in worker thread, UI connects via channel messages.
 
@@ -136,7 +136,7 @@ The system is built from interconnected classes. Each one addresses a fundamenta
 
 **Why**: Systemic games are complex. Need tools to understand what's happening. Traditional debuggers don't show "what does this NPC believe?" Channel makes the simulation observable. Worker architecture keeps game logic isolated from UI concerns.
 
-### World - The Starting Scenario
+### [World](public/worker/world.mjs) - The Starting Scenario
 
 **World** is how scenarios get initialized. Register archetypes and traittypes, create world Mind, populate initial state with beliefs, create Session.
 
