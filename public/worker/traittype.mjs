@@ -213,7 +213,7 @@ export class Traittype {
 
     // Fallback: Array container logic
     if (this.container === Array) {
-      // Deduplicate by subject.sid, maintain breadth-first order
+      // Deduplicate by Subject reference, maintain breadth-first order
       const seen = new Set()
       const result = []
 
@@ -222,9 +222,9 @@ export class Traittype {
 
         for (const subject of array) {
           // Skip if not a Subject or already seen
-          if (!subject?.sid || seen.has(subject.sid)) continue // FIXME: compare subject directly
+          if (!subject || seen.has(subject)) continue
 
-          seen.add(subject.sid)
+          seen.add(subject)
           result.push(subject)
         }
       }

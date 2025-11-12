@@ -287,10 +287,9 @@ describe('Trait Operations Pattern', () => {
       label: 'npc',
       bases: ['Person']
     })
-    // FIXME: Make sure mind with initial state now exists in world_state
-    
+
     // Initially, mind should be empty - get it BEFORE locking
-    let mind = npc.get_trait(world_state, 'mind') // FIXME: REMOVE
+    let mind = npc.get_trait(world_state, 'mind')
 
     world_state.lock()
     let npc_state = [...mind.states_at_tt(1)][0]
@@ -306,7 +305,6 @@ describe('Trait Operations Pattern', () => {
         forge: ['location']
       }
     })
-    // FIXME: make sure this results in a new mind state in world state.
 
     // Get the updated npc belief from the new state
     npc = world_state.get_belief_by_label('npc')

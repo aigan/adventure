@@ -157,7 +157,6 @@ function _collect_operations_from_entries(trait_name, entries, source) {
 **public/worker/belief.mjs:242-252** - Operation handling in add_trait_from_template:
 ```javascript
 /*
-    // FIXME: handle operations in the right place
     // If this is an operation (has subprop), store it directly without traittype resolution
     if (subprop) {
       // Operations are stored as-is and collected by get_trait_data()
@@ -171,13 +170,12 @@ function _collect_operations_from_entries(trait_name, entries, source) {
 
 **public/worker/belief.mjs:375-407** - Operation processing in get_trait:
 ```javascript
-    return value; // DEBUG: see whats need op. FIXME
+    return value;
     /* eslint-disable no-unreachable */
 
     // Everything below this line is UNREACHABLE (early return above)
     let result = value
 
-    // FIXME: move to some place that dont expect side effects
     // Process constructor marker {_call: 'method_name'}
     if (result && typeof result === 'object' && '_call' in result && !Array.isArray(result)) {
       // ... constructor processing code ...

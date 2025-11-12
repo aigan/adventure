@@ -600,18 +600,13 @@ export class Belief {
   to_inspect_view(state) {
     assert(state instanceof State, "should be State", state);
 
-    // Build traits object using get_trait() for composable traits
+    // Build traits object from get_traits() (includes composed values)
     const traits_obj = /** @type {Record<string, any>} */ ({})
     for (const [k, v] of this.get_traits()) {
       const traittype = Traittype.get_by_label(k)
       assert(traittype instanceof Traittype, `Traittype '${k}' not found`)
 
-      // FIXME: the get_traits must give the same result as get_trait. Should bot have to call get_trait() again
-
-      // For composable traits, use get_trait() to trigger composition
-      // Otherwise use the value from get_traits() (first-wins)
-      const value = traittype.composable ? this.get_trait(state, k) : v
-      traits_obj[k] = traittype.to_inspect_view(state, value)
+      traits_obj[k] = traittype.to_inspect_view(state, v)
     }
 
     const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string, type: string}>, bases: (string|number)[], traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean}} */ ({
