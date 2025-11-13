@@ -43,6 +43,7 @@ export function debug(...args) {
  * @param {any} condition - Condition to check
  * @param {string} message - Error message
  * @param {...any} args - Additional context
+ * @returns {asserts condition}
  */
 export function assert(condition, message, ...args) {
   if (!condition) {

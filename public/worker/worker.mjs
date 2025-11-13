@@ -15,13 +15,8 @@ async function init(){
   const Channel = await import("./channel.mjs");
   await Channel.init_channel(session);
 
-  //const world = Adventure.world;
-  //world.player_enter_location();
   postMessage(['header_set', `Waking`]);
-
-  session.start()
-
-  //postMessage(['main_add', 'Whirling...' ]);
+  await session.start()
 }
 
 /** @type {{[key: string]: (...args: any[]) => void|Promise<void>}} */

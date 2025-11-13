@@ -1,22 +1,36 @@
-import { log } from "./lib/debug.mjs";
+import { log, assert } from "./lib/debug.mjs";
 
 // Browser-specific initialization
-let channel, $header, $main, client_id, server_id, query;
+/** @type {BroadcastChannel|null} */
+let channel = null;
+/** @type {HTMLElement|null} */
+let $header = null;
+/** @type {HTMLElement|null} */
+let $main = null;
+/** @type {number|null} */
+let client_id = null;
+/** @type {number|null} */
+let server_id = null;
+/** @type {any} */
+let query = null;
 
 if (typeof BroadcastChannel !== 'undefined' && typeof document !== 'undefined') {
   log('Loading');
   channel = new BroadcastChannel('inspect');
   $header = document.querySelector("header");
   $main = document.querySelector("main");
+  assert($header, 'header element not found');
   $header.innerHTML = "Inspecting";
   parse_url();
 }
 
 
 if (typeof window !== 'undefined') {
+  // @ts-ignore - adding custom property to window
   window.q = {
     // Query current Adventure state (world mind at current state)
     world(){
+      assert(channel, 'channel not initialized');
       channel.postMessage({
         msg:'query_adventure',
         client_id,
@@ -26,13 +40,18 @@ if (typeof window !== 'undefined') {
   }
 }
 
+/** @type {Record<string, (dat: any) => void>} */
 const dispatch = {
+  /**
+   * @param {any} dat
+   */
   welcome(dat){
     client_id = dat.client_id;
     server_id = dat.server_id;
     log_line(`Connected as client ${client_id} to server ${server_id}`);
 
     if( query?.msg ){
+      assert(channel, 'channel not initialized');
       channel.postMessage({
         ... query,
         client_id,
@@ -43,13 +62,21 @@ const dispatch = {
     }
 
   },
+  /**
+   * @param {any} dat
+   */
   hello(dat){
     client_id = null;
     server_id = dat.server_id;
+    assert(channel, 'channel not initialized');
     channel.postMessage({msg:"connect"});
   },
+  /**
+   * @param {any} dat
+   */
   adventure_info(dat){
     // Got Adventure info - now query the world mind at the current state
+    assert(channel, 'channel not initialized');
     channel.postMessage({
       msg: 'query_mind',
       mind: dat.world_mind_id,
@@ -58,6 +85,9 @@ const dispatch = {
       server_id,
     });
   },
+  /**
+   * @param {any} dat
+   */
   world_entity_list(dat){
     const state_nav = dat.state.base_id
       ? `<a href="?state=${dat.state.base_id}">← Previous State</a>`
@@ -82,6 +112,9 @@ const dispatch = {
       },
     });
   },
+  /**
+   * @param {any} dat
+   */
   world_entity(dat){
     const mind_prefix = dat.mind?.label || `Mind #${dat.mind?.id}`;
     render({
@@ -104,21 +137,37 @@ if (typeof BroadcastChannel !== 'undefined' && channel) {
   };
 }
 
+/**
+ * @param {string} text
+ */
 function log_line(text){
   const $p = document.createElement('p');
   $p.innerText = text;
+  assert($main, 'main element not found');
   $main.append($p);
 }
 
+/**
+ * @param {any} a
+ */
 function render(a){
+  assert($header, 'header element not found');
   if( a.header != null ) $header.innerHTML = a.header;
   if( a.table ) render_table( a );
   if( a.entity ) render_entity( a );
 }
 
-function render_table(a, target = $main){
+/**
+ * @param {any} a
+ * @param {HTMLElement} [target]
+ */
+function render_table(a, target){
+  if (!target) {
+    assert($main, 'main element not found');
+    target = $main;
+  }
   const at = a.table;
-  const h_th = at.columns.map( t=>`<th>${t}</th>`).join("");
+  const h_th = at.columns.map( /** @param {any} t */ (t)=>`<th>${t}</th>`).join("");
 
   let h_body = "";
   for( const row of at.rows ){
@@ -139,7 +188,15 @@ function render_table(a, target = $main){
   target.innerHTML = h_table;
 }
 
-function render_entity(a, target = $main){
+/**
+ * @param {any} a
+ * @param {HTMLElement} [target]
+ */
+function render_entity(a, target){
+  if (!target) {
+    assert($main, 'main element not found');
+    target = $main;
+  }
   const belief_data = a.entity.data.data;
   const state_id = a.state_id;
   const belief_mind_id = a.entity.mind?.id;
@@ -157,7 +214,7 @@ function render_entity(a, target = $main){
 
   // Display prototypes (Archetypes and shared Beliefs with labels)
   if (belief_data.prototypes?.length > 0) {
-    const prototype_labels = belief_data.prototypes.map(p => p.label).join(', ');
+    const prototype_labels = belief_data.prototypes.map(/** @param {any} p */ (p) => p.label).join(', ');
     hout += `<dt>Prototypes</dt><dd>${prototype_labels}</dd>`;
   }
 
@@ -205,7 +262,7 @@ function render_entity(a, target = $main){
         if (value._ref && value._type) {
           // Handle Mind type specially - render its states instead of linking to Mind
           if (value._type === 'Mind' && value.states) {
-            const state_links = value.states.map(s => {
+            const state_links = value.states.map(/** @param {any} s */ (s) => {
               const link = `?state=${s._ref}`;
               return `<a href="${link}">#${s._ref}</a>`;
             });

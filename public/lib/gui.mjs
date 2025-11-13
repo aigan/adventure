@@ -1,4 +1,4 @@
-import { log } from "./debug.mjs";
+import { log, assert } from "./debug.mjs";
 // log('Loading GUI');
 
 // import {cssP} from "./lib/load.mjs";
@@ -32,14 +32,23 @@ export const Content = {
 
 
 Message.register({
+  /**
+   * @param {string} html
+   */
   header_set( html ){
+    assert(el_header, 'header element not found')
     el_header.innerHTML = html;
   },
   main_clear(){
+    assert(el_main, 'main element not found')
     el_main.innerHTML = "";
   },
+  /**
+   * @param {any[]} textarr
+   */
   main_add( textarr ){
     // console.log('appending', typeof textarr, textarr);
+    assert(el_main, 'main element not found')
     const p = document.createElement('p');
     let htmlparts = [];
     const main = Topic.main;
@@ -72,6 +81,9 @@ Message.register({
     el_main.appendChild(p);
     Topic.register( main, p );
   },
+  /**
+   * @param {[any]} param0
+   */
   subject_update([subject]){
     log('update subject', desig(subject));
     for( const slug in Topic.topics ){
@@ -80,10 +92,11 @@ Message.register({
       if( subj.id !== subject.id ) continue;
       Object.assign( subj, subject );
     }
-    
+
   },
 })
 
+/** @type {any} */
 export const Topic = {
   main: {
     topics: [],
@@ -94,12 +107,17 @@ export const Topic = {
   topics: {},
   selected: null,
   lock: false,
-  
+
+  /**
+   * @param {any} menu
+   * @param {any} subject
+   */
   add( menu, subject ){
     const topic = {
       id: menu.next_id ++,
       parent: menu,
       subject,
+      slug: '',
     };
     topic.slug = `${menu.slug}-${topic.id}`;
     menu.topics[ topic.id ] = topic;
@@ -107,6 +125,10 @@ export const Topic = {
     return topic;
   },
 
+  /**
+   * @param {any} menu
+   * @param {HTMLElement} el_container
+   */
   register( menu, el_container ){
     for( const el of el_container.querySelectorAll('.topic') ){
       // log('register', el.id );
@@ -141,6 +163,9 @@ export const Topic = {
     return Topic.selected = topic.parent;
   },
 
+  /**
+   * @param {any} selected_new
+   */
   select( selected_new ){
     if( Topic.selected === selected_new ) return;
     // log('select', selected_new);
@@ -242,6 +267,9 @@ export const Topic = {
     }
   },
   
+  /**
+   * @param {any} topic
+   */
   menu( topic ){
     if( topic.menu ) return topic.menu;
 
@@ -250,10 +278,11 @@ export const Topic = {
 
     const menu = {
       parent: topic,
-      topics: [],
+      topics: /** @type {any[]} */ ([]),
       is_menu: true,
       next_id: 1,
       slug: topic.slug,
+      dialog: /** @type {HTMLDialogElement|null} */ (null),
     };
 
     const subj = topic.subject;
@@ -265,7 +294,7 @@ export const Topic = {
     }
     Topic.add( menu, {do:'abort',label:"Never mind"});
 
-    const html_subtopics = menu.topics.filter(t=>t).map( t=>
+    const html_subtopics = menu.topics.filter((t/** @type {any} */)=>t).map( (t/** @type {any} */)=>
       `<li class=topic id="${t.slug}" tabindex=0>`+
       `${desig(t.subject)}</li>`).join("\n");
 
@@ -282,9 +311,12 @@ export const Topic = {
     return menu;
   },
   
+  /**
+   * @param {any} menu
+   */
   enter_dialog( menu ){
     const dialog = menu.dialog;
-    if( !dialog ) throw "No dialog for menu";
+    assert(dialog, "No dialog for menu");
     dialog.showModal();
     Topic.selected = menu;
   },
@@ -292,11 +324,14 @@ export const Topic = {
 }
 
 
+/** @type {ReturnType<typeof setTimeout>|null} */
 let delayedFocus = null;
+/** @type {ReturnType<typeof setTimeout>|null} */
 let delayedClick = null;
 document.addEventListener('focusin', e=>{
   if( Topic.lock ) return;
-  const topic = Topic.topics[ e.target.id ];
+  const target = /** @type {HTMLElement} */ (e.target)
+  const topic = Topic.topics[ target.id ];
   if( !topic ) return;
   // log('focus', e.target);
   // Topic.select( topic );
@@ -323,9 +358,11 @@ document.addEventListener('click', e=>{
   const path = e.composedPath();
   // log('click', e.target);
   for( const el of path ){
-    if( el.id && el.classList.contains('topic')){
+    const element = /** @type {HTMLElement} */ (el)
+    if( element.id && element.classList?.contains('topic')){
       // Delayed focus not done before click on mobile
-      const topic = Topic.topics[ e.target.id ];
+      const target = /** @type {HTMLElement} */ (e.target)
+      const topic = Topic.topics[ target.id ];
       if( !topic ) break;
       Topic.select( topic );
       Topic.execute();
@@ -337,6 +374,7 @@ document.addEventListener('click', e=>{
   }
 })
 
+/** @type {Record<string, () => void>} */
 const shortcut = {
   "shift-ArrowDown": ()=> Content.scrollStepDown(),
   "shift-ArrowUp": ()=> Content.scrollStepUp(),
@@ -348,7 +386,11 @@ const shortcut = {
   Enter(){ Topic.execute() },
 };
 
-const shortcut_filter = Object.keys(shortcut).map(key=>key.match(/\w+$/)[0]);
+const shortcut_filter = Object.keys(shortcut).map(key=>{
+  const match = key.match(/\w+$/)
+  assert(match, `Invalid shortcut key: ${key}`)
+  return match[0]
+});
 
 document.addEventListener('keydown', e=>{  
   if( !shortcut_filter.includes(e.key) ) return;
@@ -366,6 +408,10 @@ document.addEventListener('keydown', e=>{
   shortcut[desc]();
 })
 
+/**
+ * @param {any} entity
+ * @returns {string}
+ */
 export function desig( entity ){
   if( entity.description_short ) return entity.description_short;
   if( entity.Labeled ) return entity.Labeled.value;
@@ -373,6 +419,10 @@ export function desig( entity ){
   return entity.id;
 }
 
+/**
+ * @param {string} str
+ * @returns {string}
+ */
 export function ucfirst( str ){
-  return str[0].toUpperCase() + str.slice(1); 
+  return str[0].toUpperCase() + str.slice(1);
 }

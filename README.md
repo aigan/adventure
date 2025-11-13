@@ -166,14 +166,6 @@ The data model encodes the building blocks of drama.
 
 **Data model**: [SPECIFICATION.md](docs/SPECIFICATION.md)
 
-**Contact**: https://blog.jonas.liljegren.org/contact/
-
-## 🎮 Prior Work
-
-**Systemic depth proven**: NetHack, Dwarf Fortress, RimWorld, The Sims
-
-**Related attempts**: Wildermyth (template slots), Watch Dogs Legion (procedural NPCs), The Wayward Realms (Virtual Game Master), Ken Levine's Narrative Legos (Judas)
-
 ---
 
 *"It has been 30 years and there is still no game that has managed to surpass NetHack."*

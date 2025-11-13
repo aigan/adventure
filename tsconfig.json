@@ -17,7 +17,9 @@
     // "noUnusedParameters": true,
   },
   "include": [
-    "public/worker/**/*.mjs"
+    "public/worker/**/*.mjs",
+    "public/lib/**/*.mjs",
+    "public/inspect.mjs"
   ],
   "exclude": [
     "node_modules",

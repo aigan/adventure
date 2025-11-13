@@ -89,7 +89,7 @@ describe('Session', () => {
       expect(designation).to.equal('hammer')
     })
 
-    it('returns "something" for Belief with no label', () => {
+    it('returns null for Belief with no label', () => {
       const traittypes = {
         ...stdTypes,
       }
@@ -120,7 +120,7 @@ describe('Session', () => {
 
       const designation = session.desig(unlabeled)
 
-      expect(designation).to.equal('something')
+      expect(designation).to.equal(null)
     })
   })
 })

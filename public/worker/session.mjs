@@ -32,6 +32,18 @@ export class Session {
     this._channel = null
   }
 
+  static async ensure_init() {
+    const {handler_register} = await import("./worker.mjs")
+    handler_register('look', Session.do_look)
+  }
+
+  /**
+   * @param {any} context
+   */
+  static do_look(context) {
+    log('looking', context)
+  }
+
   /**
    * Get current state
    * @returns {State}
@@ -68,34 +80,77 @@ export class Session {
    * Get designation for a belief or subject from the player's perspective
    * Simple placeholder until cultural knowledge system is implemented
    * @param {Belief|Subject} entity - Belief or Subject to get designation for
-   * @returns {string} Simple label designation
+   * @returns {string|null} Simple label designation
    */
   desig(entity) {
     // If it's a Subject, resolve it to a Belief first
-    /** @type {Belief|null} */
-    let belief
+    /** @type {Belief|null} */ let belief
     if (entity instanceof Subject) {
       belief = entity.get_belief_by_state(this.state)
-      if (!belief) return 'something'
     } else {
       belief = entity
     }
 
+    if (!belief) return null
     const label = belief.get_label()
-    return label || 'something'
+    return label ?? null
   }
 
-  start() {
+  async start() {
+    await Session.ensure_init()
+
+    const pl = this.player.subject
     const st = this.state
     const loc = this.player.get_trait(st, 'location')
-    log(loc);
-
-    if (loc) {
-      const loc_name = this.desig(loc)
-      postMessage(['main_add', `You are in ${loc_name}.`])
-    } else {
-      postMessage(['main_add', 'You are nowhere.'])
+    const obs = {
+      subject: loc,
+      known_as: this.desig(loc),
+      actions: [
+        {
+          do: 'look',
+          target_blipp: loc.sid,
+          subject_blopp: pl.sid,
+          label: `Look around`,
+        },
+      ],
     }
+
+    const lines = []
+    lines.push(tt`You are in ${obs}.`)
+    postMessage(['main_add', ...lines])
 
   }
 }
+
+// Temporary placement of messaging utils
+// TODO: Move to proper message formatting module
+
+/**
+ * Template tag for formatting messages with observations
+ * @param {TemplateStringsArray} strings - Template literal strings
+ * @param {...Object} val_in - Observation objects to format
+ * @returns {{strings: TemplateStringsArray, values: Object[]}} Formatted message
+ */
+function tt( strings, ...val_in){
+  const values = []
+  for( const obs of val_in ){
+    if( !obs ) continue
+    values.push( bake_obs( obs ) )
+  }
+  return {strings,values}
+}
+
+/**
+ * Convert observation data to baked format for client
+ * @param {any} obs - Observation object
+ * @returns {{id: number, description_short: string|null, actions: Object[], is: string}} Baked observation for client
+ */
+function bake_obs( obs ){
+  return {
+    id: obs.subject.sid,
+    description_short: obs.known_as,
+    actions: obs.actions,
+    is: 'entity'
+  }
+}
+
