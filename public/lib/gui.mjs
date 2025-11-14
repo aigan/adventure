@@ -51,7 +51,7 @@ Message.register({
     assert(el_main, 'main element not found')
     const p = document.createElement('p');
     let htmlparts = [];
-    const main = Topic.main;
+    const main = Locus.main;
     for( const part of textarr ){
       // log('part', part);
       if( typeof part === 'string' ){
@@ -64,11 +64,11 @@ Message.register({
         let html = "";
         for( let i=0; i<strings.length; i++){
           html += strings[i];
-          const subject = values[i];
-          if( subject ){
-            const topic = Topic.add(main, subject)
-            // log('displaying', topic);
-            html += `<b class=topic id="${topic.slug}" tabindex=0>${desig(subject)}</b>`;
+          const topic = values[i];
+          if( topic ){
+            const locus = Locus.add(main, topic)
+            // log('displaying', locus);
+            html += `<b class=topic id="${locus.slug}" tabindex=0>${desig(topic)}</b>`;
           }
         }
         htmlparts.push( html );
@@ -79,50 +79,50 @@ Message.register({
     let text = htmlparts.join("\n");
     p.innerHTML = text.replace(/\n/g,'<br>');
     el_main.appendChild(p);
-    Topic.register( main, p );
+    Locus.register( main, p );
   },
   /**
    * @param {[any]} param0
    */
-  subject_update([subject]){
-    log('update subject', desig(subject));
-    for( const slug in Topic.topics ){
-      const subj = Topic.topics[slug].subject;
-      if( subj.is !== 'entity' ) continue;
-      if( subj.id !== subject.id ) continue;
-      Object.assign( subj, subject );
+  topic_update([topic]){
+    log('update topic', desig(topic));
+    for( const slug in Locus.loci ){
+      const old_topic = Locus.loci[slug].topic;
+      if( old_topic.is !== 'subject' ) continue;
+      if( old_topic.id !== topic.id ) continue;
+      Object.assign( old_topic, topic );
     }
 
   },
 })
 
 /** @type {any} */
-export const Topic = {
+export const Locus = {
   main: {
-    topics: [],
+    loci: [],
     next_id: 1,
     slug: 'main',
     is_menu: true,
   },
-  topics: {},
+  loci: {},
   selected: null,
   lock: false,
 
   /**
    * @param {any} menu
-   * @param {any} subject
+   * @param {any} topic - The topic data to display
    */
-  add( menu, subject ){
-    const topic = {
+  add( menu, topic ){
+    const locus = {
       id: menu.next_id ++,
       parent: menu,
-      subject,
+      topic,
       slug: '',
     };
-    topic.slug = `${menu.slug}-${topic.id}`;
-    menu.topics[ topic.id ] = topic;
-    Topic.topics[ topic.slug ] = topic;
-    return topic;
+    locus.slug = `${menu.slug}-${locus.id}`;
+    menu.loci[ locus.id ] = locus;
+    Locus.loci[ locus.slug ] = locus;
+    return locus;
   },
 
   /**
@@ -132,74 +132,74 @@ export const Topic = {
   register( menu, el_container ){
     for( const el of el_container.querySelectorAll('.topic') ){
       // log('register', el.id );
-      Topic.topics[el.id].element = el;
-      // log('matched', Topic.main[el.id]);
+      Locus.loci[el.id].element = el;
+      // log('matched', Locus.main[el.id]);
     }
   },
   
   back(){
-    let selected = Topic.selected;
+    let selected = Locus.selected;
     // log('back from', selected);
     if( !selected ) return;
     if( selected.element ){
-       selected = Topic.unselect( selected );
+       selected = Locus.unselect( selected );
      }
     if( selected.dialog ){
       selected.dialog.close();
       // log('back to parent', selected.parent);
-      Topic.selected = selected.parent;
+      Locus.selected = selected.parent;
     }
-    return Topic.selected;
+    return Locus.selected;
   },
 
-  unselect( topic = Topic.selected ){
-    if( !topic ) return;
-    const el = topic.element;
-    // log('blur', topic.slug, topic.is_menu, el);
+  unselect( locus = Locus.selected ){
+    if( !locus ) return;
+    const el = locus.element;
+    // log('blur', locus.slug, locus.is_menu, el);
     if( el ){
       if( document.activeElement === el ) el.blur();
       el.classList.remove('selected');
     }
-    return Topic.selected = topic.parent;
+    return Locus.selected = locus.parent;
   },
 
   /**
    * @param {any} selected_new
    */
   select( selected_new ){
-    if( Topic.selected === selected_new ) return;
+    if( Locus.selected === selected_new ) return;
     // log('select', selected_new);
-    Topic.unselect();
+    Locus.unselect();
     // log('selected', selected_new.slug, selected_new.is_menu );
-    Topic.selected = selected_new;
-    const el = Topic.selected.element;
-    // log('selected marked', el, Topic.selected)
+    Locus.selected = selected_new;
+    const el = Locus.selected.element;
+    // log('selected marked', el, Locus.selected)
     el.classList.add('selected');
   },
 
   select_previous(){
     let tid, menu;
-    const selected = Topic.selected || Topic.main;
+    const selected = Locus.selected || Locus.main;
     if( selected.is_menu ){
       menu = selected;
-      tid = menu.topics.length;
+      tid = menu.loci.length;
     } else {
       menu = selected.parent;
       tid = selected.id;
     }
-    
+
     // log('select_previous', tid);
-    if( tid <= 1 ){ // At top 
+    if( tid <= 1 ){ // At top
       // flash
       return;
     }
-    const topic = menu.topics[ tid - 1 ];
-    topic.element.focus();
+    const locus = menu.loci[ tid - 1 ];
+    locus.element.focus();
   },
 
   select_next(){
     let tid, menu;
-    const selected = Topic.selected || Topic.main;
+    const selected = Locus.selected || Locus.main;
     if( selected.is_menu ){
       menu = selected;
       tid = 0;
@@ -207,110 +207,110 @@ export const Topic = {
       menu = selected.parent;
       tid = selected.id;
     }
-    
+
     // log('select_next', tid);
-    if( tid >= menu.topics.length - 1 ){ // At top 
+    if( tid >= menu.loci.length - 1 ){ // At top
       // flash
       return;
     }
-    const topic = menu.topics[ tid + 1 ];
-    topic.element.focus();
+    const locus = menu.loci[ tid + 1 ];
+    locus.element.focus();
   },
   
   enter_submenu(){
-    const selected = Topic.selected;
+    const selected = Locus.selected;
     if( !selected || selected.is_menu ) return;
-    const menu = Topic.menu( Topic.selected );
+    const menu = Locus.menu( Locus.selected );
     if( !menu ) return;
     if( menu.dialog ){
-      Topic.enter_dialog( menu )
+      Locus.enter_dialog( menu )
     } else {
       throw "fixme";
     }
   },
-  
+
   async execute(){
-    const selected = Topic.selected;
+    const selected = Locus.selected;
     if( !selected ) return;
-    const subj = selected.subject;
-    if( !subj ) return;
-    const action = subj.do || null;
-    if( !action ) return Topic.enter_submenu();
-    if( action === 'abort' ) return Topic.back();
-    // log('action', selected, action, subj);
+    const topic = selected.topic;
+    if( !topic ) return;
+    const action = topic.do || null;
+    if( !action ) return Locus.enter_submenu();
+    if( action === 'abort' ) return Locus.back();
+    // log('action', selected, action, topic);
 
     const menu = selected.parent;
     if( menu.dialog ){
       menu.dialog.setAttribute("disabled","");
     }
-    Topic.lock = true;
+    Locus.lock = true;
     let navigate = 'back';
-    
+
     try{
-      const res = await Message.send(action,subj)
+      const res = await Message.send(action, topic)
       // log('action', action, res);
       if( res === 'stay') navigate = res;
-      
+
     } catch( err ){
       console.error(`Action ${action} got`, err);
     }
-    
-    Topic.lock = false;
+
+    Locus.lock = false;
     if( menu.dialog ){
       menu.dialog.removeAttribute("disabled");
-      Topic.back();
+      Locus.back();
     }
-    
+
     if( navigate === 'stay' ){
-      // log('selected', Topic.selected);
-      Topic.enter_submenu(); // Should fixate on right subject first
+      // log('selected', Locus.selected);
+      Locus.enter_submenu(); // Should fixate on right topic first
     }
   },
   
   /**
-   * @param {any} topic
+   * @param {any} locus - The locus to create menu for
    */
-  menu( topic ){
-    if( topic.menu ) return topic.menu;
+  menu( locus ){
+    if( locus.menu ) return locus.menu;
 
-    if( !topic.subject.actions ) return;
-    // log('Create menu for', topic);
+    if( !locus.topic.actions ) return;
+    // log('Create menu for', locus);
 
     const menu = {
-      parent: topic,
-      topics: /** @type {any[]} */ ([]),
+      parent: locus,
+      loci: /** @type {any[]} */ ([]),
       is_menu: true,
       next_id: 1,
-      slug: topic.slug,
+      slug: locus.slug,
       dialog: /** @type {HTMLDialogElement|null} */ (null),
     };
 
-    const subj = topic.subject;
-    // log('action', subj.actions);
-    if( subj.actions ){
-      for( const action of subj.actions ){
-        Topic.add( menu, action );
+    const topic = locus.topic;
+    // log('action', topic.actions);
+    if( topic.actions ){
+      for( const action of topic.actions ){
+        Locus.add( menu, action );
       }
     }
-    Topic.add( menu, {do:'abort',label:"Never mind"});
+    Locus.add( menu, {do:'abort',label:"Never mind"});
 
-    const html_subtopics = menu.topics.filter((t/** @type {any} */)=>t).map( (t/** @type {any} */)=>
-      `<li class=topic id="${t.slug}" tabindex=0>`+
-      `${desig(t.subject)}</li>`).join("\n");
+    const html_subtopics = menu.loci.filter((l/** @type {any} */)=>l).map( (l/** @type {any} */)=>
+      `<li class=topic id="${l.slug}" tabindex=0>`+
+      `${desig(l.topic)}</li>`).join("\n");
 
     const dialog = Content.dialog();
     dialog.innerHTML = `
-    <header>${ucfirst(desig(topic.subject))}</header>
+    <header>${ucfirst(desig(locus.topic))}</header>
     <ul>
       ${html_subtopics}
     </ul>
     `;
     menu.dialog = dialog;
     // log('submenu', menu);
-    Topic.register( menu, dialog);
+    Locus.register( menu, dialog);
     return menu;
   },
-  
+
   /**
    * @param {any} menu
    */
@@ -318,7 +318,7 @@ export const Topic = {
     const dialog = menu.dialog;
     assert(dialog, "No dialog for menu");
     dialog.showModal();
-    Topic.selected = menu;
+    Locus.selected = menu;
   },
 
 }
@@ -329,21 +329,21 @@ let delayedFocus = null;
 /** @type {ReturnType<typeof setTimeout>|null} */
 let delayedClick = null;
 document.addEventListener('focusin', e=>{
-  if( Topic.lock ) return;
+  if( Locus.lock ) return;
   const target = /** @type {HTMLElement} */ (e.target)
-  const topic = Topic.topics[ target.id ];
-  if( !topic ) return;
+  const locus = Locus.loci[ target.id ];
+  if( !locus ) return;
   // log('focus', e.target);
-  // Topic.select( topic );
+  // Locus.select( locus );
   delayedFocus = setTimeout(()=>{
     // log('focus delayed', e.target);
     delayedFocus = null;
-    Topic.select( topic );
+    Locus.select( locus );
   })
 })
 
 document.addEventListener('focusout', e=>{
-  if( Topic.lock ) return;
+  if( Locus.lock ) return;
   if(delayedFocus){
     // log('prevented focus');
     clearTimeout(delayedFocus);
@@ -353,8 +353,8 @@ document.addEventListener('focusout', e=>{
 
 // fallback click handler for deselecting target
 document.addEventListener('click', e=>{
-  if( Topic.lock ) return;
-  if( !Topic.selected ) return;
+  if( Locus.lock ) return;
+  if( !Locus.selected ) return;
   const path = e.composedPath();
   // log('click', e.target);
   for( const el of path ){
@@ -362,14 +362,14 @@ document.addEventListener('click', e=>{
     if( element.id && element.classList?.contains('topic')){
       // Delayed focus not done before click on mobile
       const target = /** @type {HTMLElement} */ (e.target)
-      const topic = Topic.topics[ target.id ];
-      if( !topic ) break;
-      Topic.select( topic );
-      Topic.execute();
+      const locus = Locus.loci[ target.id ];
+      if( !locus ) break;
+      Locus.select( locus );
+      Locus.execute();
       break;
     }
     if( el === document ){
-      Topic.back();
+      Locus.back();
     }
   }
 })
@@ -378,12 +378,12 @@ document.addEventListener('click', e=>{
 const shortcut = {
   "shift-ArrowDown": ()=> Content.scrollStepDown(),
   "shift-ArrowUp": ()=> Content.scrollStepUp(),
-  ArrowUp(){ Topic.select_previous() },
-  ArrowDown(){ Topic.select_next() },
-  Escape(){ Topic.back() },
-  ArrowRight(){ Topic.enter_submenu() },
-  ArrowLeft(){ Topic.back() },
-  Enter(){ Topic.execute() },
+  ArrowUp(){ Locus.select_previous() },
+  ArrowDown(){ Locus.select_next() },
+  Escape(){ Locus.back() },
+  ArrowRight(){ Locus.enter_submenu() },
+  ArrowLeft(){ Locus.back() },
+  Enter(){ Locus.execute() },
 };
 
 const shortcut_filter = Object.keys(shortcut).map(key=>{
@@ -392,7 +392,7 @@ const shortcut_filter = Object.keys(shortcut).map(key=>{
   return match[0]
 });
 
-document.addEventListener('keydown', e=>{  
+document.addEventListener('keydown', e=>{
   if( !shortcut_filter.includes(e.key) ) return;
   let desc = "";
   if( e.ctrlKey ) desc += "ctrl-";
@@ -404,7 +404,7 @@ document.addEventListener('keydown', e=>{
   // log('KEY', desc);
   if( !shortcut[desc] ) return;
   e.preventDefault();
-  if( Topic.lock ) return;
+  if( Locus.lock ) return;
   shortcut[desc]();
 })
 

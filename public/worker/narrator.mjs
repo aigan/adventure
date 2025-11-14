@@ -18,9 +18,19 @@ import { Subject } from "./subject.mjs"
  */
 
 /**
+ * Subject data sent to GUI
+ * @typedef {Object} SubjectData
+ * @property {number} id - Subject ID (sid)
+ * @property {string|null} description_short - Display name
+ * @property {Object[]} actions - Available actions for this subject
+ * @property {'subject'} is - Type discriminator
+ */
+
+/**
  * One-time initialization of narrator handlers
  */
 export async function ensure_init() {
+  // FIXME: just return if already init
   const {handler_register} = await import("./worker.mjs")
   handler_register('look', do_look)
 }
@@ -58,27 +68,27 @@ export function desig(state, entity) {
  * Template tag for formatting messages with observations
  * @param {TemplateStringsArray} strings - Template literal strings
  * @param {...Object} val_in - Observation objects to format
- * @returns {{strings: TemplateStringsArray, values: Object[]}} Formatted message
+ * @returns {{strings: TemplateStringsArray, values: SubjectData[]}} Formatted message
  */
 export function tt( strings, ...val_in){
   const values = []
   for( const obs of val_in ){
     if( !obs ) continue
-    values.push( bake_obs( obs ) )
+    values.push( bake_narration( obs ) )
   }
   return {strings,values}
 }
 
 /**
- * Convert observation data to baked format for client
+ * Convert observation data to narration format for client
  * @param {any} obs - Observation object
- * @returns {{id: number, description_short: string|null, actions: Object[], is: string}} Baked observation for client
+ * @returns {SubjectData} Subject data for client
  */
-export function bake_obs( obs ){
+export function bake_narration( obs ){
   return {
     id: obs.subject.sid,
     description_short: obs.known_as,
     actions: obs.actions,
-    is: 'entity'
+    is: 'subject'
   }
 }

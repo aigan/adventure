@@ -2,9 +2,19 @@
 
 ## Active Plan
 
-None - ready for next task from backlog
+*No active plan - ready for next task*
+
+---
 
 ## Recently Completed
+
+**Client-Worker Message Protocol** - 2025-11-14
+- All message formats documented in `docs/IMPLEMENTATION.md`
+- 367 tests passing (12 new message protocol tests)
+- Message format consistency established
+- GUI terminology clarified (Locus/topic)
+- See [CHANGELOG.md](CHANGELOG.md) for details
+- Archived plans in `docs/plans/archive/`
 
 **Trait Resolution Consistency** - 2025-11-11
 - Fixed `get_traits()` to compose from multiple bases consistently with `get_trait()`
@@ -12,7 +22,6 @@ None - ready for next task from backlog
 - Fixed `collect_latest_value_from_all_bases()` to collect one value per direct base chain
 - Separated concerns: Belief provides traversal, Traittype handles derivation strategy
 - Added `get_traits_composable.test.mjs` with consistency tests
-- 318 tests passing
 
 See [CHANGELOG.md](CHANGELOG.md) for older completed work.
 

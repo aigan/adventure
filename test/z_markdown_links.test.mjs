@@ -10,9 +10,9 @@ const PROJECT_ROOT = resolve(__dirname, '..')
 
 describe('Markdown Links', () => {
   it('should have valid relative links in all markdown files', () => {
-    // Find all .md files excluding node_modules and lab
+    // Find all .md files excluding node_modules, lab, and tmp
     const md_files = execSync(
-      'find . -name "*.md" -not -path "./node_modules/*" -not -path "./lab/*"',
+      'find . -name "*.md" -not -path "./node_modules/*" -not -path "./lab/*" -not -path "./tmp/*"',
       { cwd: PROJECT_ROOT, encoding: 'utf-8' }
     )
       .trim()

@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-11-14
+
+### Client-Worker Message Protocol Documentation
+- Documented all message formats in `docs/IMPLEMENTATION.md` (Message Protocol section)
+- Client → Worker: `['command', data, ackid]` format with promise correlation
+- Worker → Client: `ack`, `header_set`, `main_clear`, `main_add`, `topic_update` messages
+- SubjectData (baked observation) format: `{id, description_short, actions, is: 'subject'}`
+- ActionData format: `{do, target_blipp, subject_blopp, label}` (temp field names)
+- TemplateTagResult format for rich text with embedded clickable subjects
+- Promise-based RPC pattern with automatic ack handling
+
+### Message Protocol Tests
+- `test/message_protocol.test.mjs` - Message format validation (no mocking)
+- `test/worker_mock.test.mjs` - Communication flow with MockWorker API simulation
+- `test/worker_dispatch.test.mjs` - Real worker.mjs dispatch logic testing
+- MockWorker class for testing Worker API patterns in Node.js
+- Tests actual worker.mjs by mocking global Worker environment
+- All 367 tests passing (12 new message protocol tests added)
+- Test documentation added to `test/.CONTEXT.md`
+
+### Message Format Consistency
+- Fixed `ping` command to return `'pong'` via standard ack mechanism
+- Removed separate `pong` message type - all messages use array format
+- Updated handler types to allow return values (sent automatically via ack)
+- String-to-array conversion kept for backwards compatibility
+- Special handling for `start` command (initializes Session, multiple messages before ack)
+
+### GUI Terminology Clarification
+- **Locus**: Interactive GUI element (container) - avoids confusion with data model Subject
+- **locus.topic**: The data payload (SubjectData or ActionData)
+- Documented in IMPLEMENTATION.md to clarify overloaded terms
+
+### Documentation Archiving
+- Moved completed plan documents to `docs/plans/archive/`
+- Archived: client-worker-foundation.md, refactor-complete-locus-topic.md, automated-testing.md, message-formats.md, gui-requirements.md, terminology.md, old-system-reference.md, testing-setup.md
+- Deferred: message-enrichment.md (intentionally LAST - stays in docs/plans/, after action handlers)
+- Added `docs/plans/archive/README.md` to explain archived content
+
 ## 2025-11-09
 
 ### Exposure Metadata for Observation System

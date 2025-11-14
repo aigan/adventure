@@ -4,14 +4,52 @@ import { log } from "./debug.mjs";
 // URL relative to containing HTML page.
 export const worker = new Worker('worker/worker.mjs', {type:"module"});
 
+/**
+ * Action data sent from GUI to worker
+ * @typedef {Object} ActionData
+ * @property {string} do - Command name to execute
+ * @property {number} target - Subject ID of target
+ * @property {number} [actor] - Subject ID of actor (optional, defaults to player)
+ * @property {string} label - Display text for GUI
+ */
+
+/**
+ * Message sent from GUI to Worker
+ * @typedef {[string, any, number]} ClientMessage
+ * Format: [command, data, ackid]
+ */
+
+/**
+ * Subject data received from worker
+ * @typedef {Object} SubjectData
+ * @property {number} id - Subject ID (sid)
+ * @property {string|null} description_short - Display name
+ * @property {Object[]} actions - Available actions for this subject
+ * @property {'subject'} is - Type discriminator
+ */
+
+/**
+ * Template tag result with embedded subjects
+ * @typedef {Object} TemplateTagResult
+ * @property {TemplateStringsArray} strings - String parts
+ * @property {SubjectData[]} values - Embedded subject data
+ */
+
+/**
+ * Worker → Client messages
+ * @typedef {['ack', number, any]} AckMessage
+ * @typedef {['main_add', ...(string | TemplateTagResult)[]]} MainAddMessage
+ * @typedef {['main_clear']} MainClearMessage
+ * @typedef {['header_set', string]} HeaderSetMessage
+ * @typedef {['topic_update', SubjectData]} TopicUpdateMessage
+ * @typedef {MainAddMessage | MainClearMessage | HeaderSetMessage | TopicUpdateMessage | AckMessage} WorkerMessage
+ */
+
 /** @type {Record<number, {resolve: (value: any) => void, reject: (reason?: any) => void}>} */
 const jobs = {};
 
 /** @type {Record<string, (...args: any[]) => any>} */
 const dispatch = {
-  pong(){
-    log("Worker is alive");
-  },
   /**
    * @param {[number, any]} param0
    */
@@ -25,7 +63,7 @@ const dispatch = {
 };
 
 /**
- * @param {MessageEvent} e
+ * @param {MessageEvent<WorkerMessage>} e
  */
 worker.onmessage = e =>{
   let data = e.data;
@@ -50,16 +88,19 @@ export const Message = {
     }
   },
   /**
-   * @param {string} cmd
-   * @param {any} data
-   * @returns {Promise<any>}
+   * Send command to worker and wait for ack response
+   * @param {string} cmd - Command name ('start', 'ping', or action command)
+   * @param {Object|ActionData} data - Command data
+   * @returns {Promise<any>} Promise that resolves with the handler's return value
    */
   send( cmd, data ){
     const ackid = next_ackid ++;
     return new Promise( (resolve,reject)=>{
       // log('regs resolve for', ackid);
       jobs[ackid] = {resolve,reject};
-      worker.postMessage([cmd, data, ackid])
+      /** @type {ClientMessage} */
+      const message = [cmd, data, ackid];
+      worker.postMessage(message)
     })
   }
 }

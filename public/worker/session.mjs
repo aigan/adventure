@@ -80,12 +80,12 @@ export class Session {
   }
 
   async establish_channel() {
-    const Channel = await import("./channel.mjs");
+    const Channel = await import("./channel.mjs")
     await Channel.init_channel(this);
   }
   
   async start() {
-    postMessage(['header_set', `Loading world`]);
+    postMessage(['header_set', `Loading world`])
     await this.load_world()
     await this.establish_channel()
 
@@ -95,7 +95,7 @@ export class Session {
     assert(this.player, 'player not loaded')
     assert(this.state, 'state not loaded')
 
-    postMessage(['header_set', `Waking up`]);
+    postMessage(['header_set', `Waking up`])
 
     const pl = this.player.subject
     const st = this.state
@@ -116,7 +116,7 @@ export class Session {
     const lines = []
     lines.push(narrator.tt`You are in ${obs}.`)
     postMessage(['main_add', ...lines])
-
+    return true
   }
 }
 

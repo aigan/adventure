@@ -45,6 +45,87 @@ The application uses a **Web Worker architecture** to separate game logic from U
 - **Worker** (`public/worker/worker.mjs`): Runs game logic in a separate thread, handles message dispatch
 - **Communication** (`public/lib/message.mjs`): Bidirectional message passing with promise-based async responses using acknowledgment IDs
 
+#### Message Protocol
+
+All messages between client and worker use array format for consistency.
+
+**Client → Worker Messages:**
+```javascript
+['command', data, ackid]
+```
+
+- `command`: string - Command name ('start', 'ping', or action command)
+- `data`: object - Command payload (ActionData for actions)
+- `ackid`: number - Promise correlation ID
+
+**Worker → Client Messages:**
+```javascript
+['ack', ackid, result]              // Promise resolution
+['header_set', html]                // Update header text
+['main_clear']                      // Clear main content
+['main_add', ...parts]              // Add content (strings or TemplateTagResult)
+['topic_update', SubjectData]       // Update existing subject
+```
+
+**Key Data Structures:**
+
+**SubjectData** (Baked Observation - sent to GUI):
+```javascript
+{
+  id: number,                    // Subject ID (sid)
+  description_short: string,     // Display name
+  actions: ActionData[],         // Available actions
+  is: 'subject'                  // Type discriminator
+}
+```
+
+**ActionData** (sent from GUI):
+```javascript
+{
+  do: string,              // Command name
+  target_blipp: number,    // Subject ID of target (temp name)
+  subject_blopp: number,   // Subject ID of actor (temp name)
+  label: string            // Display text
+}
+```
+*Note: Field names `target_blipp`/`subject_blopp` are temporary and will be renamed.*
+
+**TemplateTagResult** (Rich text with embedded subjects):
+```javascript
+{
+  strings: TemplateStringsArray,   // Text parts
+  values: SubjectData[]            // Embedded clickable subjects
+}
+```
+
+**Example Flow:**
+1. Worker creates observation with Subject instances
+2. `narrator.bake_narration(obs)` converts to SubjectData format
+3. `narrator.tt\`...\`` creates TemplateTagResult with embedded SubjectData
+4. Worker sends via `postMessage(['main_add', templateResult])`
+5. GUI renders with clickable subjects
+6. User clicks action → GUI sends `['look', {do:'look', ...}, ackid]`
+7. Worker processes and sends `['ack', ackid, result]`
+
+**Promise-Based RPC:**
+- `Message.send(cmd, data)` returns Promise
+- Worker handlers return values, automatically sent via ack
+- Example: `ping` returns `'pong'` → `['ack', ackid, 'pong']`
+
+**Special Handling:**
+- `start` command has special case: initializes Session, sends multiple messages before ack
+- String-to-array conversion supported for backwards compatibility
+
+**GUI Terminology:**
+- **Locus**: Interactive GUI element (container)
+- **locus.topic**: The data payload (SubjectData or ActionData)
+- Avoids confusion with data model's `Subject` class
+
+For message format details and examples, see tests:
+- `test/message_protocol.test.mjs` - Message format validation
+- `test/worker_mock.test.mjs` - Communication flow
+- `test/worker_dispatch.test.mjs` - Real worker dispatch
+
 ### Data Architecture
 
 **Mind/Belief Database** (`public/worker/db.mjs`):

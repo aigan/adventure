@@ -114,15 +114,15 @@ The system is built from interconnected classes. Each one addresses a fundamenta
 
 **Why**: Stories reuse patterns. The "jealous lover" exists as a pattern independent of any specific story. Eidos holds these universals. Each game world instantiates its own version (this jealous lover, in this village, with these details). Separation between universal patterns and specific instances. Like Plato's realm of forms - the perfect template exists outside any particular story.
 
-### [Session](public/worker/session.mjs) - Your Connection to the World
+### [Narrator](public/worker/narrator.mjs) - The Translation Layer
 
-**Session** represents your current connection to the game. What world you're in, what moment in time, what character you play.
+**Narrator** bridges objective simulation and subjective experience. It translates Beliefs and States into text, handles how things are named from the player's perspective, and formats interactive messages.
 
-**Relationships**: Session has a world (Mind), current state (State), and player (Belief). Coordinates with Channel for live updates.
+**Relationships**: Takes State + Belief/Subject, produces text descriptions. Formats messages with embedded interactive entities. Registers action handlers (look, examine, etc.). Separate from in-world observation (NPCs observing each other) - this is simulation → player presentation.
 
-**What this enables**: Game saves and loads. Character switching. Time travel - rewind to earlier state. Perspective switching - same world, different viewpoint. Multiple simultaneous players.
+**What this enables**: Cultural designation - "the blacksmith" vs "Garrett" vs "the stranger" based on player knowledge. Interactive text - click entities in descriptions to act on them. Context-aware descriptions - same entity described differently based on what player knows. Action handling that respects simulation state.
 
-**Why**: Players need entry points. Session is that interface - "this is your connection to the story." Not just data - active relationship. When state changes, observers get notified. Foundation for save/load and multiplayer.
+**Why**: Stories aren't just data - they're told. The world simulation is objective (this Belief exists in this Mind's State). Players experience it subjectively (you see "a hooded figure"). Narrator is that translation - converting possibility-space into narrative voice. Not just templating - it's the boundary where simulation becomes story. Detective fiction especially needs this: the corpse has objective properties (time of death, wounds), but witnesses describe it differently. Narrator makes that gap structural.
 
 ### [Channel](public/worker/channel.mjs) - Communication Architecture
 
@@ -165,6 +165,12 @@ The data model encodes the building blocks of drama.
 **Systemic Story blog series**: https://blog.jonas.liljegren.org/tag/systemic/
 
 **Data model**: [SPECIFICATION.md](docs/SPECIFICATION.md)
+
+---
+
+## 🌟 Fellow Travelers
+
+Exploring similar territory? [Start a discussion](https://github.com/aigan/adventure/discussions) - let's compare notes.
 
 ---
 
