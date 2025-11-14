@@ -1,23 +1,9 @@
-//import {world} from "world.mjs";
 import { log } from "../lib/debug.mjs";
-
-//log('Loading Worker');
-
-//let DEBUG = true;
+import { Session } from "./session.mjs"
 
 /*
 	All imports async here in top worker for catching errors
 */
-async function init(){
-  const World = await import("./world.mjs");
-  const session = World.session;
-
-  const Channel = await import("./channel.mjs");
-  await Channel.init_channel(session);
-
-  postMessage(['header_set', `Waking`]);
-  await session.start()
-}
 
 /** @type {{[key: string]: (...args: any[]) => void|Promise<void>}} */
 const dispatch = {
@@ -27,9 +13,8 @@ const dispatch = {
   async start(){
     log('Starting');
     postMessage(['main_clear'])
-    // postMessage(['main_add', "Welcome"])
-
-    await init();
+    const session = new Session();
+    await session.start()
   },
 }
 

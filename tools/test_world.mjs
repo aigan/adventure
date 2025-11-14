@@ -12,17 +12,18 @@
 import * as DB from '../public/worker/db.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
 
-// Import world.mjs which will run setupStandardArchetypes()
+// Import world.mjs to get world state
 console.log('Loading world.mjs...')
 const world_module = await import('../public/worker/world.mjs')
 
 console.log('\n✓ World module loaded successfully')
-console.log('✓ setupStandardArchetypes() executed')
+console.log('✓ World state and player exported')
 
-// Check that session exists
-console.log('\nSession:', world_module.session ? '✓ Created' : '✗ Missing')
+const state = world_module.world_state
+const player = world_module.player_body
 
-const state = world_module.session?.state
+console.log('\nWorld state:', state ? '✓ Available' : '✗ Missing')
+console.log('Player:', player ? '✓ Available' : '✗ Missing')
 const registries = DB._reflect()
 
 // ============================================================================

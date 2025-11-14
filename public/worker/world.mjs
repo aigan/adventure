@@ -10,7 +10,6 @@
 
 import * as Cosmos from "./cosmos.mjs"
 import * as DB from "./db.mjs"
-import { Session } from "./session.mjs"
 import { Subject } from "./subject.mjs"
 import { Traittype } from "./traittype.mjs"
 import { log, assert, sysdesig } from "./debug.mjs"
@@ -197,8 +196,10 @@ state.lock();
 state = state.branch_state(Cosmos.logos_state(), 2)
 
 const player = state.get_belief_by_label('player');
+assert(player, 'player belief not found')
 const player_state = state.get_active_state_by_host(player)
 const hammer = state.get_belief_by_label('hammer')
+assert(hammer, 'hammer belief not found')
 player_state.learn_about(hammer)
 
 
@@ -243,8 +244,9 @@ state.lock();
 //});
 
 
-// Create game session
-export const session = new Session(world_mind, state, player);
+// Export world state and player for Session loading
+export const world_state = state;
+export const player_body = player;
 
 // log(Adventure);
 

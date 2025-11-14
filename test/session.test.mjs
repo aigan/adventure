@@ -1,5 +1,6 @@
 import { expect } from 'chai'
 import { Session } from '../public/worker/session.mjs'
+import * as narrator from '../public/worker/narrator.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { stdTypes, Thing, createMindWithBeliefs } from './helpers.mjs'
 
@@ -8,7 +9,7 @@ describe('Session', () => {
     DB.reset_registries()
   })
 
-  describe('desig()', () => {
+  describe('narrator.desig()', () => {
     it('returns label from Subject', () => {
       const traittypes = {
         ...stdTypes,
@@ -45,10 +46,9 @@ describe('Session', () => {
 
       const world = state.in_mind
       const player = state.get_belief_by_label('player')
-      const session = new Session(world, state, player)
 
       const loc_subject = player.get_trait(state, 'location')
-      const designation = session.desig(loc_subject)
+      const designation = narrator.desig(state, loc_subject)
 
       expect(designation).to.equal('workshop')
     })
@@ -82,9 +82,8 @@ describe('Session', () => {
       const world = state.in_mind
       const player = state.get_belief_by_label('player')
       const hammer = state.get_belief_by_label('hammer')
-      const session = new Session(world, state, player)
 
-      const designation = session.desig(hammer)
+      const designation = narrator.desig(state, hammer)
 
       expect(designation).to.equal('hammer')
     })
@@ -116,9 +115,7 @@ describe('Session', () => {
         traits: {}
       })
 
-      const session = new Session(world, state, player)
-
-      const designation = session.desig(unlabeled)
+      const designation = narrator.desig(state, unlabeled)
 
       expect(designation).to.equal(null)
     })

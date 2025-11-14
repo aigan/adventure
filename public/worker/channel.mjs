@@ -5,7 +5,6 @@ import { State } from './state.mjs';
 import { Belief } from './belief.mjs';
 import { Archetype } from './archetype.mjs';
 import { Session } from './session.mjs';
-//log('Loading Channel');
 
 /** @type {BroadcastChannel|null} */
 let channel = null;
@@ -35,6 +34,8 @@ export const dispatch = {
 	/** @param {{client_id: number}} param0 */
 	query_adventure({client_id}){
 		assert(session instanceof Session, 'session not initialized');
+		assert(session.world, 'session.world not initialized');
+		assert(session.state, 'session.state not initialized');
 		// Return current session state info
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "adventure_info",
@@ -181,6 +182,7 @@ export const dispatch = {
 	/** @param {{id: string|number, client_id: number}} param0 */
 	query_entity({id, client_id}){
 		assert(session instanceof Session, 'session not initialized');
+		assert(session.state, 'session.state not initialized');
 		id = Number(id);
 		//log("query_entity", id);
 
