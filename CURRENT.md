@@ -27,6 +27,20 @@ See [CHANGELOG.md](CHANGELOG.md) for older completed work.
 
 ## Backlog
 
+- [ ] **Observation and Recognition System** - Implement trait-based observation and acquaintance-based recognition ([spec](docs/notes/observation_recognition_spec.md))
+  - Meta-traits: `@about` (identification), `@subject` (identity), `@acquaintance` (familiarity), `@source` (origin)
+  - Observation based on trait exposure (visual, tactile, spatial, internal)
+  - Recognition based on acquaintance level (intimate, familiar, slight, null)
+  - Minds observe entities from parent mind, creating beliefs in own mind
+  - Supports misidentification, context-dependent recognition, belief updates
+  - Foundation for LOOK command and NPC perception
+- [ ] **Message Enrichment** - Resolve subject IDs to Belief instances before handlers execute ([plan](docs/plans/message-enrichment.md))
+  - Convert GUI's subject IDs (sids) to Belief instances with state context
+  - Default actor to `session.player` if not specified
+  - Provide session, state, and resolved beliefs to handlers
+  - Adapts old system's enrichment pattern for immutable architecture
+  - **Prerequisite**: Action handlers must be implemented first
+  - Makes handlers clean: `handler({actor: Belief, target: Belief, state: State})`
 - [ ] **Lazy Version Propagation with Group Minds** - Enable efficient shared belief updates ([plan](docs/plans/lazy-version-propagation.md))
   - NPCs reference sibling group_mind states as bases
   - Cultural knowledge updates create new group_mind states

@@ -353,8 +353,21 @@ export class Mind {
       }
     }
 
+    // Patch origin_state on beliefs AFTER states are loaded
+    // This enables reverse index building during trait finalization
+    for (const belief_data of data.belief) {
+      const belief = DB.get_belief_by_id(belief_data._id)
+      if (belief && belief_data.origin_state != null) {
+        const origin_state = DB.get_state_by_id(belief_data.origin_state)
+        if (origin_state) {
+          belief.origin_state = origin_state
+        }
+      }
+    }
+
     // Finalize beliefs for THIS mind (resolve State/Mind references in traits)
     // Do this AFTER loading nested minds so all State/Mind references can be resolved
+    // This also builds reverse indexes now that origin_state is set
     for (const belief_data of data.belief) {
       const belief = DB.get_belief_by_id(belief_data._id)
       if (belief) {

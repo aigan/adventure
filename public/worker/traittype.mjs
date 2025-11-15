@@ -161,6 +161,16 @@ export class Traittype {
   }
 
   /**
+   * Determine if this trait type stores Subject references (for reverse indexing)
+   * True for 'Subject' type and all archetype types (Location, Actor, etc.)
+   * Getter allows runtime archetype lookup (archetypes registered after traittypes)
+   * @returns {boolean}
+   */
+  get is_subject_reference() {
+    return this.data_type === 'Subject' || !!Archetype.get_by_label(this.data_type)
+  }
+
+  /**
    * Deserialize trait value from JSON (handles all JSON value types)
    * Called during JSON deserialization only
    * @param {Belief} belief - Belief being deserialized (for context)
@@ -180,15 +190,8 @@ export class Traittype {
     }
 
     // Handle number sids - convert to Subjects for reference types
-    if (typeof value === 'number') {
-      // Subject type or Archetype-based types (e.g., 'Location') are references
-      // Subject is not an Archetype, so needs explicit check
-      const is_reference_type = Archetype.get_by_label(this.data_type) || this.data_type === 'Subject'
-
-      if (is_reference_type) {
-        const ground_mind = belief.in_mind.parent
-        return DB.get_or_create_subject(ground_mind, value)
-      }
+    if (typeof value === 'number' && this.is_subject_reference) {
+      return DB.get_or_create_subject(belief.in_mind.parent, value)
     }
 
     // Primitives and literal numbers

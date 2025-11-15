@@ -187,22 +187,22 @@ const traittypes = {
     type: 'string',
     exposure: 'visual'
   },
-  
+
   weight: {
     type: 'number',
     exposure: 'tactile'
   },
-  
+
   location: {
     type: 'Location',
     exposure: 'spatial'
   },
-  
+
   mind_states: {
     type: 'State',
     exposure: 'internal'  // not directly observable
   },
-  
+
   nervousness: {
     type: 'string',
     exposure: 'behavioral'  // observable through actions
@@ -347,13 +347,13 @@ When observing an entity:
 ```
 IF @about is set (from prior identification)
   → Use that identity (might be wrong)
-  
+
 ELSE IF @acquaintance exists for this entity
   IF acquaintance level permits recognition in this context
     → Recognize (set @about, update existing belief)
   ELSE
     → Don't recognize (create new belief or leave @about null)
-    
+
 ELSE
   → Trait matching required (story-specific logic)
 ```
@@ -419,7 +419,7 @@ Mind.prototype.create_knowledge_about(outer_entity, traits_override = {}) {
       @source: null
     }
   });
-  
+
   return belief;
 }
 ```
@@ -585,7 +585,7 @@ Traittype.resolve(mind, data) {
     // Validate and return as-is
     return data;
   }
-  
+
   // Regular trait resolution logic
   // ...
 }

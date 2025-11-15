@@ -349,7 +349,7 @@ export function get_or_create_subject(ground_mind, sid = null) {
  * @param {Subject} about_subject - Subject to find beliefs about
  * @returns {Array<Belief>} Array of beliefs about the subject visible in this state
  */
-export function find_beliefs_about_subject_in_state(state, about_subject) {
+export function find_beliefs_about_subject_in_state(state, about_subject) { // FIXME: replace
   const results = []
 
   // Search beliefs visible in this state (includes inherited knowledge from base chain)

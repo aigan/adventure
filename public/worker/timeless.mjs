@@ -43,7 +43,7 @@ export class Timeless {
    * NOTE: ground_state must be set before calling this
    * @param {Mind} mind - Mind this timeless state belongs to
    */
-  _init(mind) {
+  _init(mind) { // FIXME: use common init
     // Initialize all State properties without calling State constructor
     this._id = next_id()
     this.in_mind = mind
@@ -64,6 +64,10 @@ export class Timeless {
     this._branches = []
     /** @type {Map<number, import('./belief.mjs').Belief>|null} */
     this._subject_index = null
+
+    this._rev_base = new Map()
+    this._rev_add = new Map()
+    this._rev_del = new Map()
 
     // Register with mind and global DB
     // Timeless extends State via runtime prototype manipulation (_setup_timeless_inheritance)

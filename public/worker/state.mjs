@@ -166,8 +166,92 @@ export class State {
      */
     this._subject_index = null
 
+    this._rev_base = new Map()
+    this._rev_add = new Map()
+    this._rev_del = new Map()
+
     this.in_mind.register_state(this)
     DB.register_state(this)
+  }
+
+  /**
+   * Add belief to reverse index for a subject's trait
+   * Maintains skip list pointer to previous state with changes
+   * @param {Subject} subject - Subject being referenced
+   * @param {Traittype} trait_type - Traittype object
+   * @param {Belief} belief - Belief containing the reference
+   */
+  rev_add(subject, trait_type, belief) {
+    let by_subject = this._rev_add.get(subject);
+    if (!by_subject) {
+      this._rev_add.set(subject, by_subject = new Map());
+    }
+
+    let beliefs = by_subject.get(trait_type);
+    if (!beliefs) {
+      by_subject.set(trait_type, beliefs = new Set());
+
+      // First operation for this (subject, traittype) - set skip list pointer
+      this._set_rev_base_pointer(subject, trait_type);
+    }
+
+    beliefs.add(belief);
+  }
+
+  /**
+   * Remove belief from reverse index for a subject's trait
+   * Maintains skip list pointer to previous state with changes
+   * @param {Subject} subject - Subject being referenced
+   * @param {Traittype} trait_type - Traittype object
+   * @param {Belief} belief - Belief containing the reference
+   */
+  rev_del(subject, trait_type, belief) {
+    let by_subject = this._rev_del.get(subject);
+    if (!by_subject) {
+      this._rev_del.set(subject, by_subject = new Map());
+    }
+
+    let beliefs = by_subject.get(trait_type);
+    if (!beliefs) {
+      by_subject.set(trait_type, beliefs = new Set());
+
+      // First operation for this (subject, traittype) - set skip list pointer
+      this._set_rev_base_pointer(subject, trait_type);
+    }
+
+    beliefs.add(belief);
+  }
+
+  /**
+   * Set skip list pointer to previous state with changes for (subject, traittype)
+   * Called on first rev_add or rev_del operation for a (subject, traittype) pair
+   * @param {Subject} subject - Subject being referenced
+   * @param {Traittype} trait_type - Traittype object
+   * @private
+   */
+  _set_rev_base_pointer(subject, trait_type) {
+    // Walk base chain to find previous state with changes
+    for (let s = this.base; s; s = s.base) {
+      const has_add = s._rev_add.get(subject)?.has(trait_type)
+      const has_del = s._rev_del.get(subject)?.has(trait_type)
+
+      if (has_add || has_del) {
+        // Found previous state with changes - set pointer
+        let base_by_subject = this._rev_base.get(subject)
+        if (!base_by_subject) {
+          this._rev_base.set(subject, base_by_subject = new Map())
+        }
+        base_by_subject.set(trait_type, s)
+        return
+      }
+    }
+
+    // No previous state with changes - set null to mark end of chain
+    let base_by_subject = this._rev_base.get(subject)
+    if (!base_by_subject) {
+      this._rev_base.set(subject, base_by_subject = new Map())
+    }
+    base_by_subject.set(trait_type, null)
   }
 
   /**
@@ -300,6 +384,18 @@ export class State {
    */
   remove_beliefs(...beliefs) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
+
+    // Clean up reverse index for removed beliefs
+    for (const belief of beliefs) {
+      for (const [trait_name, value] of belief._traits) {
+        const traittype = Traittype.get_by_label(trait_name)
+        if (traittype?.is_subject_reference) {
+          for (const subject of belief._extract_subjects(value)) {
+            this.rev_del(subject, traittype, belief)
+          }
+        }
+      }
+    }
 
     this.remove.push(...beliefs)
   }
@@ -798,6 +894,7 @@ export class State {
       remove.push(belief)
     }
 
+    // FIXME: use common init
     // Create fully materialized state
     const state = Object.create(State.prototype)
     state._id = data._id
@@ -812,6 +909,10 @@ export class State {
     state._branches = []
     state.locked = false
     state._subject_index = null
+
+    state._rev_base = new Map()
+    state._rev_add = new Map()
+    state._rev_del = new Map()
 
     // Register in global registry
     DB.register_state(state)

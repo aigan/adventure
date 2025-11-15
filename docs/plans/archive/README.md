@@ -15,6 +15,7 @@ This directory contains completed planning documents. The valuable information f
 - `terminology.md` - Terminology clarification (Subject, Topic, Entity, etc.)
 - `old-system-reference.md` - Analysis of lab/ancient-worker/ (historical reference)
 - `testing-setup.md` - Manual testing guide (now superseded by test/.CONTEXT.md)
+- `exposure-metadata.md` - Enum datatypes and exposure metadata (completed 2025-11-09)
 
 **Where the content went:**
 - Message protocol documentation → `docs/IMPLEMENTATION.md` (Message Protocol section)

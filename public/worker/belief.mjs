@@ -50,6 +50,7 @@ import { State } from './state.mjs'
  * @property {string[]} archetypes - Archetype labels for this belief
  * @property {(string|number)[]} bases - Base archetype labels or belief _ids
  * @property {Object<string, SerializedTraitValue>} traits - Trait values (sids, primitives, or references)
+ * @property {number|null} origin_state - State _id where this belief was created (null for shared beliefs)
  */
 
 /**
@@ -87,7 +88,7 @@ export class Belief {
     this._id = next_id()
     /** @type {Mind} */
     this.in_mind = mind
-    this._traits = new Map()
+    this._traits = new Map() // FIXME: Use traittype objects as keys
     this._locked = false
     /** @type {Map<string, any>} */
     this._cache = new Map()
@@ -114,6 +115,75 @@ export class Belief {
   get is_shared() {
     // Shared beliefs live in Eidos - the realm of forms
     return this.in_mind === eidos()
+  }
+
+  /**
+   * Extract Subject references from a trait value
+   * @param {*} value - Trait value (Subject, array, primitive, etc.)
+   * @returns {Subject[]} Array of Subjects found in value
+   * @private
+   */
+  _extract_subjects(value) {
+    if (value instanceof Subject) {
+      return [value]
+    } else if (Array.isArray(value)) {
+      return value.filter(item => item instanceof Subject)
+    } else {
+      return []
+    }
+  }
+
+  /**
+   * Set trait value and update reverse index
+   * Computes diff between old and new values to minimize index updates
+   * @param {string} trait_name - Trait name
+   * @param {*} new_value - New trait value
+   * @private
+   */
+  _set_trait(trait_name, new_value) {
+    assert(this.origin_state, 'origin_state required for _set_trait', {belief_id: this._id, trait_name})
+
+    const traittype = Traittype.get_by_label(trait_name)
+    assert(traittype, `Traittype '${trait_name}' not found`, {belief_id: this._id, trait_name})
+
+    // Only track reverse graph edges for Subject references
+    // Primitives, States, Minds don't create searchable graph relationships
+    if (!traittype.is_subject_reference) {
+      this._traits.set(trait_name, new_value)
+      return
+    }
+
+    // Get old value from THIS belief's direct traits only (not inherited)
+    // Inherited values belong to base beliefs and are tracked separately
+    const old_value = this._traits.get(trait_name)
+    const old_subjects = this._extract_subjects(old_value)
+    const new_subjects = this._extract_subjects(new_value)
+
+    // Compute diff - efficient single-pass algorithm
+    const old_set = new Set(old_subjects)
+    const to_add = []
+
+    for (const subject of new_subjects) {
+      if (old_set.has(subject)) {
+        old_set.delete(subject)  // Mark as kept
+      } else {
+        to_add.push(subject)     // New subject
+      }
+    }
+
+    const to_remove = [...old_set]
+
+    // Update reverse graph edges
+    for (const subject of to_remove) {
+      this.origin_state.rev_del(subject, traittype, this)
+    }
+
+    for (const subject of to_add) {
+      this.origin_state.rev_add(subject, traittype, this)
+    }
+
+    // Set the new value
+    this._traits.set(trait_name, new_value)
   }
 
   /**
@@ -161,7 +231,7 @@ export class Belief {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
     // Invalidate cache when trait is added/changed
-    this._cache.clear()
+    this._cache.clear() // FIXME: Not needed if only using cache on locked. IF we want to use this, it should be moved to _set_trait()
 
     const traittype = Traittype.get_by_label(label)
     assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
@@ -175,7 +245,7 @@ export class Belief {
       }
     }
 
-    this._traits.set(label, data)
+    this._set_trait(label, data)
   }
 
   /**
@@ -262,6 +332,51 @@ export class Belief {
     if (this.locked) this._set_cache(trait_name, value)
 
     return value
+  }
+
+  /**
+   * Get beliefs that reference this belief via a trait (reverse lookup)
+   * Inverse of get_trait(): finds all beliefs where belief.get_trait(state, trait_name) includes this.subject
+   * Uses skip list to efficiently traverse only states with relevant changes
+   * @param {State} state - State to query
+   * @param {string} trait_name - Trait name to find reverse references for
+   * @returns {Belief[]} Beliefs in state that reference this belief's subject via trait_name
+   */
+  rev_trait(state, trait_name) { // FIXME: make it a generator
+    assert(state instanceof State, 'rev_trait requires State', {belief_id: this._id, trait_name})
+
+    const traittype = Traittype.get_by_label(trait_name)
+    if (!traittype) return []
+
+    const seen = new Set()
+    const results = new Set()
+
+    // Walk skip list - only visit states with changes for this (subject, traittype)
+    let current = state
+    while (current) {
+      // Add all deletions to seen set
+      const del_beliefs = current._rev_del.get(this.subject)?.get(traittype)
+      if (del_beliefs) {
+        for (const belief of del_beliefs) {
+          seen.add(belief._id)
+        }
+      }
+
+      // Add all additions (not in seen) to results
+      const add_beliefs = current._rev_add.get(this.subject)?.get(traittype)
+      if (add_beliefs) {
+        for (const belief of add_beliefs) {
+          if (!seen.has(belief._id)) {
+            results.add(belief)
+          }
+        }
+      }
+
+      // Follow skip list pointer to next state with changes, or walk base chain
+      current = current._rev_base.get(this.subject)?.get(traittype) ?? current.base
+    }
+
+    return [...results]
   }
 
   /**
@@ -598,7 +713,8 @@ export class Belief {
       bases: [...this._bases].map(b => b instanceof Archetype ? b.label : b._id),
       traits: Object.fromEntries(
         [...this._traits].map(([k, v]) => [k, Traittype.serializeTraitValue(v)])
-      )
+      ),
+      origin_state: this.origin_state?._id ?? null
     }
   }
 
@@ -658,7 +774,7 @@ export class Belief {
     for (const [trait_name, trait_value] of this._traits) {
       const traittype = Traittype.get_by_label(trait_name)
       if (traittype) {
-        this._traits.set(trait_name, traittype.deserialize_value(this, trait_value))
+        this._set_trait(trait_name, traittype.deserialize_value(this, trait_value))
       }
       // If no traittype found, keep value as-is
     }
@@ -701,6 +817,7 @@ export class Belief {
 
     // Copy traits as-is - sids, primitives, and State/Mind reference objects
     // Resolution happens via _finalize_traits_from_json() after all entities loaded
+    // Use raw _traits.set() to bypass reverse indexing (origin_state not set yet)
     belief._traits = new Map()
     for (const [trait_name, trait_value] of Object.entries(data.traits)) {
       belief._traits.set(trait_name, trait_value)
