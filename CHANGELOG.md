@@ -82,7 +82,6 @@ All notable changes to this project will be documented in this file.
 - Enables prototype-based knowledge sharing (e.g., player inheriting Villager cultural knowledge)
 
 ### Belief Recognition
-- `DB.find_beliefs_about_subject_in_state(state, about_subject)` - Changed signature to take state instead of mind
 - `recognize()` properly identifies inherited beliefs from base state chain (prevents duplicate beliefs)
 - Knowledge beliefs now version correctly when extending inherited knowledge
 

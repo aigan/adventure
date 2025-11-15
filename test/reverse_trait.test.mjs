@@ -17,12 +17,15 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
     Traittype.register('name', new Traittype('name', 'string'))
 
     // Add traits to archetypes
+    const container_traittype = Traittype.get_by_label('container')
+    const name_traittype = Traittype.get_by_label('name')
+
     const portableObject = Archetype.get_by_label('PortableObject')
-    portableObject._traits_template.container = null
-    portableObject._traits_template.name = null
+    portableObject._traits_template.set(container_traittype, null)
+    portableObject._traits_template.set(name_traittype, null)
 
     const actor = Archetype.get_by_label('Actor')
-    actor._traits_template.name = null
+    actor._traits_template.set(name_traittype, null)
   })
 
   describe('Basic Functionality', () => {

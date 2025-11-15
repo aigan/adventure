@@ -1101,4 +1101,98 @@ describe('Belief', () => {
       expect(view2.traits.mind._ref).to.equal(view1.traits.mind._ref);
     });
   });
+
+  describe('get_slots()', () => {
+    it('returns all available trait slots from single archetype', () => {
+      const state = createStateInNewMind('test');
+      const ball = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        traits: {'@label': 'ball'}
+      });
+
+      const slots = [...ball.get_slots()];
+      const slot_labels = slots.map(tt => tt.label);
+
+      // Should include traits from PortableObject, ObjectPhysical, Thing
+      expect(slot_labels).to.include('@about'); // from Thing
+      expect(slot_labels).to.include('location'); // from ObjectPhysical
+      expect(slot_labels).to.include('color'); // from ObjectPhysical
+
+      // All slots should be Traittype instances
+      for (const slot of slots) {
+        expect(slot).to.be.instanceOf(Traittype);
+      }
+    });
+
+    it('returns unique slots from multiple archetypes', () => {
+      const state = createStateInNewMind('test');
+
+      // Person has bases: ['Actor', 'Mental']
+      // Both Actor and Mental have '@label', should only appear once
+      const person = Belief.from_template(state, {
+        bases: ['Person'],
+        traits: {'@label': 'alice'}
+      });
+
+      const slots = [...person.get_slots()];
+      const slot_labels = slots.map(tt => tt.label);
+
+      // Count occurrences of '@about' (appears in Thing, which both Actor and Mental inherit from)
+      const about_count = slot_labels.filter(l => l === '@about').length;
+      expect(about_count).to.equal(1, '@about should only appear once despite multiple bases');
+
+      // Should have traits from Actor, Mental, and Thing
+      expect(slot_labels).to.include('@about'); // from Thing
+      expect(slot_labels).to.include('location'); // from Actor (via ObjectPhysical)
+      expect(slot_labels).to.include('mind'); // from Mental
+    });
+
+    it('returns slots from belief with base belief', () => {
+      const state = createStateInNewMind('test');
+
+      const ball = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        traits: {'@label': 'ball'}
+      });
+
+      const ball_v2 = Belief.from_template(state, {
+        bases: [ball],
+        traits: {}
+      });
+
+      const slots = [...ball_v2.get_slots()];
+      const slot_labels = slots.map(tt => tt.label);
+
+      // Should inherit slots from base belief's archetypes
+      expect(slot_labels).to.include('@about'); // from Thing
+      expect(slot_labels).to.include('location'); // from ObjectPhysical
+      expect(slot_labels).to.include('color'); // from ObjectPhysical
+    });
+
+    it('returns slots for belief with both archetype and belief bases', () => {
+      const state = createStateInNewMind('test');
+
+      const ball = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        traits: {'@label': 'ball'}
+      });
+
+      // Create belief with both archetype and belief base
+      const combined = Belief.from_template(state, {
+        bases: ['Actor', ball], // Mixed bases
+        traits: {'@label': 'mobile_ball'}
+      });
+
+      const slots = [...combined.get_slots()];
+      const slot_labels = slots.map(tt => tt.label);
+
+      // Should have traits from both Actor and PortableObject
+      expect(slot_labels).to.include('location'); // from both
+      expect(slot_labels).to.include('color'); // from PortableObject
+
+      // No duplicates
+      const location_count = slot_labels.filter(l => l === 'location').length;
+      expect(location_count).to.equal(1, 'location should only appear once');
+    });
+  });
 });

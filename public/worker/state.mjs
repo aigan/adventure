@@ -374,6 +374,15 @@ export class State {
       assert(belief.origin_state === this,
         `Belief ${belief._id} origin_state mismatch: expected state ${this._id}, got ${belief.origin_state?._id}`,
         {belief_id: belief._id, expected_state: this._id, actual_state: belief.origin_state?._id})
+
+      // Add to reverse index for all subject-reference traits (including inherited)
+      for (const [traittype, value] of belief.get_traits()) {
+        if (traittype.is_subject_reference) {
+          for (const subject of belief.extract_subjects(value)) {
+            this.rev_add(subject, traittype, belief)
+          }
+        }
+      }
     }
     this.insert.push(...beliefs)
   }
@@ -387,7 +396,7 @@ export class State {
 
     // Clean up reverse index for removed beliefs
     for (const belief of beliefs) {
-      for (const [traittype, value] of belief._traits) {
+      for (const [traittype, value] of belief.get_traits()) {
         if (traittype.is_subject_reference) {
           for (const subject of belief.extract_subjects(value)) {
             this.rev_del(subject, traittype, belief)
@@ -424,7 +433,7 @@ export class State {
     this.lock()
     const new_state = this.branch_state(this.ground_state, vt)
     const new_belief = Belief.from_template(new_state, {sid: belief.subject.sid, bases: [belief], traits})
-    new_state.remove.push(belief)
+    new_state.remove_beliefs(belief)
     new_state.lock()
     return new_state
   }
@@ -504,13 +513,18 @@ export class State {
    * @returns {Array<Belief>} Ranked list of matching beliefs (max 3)
    */
   recognize(source_belief) {
-    // Delegate to DB for efficient lookup
-    // DB handles searching both base chain (inherited knowledge) and
-    // beliefs in this mind (temporal knowledge accumulation)
-    const beliefs_about_subject = DB.find_beliefs_about_subject_in_state(
-      this,
-      source_belief.subject
-    )
+    // Find beliefs in this state where @about points to source_belief.subject
+    // Uses reverse trait index for efficient lookup (only returns visible beliefs)
+    const about_traittype = Traittype.get_by_label('@about')
+    assert(about_traittype, "Traittype '@about' not found in registry")
+
+    const query_state = this.ground_state ?? this.about_state
+    let about_belief = query_state?.get_belief_by_subject(source_belief.subject)
+    if (!about_belief) {
+      about_belief = source_belief.subject.get_shared_belief_by_state(query_state)
+    }
+
+    const beliefs_about_subject = about_belief?.rev_trait(this, about_traittype) ?? []
 
     // TODO: Sort by confidence (for now just return first 3)
     // TODO: Limit to explicit knowledge beliefs (not observation events, etc.)
@@ -556,7 +570,7 @@ export class State {
         ...copied_traits
       })
 
-      this.insert.push(new_belief)
+      this.insert_beliefs(new_belief)
       return new_belief
 
     } else {
@@ -585,7 +599,7 @@ export class State {
         traits: new_traits
       })
 
-      this.remove.push(existing_belief)
+      this.remove_beliefs(existing_belief)
       return updated_belief
     }
   }

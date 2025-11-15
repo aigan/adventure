@@ -450,6 +450,7 @@ describe('Traittype', () => {
       DB.reset_registries();
       const traittypes = {
         ...stdTypes,
+        '@label': 'string',
         '@form': {
           type: 'string',
           values: ['solid', 'liquid', 'vapor', 'intangible']

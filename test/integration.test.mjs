@@ -137,8 +137,8 @@ describe('Integration', () => {
       state.lock();
     });
 
-    it('prototypes with mind traits use find_beliefs_about_subject_in_state()', () => {
-      // Tests that knowledge about a subject can be queried using the helper
+    it('prototypes with mind traits can query knowledge using rev_trait()', () => {
+      // Tests that knowledge about a subject can be queried using rev_trait with @about
       DB.reset_registries();
 
       const traittypes = {
@@ -197,16 +197,14 @@ describe('Integration', () => {
         },
       });
 
-      // Verify using find_beliefs_about_subject_in_state()
+      // Verify using rev_trait() to find beliefs where @about points to workshop
       const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(state);
       const villager_mind = villager.get_trait(state, Traittype.get_by_label('mind'));
       const villager_mind_state = [...villager_mind.states_at_tt(0)][0];
 
       const workshop = state.get_belief_by_label('workshop');
-      const knowledge_about_workshop = DB.find_beliefs_about_subject_in_state(
-        villager_mind_state,
-        workshop.subject
-      );
+      const about_traittype = Traittype.get_by_label('@about');
+      const knowledge_about_workshop = workshop.rev_trait(villager_mind_state, about_traittype);
 
       // Villager mind should have exactly one belief about workshop
       expect(knowledge_about_workshop.length).to.equal(1);
@@ -221,6 +219,287 @@ describe('Integration', () => {
       expect(knowledge_archetypes).to.include('Location');
 
       state.lock();
+    });
+
+    it('finds no beliefs when subject is unknown to mind', () => {
+      // Test that function returns empty array when no knowledge exists
+      DB.reset_registries();
+
+      const traittypes = {
+        '@about': {
+          type: 'Subject',
+          mind: 'parent'
+        },
+        location: 'Location',
+        mind: 'Mind',
+      };
+
+      const archetypes = {
+        Thing: {
+          traits: {
+            '@about': null,
+          },
+        },
+        Location: {
+          bases: ['Thing'],
+          traits: {
+            location: null,
+          },
+        },
+        Mental: {
+          bases: ['Thing'],
+          traits: {
+            mind: null,
+          },
+        },
+        Person: {
+          bases: ['Mental'],
+        },
+      };
+
+      DB.register(traittypes, archetypes, {});
+
+      // Create world with workshop
+      const world_mind = new Mind(logos(), 'world');
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
+
+      world_state.add_beliefs_from_template({
+        workshop: {
+          bases: ['Location'],
+        },
+      });
+
+      const workshop = world_state.get_belief_by_label('workshop');
+
+      // Create NPC with mind but NO knowledge about workshop
+      world_state.add_beliefs_from_template({
+        npc: {
+          bases: ['Person'],
+          traits: {
+            mind: {}  // Empty mind - no knowledge
+          }
+        }
+      });
+
+      world_state.lock();
+
+      const npc = world_state.get_belief_by_label('npc');
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'));
+      const npc_state = [...npc_mind.states_at_tt(world_state.vt)][0];
+
+      // Query for beliefs about workshop in NPC's mind - should be empty
+      const about_traittype = Traittype.get_by_label('@about');
+      const beliefs_about_workshop = workshop.rev_trait(npc_state, about_traittype);
+
+      expect(beliefs_about_workshop).to.be.an('array');
+      expect(beliefs_about_workshop.length).to.equal(0);
+    });
+
+    it('finds beliefs across temporal versions (knowledge accumulation)', () => {
+      // Test knowledge accumulation over multiple time steps
+      DB.reset_registries();
+
+      const traittypes = {
+        '@about': {
+          type: 'Subject',
+          mind: 'parent'
+        },
+        location: 'Location',
+        color: 'string',
+        weight: 'number',
+        mind: 'Mind',
+      };
+
+      const archetypes = {
+        Thing: {
+          traits: {
+            '@about': null,
+          },
+        },
+        Location: {
+          bases: ['Thing'],
+        },
+        ObjectPhysical: {
+          bases: ['Thing'],
+          traits: {
+            location: null,
+            color: null,
+            weight: null,
+          },
+        },
+        Mental: {
+          bases: ['Thing'],
+          traits: {
+            mind: null,
+          },
+        },
+        Person: {
+          bases: ['Mental'],
+        },
+      };
+
+      DB.register(traittypes, archetypes, {});
+
+      // Create world with hammer
+      const world_mind = new Mind(logos(), 'world');
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
+
+      world_state.add_beliefs_from_template({
+        workshop: {
+          bases: ['Location'],
+        },
+        hammer: {
+          bases: ['ObjectPhysical'],
+          traits: {
+            location: 'workshop',
+            color: 'grey',
+            weight: 5,
+          }
+        },
+        npc: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              hammer: ['location']  // Learn location at tt=1
+            }
+          }
+        }
+      });
+
+      world_state.lock();
+
+      const npc = world_state.get_belief_by_label('npc');
+      const hammer = world_state.get_belief_by_label('hammer');
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'));
+      const state1 = [...npc_mind.states_at_tt(world_state.vt)][0];
+
+      // At tt=1, should have 1 belief about hammer (location only)
+      const about_traittype = Traittype.get_by_label('@about');
+      let beliefs_about_hammer = hammer.rev_trait(state1, about_traittype);
+      expect(beliefs_about_hammer.length).to.equal(1);
+
+      const knowledge1 = beliefs_about_hammer[0];
+      const location_trait = knowledge1.get_trait(state1, Traittype.get_by_label('location'));
+      expect(location_trait).to.not.be.null;
+
+      // Learn more about hammer at tt=2 (color)
+      const state2 = state1.branch_state(world_state, 2);
+      state2.learn_about(hammer, {traits: ['color']});
+      state2.lock();
+
+      // Should still have 1 belief (versioned with new trait)
+      beliefs_about_hammer = hammer.rev_trait(state2, about_traittype);
+      expect(beliefs_about_hammer.length).to.equal(1);
+
+      const knowledge2 = beliefs_about_hammer[0];
+      const color_trait = knowledge2.get_trait(state2, Traittype.get_by_label('color'));
+      expect(color_trait).to.equal('grey');
+
+      // Learn weight at tt=3
+      const state3 = state2.branch_state(world_state, 3);
+      state3.learn_about(hammer, {traits: ['weight']});
+      state3.lock();
+
+      // Should still have 1 belief (further versioned)
+      beliefs_about_hammer = hammer.rev_trait(state3, about_traittype);
+      expect(beliefs_about_hammer.length).to.equal(1);
+
+      const knowledge3 = beliefs_about_hammer[0];
+      const weight_trait = knowledge3.get_trait(state3, Traittype.get_by_label('weight'));
+      expect(weight_trait).to.equal(5);
+    });
+
+    it('finds beliefs inherited through prototype bases', () => {
+      // Test that knowledge inherited from prototypes is found
+      DB.reset_registries();
+
+      const traittypes = {
+        '@about': {
+          type: 'Subject',
+          mind: 'parent'
+        },
+        location: 'Location',
+        color: 'string',
+        mind: 'Mind',
+      };
+
+      const archetypes = {
+        Thing: {
+          traits: {
+            '@about': null,
+          },
+        },
+        Location: {
+          bases: ['Thing'],
+        },
+        ObjectPhysical: {
+          bases: ['Thing'],
+          traits: {
+            location: null,
+            color: null,
+          },
+        },
+        Mental: {
+          bases: ['Thing'],
+          traits: {
+            mind: null,
+          },
+        },
+        Person: {
+          bases: ['Mental'],
+        },
+      };
+
+      DB.register(traittypes, archetypes, {});
+
+      // Create world
+      const world_mind = new Mind(logos(), 'world');
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
+
+      world_state.add_beliefs_from_template({
+        tavern: {
+          bases: ['Location'],
+        },
+      });
+
+      // Create villager PROTOTYPE with knowledge about tavern
+      world_state.add_shared_from_template({
+        VillagerProto: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              tavern: ['location']
+            }
+          }
+        }
+      });
+
+      world_state.lock();
+
+      const tavern = world_state.get_belief_by_label('tavern');
+      const villager_proto = DB.get_subject_by_label('VillagerProto').get_shared_belief_by_state(world_state);
+
+      // Create specific villager instance (inherits prototype's knowledge)
+      const world_state2 = world_state.branch_state(logos().origin_state, 2);
+      world_state2.add_beliefs_from_template({
+        bob: {
+          bases: [villager_proto],
+          traits: {}  // Inherits mind from prototype
+        }
+      });
+      world_state2.lock();
+
+      const bob = world_state2.get_belief_by_label('bob');
+      const bob_mind = bob.get_trait(world_state2, Traittype.get_by_label('mind'));
+      const bob_state = [...bob_mind.states_at_tt(0)][0];
+
+      // Bob's mind should find knowledge about tavern (inherited from prototype)
+      const about_traittype = Traittype.get_by_label('@about');
+      const beliefs_about_tavern = tavern.rev_trait(bob_state, about_traittype);
+
+      expect(beliefs_about_tavern.length).to.be.at.least(1);
+      const knowledge = beliefs_about_tavern[0];
+      expect(knowledge.get_trait(bob_state, Traittype.get_by_label('@about'))).to.equal(tavern.subject);
     });
 
     it('recreates world.mjs setup and verifies structure', () => {

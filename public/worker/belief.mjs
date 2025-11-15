@@ -241,12 +241,12 @@ export class Belief {
   /**
    * Get trait value from this belief only (does not check bases)
    * Polymorphic interface - matches Archetype.get_own_trait_value()
-   * @param {string} name - Trait name
+   * @param {Traittype} traittype - Trait type
    * @returns {any} Trait value or undefined if not found
    */
-  get_own_trait_value(name) {
-    const traittype = Traittype.get_by_label(name)
-    return traittype ? this._traits.get(traittype) : undefined
+  get_own_trait_value(traittype) {
+    assert(traittype instanceof Traittype, "get_own_trait_value requires Traittype", {belief_id: this._id, traittype})
+    return this._traits.get(traittype)
   }
 
   /**
@@ -267,7 +267,7 @@ export class Belief {
   can_have_trait(traittype) {
     assert(traittype instanceof Traittype, 'can_have_trait requires Traittype', {belief_id: this._id, traittype})
     for (const archetype of this.get_archetypes()) {
-      if (archetype.has_trait(traittype.label)) return true
+      if (archetype.has_trait(traittype)) return true
     }
     return false
   }
@@ -294,7 +294,7 @@ export class Belief {
       seen.add(base)
 
       // Check for value - early return when found
-      value = base.get_own_trait_value(traittype.label)
+      value = base.get_own_trait_value(traittype)
       if (value !== undefined) return value
 
       // Continue to next level
@@ -341,6 +341,7 @@ export class Belief {
     assert(state instanceof State, 'rev_trait requires State', {belief_id: this._id, traittype: traittype?.label})
     assert(traittype instanceof Traittype, 'rev_trait requires Traittype', {belief_id: this._id, traittype})
 
+    // FIXME: Update the trait indexes here instead of on modify
     const seen = new Set()
     const results = new Set()
 
@@ -390,8 +391,8 @@ export class Belief {
       if (!base || seen.has(base)) continue
       seen.add(base)
 
-      // Use label for polymorphism - Archetype uses strings, Belief will be updated to use Traittype
-      const value = base.get_own_trait_value(traittype.label)
+      // Polymorphic call - both Archetype and Belief accept Traittype
+      const value = base.get_own_trait_value(traittype)
 
       if (value !== undefined) {
         if (value !== null) values.push(value)
@@ -456,11 +457,9 @@ export class Belief {
       if (!base || seen.has(base)) continue
       seen.add(base)
 
-      for (const [key, trait_value] of base.get_trait_entries()) {
-        // Handle polymorphism: Archetype yields [string, value], Belief yields [Traittype, value]
-        const traittype = (typeof key === 'string') ? Traittype.get_by_label(key) : key
-
-        if (traittype && !yielded.has(traittype)) {
+      for (const [traittype, trait_value] of base.get_trait_entries()) {
+        // Polymorphic interface - both Archetype and Belief yield [Traittype, value]
+        if (!yielded.has(traittype)) {
           let value = trait_value
           const derived_value = traittype.get_derived_value(this)
           if (derived_value !== undefined) value = derived_value
@@ -488,16 +487,16 @@ export class Belief {
   /**
    * Iterate over available trait slots from archetypes
    * Shows what traits CAN be set based on archetype composition
-   * @returns {Generator<string>} Yields trait names available from archetypes
+   * @returns {Generator<Traittype>} Yields traittypes available from archetypes
    */
   *get_slots() {
     const yielded = new Set()
 
     for (const archetype of this.get_archetypes()) {
-      for (const trait_name of Object.keys(archetype._traits_template)) {
-        if (!yielded.has(trait_name)) {
-          yield trait_name
-          yielded.add(trait_name)
+      for (const traittype of archetype._traits_template.keys()) {
+        if (!yielded.has(traittype)) {
+          yield traittype
+          yielded.add(traittype)
         }
       }
     }

@@ -324,63 +324,6 @@ export function get_or_create_subject(ground_mind, sid = null) {
   }
   return /** @type {Subject} */ (subject_by_sid.get(sid))
 }
-
-/**
- * Find all beliefs in a state that are about a given subject
- * Returns ONLY beliefs visible in the state (through base chain, insert, remove)
- *
- * PERFORMANCE: O(n) iteration over all beliefs in state - REQUIRES INDEX FOR SCALE
- * Current: Iterates state.get_beliefs() which walks base chain + insert/remove
- * Problem: With millions of beliefs, this is too slow even for a single query
- * Solution needed: belief_by_about index
- *
- * Future implementation with index:
- *   1. belief_by_about.get(about_subject) → Set<Belief> (all beliefs about this subject)
- *   2. Filter by state.is_visible(belief) → only beliefs visible in this state
- *   3. Complexity: O(beliefs about subject) instead of O(all beliefs)
- *
- * With external DB:
- *   SELECT b.* FROM beliefs b
- *   JOIN belief_about_index i ON b.id = i.belief_id
- *   WHERE i.about_subject = ?
- *   AND visible_in_state(?, b.id)
- *
- * @param {State} state - State to search in
- * @param {Subject} about_subject - Subject to find beliefs about
- * @returns {Array<Belief>} Array of beliefs about the subject visible in this state
- */
-export function find_beliefs_about_subject_in_state(state, about_subject) { // FIXME: replace
-  const results = []
-
-  // Search beliefs visible in this state (includes inherited knowledge from base chain)
-  // TODO: Replace with index lookup when belief_by_about is implemented
-  for (const belief of state.get_beliefs()) {
-    // Compare what the belief is ABOUT, not the belief's own subject
-    // Mind beliefs are "knowledge about X", so we check @about trait
-    const about_belief = belief.get_about(state)
-    const found_subject = about_belief?.subject
-
-    if (found_subject === about_subject) {
-      results.push(belief)
-    }
-  }
-
-  return results
-}
-
-/**
- * Get the belief for a state and subject
- * Returns the belief in state.in_mind where @about points to about_subject
- * @param {State} state - State to search in
- * @param {Subject} about_subject - Subject that the belief is about
- * @returns {Belief|null} The belief about the subject, or null
- */
-export function get_belief_for_state_subject(state, about_subject) {
-  const results = find_beliefs_about_subject_in_state(state, about_subject)
-  return results.length > 0 ? results[0] : null
-}
-
-
 /**
  * Register state in registries
  * @param {State} state - State to register

@@ -20,12 +20,13 @@
 
 import { assert } from './debug.mjs'
 import * as DB from './db.mjs'
+import { Traittype } from './traittype.mjs'
 
 /**
  * Archetype definition for beliefs
  * @property {string} label - Archetype identifier
  * @property {Set<Archetype>} _bases - Base archetypes
- * @property {Record<string, any>} _traits_template - Trait definitions (name -> default value or null)
+ * @property {Map<Traittype, any>} _traits_template - Trait definitions (traittype -> default value or null)
  */
 export class Archetype {
   /**
@@ -81,55 +82,64 @@ export class Archetype {
       this._bases.add(base)
     }
 
-    /** @type {Record<string, any>} */
-    this._traits_template = traits // FIXME: use Map with traittype as key
+    // Convert traits object to Map<Traittype, any>
+    // NOTE: Requires Traittypes to be registered before Archetypes (guaranteed by DB.register order)
+    /** @type {Map<Traittype, any>} */
+    this._traits_template = new Map()
+    for (const [trait_name, value] of Object.entries(traits)) {
+      const traittype = Traittype.get_by_label(trait_name)
+      assert(traittype, `Traittype '${trait_name}' not found in registry. Ensure DB.register() is called with traittypes before archetypes.`, {archetype: label, trait_name})
+      this._traits_template.set(traittype, value)
+    }
   }
 
   /**
    * Check if this archetype defines a trait (does not check bases)
-   * @param {string} name - Trait name
+   * @param {Traittype} traittype - Trait type
    * @returns {boolean}
    */
-  has_trait(name) {
-    return name in this._traits_template
+  has_trait(traittype) {
+    assert(traittype instanceof Traittype, "has_trait requires Traittype", {archetype: this.label, traittype})
+    return this._traits_template.has(traittype)
   }
 
   /**
    * Get trait value from this archetype only (does not check bases)
    * Polymorphic interface - matches Belief.get_own_trait_value()
-   * @param {string} name - Trait name
+   * @param {Traittype} traittype - Trait type
    * @returns {any} Trait template value or undefined if not found
    */
-  get_own_trait_value(name) {
-    return this._traits_template[name]
+  get_own_trait_value(traittype) {
+    assert(traittype instanceof Traittype, "get_own_trait_value requires Traittype", {archetype: this.label, traittype})
+    return this._traits_template.get(traittype)
   }
 
   /**
    * Get iterable over trait entries (polymorphic interface)
-   * Returns iterable of [key, value] pairs for trait operations collection
-   * @returns {Array<[string, any]>} Array of trait entries
+   * Returns iterable of [Traittype, value] pairs for trait operations collection
+   * @returns {IterableIterator<[Traittype, any]>} Iterator of trait entries
    */
   get_trait_entries() {
-    return Object.entries(this._traits_template)
+    return this._traits_template.entries()
   }
 
   /**
    * Iterate over all defined traits in this archetype's template including nulls (does not check bases)
-   * @returns {Generator<[string, any]>} Yields [trait_name, value] pairs
+   * @returns {Generator<[Traittype, any]>} Yields [traittype, value] pairs
    */
   *get_defined_traits() {
-    for (const [name, value] of Object.entries(this._traits_template)) {
-      yield [name, value]
+    for (const [traittype, value] of this._traits_template) {
+      yield [traittype, value]
     }
   }
 
   /**
    * Iterate over traits with non-null values in this archetype's template (does not check bases)
-   * @returns {Generator<[string, any]>} Yields [trait_name, value] pairs for set traits only
+   * @returns {Generator<[Traittype, any]>} Yields [traittype, value] pairs for set traits only
    */
   *get_traits() {
-    for (const pair of Object.entries(this._traits_template)) {
-      if (pair[1] != null) yield pair
+    for (const [traittype, value] of this._traits_template) {
+      if (value != null) yield [traittype, value]
     }
   }
 
