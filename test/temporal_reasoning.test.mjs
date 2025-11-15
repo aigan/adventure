@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { Mind, State, Belief , logos } from '../public/worker/cosmos.mjs'
+import { Mind, State, Belief, Traittype, logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 
@@ -61,7 +61,7 @@ describe('Temporal Reasoning', () => {
       world_state.lock()
 
       // Get NPC's mind (auto-created from trait spec)
-      const npc_mind = npc.get_trait(world_state, 'mind')
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
       expect(npc_mind).to.be.instanceOf(Mind)
 
       // Find the child mind's state
@@ -100,7 +100,7 @@ describe('Temporal Reasoning', () => {
       world_state.lock()
 
       // Get the npc's mind
-      const npc_mind = npc.get_trait(world_state, 'mind')
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
       expect(npc_mind).to.be.instanceOf(Mind)
 
       // Get the created mind state
@@ -127,7 +127,7 @@ describe('Temporal Reasoning', () => {
       })
 
       // Get NPC's mind (auto-created from trait spec)
-      const npc_mind = npc.get_trait(world_state, 'mind')
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Lock initial mind state before locking world_state
       const initial_npc_state = [...npc_mind.states_at_tt(world_state.vt)][0]
@@ -158,7 +158,7 @@ describe('Temporal Reasoning', () => {
       })
 
       // Get NPC's mind (auto-created from trait spec)
-      const npc_mind = npc.get_trait(world_state1, 'mind')
+      const npc_mind = npc.get_trait(world_state1, Traittype.get_by_label('mind'))
 
       // Lock initial mind state
       const initial_npc_state = [...npc_mind.states_at_tt(world_state1.vt)][0]
@@ -291,7 +291,7 @@ describe('Temporal Reasoning', () => {
       })
 
       // Get NPC's mind (auto-created from trait spec)
-      const npc_mind = npc.get_trait(world_state, 'mind')
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Lock initial mind state
       const initial_npc_state = [...npc_mind.states_at_tt(world_state.vt)][0]
@@ -334,7 +334,7 @@ describe('Temporal Reasoning', () => {
       world_state.lock()
 
       // Get NPC's mind (auto-created from trait spec)
-      const npc_mind = npc.get_trait(world_state, 'mind')
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Create memory states at different vt (using unlocked belief to avoid self lock error)
       const memory1 = new State(npc_mind, world_state, null, {vt: 100})
@@ -368,7 +368,7 @@ describe('Temporal Reasoning', () => {
       })
 
       // Get NPC's mind (auto-created from trait spec)
-      const npc_mind = npc.get_trait(world_state, 'mind')
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Lock initial mind state
       const initial_npc_state = [...npc_mind.states_at_tt(world_state.vt)][0]
@@ -404,7 +404,7 @@ describe('Temporal Reasoning', () => {
       world_state.lock()
 
       // Get NPC's mind (auto-created from trait spec)
-      const npc_mind = npc.get_trait(world_state, 'mind')
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Create plan states for different futures (using unlocked belief to avoid self lock error)
       const plan1 = new State(npc_mind, world_state, null, {vt: 150})
@@ -438,7 +438,7 @@ describe('Temporal Reasoning', () => {
       })
 
       // Get NPC's mind (auto-created from trait spec)
-      const npc_mind = npc.get_trait(world_state, 'mind')
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Lock initial mind state
       const initial_npc_state = [...npc_mind.states_at_tt(world_state.vt)][0]
@@ -476,7 +476,7 @@ describe('Temporal Reasoning', () => {
       })
 
       // Get NPC1's mind (auto-created from trait spec)
-      const npc1_mind = npc1.get_trait(world_state, 'mind')
+      const npc1_mind = npc1.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Get or create unlocked state for npc1
       const npc1_state = npc1_mind.get_or_create_open_state_for_ground(world_state, npc1)
@@ -491,7 +491,7 @@ describe('Temporal Reasoning', () => {
       })
 
       // Get NPC2's mind (auto-created from trait spec)
-      const npc2_model_mind = npc2_model.get_trait(npc1_state, 'mind')
+      const npc2_model_mind = npc2_model.get_trait(npc1_state, Traittype.get_by_label('mind'))
       const npc2_model_state = [...npc2_model_mind.states_at_tt(100)][0]
 
       world_state.lock()
@@ -524,7 +524,7 @@ describe('Temporal Reasoning', () => {
       world_state.lock()
 
       // Get NPC's mind (auto-created from trait spec)
-      const npc_mind = npc.get_trait(world_state, 'mind')
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
       const npc_state1 = [...npc_mind.states_at_tt(100)][0]
       npc_state1.lock()
 
@@ -555,7 +555,7 @@ describe('Temporal Reasoning', () => {
       world_state.lock()
 
       // Get NPC's mind (auto-created from trait spec)
-      const npc_mind = npc.get_trait(world_state, 'mind')
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Create multiple states at same tt (different possibilities)
       // Use null self to avoid locked belief error
@@ -597,7 +597,7 @@ describe('Temporal Reasoning', () => {
       world_state.lock()
 
       // Get NPC's mind (auto-created from trait spec)
-      const npc_mind = npc.get_trait(world_state, 'mind')
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Possibility A: NPC believes hammer is in workshop
       const poss_a = new State(npc_mind, world_state, null, {vt: 100})

@@ -2,6 +2,7 @@ import { expect } from 'chai'
 import { Session } from '../public/worker/session.mjs'
 import * as narrator from '../public/worker/narrator.mjs'
 import * as DB from '../public/worker/db.mjs'
+import { Traittype } from '../public/worker/traittype.mjs'
 import { stdTypes, Thing, createMindWithBeliefs } from './helpers.mjs'
 
 describe('Session', () => {
@@ -47,7 +48,8 @@ describe('Session', () => {
       const world = state.in_mind
       const player = state.get_belief_by_label('player')
 
-      const loc_subject = player.get_trait(state, 'location')
+      const location_traittype = Traittype.get_by_label('location')
+      const loc_subject = player.get_trait(state, location_traittype)
       const designation = narrator.desig(state, loc_subject)
 
       expect(designation).to.equal('workshop')

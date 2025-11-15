@@ -186,7 +186,8 @@ describe('Archetype', () => {
         bases: ['PortableObject']
       });
 
-      expect(hammer.get_trait(state, 'location')).to.equal(workshop.subject);
+      const location_traittype = Traittype.get_by_label('location');
+      expect(hammer.get_trait(state, location_traittype)).to.equal(workshop.subject);
     });
   });
 });

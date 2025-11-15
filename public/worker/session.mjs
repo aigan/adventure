@@ -11,6 +11,7 @@
  */
 
 import { log, assert } from "./debug.mjs"
+import { Traittype } from "./traittype.mjs"
 
 /**
  * Session class - manages the current game state
@@ -99,7 +100,9 @@ export class Session {
 
     const pl = this.player.subject
     const st = this.state
-    const loc = this.player.get_trait(st, 'location')
+    const location_traittype = Traittype.get_by_label('location')
+    assert(location_traittype, "Traittype 'location' not found in registry")
+    const loc = this.player.get_trait(st, location_traittype)
     const obs = {
       subject: loc,
       known_as: narrator.desig(st, loc),

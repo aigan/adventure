@@ -3,6 +3,7 @@
  */
 
 import { expect } from 'chai'
+import { Traittype } from '../public/worker/traittype.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 describe('Composable Traits', () => {
@@ -15,6 +16,8 @@ describe('Composable Traits', () => {
       // Register inventory as composable
       DB.register(
         {
+          '@about': {type: 'Subject', mind: 'parent'},
+          '@label': {type: 'string'},
           inventory: {
             type: 'PortableObject',
             container: Array,
@@ -59,7 +62,8 @@ describe('Composable Traits', () => {
 
       // Verify Blacksmith composes all three items transitively
       // (token from Villager + hammer + badge from own inventory)
-      const blacksmith_inv = blacksmith.get_trait(eidos_state, 'inventory')
+      const inventory_traittype = Traittype.get_by_label('inventory')
+      const blacksmith_inv = blacksmith.get_trait(eidos_state, inventory_traittype)
       expect(blacksmith_inv).to.be.an('array')
       expect(blacksmith_inv).to.have.lengthOf(3)
 
@@ -111,7 +115,8 @@ describe('Composable Traits', () => {
       const vb = eidos_state.get_belief_by_label('VillageBlacksmith')
 
       // Should have deduplicated inventory (only 1 hammer, not 2)
-      const vb_inv = vb.get_trait(eidos_state, 'inventory')
+      const inventory_traittype = Traittype.get_by_label('inventory')
+      const vb_inv = vb.get_trait(eidos_state, inventory_traittype)
       expect(vb_inv).to.be.an('array')
       expect(vb_inv).to.have.lengthOf(1)
       expect(vb_inv[0].get_label()).to.equal('hammer')
@@ -120,6 +125,8 @@ describe('Composable Traits', () => {
     it('composes inventory in to_inspect_view()', () => {
       DB.register(
         {
+          '@about': {type: 'Subject', mind: 'parent'},
+          '@label': {type: 'string'},
           inventory: {
             type: 'PortableObject',
             container: Array,

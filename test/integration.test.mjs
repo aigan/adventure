@@ -113,12 +113,12 @@ describe('Integration', () => {
       expect([...player.get_archetypes()].map(a => a.label)).to.include('ObjectPhysical');
 
       // Verify player has mind trait inherited from Villager
-      const player_mind = player.get_trait(state, 'mind');
+      const player_mind = player.get_trait(state, Traittype.get_by_label('mind'));
       expect(player_mind).to.be.instanceOf(Mind);
 
       // Verify the Villager prototype's mind knows about workshop (via about_state)
       const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(state);
-      const villager_mind = villager.get_trait(state, 'mind');
+      const villager_mind = villager.get_trait(state, Traittype.get_by_label('mind'));
       expect(villager_mind).to.be.instanceOf(Mind);
 
       // Verify villager mind has a state with beliefs (learned about workshop)
@@ -130,7 +130,7 @@ describe('Integration', () => {
       // Verify at least one belief has @about pointing to workshop
       const workshop = state.get_belief_by_label('workshop');
       const workshop_knowledge = beliefs.find(b =>
-        b.get_trait(villager_mind_state, '@about') === workshop.subject
+        b.get_trait(villager_mind_state, Traittype.get_by_label('@about')) === workshop.subject
       );
       expect(workshop_knowledge).to.exist;
 
@@ -199,7 +199,7 @@ describe('Integration', () => {
 
       // Verify using find_beliefs_about_subject_in_state()
       const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(state);
-      const villager_mind = villager.get_trait(state, 'mind');
+      const villager_mind = villager.get_trait(state, Traittype.get_by_label('mind'));
       const villager_mind_state = [...villager_mind.states_at_tt(0)][0];
 
       const workshop = state.get_belief_by_label('workshop');
@@ -210,7 +210,7 @@ describe('Integration', () => {
 
       // Villager mind should have exactly one belief about workshop
       expect(knowledge_about_workshop.length).to.equal(1);
-      expect(knowledge_about_workshop[0].get_trait(villager_mind_state, '@about')).to.equal(workshop.subject);
+      expect(knowledge_about_workshop[0].get_trait(villager_mind_state, Traittype.get_by_label('@about'))).to.equal(workshop.subject);
 
       // Verify this is knowledge ABOUT workshop, not workshop itself
       expect(knowledge_about_workshop[0]).to.not.equal(workshop);
@@ -356,13 +356,13 @@ describe('Integration', () => {
 
       const player = world_state.get_belief_by_label('player');
       expect(player).to.not.be.null;
-      const player_mind = player.get_trait(world_state, 'mind');
+      const player_mind = player.get_trait(world_state, Traittype.get_by_label('mind'));
       const player_state = player_mind.origin_state;  // Use origin_state since mind is locked
 
       // Verify state.base points to Villager's mind state
       const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state);
       expect(villager).to.not.be.null;
-      const villager_mind = villager.get_trait(world_state, 'mind');
+      const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
       const villager_state = villager_mind.origin_state;
 
       // This is the key test - player's mind state should have Villager's state as base
@@ -392,8 +392,8 @@ describe('Integration', () => {
 
       // Verify the hammer belief has BOTH traits (inherited color + own location)
       const player_hammer = hammer_beliefs[0];
-      expect(player_hammer.get_trait(player_state, 'color')).to.equal('blue'); // inherited from Villager
-      expect(player_hammer.get_trait(player_state, 'location')).to.not.be.null; // added by player
+      expect(player_hammer.get_trait(player_state, Traittype.get_by_label('color'))).to.equal('blue'); // inherited from Villager
+      expect(player_hammer.get_trait(player_state, Traittype.get_by_label('location'))).to.not.be.null; // added by player
     });
 
     it('P1.1: multiple bases with mind traits (VillageBlacksmith = Villager + Blacksmith)', () => {
@@ -480,7 +480,7 @@ describe('Integration', () => {
       expect(village_blacksmith).to.not.be.null;
 
       // Verify VillageBlacksmith has mind trait
-      const vb_mind = village_blacksmith.get_trait(world_state, 'mind');
+      const vb_mind = village_blacksmith.get_trait(world_state, Traittype.get_by_label('mind'));
       expect(vb_mind).to.be.instanceOf(Mind);
 
       const vb_state = vb_mind.origin_state;
@@ -509,10 +509,10 @@ describe('Integration', () => {
 
       // Verify the beliefs have correct traits
       const vb_tavern = tavern_beliefs[0];
-      expect(vb_tavern.get_trait(vb_state, 'location')).to.not.be.null;
+      expect(vb_tavern.get_trait(vb_state, Traittype.get_by_label('location'))).to.not.be.null;
 
       const vb_workshop = workshop_beliefs[0];
-      expect(vb_workshop.get_trait(vb_state, 'location')).to.not.be.null;
+      expect(vb_workshop.get_trait(vb_state, Traittype.get_by_label('location'))).to.not.be.null;
     });
 
     it('P1.3: empty mind template behavior (override vs inherit)', () => {
@@ -574,11 +574,11 @@ describe('Integration', () => {
       });
 
       const player_belief = world_state.get_belief_by_label('player');
-      const player_mind = player_belief.get_trait(world_state, 'mind');
+      const player_mind = player_belief.get_trait(world_state, Traittype.get_by_label('mind'));
       const player_state = player_mind.origin_state;
 
       const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state);
-      const villager_mind = villager.get_trait(world_state, 'mind');
+      const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
       const villager_state = villager_mind.origin_state;
 
       // Empty template creates NEW mind instance (not same as Villager's)
@@ -675,15 +675,15 @@ describe('Integration', () => {
 
       // Get all the minds and states in the chain
       const culture = DB.get_subject_by_label('Culture').get_shared_belief_by_state(world_state);
-      const culture_mind = culture.get_trait(world_state, 'mind');
+      const culture_mind = culture.get_trait(world_state, Traittype.get_by_label('mind'));
       const culture_state = culture_mind.origin_state;
 
       const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state);
-      const villager_mind = villager.get_trait(world_state, 'mind');
+      const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
       const villager_state = villager_mind.origin_state;
 
       const player_belief = world_state.get_belief_by_label('player');
-      const player_mind = player_belief.get_trait(world_state, 'mind');
+      const player_mind = player_belief.get_trait(world_state, Traittype.get_by_label('mind'));
       const player_state = player_mind.origin_state;
 
       // Verify the state.base chain: Player → Villager → Culture
@@ -794,7 +794,7 @@ describe('Integration', () => {
       });
 
       const player_belief = world_state.get_belief_by_label('player');
-      const player_mind = player_belief.get_trait(world_state, 'mind');
+      const player_mind = player_belief.get_trait(world_state, Traittype.get_by_label('mind'));
       const player_state = player_mind.origin_state;
 
       // Get beliefs in player's mind
@@ -814,9 +814,9 @@ describe('Integration', () => {
       const player_workshop = workshop_beliefs[0];
 
       // Verify ALL traits are present (inherited + new)
-      expect(player_workshop.get_trait(player_state, 'location')).to.not.be.null;
-      expect(player_workshop.get_trait(player_state, 'tools')).to.not.be.null;
-      expect(player_workshop.get_trait(player_state, 'size')).to.equal(500);
+      expect(player_workshop.get_trait(player_state, Traittype.get_by_label('location'))).to.not.be.null;
+      expect(player_workshop.get_trait(player_state, Traittype.get_by_label('tools'))).to.not.be.null;
+      expect(player_workshop.get_trait(player_state, Traittype.get_by_label('size'))).to.equal(500);
 
       // Verify the belief is versioned (extends inherited knowledge)
       // Player's workshop belief should have bases array with at least the archetype
@@ -825,7 +825,7 @@ describe('Integration', () => {
 
       // Verify inheritance structure
       const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state);
-      const villager_mind = villager.get_trait(world_state, 'mind');
+      const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
       const villager_state = villager_mind.origin_state;
 
       // Villager should also have workshop knowledge
@@ -838,11 +838,11 @@ describe('Integration', () => {
 
       // Verify villager's workshop only has partial knowledge (location, tools, NOT size)
       const villager_workshop = villager_workshop_beliefs[0];
-      expect(villager_workshop.get_trait(villager_state, 'location')).to.not.be.null;
-      expect(villager_workshop.get_trait(villager_state, 'tools')).to.not.be.null;
+      expect(villager_workshop.get_trait(villager_state, Traittype.get_by_label('location'))).to.not.be.null;
+      expect(villager_workshop.get_trait(villager_state, Traittype.get_by_label('tools'))).to.not.be.null;
 
       // Villager doesn't have size trait (returns null from trait resolution)
-      const villager_size = villager_workshop.get_trait(villager_state, 'size');
+      const villager_size = villager_workshop.get_trait(villager_state, Traittype.get_by_label('size'));
       expect(villager_size === null || villager_size === undefined).to.be.true;
     });
 
@@ -911,7 +911,7 @@ describe('Integration', () => {
       });
 
       const player_belief = world_state.get_belief_by_label('player');
-      const player_mind = player_belief.get_trait(world_state, 'mind');
+      const player_mind = player_belief.get_trait(world_state, Traittype.get_by_label('mind'));
       const player_state = player_mind.origin_state;
 
       // Get beliefs in player's mind
@@ -930,11 +930,11 @@ describe('Integration', () => {
 
       // Verify the belief has the location trait
       const player_workshop = workshop_beliefs[0];
-      expect(player_workshop.get_trait(player_state, 'location')).to.not.be.null;
+      expect(player_workshop.get_trait(player_state, Traittype.get_by_label('location'))).to.not.be.null;
 
       // Verify Villager has the same knowledge
       const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state);
-      const villager_mind = villager.get_trait(world_state, 'mind');
+      const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
       const villager_state = villager_mind.origin_state;
       const villager_beliefs = [...villager_state.get_beliefs()];
       const villager_workshop_beliefs = villager_beliefs.filter(b => {

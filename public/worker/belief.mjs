@@ -135,15 +135,12 @@ export class Belief {
   /**
    * Set trait value and update reverse index
    * Computes diff between old and new values to minimize index updates
-   * @param {string} trait_name - Trait name
+   * @param {Traittype} traittype - Traittype object
    * @param {*} new_value - New trait value
    * @private
    */
-  _set_trait(trait_name, new_value) {
-    assert(this.origin_state, 'origin_state required for _set_trait', {belief_id: this._id, trait_name})
-
-    const traittype = Traittype.get_by_label(trait_name)
-    assert(traittype, `Traittype '${trait_name}' not found`, {belief_id: this._id, trait_name})
+  _set_trait(traittype, new_value) {
+    assert(this.origin_state, 'origin_state required for _set_trait', {belief_id: this._id, traittype: traittype.label})
 
     // Only track reverse graph edges for Subject references
     // Primitives, States, Minds don't create searchable graph relationships
@@ -188,19 +185,15 @@ export class Belief {
   /**
    * Add trait from template data (resolves via traittype)
    * @param {State} state - State context for resolution
-   * @param {string} label - Trait label
+   * @param {Traittype} traittype - Traittype object
    * @param {*} data - Raw data to be resolved by traittype
    * @param {object} options - Optional parameters
    * @param {State|null} [options.about_state] - State context for belief resolution (for prototype minds)
    */
-  add_trait_from_template(state, label, data, {about_state=null} = {}) {
+  add_trait_from_template(state, traittype, data, {about_state=null} = {}) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
-    // Resolve via traittype, then call add_trait with resolved value
-    const traittype = Traittype.get_by_label(label)
-    assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
-
-    let value = /** @type {Traittype} */ (traittype).resolve_trait_value_from_template(this, data, {about_state})
+    let value = traittype.resolve_trait_value_from_template(this, data, {about_state})
 
     // If composable and we have bases with this trait, compose with base values
     // TODO: Support template syntax for replace/remove operations on composable traits
@@ -210,7 +203,7 @@ export class Belief {
     //   Example: inventory: {replace: ['sword']} → only sword, ignore Villager's token
     //            inventory: {remove: ['token']} → compose then remove token
     if (traittype.composable && value !== null) {
-      const base_values = this.collect_latest_value_from_all_bases(label)
+      const base_values = this.collect_latest_value_from_all_bases(traittype.label)
       if (base_values.length > 0) {
         // Compose: base values first, then new value
         const all_values = [...base_values, value]
@@ -219,32 +212,29 @@ export class Belief {
     }
 
     // Call add_trait with resolved (and possibly composed) value
-    this.add_trait(label, value)
+    this.add_trait(traittype, value)
   }
 
   /**
-   * @param {string} label
+   * @param {Traittype} traittype - Traittype object
    * @param {any} data
    */
-  add_trait(label, data) {
+  add_trait(traittype, data) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
     // Invalidate cache when trait is added/changed
     this._cache.clear() // FIXME: Not needed if only using cache on locked. IF we want to use this, it should be moved to _set_trait()
 
-    const traittype = Traittype.get_by_label(label)
-    assert(traittype instanceof Traittype, `Trait ${label} do not exist`, {label, belief: this.get_label(), data})
-
-    assert(this.can_have_trait(label), `Belief can't have trait ${label}`, {label, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
+    assert(this.can_have_trait(traittype.label), `Belief can't have trait ${traittype.label}`, {label: traittype.label, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
 
     if (debug()) {
-      const old_value = this.get_trait(this.origin_state, label)
+      const old_value = this.get_trait(this.origin_state, traittype)
       if (old_value !== null) {
-        debug([this.origin_state], 'Replacing trait', label, 'in', this.get_label() ?? `#${this._id}`, 'old:', old_value, 'new:', data)
+        debug([this.origin_state], 'Replacing trait', traittype.label, 'in', this.get_label() ?? `#${this._id}`, 'old:', old_value, 'new:', data)
       }
     }
 
-    this._set_trait(label, data)
+    this._set_trait(traittype, data)
   }
 
   /**
@@ -318,14 +308,12 @@ export class Belief {
    * Delegates to Traittype for derived values (composable, etc)
    * Caches inherited traits when belief is locked (cache is belief-level, not state-level)
    * @param {State} state - State context (used by Traittype for derived values)
-   * @param {string} trait_name - Name of the trait to get
+   * @param {Traittype} traittype - Traittype object
    * @returns {*} trait value (Subject, not Belief), or null if not found
    */
-  get_trait(state, trait_name) {
-    assert(state instanceof State, "get_trait requires State - shared beliefs must use origin_state or appropriate context state", {belief_id: this._id, trait_name, state})
-
-    const traittype = Traittype.get_by_label(trait_name)
-    if (!traittype) return null
+  get_trait(state, traittype) {
+    assert(state instanceof State, "get_trait requires State - shared beliefs must use origin_state or appropriate context state", {belief_id: this._id, traittype: traittype?.label, state})
+    assert(traittype instanceof Traittype, "get_trait requires Traittype", {belief_id: this._id, traittype})
 
     let value = this._traits.get(traittype)
     if (value !== undefined) return value
@@ -333,7 +321,7 @@ export class Belief {
     value = this._get_cached(traittype)
     if (value !== undefined) return value
 
-    value = this._get_inherited_trait(state, trait_name)
+    value = this._get_inherited_trait(state, traittype.label)
     if (this.locked) this._set_cache(traittype, value)
 
     return value
@@ -520,7 +508,9 @@ export class Belief {
    */
   get_about(belief_state) {
     // Use get_trait to check own and inherited @about trait
-    const about_trait = this.get_trait(belief_state, '@about')
+    const about_traittype = Traittype.get_by_label('@about')
+    assert(about_traittype, "Traittype '@about' not found in registry")
+    const about_trait = this.get_trait(belief_state, about_traittype)
 
     //log("belief about", this, about_trait);
     if (!(about_trait instanceof Subject)) return null
@@ -835,7 +825,7 @@ export class Belief {
 
     // If about field exists in JSON (for backward compat or from @about trait serialization),
     // store it as sid in @about trait
-    if (data.about != null && !belief._traits.has('@about')) {
+    if (data.about != null && !belief._traits.has('@about')) { // FIXME: Vonvert @about to an option
       // data.about is a sid (from Subject.toJSON()), store it directly
       belief._traits.set('@about', data.about)
     }
@@ -919,7 +909,9 @@ export class Belief {
     // Add remaining traits
     for (const [trait_label, trait_data] of Object.entries(traits)) {
       debug("  add trait", trait_label)
-      belief.add_trait_from_template(state, trait_label, trait_data, {about_state})
+      const traittype = Traittype.get_by_label(trait_label)
+      assert(traittype instanceof Traittype, `Trait ${trait_label} do not exist`, {trait_label, belief: belief.get_label(), trait_data})
+      belief.add_trait_from_template(state, traittype, trait_data, {about_state})
     }
 
     // Add belief to state's insert list (validates locked state and origin_state)
@@ -939,7 +931,9 @@ export class Belief {
     const belief = new Belief(state, null, bases)
 
     for (const [trait_label, trait_data] of Object.entries(traits)) {
-      belief.add_trait(trait_label, trait_data)
+      const traittype = Traittype.get_by_label(trait_label)
+      assert(traittype instanceof Traittype, `Trait ${trait_label} do not exist`, {trait_label})
+      belief.add_trait(traittype, trait_data)
     }
 
     return belief
@@ -995,7 +989,9 @@ export class Belief {
     // Add remaining traits
     for (const [trait_label, trait_data] of Object.entries(traits)) {
       if (trait_label === '@label') continue
-      belief.add_trait_from_template(eidos_state, trait_label, trait_data)
+      const traittype = Traittype.get_by_label(trait_label)
+      assert(traittype instanceof Traittype, `Trait ${trait_label} do not exist`, {trait_label, belief: belief.get_label(), trait_data})
+      belief.add_trait_from_template(eidos_state, traittype, trait_data)
     }
 
     // Lock shared belief (prototypes must be immutable before use as bases)

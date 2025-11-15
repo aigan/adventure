@@ -545,7 +545,9 @@ export class State {
       /** @type {Record<string, any>} */
       const copied_traits = {}
       for (const name of trait_names) {
-        const value = source_belief.get_trait(source_state, name)
+        const traittype = Traittype.get_by_label(name)
+        assert(traittype, `Traittype '${name}' not found in registry`, {mind: this.in_mind.label, trait_names})
+        const value = source_belief.get_trait(source_state, traittype)
         if (value !== null) {
           copied_traits[name] = this._recursively_learn_trait_value(source_state, value)
         }
@@ -568,7 +570,9 @@ export class State {
       /** @type {Record<string, any>} */
       const new_traits = {}
       for (const name of trait_names) {
-        const value = source_belief.get_trait(source_state, name)
+        const traittype = Traittype.get_by_label(name)
+        assert(traittype, `Traittype '${name}' not found in registry`, {mind: this.in_mind.label, trait_names})
+        const value = source_belief.get_trait(source_state, traittype)
         if (value !== null) {
           new_traits[name] = this._recursively_learn_trait_value(source_state, value)
         }
@@ -603,7 +607,9 @@ export class State {
    */
   get_core_state_by_host(host) {
     // Get the nested mind from the host entity
-    const host_mind = host.get_trait(this, 'mind')
+    const mind_traittype = Traittype.get_by_label('mind')
+    assert(mind_traittype, "Traittype 'mind' not found in registry")
+    const host_mind = host.get_trait(this, mind_traittype)
     assert(host_mind, `Entity ${host._id} has no mind trait`, {host_id: host._id, host_label: host.get_label()})
 
     // Find the core state: latest state where tt <= this.vt and ground_state = this (or this's ancestry)

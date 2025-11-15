@@ -56,7 +56,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       })
 
       // Should compose from both prototypes
-      const inv = npc.get_trait(state, 'inventory')
+      const inv = npc.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv).to.have.lengthOf(2)
       const labels = inv.map(b => b.get_label()).sort()
       expect(labels).to.deep.equal(['sword', 'token'])
@@ -111,7 +111,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       const master = eidos_state.get_belief_by_label('MasterCraftsman')
 
       // Should compose from entire chain: Villager -> Blacksmith -> MasterCraftsman + Guard
-      const inv = master.get_trait(eidos_state, 'inventory')
+      const inv = master.get_trait(eidos_state, Traittype.get_by_label('inventory'))
       expect(inv).to.have.lengthOf(4)
       const labels = inv.map(b => b.get_label()).sort()
       expect(labels).to.deep.equal(['badge', 'hammer', 'sword', 'token'])
@@ -153,7 +153,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       const blacksmith = eidos_state.get_belief_by_label('Blacksmith')
 
       // Should have null (blocks composition from Villager)
-      const inv = blacksmith.get_trait(eidos_state, 'inventory')
+      const inv = blacksmith.get_trait(eidos_state, Traittype.get_by_label('inventory'))
       expect(inv).to.be.null
     })
 
@@ -200,7 +200,7 @@ describe('Composable Traits - Complex Scenarios', () => {
 
       // Player should have null inventory (inherited from Blacksmith)
       // NOT apprentice_token from Villager (blocked by Blacksmith's null)
-      const inv = player.get_trait(state, 'inventory')
+      const inv = player.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv).to.be.null
     })
 
@@ -250,7 +250,7 @@ describe('Composable Traits - Complex Scenarios', () => {
 
       // Should compose all sources, deduplicating by subject.sid
       // Villager[token] + Guard[sword] + own[token, sword] = [token, sword] (deduplicated)
-      const inv = npc.get_trait(state, 'inventory')
+      const inv = npc.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv).to.be.an('array')
       expect(inv).to.have.lengthOf(2)
       const labels = inv.map(b => b.get_label()).sort()
@@ -297,7 +297,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       })
 
       // Still has token from base (empty array composes to base + empty = base)
-      const inv = npc.get_trait(state, 'inventory')
+      const inv = npc.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv).to.be.an('array')
       expect(inv).to.have.lengthOf(1)
       expect(inv[0].get_label()).to.equal('token')
@@ -350,7 +350,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       })
 
       // Has both token (from base) and sword (own) via creation-time composition
-      const inv = npc.get_trait(state, 'inventory')
+      const inv = npc.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv).to.be.an('array')
       expect(inv).to.have.lengthOf(2)
       const labels = inv.map(b => b.get_label()).sort()
@@ -404,7 +404,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       })
 
-      const inv1 = npc.get_trait(state, 'inventory')
+      const inv1 = npc.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv1).to.have.lengthOf(1)
       expect(inv1[0].get_label()).to.equal('token')
 
@@ -425,7 +425,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       state.replace_beliefs(npc_v2)
 
       const npc_final = state.get_belief_by_subject(npc.subject)
-      const inv2 = npc_final.get_trait(state, 'inventory')
+      const inv2 = npc_final.get_trait(state, Traittype.get_by_label('inventory'))
 
       // Should compose from both Villager (token) and Guard (sword)
       expect(inv2).to.be.an('array')
@@ -479,7 +479,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       })
 
-      const inv1 = npc.get_trait(state, 'inventory')
+      const inv1 = npc.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv1).to.have.lengthOf(1)
       expect(inv1[0].get_label()).to.equal('token')
 
@@ -492,7 +492,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       })
 
       const npc_v2 = state.get_belief_by_subject(npc.subject)
-      const inv2 = npc_v2.get_trait(state, 'inventory')
+      const inv2 = npc_v2.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv2).to.be.an('array')
 
       // Actual behavior: tick_with_traits creates new belief with same bases
@@ -545,8 +545,8 @@ describe('Composable Traits - Complex Scenarios', () => {
       state2.lock()
 
       // Composition should work in both states
-      const inv1 = npc.get_trait(state1, 'inventory')
-      const inv2 = npc.get_trait(state2, 'inventory')
+      const inv1 = npc.get_trait(state1, Traittype.get_by_label('inventory'))
+      const inv2 = npc.get_trait(state2, Traittype.get_by_label('inventory'))
 
       expect(inv1).to.have.lengthOf(1)
       expect(inv2).to.have.lengthOf(1)
@@ -615,7 +615,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       })
 
       // Should have token + hammer via composition
-      const inv1 = npc.get_trait(state, 'inventory')
+      const inv1 = npc.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv1).to.have.lengthOf(2)
       const labels1 = inv1.map(b => b.get_label()).sort()
       expect(labels1).to.deep.equal(['hammer', 'token'])
@@ -629,7 +629,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       })
 
       const npc_v2 = state.get_belief_by_subject(npc.subject)
-      const inv2 = npc_v2.get_trait(state, 'inventory')
+      const inv2 = npc_v2.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv2).to.have.lengthOf(3)
       const labels2 = inv2.map(b => b.get_label()).sort()
       expect(labels2).to.deep.equal(['hammer', 'sword', 'token'])

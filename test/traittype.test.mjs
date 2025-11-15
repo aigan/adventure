@@ -9,6 +9,8 @@ describe('Traittype', () => {
     DB.reset_registries();
     const traittypes = {
       ...stdTypes,
+      '@label': {type: 'string'},
+      mind: 'Mind',
       location: 'Location',
       mind_states: {
         type: 'State',
@@ -260,13 +262,14 @@ describe('Traittype', () => {
       expect(mind0_states).to.have.lengthOf(1);
       const mind0_beliefs = [...mind0_states[0].get_beliefs()];
       expect(mind0_beliefs).to.have.lengthOf(1);
-      expect(mind0_beliefs[0].get_trait(mind0_states[0], 'color')).to.equal('brown');
+      const color_traittype = Traittype.get_by_label('color');
+      expect(mind0_beliefs[0].get_trait(mind0_states[0], color_traittype)).to.equal('brown');
 
       const mind1_states = [...minds[1]._states];
       expect(mind1_states).to.have.lengthOf(1);
       const mind1_beliefs = [...mind1_states[0].get_beliefs()];
       expect(mind1_beliefs).to.have.lengthOf(1);
-      expect(mind1_beliefs[0].get_trait(mind1_states[0], 'color')).to.equal('green');
+      expect(mind1_beliefs[0].get_trait(mind1_states[0], color_traittype)).to.equal('green');
     });
   });
 
@@ -532,7 +535,8 @@ describe('Traittype', () => {
         bases: ['PortableObject']
       });
 
-      expect(hammer.get_trait(state, '@form')).to.equal('solid');
+      const form_traittype = Traittype.get_by_label('@form');
+      expect(hammer.get_trait(state, form_traittype)).to.equal('solid');
     });
 
     it('@form validates against enum values', () => {
@@ -575,7 +579,8 @@ describe('Traittype', () => {
       });
 
       // Should be accessible via get_trait
-      expect(hammer.get_trait(state, '@form')).to.equal('solid');
+      const form_traittype = Traittype.get_by_label('@form');
+      expect(hammer.get_trait(state, form_traittype)).to.equal('solid');
 
       // Should appear when iterating with get_traits()
       const traits = Array.from(hammer.get_traits());
@@ -593,6 +598,7 @@ describe('Traittype', () => {
         bases: ['ObjectPhysical']
       });
 
+      const form_traittype = Traittype.get_by_label('@form');
       const trait_map = new Map(obj.get_defined_traits());
 
       // Explicitly set trait

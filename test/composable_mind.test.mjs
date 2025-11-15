@@ -6,7 +6,7 @@
  */
 
 import { expect } from 'chai'
-import { Mind, Belief, Subject } from '../public/worker/cosmos.mjs'
+import { Mind, Belief, Subject, Traittype } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 describe('Composable Mind Trait', () => {
@@ -58,7 +58,7 @@ describe('Composable Mind Trait', () => {
       })
 
       const ep = world_state.get_belief_by_label('empty_person')
-      const ep_mind = ep.get_trait(world_state, 'mind')
+      const ep_mind = ep.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Explicit null should block Villager's mind
       expect(ep_mind).to.be.null
@@ -119,7 +119,7 @@ describe('Composable Mind Trait', () => {
       expect(view.traits.mind._type).to.equal('Mind')
 
       // The composed mind should have knowledge from all three sources
-      const vb_mind = vb_belief.get_trait(world_state, 'mind')
+      const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
       const beliefs = [...vb_mind.origin_state.get_beliefs()]
 
       expect(beliefs.length).to.be.at.least(3, 'Should have knowledge from Villager + Blacksmith + own')
@@ -175,7 +175,7 @@ describe('Composable Mind Trait', () => {
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
-      const vb_mind = vb_belief.get_trait(world_state, 'mind')
+      const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
       const vb_state = vb_mind.origin_state
 
       // Should be UnionState (composed from own + Villager + Blacksmith)
@@ -246,17 +246,17 @@ describe('Composable Mind Trait', () => {
       world_state.lock()
 
       // First call creates UnionState and caches Mind
-      const mind1 = vb_belief.get_trait(world_state, 'mind')
+      const mind1 = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Second call returns cached Mind (same instance)
-      const mind2 = vb_belief.get_trait(world_state, 'mind')
+      const mind2 = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       expect(mind1).to.equal(mind2, 'Should return same cached Mind instance')
       expect(mind1.origin_state).to.equal(mind2.origin_state, 'Should return same UnionState')
 
       // Different state still returns same cached Mind (belief-based caching)
       const world_state2 = world.create_state(DB.get_logos_state(), {tt: 2})
-      const mind3 = vb_belief.get_trait(world_state2, 'mind')
+      const mind3 = vb_belief.get_trait(world_state2, Traittype.get_by_label('mind'))
 
       expect(mind1).to.equal(mind3, 'Same belief returns same cached Mind instance')
     })
@@ -307,7 +307,7 @@ describe('Composable Mind Trait', () => {
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
-      const vb_mind = vb_belief.get_trait(world_state, 'mind')
+      const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
       const vb_state = vb_mind.origin_state
 
       // Verify component_states structure
@@ -327,8 +327,8 @@ describe('Composable Mind Trait', () => {
       const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state)
       const blacksmith = DB.get_subject_by_label('Blacksmith').get_shared_belief_by_state(world_state)
 
-      const villager_mind = villager.get_trait(world_state, 'mind')
-      const blacksmith_mind = blacksmith.get_trait(world_state, 'mind')
+      const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'))
+      const blacksmith_mind = blacksmith.get_trait(world_state, Traittype.get_by_label('mind'))
 
       expect(vb_state.component_states[0]).to.equal(villager_mind.origin_state)
       expect(vb_state.component_states[1]).to.equal(blacksmith_mind.origin_state)
@@ -371,7 +371,7 @@ describe('Composable Mind Trait', () => {
 
       // Regular state (single base, no composition)
       const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state)
-      const villager_mind = villager.get_trait(world_state, 'mind')
+      const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'))
 
       expect(villager_mind.origin_state.is_union).to.be.undefined
 
@@ -382,7 +382,7 @@ describe('Composable Mind Trait', () => {
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
-      const vb_mind = vb_belief.get_trait(world_state, 'mind')
+      const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       expect(vb_mind.origin_state.is_union).to.be.true
     })
@@ -434,8 +434,8 @@ describe('Composable Mind Trait', () => {
       const vb_belief = world_state1.get_belief_by_label('village_blacksmith')
 
       // Access composed mind from both states
-      const mind1 = vb_belief.get_trait(world_state1, 'mind')
-      const mind2 = vb_belief.get_trait(world_state2, 'mind')
+      const mind1 = vb_belief.get_trait(world_state1, Traittype.get_by_label('mind'))
+      const mind2 = vb_belief.get_trait(world_state2, Traittype.get_by_label('mind'))
 
       // Both should be valid Mind instances with UnionState
       expect(mind1).to.be.instanceOf(Mind)
@@ -517,7 +517,7 @@ describe('Composable Mind Trait', () => {
       })
 
       const mc_belief = world_state.get_belief_by_label('master_craftsman')
-      const mc_mind = mc_belief.get_trait(world_state, 'mind')
+      const mc_mind = mc_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Should have composed mind
       expect(mc_mind).to.be.instanceOf(Mind)
@@ -594,7 +594,7 @@ describe('Composable Mind Trait', () => {
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
-      const vb_mind = vb_belief.get_trait(world_state, 'mind')
+      const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // UnionState should have beliefs from both component minds
       expect(vb_mind.origin_state.is_union).to.be.true
@@ -659,7 +659,7 @@ describe('Composable Mind Trait', () => {
       })
 
       const jack_belief = world_state.get_belief_by_label('jack_of_all_trades')
-      const jack_mind = jack_belief.get_trait(world_state, 'mind')
+      const jack_mind = jack_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       expect(jack_mind.origin_state.is_union).to.be.true
       expect(jack_mind.origin_state.component_states.length).to.equal(3)
@@ -746,7 +746,7 @@ describe('Composable Mind Trait', () => {
       })
 
       const alice_belief = world_state.get_belief_by_label('alice')
-      const alice_mind = alice_belief.get_trait(world_state, 'mind')
+      const alice_mind = alice_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Should have composed mind (own + base inheritance)
       expect(alice_mind).to.be.instanceOf(Mind)
@@ -820,7 +820,7 @@ describe('Composable Mind Trait', () => {
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
-      const vb_mind = vb_belief.get_trait(world_state, 'mind')
+      const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Should successfully compose minds from compatible parents
       expect(vb_mind).to.be.instanceOf(Mind)
@@ -880,7 +880,7 @@ describe('Composable Mind Trait', () => {
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
-      const vb_mind = vb_belief.get_trait(world_state, 'mind')
+      const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // UnionState.self should equal the belief's subject
       expect(vb_mind.origin_state.self).to.equal(vb_belief.subject)
@@ -930,7 +930,7 @@ describe('Composable Mind Trait', () => {
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
-      const vb_mind = vb_belief.get_trait(world_state, 'mind')
+      const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Component states should have about_state pointing to world_state
       const component_states = vb_mind.origin_state.component_states
@@ -1003,7 +1003,7 @@ describe('Composable Mind Trait', () => {
 
       // The critical test: accessing composable mind from locked state
       // This creates UnionState internally, which shouldn't be blocked by lock
-      const vb_mind = vb_belief.get_trait(world_state, 'mind')
+      const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Verify the composed mind is accessible
       expect(vb_mind).to.be.instanceOf(Mind)

@@ -93,7 +93,8 @@ describe('get_traits() composable trait consistency', () => {
     expect(knight._traits.has(Traittype.get_by_label('inventory'))).to.be.false;
 
     // get_trait() composes from both bases
-    const inventory_from_get_trait = knight.get_trait(state, 'inventory');
+    const inventory_traittype = Traittype.get_by_label('inventory');
+    const inventory_from_get_trait = knight.get_trait(state, inventory_traittype);
     expect(inventory_from_get_trait).to.be.an('array');
     expect(inventory_from_get_trait).to.have.lengthOf(2, 'get_trait() composes sword + shield');
 
@@ -181,10 +182,11 @@ describe('get_traits() composable trait consistency', () => {
     });
 
     // Instance should NOT have inventory in own _traits
-    expect(knight_instance._traits.has(Traittype.get_by_label('inventory'))).to.be.false;
+    const inventory_traittype = Traittype.get_by_label('inventory');
+    expect(knight_instance._traits.has(inventory_traittype)).to.be.false;
 
     // get_trait() should return the composed inventory from knight_proto
-    const inventory_from_get_trait = knight_instance.get_trait(state, 'inventory');
+    const inventory_from_get_trait = knight_instance.get_trait(state, inventory_traittype);
 
     // get_traits() should return the same
     const traits_map = new Map(knight_instance.get_traits());

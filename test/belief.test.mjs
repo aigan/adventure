@@ -359,10 +359,10 @@ describe('Belief', () => {
           color: 'grey'}
       });
 
-      const location_value = hammer.get_trait(state, 'location');
+      const location_value = hammer.get_trait(state, Traittype.get_by_label('location'));
       expect(location_value).to.be.instanceOf(Subject);
       expect(location_value.sid).to.equal(workshop.subject.sid);
-      expect(hammer.get_trait(state, 'color')).to.equal('grey');
+      expect(hammer.get_trait(state, Traittype.get_by_label('color'))).to.equal('grey');
     });
 
     it('inherits trait value from base belief', () => {
@@ -397,8 +397,8 @@ describe('Belief', () => {
       expect(hammer_v2._traits.has(Traittype.get_by_label('location'))).to.be.false;
 
       // get_trait should find both
-      expect(hammer_v2.get_trait(state2, 'color')).to.equal('blue');
-      const location_value = hammer_v2.get_trait(state2, 'location');
+      expect(hammer_v2.get_trait(state2, Traittype.get_by_label('color'))).to.equal('blue');
+      const location_value = hammer_v2.get_trait(state2, Traittype.get_by_label('location'));
       expect(location_value).to.be.instanceOf(Subject);
       expect(location_value.sid).to.equal(workshop.subject.sid);
     });
@@ -423,7 +423,7 @@ describe('Belief', () => {
         }
       });
 
-      expect(hammer_v2.get_trait(state, 'color')).to.equal('blue');
+      expect(hammer_v2.get_trait(state, Traittype.get_by_label('color'))).to.equal('blue');
     });
 
     it('multi-level inheritance works', () => {
@@ -461,13 +461,13 @@ describe('Belief', () => {
       });
 
       // v3 should find location all the way back in v1
-      const location_value = hammer_v3.get_trait(state, 'location');
+      const location_value = hammer_v3.get_trait(state, Traittype.get_by_label('location'));
       expect(location_value).to.be.instanceOf(Subject);
       expect(location_value.sid).to.equal(workshop.subject.sid);
-      expect(hammer_v3.get_trait(state, 'color')).to.equal('red');
+      expect(hammer_v3.get_trait(state, Traittype.get_by_label('color'))).to.equal('red');
     });
 
-    it('returns undefined for trait not in chain', () => {
+    it('returns null for trait not in chain', () => {
       const mind = new Mind(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 100});
 
@@ -479,7 +479,10 @@ describe('Belief', () => {
         bases: ['PortableObject']
       });
 
-      expect(hammer.get_trait(state, 'nonexistent')).to.be.null;
+      // Test that a valid trait that exists but isn't on the belief returns null
+      // 'mind' trait exists but hammer doesn't have it (only Mental archetypes do)
+      const mind_traittype = Traittype.get_by_label('mind');
+      expect(hammer.get_trait(state, mind_traittype)).to.be.null;
     });
 
     it('to_inspect_view includes inherited traits', () => {
@@ -511,8 +514,8 @@ describe('Belief', () => {
       });
 
       // get_trait should find both own and inherited traits
-      expect(hammer_v2.get_trait(state, 'color')).to.equal('blue');
-      expect(hammer_v2.get_trait(state, 'location')).to.be.instanceOf(Subject);
+      expect(hammer_v2.get_trait(state, Traittype.get_by_label('color'))).to.equal('blue');
+      expect(hammer_v2.get_trait(state, Traittype.get_by_label('location'))).to.be.instanceOf(Subject);
 
       // to_inspect_view should show BOTH own and inherited traits
       const inspected = hammer_v2.to_inspect_view(state);
@@ -555,13 +558,14 @@ describe('Belief', () => {
       });
 
       // Should inherit traits from shared belief
-      expect(player_sword.get_trait(state, 'damage')).to.equal(10);
-      expect(player_sword.get_trait(state, 'weight')).to.equal(5);
+      expect(player_sword.get_trait(state, Traittype.get_by_label('damage'))).to.equal(10);
+      expect(player_sword.get_trait(state, Traittype.get_by_label('weight'))).to.equal(5);
 
       // Can override inherited traits
-      player_sword.add_trait('damage', 15);
-      expect(player_sword.get_trait(state, 'damage')).to.equal(15);
-      expect(player_sword.get_trait(state, 'weight')).to.equal(5); // Still inherited
+      const damage_traittype = Traittype.get_by_label('damage');
+      player_sword.add_trait(damage_traittype, 15);
+      expect(player_sword.get_trait(state, Traittype.get_by_label('damage'))).to.equal(15);
+      expect(player_sword.get_trait(state, Traittype.get_by_label('weight'))).to.equal(5); // Still inherited
     });
 
     it('multiple beliefs reference same shared subject', () => {
@@ -601,14 +605,14 @@ describe('Belief', () => {
       });
 
       // Both should inherit from same shared belief
-      expect(sword_1.get_trait(state1, 'damage')).to.equal(10);
-      expect(sword_2.get_trait(state2, 'damage')).to.equal(10);
-      expect(sword_1.get_trait(state1, 'weight')).to.equal(3);
-      expect(sword_2.get_trait(state2, 'weight')).to.equal(3);
+      expect(sword_1.get_trait(state1, Traittype.get_by_label('damage'))).to.equal(10);
+      expect(sword_2.get_trait(state2, Traittype.get_by_label('damage'))).to.equal(10);
+      expect(sword_1.get_trait(state1, Traittype.get_by_label('weight'))).to.equal(3);
+      expect(sword_2.get_trait(state2, Traittype.get_by_label('weight'))).to.equal(3);
 
       // Each has its own sharpness value (overrides shared belief's implicit null)
-      expect(sword_1.get_trait(state1, 'sharpness')).to.equal(7);
-      expect(sword_2.get_trait(state2, 'sharpness')).to.equal(9);
+      expect(sword_1.get_trait(state1, Traittype.get_by_label('sharpness'))).to.equal(7);
+      expect(sword_2.get_trait(state2, Traittype.get_by_label('sharpness'))).to.equal(9);
 
       // Both reference the same shared belief in their bases
       expect(sword_1._bases.has(standard_sword)).to.be.true;
@@ -630,18 +634,19 @@ describe('Belief', () => {
       // Create shared belief v2 at tt 200 (newer version)
       const state_200 = eidos.create_timed_state(200);
       const seasonal_v2 = new Belief(state_200, seasonal_v1.subject, [seasonal_v1]);
-      seasonal_v2.add_trait('bonus', 10);
+      const bonus_traittype = Traittype.get_by_label('bonus');
+      seasonal_v2.add_trait(bonus_traittype, 10);
       seasonal_v2.lock(state_200);
 
       // Query at timestamp 150 -> should find v1
       const at_150 = [...seasonal_v1.subject.beliefs_at_tt(150)];
       expect(at_150).to.have.lengthOf(1);
-      expect(at_150[0].get_trait(at_150[0].origin_state, 'bonus')).to.equal(5);
+      expect(at_150[0].get_trait(at_150[0].origin_state, Traittype.get_by_label('bonus'))).to.equal(5);
 
       // Query at timestamp 250 -> should find v2
       const at_250 = [...seasonal_v1.subject.beliefs_at_tt(250)];
       expect(at_250).to.have.lengthOf(1);
-      expect(at_250[0].get_trait(at_250[0].origin_state, 'bonus')).to.equal(10);
+      expect(at_250[0].get_trait(at_250[0].origin_state, Traittype.get_by_label('bonus'))).to.equal(10);
 
       // Query at timestamp 50 (before v1) -> should find nothing
       const at_50 = [...seasonal_v1.subject.beliefs_at_tt(50)];
@@ -682,9 +687,9 @@ describe('Belief', () => {
       });
 
       // Should resolve traits through entire chain
-      expect(magic_sword.get_trait(state, 'weight')).to.equal(1);       // Own trait (overridden)
-      expect(magic_sword.get_trait(state, 'sharpness')).to.equal(8);    // From Sword
-      expect(magic_sword.get_trait(state, 'damage')).to.equal(5);       // From Weapon
+      expect(magic_sword.get_trait(state, Traittype.get_by_label('weight'))).to.equal(1);       // Own trait (overridden)
+      expect(magic_sword.get_trait(state, Traittype.get_by_label('sharpness'))).to.equal(8);    // From Sword
+      expect(magic_sword.get_trait(state, Traittype.get_by_label('damage'))).to.equal(5);       // From Weapon
 
       // Verify the chain structure
       expect(magic_sword._bases.has(sword)).to.be.true;
@@ -724,8 +729,8 @@ describe('Belief', () => {
       });
 
       // v2 should inherit durability from shared belief through v1
-      expect(hammer_v2.get_trait(state, 'weight')).to.equal(12);       // Own trait
-      expect(hammer_v2.get_trait(state, 'durability')).to.equal(100);  // From shared Tool via hammer_v1
+      expect(hammer_v2.get_trait(state, Traittype.get_by_label('weight'))).to.equal(12);       // Own trait
+      expect(hammer_v2.get_trait(state, Traittype.get_by_label('durability'))).to.equal(100);  // From shared Tool via hammer_v1
 
       // Verify chain: hammer_v2 → hammer_v1 → Tool (shared)
       expect(hammer_v2._bases.has(hammer_v1)).to.be.true;
@@ -755,7 +760,7 @@ describe('Belief', () => {
       expect(found).to.not.be.null;
       expect(found).to.equal(default_item);
       expect(found.in_mind).to.equal(eidos);  // Confirms it's the shared belief in Eidos
-      expect(found.get_trait(state, 'value')).to.equal(50);
+      expect(found.get_trait(state, Traittype.get_by_label('value'))).to.equal(50);
     });
 
     it('shared beliefs not registered in belief_by_mind', () => {
@@ -1014,7 +1019,7 @@ describe('Belief', () => {
       const player = get_first_belief_by_label('player');
 
       // Get trait before locking - should not cache
-      const mind_before = player.get_trait(world_state, 'mind');
+      const mind_before = player.get_trait(world_state, Traittype.get_by_label('mind'));
       expect(mind_before).to.not.be.null;
 
       // Cache should be empty for unlocked state
@@ -1035,7 +1040,7 @@ describe('Belief', () => {
       player.lock(world_state);
 
       // Get inherited trait after locking - should cache
-      const about_value = player.get_trait(world_state, '@about');
+      const about_value = player.get_trait(world_state, Traittype.get_by_label('@about'));
 
       // Cache should have the inherited trait (not own traits)
       const about_traittype = Traittype.get_by_label('@about');

@@ -70,7 +70,8 @@ describe('Save/Load functionality', () => {
       const loaded_state = [...loaded_mind._states][0];
 
       // Trait reference should be resolved correctly after load
-      const location_trait = loaded_hammer.get_trait(loaded_state, 'location');
+      const location_traittype = Traittype.get_by_label('location');
+      const location_trait = loaded_hammer.get_trait(loaded_state, location_traittype);
       expect(location_trait).to.equal(loaded_workshop.subject);
     });
 
@@ -120,17 +121,18 @@ describe('Save/Load functionality', () => {
 
       // CRITICAL TEST: Verify temporal consistency in state2
       // room1_v2.location should resolve to room2
-      const loc1 = loaded_room1_v2.get_trait(loaded_state2, 'location')?.get_belief_by_state(loaded_state2);
+      const location_traittype = Traittype.get_by_label('location');
+      const loc1 = loaded_room1_v2.get_trait(loaded_state2, location_traittype)?.get_belief_by_state(loaded_state2);
       expect(loc1).to.equal(loaded_room2);
 
       // room2.location should resolve to room1_v2 (NOT old room1!)
       // This proves SIDs resolve to current version in state context (no time-travel)
-      const loc2 = loaded_room2.get_trait(loaded_state2, 'location')?.get_belief_by_state(loaded_state2);
+      const loc2 = loaded_room2.get_trait(loaded_state2, location_traittype)?.get_belief_by_state(loaded_state2);
       expect(loc2).to.equal(loaded_room1_v2, 'room2 should point to room1_v2 in state2, not old room1');
 
       // Following the circular reference should stay in state2's temporal context
-      const circular_check = loaded_room1_v2.get_trait(loaded_state2, 'location')?.get_belief_by_state(loaded_state2)
-        ?.get_trait(loaded_state2, 'location')?.get_belief_by_state(loaded_state2);
+      const circular_check = loaded_room1_v2.get_trait(loaded_state2, location_traittype)?.get_belief_by_state(loaded_state2)
+        ?.get_trait(loaded_state2, location_traittype)?.get_belief_by_state(loaded_state2);
       expect(circular_check).to.equal(loaded_room1_v2, 'circular reference should stay in current state');
     });
 
