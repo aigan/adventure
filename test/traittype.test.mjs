@@ -76,7 +76,7 @@ describe('Traittype', () => {
         bases: ['ObjectPhysical']
       });
 
-      expect(obj._traits.get('color')).to.equal('blue');
+      expect(obj._traits.get(Traittype.get_by_label('color'))).to.equal('blue');
     });
 
     it('resolves number type', () => {
@@ -86,7 +86,7 @@ describe('Traittype', () => {
         bases: ['TestObject']
       });
 
-      expect(obj._traits.get('count')).to.equal(42);
+      expect(obj._traits.get(Traittype.get_by_label('count'))).to.equal(42);
     });
 
     it('resolves boolean type', () => {
@@ -96,7 +96,7 @@ describe('Traittype', () => {
         bases: ['TestObject']
       });
 
-      expect(obj._traits.get('active')).to.equal(true);
+      expect(obj._traits.get(Traittype.get_by_label('active'))).to.equal(true);
     });
 
     it('resolves State type', () => {
@@ -106,7 +106,7 @@ describe('Traittype', () => {
         bases: ['Mental']
       });
 
-      expect(obj._traits.get('mind_states')[0]).to.equal(state);
+      expect(obj._traits.get(Traittype.get_by_label('mind_states'))[0]).to.equal(state);
     });
   });
 
@@ -120,7 +120,7 @@ describe('Traittype', () => {
         bases: ['Mental']
       });
 
-      const states = obj._traits.get('states_array');
+      const states = obj._traits.get(Traittype.get_by_label('states_array'));
       expect(Array.isArray(states)).to.be.true;
       expect(states).to.have.lengthOf(2);
       expect(states[0]).to.equal(state1);
@@ -134,7 +134,7 @@ describe('Traittype', () => {
         bases: ['TestObject']
       });
 
-      const colors = obj._traits.get('colors_array');
+      const colors = obj._traits.get(Traittype.get_by_label('colors_array'));
       expect(Array.isArray(colors)).to.be.true;
       expect(colors).to.have.lengthOf(3);
       expect(colors).to.deep.equal(['red', 'blue', 'green']);
@@ -213,7 +213,7 @@ describe('Traittype', () => {
         bases: ['Tagged']
       });
 
-      const tags = obj._traits.get('tags');
+      const tags = obj._traits.get(Traittype.get_by_label('tags'));
       expect(Array.isArray(tags)).to.be.true;
       expect(tags).to.have.lengthOf(0);
     });
@@ -247,7 +247,7 @@ describe('Traittype', () => {
 
       world_state.lock();
 
-      const minds = npc._traits.get('minds_array');
+      const minds = npc._traits.get(Traittype.get_by_label('minds_array'));
       expect(Array.isArray(minds)).to.be.true;
       expect(minds).to.have.lengthOf(2);
       expect(minds[0]).to.be.instanceof(Mind);
@@ -368,7 +368,7 @@ describe('Traittype', () => {
         bases: ['Physical']
       });
 
-      expect(obj._traits.get('form')).to.equal('solid');
+      expect(obj._traits.get(Traittype.get_by_label('form'))).to.equal('solid');
     });
 
     it('accepts all valid enum values', () => {
@@ -379,7 +379,7 @@ describe('Traittype', () => {
           traits: { '@label': `test_${value}`, form: value },
           bases: ['Physical']
         });
-        expect(obj._traits.get('form')).to.equal(value);
+        expect(obj._traits.get(Traittype.get_by_label('form'))).to.equal(value);
       }
     });
 
@@ -438,7 +438,7 @@ describe('Traittype', () => {
         traits: { '@label': 'test_obj', name: 'anything' },
         bases: ['Named']
       });
-      expect(obj._traits.get('name')).to.equal('anything');
+      expect(obj._traits.get(Traittype.get_by_label('name'))).to.equal('anything');
     });
   });
 
@@ -543,7 +543,7 @@ describe('Traittype', () => {
         traits: { '@label': 'fog', '@form': 'vapor' },
         bases: ['Thing']
       });
-      expect(vapor_entity._traits.get('@form')).to.equal('vapor');
+      expect(vapor_entity._traits.get(Traittype.get_by_label('@form'))).to.equal('vapor');
 
       // Invalid value should throw
       expect(() => {
@@ -563,7 +563,7 @@ describe('Traittype', () => {
         bases: ['ObjectPhysical']  // Has @form: 'solid' by default
       });
 
-      expect(fog._traits.get('@form')).to.equal('vapor');
+      expect(fog._traits.get(Traittype.get_by_label('@form'))).to.equal('vapor');
     });
 
     it('@form appears in get_traits() iteration', () => {

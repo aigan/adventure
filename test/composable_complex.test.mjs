@@ -5,7 +5,7 @@
 
 import { expect } from 'chai'
 import * as DB from '../public/worker/db.mjs'
-import { Mind, Belief } from '../public/worker/cosmos.mjs'
+import { Mind, Belief, Traittype } from '../public/worker/cosmos.mjs'
 
 describe('Composable Traits - Complex Scenarios', () => {
   beforeEach(() => {
@@ -554,9 +554,10 @@ describe('Composable Traits - Complex Scenarios', () => {
       expect(inv2[0].get_label()).to.equal('token')
 
       // Cache is per belief (trait values are stable per belief)
-      expect(npc._cache.has('inventory')).to.be.true
+      const inventory_traittype = Traittype.get_by_label('inventory')
+      expect(npc._cache.has(inventory_traittype)).to.be.true
       // Same cached value for all states since traits don't change
-      const cached_inv = npc._cache.get('inventory')
+      const cached_inv = npc._cache.get(inventory_traittype)
       expect(cached_inv).to.have.lengthOf(1)
       expect(inv1).to.equal(cached_inv)
     })

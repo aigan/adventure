@@ -221,7 +221,7 @@ describe('Save/Load functionality', () => {
 
       // Verify player has mind
       const loaded_player = get_first_belief_by_label('player');
-      const player_mind = loaded_player._traits.get('mind');
+      const player_mind = loaded_player._traits.get(Traittype.get_by_label('mind'));
       expect(player_mind).to.be.instanceOf(Mind);
       const states = [...player_mind._states];
       expect(states.length).to.be.at.least(1);
@@ -230,7 +230,7 @@ describe('Save/Load functionality', () => {
       // Verify ball has color (use ID to find exact versioned belief)
       const loaded_ball = DB._reflect().belief_by_id.get(ball_v2_id);
       expect(loaded_ball).to.exist;
-      expect(loaded_ball._traits.get('color')).to.equal('blue');
+      expect(loaded_ball._traits.get(Traittype.get_by_label('color'))).to.equal('blue');
     });
 
     it('preserves and continues id_sequence', () => {

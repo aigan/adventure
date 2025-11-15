@@ -103,7 +103,7 @@ describe('State', () => {
 
       const beliefs = [...state2.get_beliefs()];
       expect(beliefs).to.have.lengthOf(1);
-      expect(beliefs[0]._traits.get('color')).to.equal('red');
+      expect(beliefs[0]._traits.get(Traittype.get_by_label('color'))).to.equal('red');
     });
 
     it('multiple minds can have states without interference', () => {
@@ -126,8 +126,8 @@ describe('State', () => {
       const beliefs_a = [...state_a2.get_beliefs()];
       const beliefs_b = [...state_b2.get_beliefs()];
 
-      expect(beliefs_a[0]._traits.get('color')).to.equal('red');
-      expect(beliefs_b[0]._traits.get('color')).to.equal('blue');
+      expect(beliefs_a[0]._traits.get(Traittype.get_by_label('color'))).to.equal('red');
+      expect(beliefs_b[0]._traits.get(Traittype.get_by_label('color'))).to.equal('blue');
     });
 
     it('state inheritance chain works correctly', () => {
@@ -278,7 +278,7 @@ describe('State', () => {
       });
 
       const player_mind = new Mind(world_mind, 'player');
-      player._traits.set('mind', player_mind);
+      player._traits.set(Traittype.get_by_label('mind'), player_mind);
 
       // Create two states with same tt and ground_state (superposition)
       const state1 = player_mind.create_state(world_state);
@@ -358,7 +358,7 @@ describe('State', () => {
       // state2 should resolve to v2 (the new versioned belief)
       const room_v2 = state2.get_belief_by_subject(room_v1.subject);
       expect(room_v2).to.not.equal(room_v1);
-      expect(room_v2._traits.get('color')).to.equal('red');
+      expect(room_v2._traits.get(Traittype.get_by_label('color'))).to.equal('red');
     });
 
     it('builds sid index on-demand for efficient lookups', () => {
@@ -408,14 +408,14 @@ describe('State', () => {
       });
 
       // THE KEY TEST: room2's location trait stores a Subject
-      const room2_location = room2._traits.get('location');
+      const room2_location = room2._traits.get(Traittype.get_by_label('location'));
       expect(room2_location).to.be.instanceOf(Subject);
       expect(room2_location).to.equal(room1.subject);
 
       // In state1: room2.location resolves to room1 (no location trait)
       const room2_location_in_state1 = room2_location.get_belief_by_state(state1);
       expect(room2_location_in_state1).to.equal(room1);
-      expect(room2_location_in_state1._traits.get('location')).to.be.undefined;
+      expect(room2_location_in_state1._traits.get(Traittype.get_by_label('location'))).to.be.undefined;
 
       // In state2: room2.location resolves to room1_v2 (has location trait)
       const room2_location_in_state2 = room2_location.get_belief_by_state(state2);
@@ -423,7 +423,7 @@ describe('State', () => {
       expect(room2_location_in_state2).to.equal(room1_v2);
 
       // And room1_v2's location points back to room2
-      const room1_v2_location = room2_location_in_state2._traits.get('location');
+      const room1_v2_location = room2_location_in_state2._traits.get(Traittype.get_by_label('location'));
       expect(room1_v2_location).to.be.instanceOf(Subject);
       expect(room1_v2_location).to.equal(room2.subject);
 
@@ -540,7 +540,7 @@ describe('State', () => {
 
       world_state.lock();
 
-      const player_mind = player._traits.get('mind');
+      const player_mind = player._traits.get(Traittype.get_by_label('mind'));
       expect(player_mind).to.be.instanceOf(Mind);
 
       const states = [...player_mind._states];

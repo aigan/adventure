@@ -226,7 +226,7 @@ describe('Belief', () => {
       });
 
       // Trait should store a Subject wrapping the sid
-      const location_value = hammer._traits.get('location');
+      const location_value = hammer._traits.get(Traittype.get_by_label('location'));
       expect(location_value).to.be.instanceOf(Subject);
       expect(location_value).to.equal(workshop.subject);
     });
@@ -244,7 +244,7 @@ describe('Belief', () => {
       });
 
       // Primitives should be stored as-is
-      expect(ball._traits.get('color')).to.equal('red');
+      expect(ball._traits.get(Traittype.get_by_label('color'))).to.equal('red');
     });
 
     it('associates label with sid, not _id', () => {
@@ -393,8 +393,8 @@ describe('Belief', () => {
       });
 
       // v2 should have color in _traits, but location inherited from v1
-      expect(hammer_v2._traits.has('color')).to.be.true;
-      expect(hammer_v2._traits.has('location')).to.be.false;
+      expect(hammer_v2._traits.has(Traittype.get_by_label('color'))).to.be.true;
+      expect(hammer_v2._traits.has(Traittype.get_by_label('location'))).to.be.false;
 
       // get_trait should find both
       expect(hammer_v2.get_trait(state2, 'color')).to.equal('blue');
@@ -1038,8 +1038,9 @@ describe('Belief', () => {
       const about_value = player.get_trait(world_state, '@about');
 
       // Cache should have the inherited trait (not own traits)
-      expect(player._cache.has('@about')).to.be.true;
-      expect(player._cache.get('@about')).to.equal(about_value);
+      const about_traittype = Traittype.get_by_label('@about');
+      expect(player._cache.has(about_traittype)).to.be.true;
+      expect(player._cache.get(about_traittype)).to.equal(about_value);
     });
 
     it('to_inspect_view on unlocked state does not poison cache', () => {

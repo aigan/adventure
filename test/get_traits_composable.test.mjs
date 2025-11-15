@@ -6,7 +6,7 @@
  */
 
 import { expect } from 'chai';
-import { Mind } from '../public/worker/cosmos.mjs';
+import { Mind, Traittype } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createStateInNewMind, stdTypes, Thing } from './helpers.mjs';
 
@@ -90,7 +90,7 @@ describe('get_traits() composable trait consistency', () => {
     expect(state.locked).to.be.false;
 
     // Knight should NOT have inventory in own _traits (it's inherited)
-    expect(knight._traits.has('inventory')).to.be.false;
+    expect(knight._traits.has(Traittype.get_by_label('inventory'))).to.be.false;
 
     // get_trait() composes from both bases
     const inventory_from_get_trait = knight.get_trait(state, 'inventory');
@@ -181,7 +181,7 @@ describe('get_traits() composable trait consistency', () => {
     });
 
     // Instance should NOT have inventory in own _traits
-    expect(knight_instance._traits.has('inventory')).to.be.false;
+    expect(knight_instance._traits.has(Traittype.get_by_label('inventory'))).to.be.false;
 
     // get_trait() should return the composed inventory from knight_proto
     const inventory_from_get_trait = knight_instance.get_trait(state, 'inventory');

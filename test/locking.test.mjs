@@ -1,9 +1,6 @@
 import { describe, it, beforeEach } from 'mocha'
 import { expect } from 'chai'
-import { Mind } from '../public/worker/mind.mjs'
-import { State } from '../public/worker/state.mjs'
-import { Belief } from '../public/worker/belief.mjs'
-import { logos } from '../public/worker/cosmos.mjs'
+import { Mind, State, Belief, Traittype, logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { setupStandardArchetypes } from './helpers.mjs'
 
@@ -90,7 +87,7 @@ describe('Locking Constraints', () => {
         }
       })
 
-      const player_mind = player._traits.get('mind')
+      const player_mind = player._traits.get(Traittype.get_by_label('mind'))
       const player_states = [...player_mind._states]
 
       // State is already locked from Mind.resolve_template(), belief is not
@@ -121,7 +118,7 @@ describe('Locking Constraints', () => {
         }
       })
 
-      const player_mind = player._traits.get('mind')
+      const player_mind = player._traits.get(Traittype.get_by_label('mind'))
       const player_states = [...player_mind._states]
 
       // Before locking world_state
@@ -150,7 +147,7 @@ describe('Locking Constraints', () => {
         }}
       })
 
-      const base_mind = base_player._traits.get('mind')
+      const base_mind = base_player._traits.get(Traittype.get_by_label('mind'))
       const base_states = [...base_mind._states]
 
       // Lock the base belief - this cascades to its mind states
@@ -165,7 +162,7 @@ describe('Locking Constraints', () => {
       })
 
       // The versioned belief does NOT have mind in _traits (it's inherited)
-      expect(versioned_player._traits.has('mind')).to.be.false
+      expect(versioned_player._traits.has(Traittype.get_by_label('mind'))).to.be.false
       expect(versioned_player._bases.has(base_player)).to.be.true
 
       // Lock the versioned belief
@@ -201,7 +198,7 @@ describe('Locking Constraints', () => {
         }
       })
 
-      const player_mind = player._traits.get('mind')
+      const player_mind = player._traits.get(Traittype.get_by_label('mind'))
       const player_state = [...player_mind._states][0]
       const player_beliefs = [...player_state.get_beliefs()]
 
@@ -232,7 +229,7 @@ describe('Locking Constraints', () => {
         }
       })
 
-      const player_mind = player._traits.get('mind')
+      const player_mind = player._traits.get(Traittype.get_by_label('mind'))
       const player_state = [...player_mind._states][0]
 
       world_state.lock()

@@ -76,7 +76,7 @@ describe('Mind Trait', () => {
     world_state.lock();
 
     // Verify mind trait returns Mind instance
-    const player_mind = player._traits.get('mind');
+    const player_mind = player._traits.get(Traittype.get_by_label('mind'));
     expect(player_mind).to.be.instanceOf(Mind);
     expect(player_mind.label).to.be.null;
 
@@ -97,12 +97,12 @@ describe('Mind Trait', () => {
     // Find workshop belief
     const workshop_belief = beliefs.find(b => b.get_about(state) === workshop);
     expect(workshop_belief).to.exist;
-    expect(workshop_belief._traits.has('location')).to.be.true;
+    expect(workshop_belief._traits.has(Traittype.get_by_label('location'))).to.be.true;
 
     // Find player belief
     const player_belief = beliefs.find(b => b.get_about(state) === player_body);
     expect(player_belief).to.exist;
-    expect(player_belief._traits.has('location')).to.be.true;
+    expect(player_belief._traits.has(Traittype.get_by_label('location'))).to.be.true;
 
     // Verify location dereferencing
     const player_location = player_belief.get_trait(state, 'location');
@@ -225,10 +225,10 @@ describe('Mind Trait', () => {
     world_state.lock();
 
     // Get both minds and their states
-    const npc1_mind = npc1._traits.get('mind');
+    const npc1_mind = npc1._traits.get(Traittype.get_by_label('mind'));
     const npc1_state = [...npc1_mind._states][0];
 
-    const npc2_mind = npc2._traits.get('mind');
+    const npc2_mind = npc2._traits.get(Traittype.get_by_label('mind'));
     const npc2_state = [...npc2_mind._states][0];
 
     // Find beliefs in NPC1's mind (about world entities)
@@ -255,23 +255,23 @@ describe('Mind Trait', () => {
 
     // Verify requested traits were copied from world beliefs
     // NPC1 requested blacksmith_tavern:['coordinates'] and town_square:['size']
-    expect(npc1_tavern._traits.has('coordinates')).to.be.true;
+    expect(npc1_tavern._traits.has(Traittype.get_by_label('coordinates'))).to.be.true;
     expect(npc1_tavern.get_trait(npc1_state, 'coordinates')).to.equal('50,30');
-    expect(npc1_tavern._traits.has('size')).to.be.false;  // Not requested
+    expect(npc1_tavern._traits.has(Traittype.get_by_label('size'))).to.be.false;  // Not requested
 
-    expect(npc1_square._traits.has('size')).to.be.true;
+    expect(npc1_square._traits.has(Traittype.get_by_label('size'))).to.be.true;
     expect(npc1_square.get_trait(npc1_state, 'size')).to.equal('huge');  // Inherited from prototype
-    expect(npc1_square._traits.has('coordinates')).to.be.false;  // Not requested
+    expect(npc1_square._traits.has(Traittype.get_by_label('coordinates'))).to.be.false;  // Not requested
 
     // NPC2 requested blacksmith_tavern:['coordinates', 'size'] and town_square:['coordinates']
-    expect(npc2_tavern._traits.has('coordinates')).to.be.true;
-    expect(npc2_tavern._traits.has('size')).to.be.true;
+    expect(npc2_tavern._traits.has(Traittype.get_by_label('coordinates'))).to.be.true;
+    expect(npc2_tavern._traits.has(Traittype.get_by_label('size'))).to.be.true;
     expect(npc2_tavern.get_trait(npc2_state, 'coordinates')).to.equal('50,30');
     expect(npc2_tavern.get_trait(npc2_state, 'size')).to.equal('large');  // Inherited from prototype
 
-    expect(npc2_square._traits.has('coordinates')).to.be.true;
+    expect(npc2_square._traits.has(Traittype.get_by_label('coordinates'))).to.be.true;
     expect(npc2_square.get_trait(npc2_state, 'coordinates')).to.equal('100,100');
-    expect(npc2_square._traits.has('size')).to.be.false;  // Not requested
+    expect(npc2_square._traits.has(Traittype.get_by_label('size'))).to.be.false;  // Not requested
 
     // Both NPCs' beliefs are separate instances
     expect(npc1_tavern).to.not.equal(npc2_tavern);
@@ -481,7 +481,7 @@ describe('Mind Trait', () => {
 
     world_state.lock();
 
-    const entity_mind = entity._traits.get('mind');
+    const entity_mind = entity._traits.get(Traittype.get_by_label('mind'));
     expect(entity_mind).to.be.instanceOf(Mind);
 
     const states = [...entity_mind._states];

@@ -105,7 +105,7 @@ describe('learn_about', () => {
         traits: { '@label': 'hammer_knowledge', location: workshop_knowledge.subject }
       });
 
-      const location_trait = hammer_knowledge._traits.get('location');
+      const location_trait = hammer_knowledge._traits.get(Traittype.get_by_label('location'));
       expect(location_trait).to.be.instanceOf(Subject);
       expect(location_trait).to.equal(workshop_knowledge.subject);
     });
@@ -382,7 +382,7 @@ describe('learn_about', () => {
       const player_hammer = player_state.learn_about(hammer_v2, {traits: ['location']});
 
       // Should have learned location (inherited from v1)
-      expect(player_hammer._traits.has('location')).to.be.true;
+      expect(player_hammer._traits.has(Traittype.get_by_label('location'))).to.be.true;
       const player_knowledge_of_location = player_hammer.get_trait(player_state, 'location');
       expect(player_knowledge_of_location).to.be.instanceOf(Subject);
 
@@ -397,7 +397,7 @@ describe('learn_about', () => {
       expect(about_subject).to.equal(workshop.subject);
 
       // Should NOT have color (we didn't learn about it)
-      expect(player_hammer._traits.has('color')).to.be.false;
+      expect(player_hammer._traits.has(Traittype.get_by_label('color'))).to.be.false;
     });
 
     it('incremental knowledge accumulation via inheritance', () => {
@@ -423,8 +423,8 @@ describe('learn_about', () => {
 
       const player_hammer_v1 = player_state1.learn_about(hammer, {traits: ['color']});
 
-      expect(player_hammer_v1._traits.has('color')).to.be.true;
-      expect(player_hammer_v1._traits.has('location')).to.be.false;
+      expect(player_hammer_v1._traits.has(Traittype.get_by_label('color'))).to.be.true;
+      expect(player_hammer_v1._traits.has(Traittype.get_by_label('location'))).to.be.false;
       expect(player_hammer_v1.get_trait(player_state1, 'color')).to.equal('grey');
 
       player_state1.lock();
@@ -435,8 +435,8 @@ describe('learn_about', () => {
       const player_hammer_v2 = player_state2.learn_about(hammer, {traits: ['location']});
 
       // v2 has location in _traits, color inherited from v1
-      expect(player_hammer_v2._traits.has('location')).to.be.true;
-      expect(player_hammer_v2._traits.has('color')).to.be.false;  // not in _traits
+      expect(player_hammer_v2._traits.has(Traittype.get_by_label('location'))).to.be.true;
+      expect(player_hammer_v2._traits.has(Traittype.get_by_label('color'))).to.be.false;  // not in _traits
 
       // But get_trait finds both
       const player_knowledge_of_location_v2 = player_hammer_v2.get_trait(player_state2, 'location');
@@ -475,11 +475,11 @@ describe('learn_about', () => {
       const hammer_knowledge = npc_state.learn_about(hammer, {modalities: ['visual']});
 
       // Should have color (visual)
-      expect(hammer_knowledge._traits.has('color')).to.be.true;
+      expect(hammer_knowledge._traits.has(Traittype.get_by_label('color'))).to.be.true;
       expect(hammer_knowledge.get_trait(npc_state, 'color')).to.equal('blue');
 
       // Should NOT have location (spatial)
-      expect(hammer_knowledge._traits.has('location')).to.be.false;
+      expect(hammer_knowledge._traits.has(Traittype.get_by_label('location'))).to.be.false;
     });
 
     it('learns both visual and spatial traits when modalities include both', () => {
@@ -503,8 +503,8 @@ describe('learn_about', () => {
       const hammer_knowledge = npc_state.learn_about(hammer, {modalities: ['visual', 'spatial']});
 
       // Should have both color (visual) and location (spatial)
-      expect(hammer_knowledge._traits.has('color')).to.be.true;
-      expect(hammer_knowledge._traits.has('location')).to.be.true;
+      expect(hammer_knowledge._traits.has(Traittype.get_by_label('color'))).to.be.true;
+      expect(hammer_knowledge._traits.has(Traittype.get_by_label('location'))).to.be.true;
     });
 
     it('never learns internal traits even when explicitly requested', () => {
@@ -530,10 +530,10 @@ describe('learn_about', () => {
       const player_knowledge = npc_state.learn_about(player, {modalities: ['visual', 'internal']});
 
       // Should have color (visual)
-      expect(player_knowledge._traits.has('color')).to.be.true;
+      expect(player_knowledge._traits.has(Traittype.get_by_label('color'))).to.be.true;
 
       // Should NOT have mind (internal) - internal traits are never observable
-      expect(player_knowledge._traits.has('mind')).to.be.false;
+      expect(player_knowledge._traits.has(Traittype.get_by_label('mind'))).to.be.false;
     });
 
     it('uses default modalities (visual + spatial) when none specified', () => {
@@ -557,8 +557,8 @@ describe('learn_about', () => {
       const hammer_knowledge = npc_state.learn_about(hammer, {});
 
       // Should have both color and location (default modalities)
-      expect(hammer_knowledge._traits.has('color')).to.be.true;
-      expect(hammer_knowledge._traits.has('location')).to.be.true;
+      expect(hammer_knowledge._traits.has(Traittype.get_by_label('color'))).to.be.true;
+      expect(hammer_knowledge._traits.has(Traittype.get_by_label('location'))).to.be.true;
     });
 
     it('explicit traits parameter overrides modalities', () => {
@@ -586,10 +586,10 @@ describe('learn_about', () => {
       });
 
       // Should have color (explicitly specified)
-      expect(hammer_knowledge._traits.has('color')).to.be.true;
+      expect(hammer_knowledge._traits.has(Traittype.get_by_label('color'))).to.be.true;
 
       // Should NOT have location (not in explicit traits)
-      expect(hammer_knowledge._traits.has('location')).to.be.false;
+      expect(hammer_knowledge._traits.has(Traittype.get_by_label('location'))).to.be.false;
     });
 
     it('skips traits without exposure metadata', () => {
@@ -613,10 +613,10 @@ describe('learn_about', () => {
       const hammer_knowledge = npc_state.learn_about(hammer, {modalities: ['visual']});
 
       // Should have color (has exposure metadata: visual)
-      expect(hammer_knowledge._traits.has('color')).to.be.true;
+      expect(hammer_knowledge._traits.has(Traittype.get_by_label('color'))).to.be.true;
 
       // Should NOT have location (has exposure metadata but wrong modality: spatial)
-      expect(hammer_knowledge._traits.has('location')).to.be.false;
+      expect(hammer_knowledge._traits.has(Traittype.get_by_label('location'))).to.be.false;
     });
   });
 });

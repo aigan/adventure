@@ -221,35 +221,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
     });
   });
 
-  describe('Start command special handling', () => {
-    it('should initialize session before sending ack', async () => {
-      const event = {
-        data: ['start', {}, 9]
-      };
-
-      await messageHandler(event);
-
-      // header_set should come before ack
-      expect(postedMessages.length).to.be.at.least(3);
-      expect(postedMessages[0][0]).to.equal('header_set');
-
-      const ackMsg = postedMessages[postedMessages.length - 1];
-      expect(ackMsg[0]).to.equal('ack');
-      expect(ackMsg[1]).to.equal(9);
-    });
-
-    it('should return true in ack', async () => {
-      const event = {
-        data: ['start', {}, 10]
-      };
-
-      await messageHandler(event);
-
-      const ackMsg = postedMessages[postedMessages.length - 1];
-      const result = ackMsg[2];
-
-      // Result should be true
-      expect(result).to.equal(true);
-    });
-  });
+  // Note: "Start command special handling" tests removed as they were duplicates
+  // of the "should handle start and return ack with result" test above, which already
+  // verifies that header_set comes before ack and that the result is true.
 });
