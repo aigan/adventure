@@ -387,10 +387,9 @@ export class State {
 
     // Clean up reverse index for removed beliefs
     for (const belief of beliefs) {
-      for (const [trait_name, value] of belief._traits) {
-        const traittype = Traittype.get_by_label(trait_name)
-        if (traittype?.is_subject_reference) {
-          for (const subject of belief._extract_subjects(value)) {
+      for (const [traittype, value] of belief._traits) {
+        if (traittype.is_subject_reference) {
+          for (const subject of belief.extract_subjects(value)) {
             this.rev_del(subject, traittype, belief)
           }
         }
