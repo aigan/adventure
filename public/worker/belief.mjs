@@ -61,6 +61,7 @@ import { State } from './state.mjs'
  * @property {Mind} in_mind - Mind this belief belongs to (eidos() for prototypes)
  * @property {Set<Belief|Archetype>} _bases - Base archetypes/beliefs for inheritance
  * @property {Map<Traittype, *>} _traits - Trait values (sids, primitives, State/Mind refs)
+ * @property {Map<string, any>} [_deserialized_traits] - Temporary storage during JSON deserialization
  * @property {boolean} locked - Whether belief can be modified
  */
 export class Belief {
@@ -203,7 +204,7 @@ export class Belief {
     //   Example: inventory: {replace: ['sword']} → only sword, ignore Villager's token
     //            inventory: {remove: ['token']} → compose then remove token
     if (traittype.composable && value !== null) {
-      const base_values = this.collect_latest_value_from_all_bases(traittype.label)
+      const base_values = this.collect_latest_value_from_all_bases(traittype)
       if (base_values.length > 0) {
         // Compose: base values first, then new value
         const all_values = [...base_values, value]
@@ -225,7 +226,7 @@ export class Belief {
     // Invalidate cache when trait is added/changed
     this._cache.clear() // FIXME: Not needed if only using cache on locked. IF we want to use this, it should be moved to _set_trait()
 
-    assert(this.can_have_trait(traittype.label), `Belief can't have trait ${traittype.label}`, {label: traittype.label, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
+    assert(this.can_have_trait(traittype), `Belief can't have trait ${traittype.label}`, {label: traittype.label, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
 
     if (debug()) {
       const old_value = this.get_trait(this.origin_state, traittype)
@@ -250,22 +251,23 @@ export class Belief {
 
   /**
    * Get iterable over trait entries (polymorphic interface)
-   * Returns iterable of [key, value] pairs for trait operations collection
-   * @returns {Generator<[string, any]>} Iterable iterator of trait entries
+   * Returns iterable of [traittype, value] pairs for trait operations collection
+   * @returns {Generator<[Traittype, any]>} Iterable iterator of trait entries
    */
   *get_trait_entries() {
     for (const [traittype, value] of this._traits) {
-      yield [traittype.label, value]
+      yield [traittype, value]
     }
   }
 
   /**
-   * @param {string} label
+   * @param {Traittype} traittype
    * @returns {boolean}
    */
-  can_have_trait(label) {
+  can_have_trait(traittype) {
+    assert(traittype instanceof Traittype, 'can_have_trait requires Traittype', {belief_id: this._id, traittype})
     for (const archetype of this.get_archetypes()) {
-      if (archetype.has_trait(label)) return true
+      if (archetype.has_trait(traittype.label)) return true
     }
     return false
   }
@@ -275,12 +277,12 @@ export class Belief {
    * First checks if Traittype has a derivation strategy (composable, etc)
    * Then walks the inheritance chain breadth-first to find the first defined value
    * @param {State} state - State context (used by Traittype for derived values)
-   * @param {string} trait_name - Name of the trait to get
+   * @param {Traittype} traittype - Traittype to get
    * @returns {*} trait value (Subject, not Belief), or null if not found
    * @private
    */
-  _get_inherited_trait(state, trait_name) {
-    let value = Traittype.get_by_label(trait_name)?.get_derived_value(this)
+  _get_inherited_trait(state, traittype) {
+    let value = traittype.get_derived_value(this)
     if (value !== undefined) return value
 
     const queue = [...this._bases]
@@ -292,7 +294,7 @@ export class Belief {
       seen.add(base)
 
       // Check for value - early return when found
-      value = base.get_own_trait_value(trait_name)
+      value = base.get_own_trait_value(traittype.label)
       if (value !== undefined) return value
 
       // Continue to next level
@@ -321,7 +323,7 @@ export class Belief {
     value = this._get_cached(traittype)
     if (value !== undefined) return value
 
-    value = this._get_inherited_trait(state, traittype.label)
+    value = this._get_inherited_trait(state, traittype)
     if (this.locked) this._set_cache(traittype, value)
 
     return value
@@ -329,17 +331,15 @@ export class Belief {
 
   /**
    * Get beliefs that reference this belief via a trait (reverse lookup)
-   * Inverse of get_trait(): finds all beliefs where belief.get_trait(state, trait_name) includes this.subject
+   * Inverse of get_trait(): finds all beliefs where belief.get_trait(state, traittype) includes this.subject
    * Uses skip list to efficiently traverse only states with relevant changes
    * @param {State} state - State to query
-   * @param {string} trait_name - Trait name to find reverse references for
-   * @returns {Belief[]} Beliefs in state that reference this belief's subject via trait_name
+   * @param {Traittype} traittype - Traittype to find reverse references for
+   * @returns {Belief[]} Beliefs in state that reference this belief's subject via traittype
    */
-  rev_trait(state, trait_name) { // FIXME: make it a generator
-    assert(state instanceof State, 'rev_trait requires State', {belief_id: this._id, trait_name})
-
-    const traittype = Traittype.get_by_label(trait_name)
-    if (!traittype) return []
+  rev_trait(state, traittype) { // FIXME: make it a generator
+    assert(state instanceof State, 'rev_trait requires State', {belief_id: this._id, traittype: traittype?.label})
+    assert(traittype instanceof Traittype, 'rev_trait requires Traittype', {belief_id: this._id, traittype})
 
     const seen = new Set()
     const results = new Set()
@@ -377,10 +377,10 @@ export class Belief {
    * Called by Traittype.get_derived_value() for composable traits
    * Collects ONE value per direct base (stops at first found in each base's chain)
    * This implements the "latest version" semantics: each base's chain has one latest value
-   * @param {string} trait_name - Trait name to collect
+   * @param {Traittype} traittype - Traittype to collect
    * @returns {Array<any>} Array of values (one per direct base that has the trait)
    */
-  collect_latest_value_from_all_bases(trait_name) {
+  collect_latest_value_from_all_bases(traittype) {
     const values = []
     const queue = [...this._bases]
     const seen = new Set()
@@ -390,7 +390,8 @@ export class Belief {
       if (!base || seen.has(base)) continue
       seen.add(base)
 
-      const value = base.get_own_trait_value(trait_name)
+      // Use label for polymorphism - Archetype uses strings, Belief will be updated to use Traittype
+      const value = base.get_own_trait_value(traittype.label)
 
       if (value !== undefined) {
         if (value !== null) values.push(value)
@@ -430,20 +431,20 @@ export class Belief {
    * Delegates to Traittype for derived values (composable, etc) - same logic as get_trait()
    * Caches inherited traits when belief is locked (belief-level cache)
    * Includes all trait definitions from archetypes (even null/unset values)
-   * @returns {Generator<[string, *]>} Yields [trait_name, value] pairs
+   * @returns {Generator<[Traittype, *]>} Yields [traittype, value] pairs
    */
   *get_defined_traits() {
     const yielded = new Set()
 
     // Yield own traits first
     for (const [traittype, value] of this._traits) {
-      yield [traittype.label, value]
-      yielded.add(traittype.label)
+      yield [traittype, value]
+      yielded.add(traittype)
     }
 
     for (const [traittype, value] of this._cache) {
-      yield [traittype.label, value]
-      yielded.add(traittype.label)
+      yield [traittype, value]
+      yielded.add(traittype)
     }
 
     // Walk bases chain for inherited traits
@@ -455,17 +456,18 @@ export class Belief {
       if (!base || seen.has(base)) continue
       seen.add(base)
 
-      for (const [name, trait_value] of base.get_trait_entries()) {
-        if (!yielded.has(name)) {
+      for (const [key, trait_value] of base.get_trait_entries()) {
+        // Handle polymorphism: Archetype yields [string, value], Belief yields [Traittype, value]
+        const traittype = (typeof key === 'string') ? Traittype.get_by_label(key) : key
 
-          const traittype = Traittype.get_by_label(name)
+        if (traittype && !yielded.has(traittype)) {
           let value = trait_value
-          const derived_value = traittype?.get_derived_value(this)
+          const derived_value = traittype.get_derived_value(this)
           if (derived_value !== undefined) value = derived_value
-          if (this.locked && traittype) this._set_cache(traittype, value)
+          if (this.locked) this._set_cache(traittype, value)
 
-          yield [name, value]
-          yielded.add(name)
+          yield [traittype, value]
+          yielded.add(traittype)
         }
       }
 
@@ -475,7 +477,7 @@ export class Belief {
 
   /**
    * Iterate over traits that have non-null values (excludes null/undefined traits)
-   * @returns {Generator<[string, *]>} Yields [trait_name, value] pairs for set traits only
+   * @returns {Generator<[Traittype, *]>} Yields [traittype, value] pairs for set traits only
    */
   *get_traits() {
     for (const pair of this.get_defined_traits()) {
@@ -725,11 +727,8 @@ export class Belief {
 
     // Build traits object from get_traits() (includes all traits, even nulls, for complete schema view)
     const traits_obj = /** @type {Record<string, any>} */ ({})
-    for (const [k, v] of this.get_traits()) {
-      const traittype = Traittype.get_by_label(k)
-      assert(traittype instanceof Traittype, `Traittype '${k}' not found`)
-
-      traits_obj[k] = traittype.to_inspect_view(state, v)
+    for (const [traittype, v] of this.get_traits()) {
+      traits_obj[traittype.label] = traittype.to_inspect_view(state, v)
     }
 
     const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string, type: string}>, bases: (string|number)[], traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean}} */ ({
@@ -769,15 +768,20 @@ export class Belief {
    * Converts string-keyed _traits Map (from JSON) to Traittype-keyed Map
    */
   _finalize_traits_from_json() {
-    const new_traits = new Map()
-    for (const [trait_name, trait_value] of this._traits) {
+    // Convert from temporary string-keyed storage to Traittype-keyed Map
+    /** @type {Map<string, any>} */
+    // @ts-expect-error - _deserialized_traits is set dynamically in from_json()
+    const temp = this._deserialized_traits
+    for (const [trait_name, trait_value] of temp) {
       const traittype = Traittype.get_by_label(trait_name)
       if (traittype) {
-        new_traits.set(traittype, traittype.deserialize_value(this, trait_value))
+        this._traits.set(traittype, traittype.deserialize_value(this, trait_value))
       }
       // If no traittype found, skip (invalid trait)
     }
-    this._traits = new_traits
+    // Clean up temporary storage
+    // @ts-expect-error - cleaning up dynamically set property
+    delete this._deserialized_traits
   }
 
   /**
@@ -816,19 +820,22 @@ export class Belief {
     }
 
     // Copy traits as-is - sids, primitives, and State/Mind reference objects
-    // Resolution happens via _finalize_traits_from_json() after all entities loaded
-    // Use raw _traits.set() to bypass reverse indexing (origin_state not set yet)
-    belief._traits = new Map()
+    // Use temporary storage with string keys - _finalize_traits_from_json() converts to Traittype Map
+    /** @type {Map<string, any>} */
+    belief._deserialized_traits = new Map()
     for (const [trait_name, trait_value] of Object.entries(data.traits)) {
-      belief._traits.set(trait_name, trait_value)
+      belief._deserialized_traits.set(trait_name, trait_value)
     }
 
     // If about field exists in JSON (for backward compat or from @about trait serialization),
     // store it as sid in @about trait
-    if (data.about != null && !belief._traits.has('@about')) { // FIXME: Vonvert @about to an option
+    if (data.about != null && !belief._deserialized_traits.has('@about')) { // FIXME: Convert @about to an option
       // data.about is a sid (from Subject.toJSON()), store it directly
-      belief._traits.set('@about', data.about)
+      belief._deserialized_traits.set('@about', data.about)
     }
+
+    // _traits will be initialized by _finalize_traits_from_json()
+    belief._traits = new Map()
 
     // Register globally
     DB.register_belief_by_id(belief)

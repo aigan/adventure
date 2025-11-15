@@ -35,7 +35,8 @@ describe('Belief', () => {
       expect(inspected.traits.color).to.equal('blue');
 
       // Should still have location from base
-      expect(ball_v2.can_have_trait('location')).to.be.true;
+      const location_traittype = Traittype.get_by_label('location');
+      expect(ball_v2.can_have_trait(location_traittype)).to.be.true;
     });
 
     it('versioned belief inherits archetypes from base', () => {

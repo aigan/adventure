@@ -584,7 +584,8 @@ describe('Traittype', () => {
 
       // Should appear when iterating with get_traits()
       const traits = Array.from(hammer.get_traits());
-      const form_entry = traits.find(([name]) => name === '@form');
+      const form_traittype_obj = Traittype.get_by_label('@form');
+      const form_entry = traits.find(([traittype]) => traittype === form_traittype_obj);
 
       expect(form_entry).to.not.be.undefined;
       expect(form_entry[1]).to.equal('solid');
@@ -599,7 +600,10 @@ describe('Traittype', () => {
       });
 
       const form_traittype = Traittype.get_by_label('@form');
-      const trait_map = new Map(obj.get_defined_traits());
+      const trait_map = new Map();
+      for (const [traittype, value] of obj.get_defined_traits()) {
+        trait_map.set(traittype.label, value);
+      }
 
       // Explicitly set trait
       expect(trait_map.get('weight')).to.equal(5);

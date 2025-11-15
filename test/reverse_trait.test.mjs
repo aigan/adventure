@@ -28,6 +28,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
   describe('Basic Functionality', () => {
     it('returns empty array when no beliefs reference the subject', () => {
       const state = createStateInNewMind('world')
+      const location_traittype = Traittype.get_by_label('location')
 
       // Create a room that nothing references
       const room = Belief.from_template(state, {
@@ -37,7 +38,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state.lock()
 
       // Query for beliefs with location trait pointing to this room
-      const referrers = room.rev_trait(state, 'location')
+      const referrers = room.rev_trait(state, location_traittype)
 
       assert.isArray(referrers)
       assert.lengthOf(referrers, 0)
@@ -45,6 +46,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
     it('returns single belief that references the subject', () => {
       const state = createStateInNewMind('world')
+      const location_traittype = Traittype.get_by_label('location')
 
       // Create a room
       const room = state.add_belief_from_template({
@@ -63,7 +65,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state.lock()
 
       // Query: who is in the tavern?
-      const occupants = room.rev_trait(state, 'location')
+      const occupants = room.rev_trait(state, location_traittype)
 
       assert.lengthOf(occupants, 1)
       assert.strictEqual(occupants[0], npc)
@@ -71,7 +73,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
     it('returns multiple beliefs that reference the subject', () => {
       const state = createStateInNewMind('world')
-      
+      const location_traittype = Traittype.get_by_label('location')
 
       // Create a room
       const room = Belief.from_template(state, {
@@ -95,7 +97,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state.lock()
 
       // Query: who is in the marketplace?
-      const occupants = room.rev_trait(state, 'location')
+      const occupants = room.rev_trait(state, location_traittype)
 
       assert.lengthOf(occupants, 3)
       assert.includeMembers(occupants, [npc1, npc2, npc3])
@@ -105,7 +107,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
   describe('State Chain Traversal', () => {
     it('works with single state (no base chain)', () => {
       const state = createStateInNewMind('world')
-      
+      const location_traittype = Traittype.get_by_label('location')
 
       const room = Belief.from_template(state, {
         bases: ['Location'],
@@ -117,13 +119,14 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
       state.lock()
 
-      const occupants = room.rev_trait(state, 'location')
+      const occupants = room.rev_trait(state, location_traittype)
       assert.lengthOf(occupants, 1)
       assert.strictEqual(occupants[0], npc)
     })
 
     it('traverses two-state chain correctly', () => {
       const state1 = createStateInNewMind('world')
+      const location_traittype = Traittype.get_by_label('location')
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
@@ -144,18 +147,19 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state2.lock()
 
       // Query from state2 should see both NPCs
-      const occupants = room.rev_trait(state2, 'location')
+      const occupants = room.rev_trait(state2, location_traittype)
       assert.lengthOf(occupants, 2)
       assert.includeMembers(occupants, [npc1, npc2])
 
       // Query from state1 should see only npc1
-      const occupants1 = room.rev_trait(state1, 'location')
+      const occupants1 = room.rev_trait(state1, location_traittype)
       assert.lengthOf(occupants1, 1)
       assert.strictEqual(occupants1[0], npc1)
     })
 
     it('traverses long chain with sparse changes (skip list optimization)', () => {
       let state = createStateInNewMind('world')
+      const location_traittype = Traittype.get_by_label('location')
 
       const room = Belief.from_template(state, {
         bases: ['Location'],
@@ -183,7 +187,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       }
 
       // Query should find all 3 NPCs despite 10-state chain
-      const occupants = room.rev_trait(state, 'location')
+      const occupants = room.rev_trait(state, location_traittype)
       assert.lengthOf(occupants, 3)
       assert.includeMembers(occupants, npcs)
     })
@@ -192,6 +196,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
   describe('Add/Del Patterns', () => {
     it('handles only additions across states', () => {
       let state = createStateInNewMind('world')
+      const location_traittype = Traittype.get_by_label('location')
 
       const room = Belief.from_template(state, {
         bases: ['Location'],
@@ -214,13 +219,14 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state.lock()
       }
 
-      const occupants = room.rev_trait(state, 'location')
+      const occupants = room.rev_trait(state, location_traittype)
       assert.lengthOf(occupants, 3)
       assert.includeMembers(occupants, npcs)
     })
 
     it('handles add then remove pattern', () => {
       const state1 = createStateInNewMind('world')
+      const location_traittype = Traittype.get_by_label('location')
 
       const room1 = Belief.from_template(state1, {
         bases: ['Location'],
@@ -246,21 +252,22 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state2.lock()
 
       // Kitchen should have no occupants in state2
-      const kitchen_occupants = room1.rev_trait(state2, 'location')
+      const kitchen_occupants = room1.rev_trait(state2, location_traittype)
       assert.lengthOf(kitchen_occupants, 0)
 
       // Bedroom should have the NPC in state2
-      const bedroom_occupants = room2.rev_trait(state2, 'location')
+      const bedroom_occupants = room2.rev_trait(state2, location_traittype)
       assert.lengthOf(bedroom_occupants, 1)
       assert.strictEqual(bedroom_occupants[0], npc2)
 
       // Kitchen should still have occupant in state1
-      const kitchen_occupants_old = room1.rev_trait(state1, 'location')
+      const kitchen_occupants_old = room1.rev_trait(state1, location_traittype)
       assert.lengthOf(kitchen_occupants_old, 1)
     })
 
     it('handles resurrection pattern (remove then add)', () => {
       const state1 = createStateInNewMind('world')
+      const location_traittype = Traittype.get_by_label('location')
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
@@ -291,14 +298,14 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state3.lock()
 
       // State 1: King present
-      assert.lengthOf(room.rev_trait(state1, 'location'), 1)
+      assert.lengthOf(room.rev_trait(state1, location_traittype), 1)
 
       // State 2: King absent
-      assert.lengthOf(room.rev_trait(state2, 'location'), 0)
+      assert.lengthOf(room.rev_trait(state2, location_traittype), 0)
 
       // State 3: King returns
-      assert.lengthOf(room.rev_trait(state3, 'location'), 1)
-      assert.strictEqual(room.rev_trait(state3, 'location')[0], npc3)
+      assert.lengthOf(room.rev_trait(state3, location_traittype), 1)
+      assert.strictEqual(room.rev_trait(state3, location_traittype)[0], npc3)
     })
   })
 
@@ -365,6 +372,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
     it('isolates different (subject, traittype) pairs', () => {
       const state1 = createStateInNewMind('world')
+      const location_traittype = Traittype.get_by_label('location')
 
       const room1 = Belief.from_template(state1, {
         bases: ['Location'],
@@ -389,18 +397,20 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state2.lock()
 
       // Each room should only see its own occupant
-      assert.lengthOf(room1.rev_trait(state2, 'location'), 1)
-      assert.strictEqual(room1.rev_trait(state2, 'location')[0], npc)
+      assert.lengthOf(room1.rev_trait(state2, location_traittype), 1)
+      assert.strictEqual(room1.rev_trait(state2, location_traittype)[0], npc)
 
-      assert.lengthOf(room2.rev_trait(state2, 'location'), 1)
-      assert.strictEqual(room2.rev_trait(state2, 'location')[0], npc2)
+      assert.lengthOf(room2.rev_trait(state2, location_traittype), 1)
+      assert.strictEqual(room2.rev_trait(state2, location_traittype)[0], npc2)
     })
   })
 
   describe('Edge Cases', () => {
     it('returns empty array for non-existent traittype', () => {
       const state = createStateInNewMind('world')
-      
+      // Register a traittype that won't have any referrers
+      const unused_traittype = new Traittype('unused_trait', 'Subject')
+      Traittype.register('unused_trait', unused_traittype)
 
       const room = Belief.from_template(state, {
         bases: ['Location'],
@@ -408,14 +418,14 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
       state.lock()
 
-      const result = room.rev_trait(state, 'nonexistent_trait')
+      const result = room.rev_trait(state, unused_traittype)
       assert.isArray(result)
       assert.lengthOf(result, 0)
     })
 
     it('handles subject never referenced', () => {
       const state = createStateInNewMind('world')
-      
+      const location_traittype = Traittype.get_by_label('location')
 
       const room = Belief.from_template(state, {
         bases: ['Location'],
@@ -423,12 +433,13 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
       state.lock()
 
-      const result = room.rev_trait(state, 'location')
+      const result = room.rev_trait(state, location_traittype)
       assert.lengthOf(result, 0)
     })
 
     it('deduplicates same belief added multiple times', () => {
       const state1 = createStateInNewMind('world')
+      const location_traittype = Traittype.get_by_label('location')
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
@@ -450,7 +461,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state2.lock()
 
       // Should only return npc2 (current version), not duplicates
-      const occupants = room.rev_trait(state2, 'location')
+      const occupants = room.rev_trait(state2, location_traittype)
       assert.lengthOf(occupants, 1)
       assert.strictEqual(occupants[0], npc2)
     })
@@ -459,7 +470,8 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
   describe('Trait Type Isolation', () => {
     it('different trait types on same subject are isolated', () => {
       const state = createStateInNewMind('world')
-      
+      const container_traittype = Traittype.get_by_label('container')
+      const location_traittype = Traittype.get_by_label('location')
 
       const container = Belief.from_template(state, {
         bases: ['PortableObject'],
@@ -489,12 +501,12 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state.lock()
 
       // Container query should find items inside it
-      const contents = container.rev_trait(state, 'container')
+      const contents = container.rev_trait(state, container_traittype)
       assert.lengthOf(contents, 2)
       assert.includeMembers(contents, [item1, item2])
 
       // Room query should find only item with location
-      const room_contents = room.rev_trait(state, 'location')
+      const room_contents = room.rev_trait(state, location_traittype)
       assert.lengthOf(room_contents, 1)
       assert.strictEqual(room_contents[0], item1)
     })
@@ -503,6 +515,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
   describe('Integration Tests', () => {
     it('works with locked and unlocked states', () => {
       const state1 = createStateInNewMind('world')
+      const location_traittype = Traittype.get_by_label('location')
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
@@ -514,20 +527,20 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
 
       // Query on unlocked state
-      const occupants_unlocked = room.rev_trait(state1, 'location')
+      const occupants_unlocked = room.rev_trait(state1, location_traittype)
       assert.lengthOf(occupants_unlocked, 1)
 
       state1.lock()
 
       // Query on locked state
-      const occupants_locked = room.rev_trait(state1, 'location')
+      const occupants_locked = room.rev_trait(state1, location_traittype)
       assert.lengthOf(occupants_locked, 1)
       assert.strictEqual(occupants_locked[0], npc)
     })
 
     it('only tracks Subject trait type (not primitives)', () => {
       const state = createStateInNewMind('world')
-      
+      const name_traittype = Traittype.get_by_label('name')
 
       const npc = Belief.from_template(state, {
         bases: ['Actor'],
@@ -540,7 +553,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       // name trait is string type, should not be indexed
       // Verify rev_trait doesn't crash and returns empty
-      const result = npc.rev_trait(state, 'name')
+      const result = npc.rev_trait(state, name_traittype)
       assert.isArray(result)
     })
   })
@@ -548,7 +561,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
   describe('Real-world Scenarios', () => {
     it('finds all NPCs in a location', () => {
       const state = createStateInNewMind('world')
-      
+      const location_traittype = Traittype.get_by_label('location')
 
       const tavern = Belief.from_template(state, {
         bases: ['Location'],
@@ -569,14 +582,14 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
       state.lock()
 
-      const people_in_tavern = tavern.rev_trait(state, 'location')
+      const people_in_tavern = tavern.rev_trait(state, location_traittype)
       assert.lengthOf(people_in_tavern, 3)
       assert.includeMembers(people_in_tavern, [bartender, patron1, patron2])
     })
 
     it('finds all items in a container', () => {
       const state = createStateInNewMind('world')
-      
+      const container_traittype = Traittype.get_by_label('container')
 
       const backpack = Belief.from_template(state, {
         bases: ['PortableObject'],
@@ -597,7 +610,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
       state.lock()
 
-      const inventory = backpack.rev_trait(state, 'container')
+      const inventory = backpack.rev_trait(state, container_traittype)
       assert.lengthOf(inventory, 3)
       assert.includeMembers(inventory, [sword, potion, rope])
     })

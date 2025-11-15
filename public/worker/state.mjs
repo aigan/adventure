@@ -523,11 +523,11 @@ export class State {
    * Integrate new knowledge with existing beliefs
    * @param {State} source_state - State context for resolving trait references
    * @param {Belief} source_belief - Belief to integrate
-   * @param {string[]} trait_names - Traits to copy/update
+   * @param {Traittype[]} traittypes - Traittypes to copy/update
    * @param {Array<Belief>} existing_beliefs - Beliefs from recognize()
    * @returns {Belief} Updated or new belief
    */
-  integrate(source_state, source_belief, trait_names, existing_beliefs) {
+  integrate(source_state, source_belief, traittypes, existing_beliefs) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     // TODO: Reconciliation logic - try options to minimize contradictions
@@ -544,12 +544,10 @@ export class State {
       // Use get_trait() to find inherited values (returns raw Subjects, not Beliefs)
       /** @type {Record<string, any>} */
       const copied_traits = {}
-      for (const name of trait_names) {
-        const traittype = Traittype.get_by_label(name)
-        assert(traittype, `Traittype '${name}' not found in registry`, {mind: this.in_mind.label, trait_names})
+      for (const traittype of traittypes) {
         const value = source_belief.get_trait(source_state, traittype)
         if (value !== null) {
-          copied_traits[name] = this._recursively_learn_trait_value(source_state, value)
+          copied_traits[traittype.label] = this._recursively_learn_trait_value(source_state, value)
         }
       }
 
@@ -569,12 +567,10 @@ export class State {
       // Use get_trait() to find inherited values (returns raw Subjects, not Beliefs)
       /** @type {Record<string, any>} */
       const new_traits = {}
-      for (const name of trait_names) {
-        const traittype = Traittype.get_by_label(name)
-        assert(traittype, `Traittype '${name}' not found in registry`, {mind: this.in_mind.label, trait_names})
+      for (const traittype of traittypes) {
         const value = source_belief.get_trait(source_state, traittype)
         if (value !== null) {
-          new_traits[name] = this._recursively_learn_trait_value(source_state, value)
+          new_traits[traittype.label] = this._recursively_learn_trait_value(source_state, value)
         }
       }
 
@@ -683,17 +679,15 @@ export class State {
    *
    * @param {Belief} belief - Belief to get observable traits from
    * @param {string[]} modalities - Exposure types to include (e.g., ['visual', 'spatial'])
-   * @returns {string[]} Array of trait names with matching exposure
+   * @returns {Traittype[]} Array of Traittypes with matching exposure
    */
   get_observable_traits(belief, modalities) {
     const observable_traits = []
 
     // Iterate through all traits on the belief
-    for (const [trait_name, _value] of belief.get_traits()) {
-      const traittype = Traittype.get_by_label(trait_name)
-
-      // Skip if traittype not found or has no exposure metadata
-      if (!traittype || !traittype.exposure) {
+    for (const [traittype, _value] of belief.get_traits()) {
+      // Skip if traittype has no exposure metadata
+      if (!traittype.exposure) {
         continue
       }
 
@@ -704,7 +698,7 @@ export class State {
 
       // Include trait if its exposure matches any of the specified modalities
       if (modalities.includes(traittype.exposure)) {
-        observable_traits.push(trait_name)
+        observable_traits.push(traittype)
       }
     }
 
@@ -738,20 +732,24 @@ export class State {
        source_state_mind: source_state.in_mind?.label, using_about_state: this.about_state != null})
 
     // Determine which traits to learn
-    let trait_names
+    let traittypes
     if (traits !== undefined) {
-      // Explicit traits specified - use them directly
-      trait_names = traits
+      // Explicit traits specified (as strings) - convert to Traittypes
+      traittypes = traits.map(name => {
+        const tt = Traittype.get_by_label(name)
+        assert(tt, `Traittype '${name}' not found in registry`, {mind: this.in_mind.label, traits})
+        return tt
+      })
     } else {
       // Auto-learn observable traits based on modalities
-      trait_names = this.get_observable_traits(source_belief, modalities)
+      traittypes = this.get_observable_traits(source_belief, modalities)
     }
 
     // Step 1: Recognize existing knowledge
     const existing_beliefs = this.recognize(source_belief)
 
     // Step 2: Integrate new knowledge
-    return this.integrate(source_state, source_belief, trait_names, existing_beliefs)
+    return this.integrate(source_state, source_belief, traittypes, existing_beliefs)
   }
 
   /**

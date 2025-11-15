@@ -44,9 +44,10 @@ describe('learn_about', () => {
       const hammer = get_first_belief_by_label('hammer');
       const hammer_belief = npc_mind_state.learn_about(hammer, {traits: ['color']});
 
-      expect(hammer_belief.can_have_trait('color')).to.be.true;
-      expect(hammer_belief.can_have_trait('location')).to.be.true;
       const color_traittype = Traittype.get_by_label('color');
+      const location_traittype = Traittype.get_by_label('location');
+      expect(hammer_belief.can_have_trait(color_traittype)).to.be.true;
+      expect(hammer_belief.can_have_trait(location_traittype)).to.be.true;
       expect(hammer_belief.get_trait(npc_mind_state, color_traittype)).to.equal('red');
     });
   });

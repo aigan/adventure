@@ -99,7 +99,10 @@ describe('get_traits() composable trait consistency', () => {
     expect(inventory_from_get_trait).to.have.lengthOf(2, 'get_trait() composes sword + shield');
 
     // get_traits() should return the SAME composed inventory
-    const traits_map = new Map(knight.get_traits());
+    const traits_map = new Map();
+    for (const [traittype, value] of knight.get_traits()) {
+      traits_map.set(traittype.label, value);
+    }
     const inventory_from_get_traits = traits_map.get('inventory');
 
     expect(inventory_from_get_traits).to.be.an('array');
@@ -189,7 +192,10 @@ describe('get_traits() composable trait consistency', () => {
     const inventory_from_get_trait = knight_instance.get_trait(state, inventory_traittype);
 
     // get_traits() should return the same
-    const traits_map = new Map(knight_instance.get_traits());
+    const traits_map = new Map();
+    for (const [traittype, value] of knight_instance.get_traits()) {
+      traits_map.set(traittype.label, value);
+    }
     const inventory_from_get_traits = traits_map.get('inventory');
 
     // Both should return the same composed array

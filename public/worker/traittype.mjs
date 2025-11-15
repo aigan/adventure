@@ -246,7 +246,7 @@ export class Traittype {
    */
   get_derived_value(belief) {
     if (this.composable) {
-      const values = belief.collect_latest_value_from_all_bases(this.label)
+      const values = belief.collect_latest_value_from_all_bases(this)
 
       if (values.length < 2) {
         return values[0] ?? null

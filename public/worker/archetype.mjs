@@ -82,7 +82,7 @@ export class Archetype {
     }
 
     /** @type {Record<string, any>} */
-    this._traits_template = traits
+    this._traits_template = traits // FIXME: use Map with traittype as key
   }
 
   /**

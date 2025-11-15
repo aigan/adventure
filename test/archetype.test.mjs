@@ -34,8 +34,10 @@ describe('Archetype', () => {
       });
 
       // PortableObject → ObjectPhysical, so should have color trait
-      expect(hammer.can_have_trait('color')).to.be.true;
-      expect(hammer.can_have_trait('location')).to.be.true;
+      const color_traittype = Traittype.get_by_label('color');
+      const location_traittype = Traittype.get_by_label('location');
+      expect(hammer.can_have_trait(color_traittype)).to.be.true;
+      expect(hammer.can_have_trait(location_traittype)).to.be.true;
     });
 
     it('Person archetype inherits from multiple bases', () => {
@@ -50,8 +52,10 @@ describe('Archetype', () => {
 
       // Person → Actor → ObjectPhysical → Thing (has location, color)
       // Person → Mental (has mind)
-      expect(player.can_have_trait('location')).to.be.true;
-      expect(player.can_have_trait('mind')).to.be.true;
+      const location_traittype = Traittype.get_by_label('location');
+      const mind_traittype = Traittype.get_by_label('mind');
+      expect(player.can_have_trait(location_traittype)).to.be.true;
+      expect(player.can_have_trait(mind_traittype)).to.be.true;
     });
 
     it('get_archetypes walks full inheritance chain', () => {
