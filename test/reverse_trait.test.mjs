@@ -25,7 +25,7 @@ import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
-import { logos } from '../public/worker/cosmos.mjs'
+import { Mind, logos, eidos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 describe('Reverse Trait Lookup (rev_trait)', () => {
@@ -766,6 +766,780 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const root_occupants = plaza.rev_trait(root_state, location_traittype)
       assert.lengthOf(root_occupants, 2,
         'Root state should see only its own 2 NPCs')
+    })
+  })
+
+  describe('Inheritance and Composition', () => {
+    describe('Test 4.2: Archetype Defaults and Reverse Index', () => {
+      it('belief inheriting archetype default location should NOT appear in warehouse.rev_trait()', () => {
+        // Setup: Register prototypes in Eidos with archetype that has default location
+        DB.reset_registries()
+        DB.register(
+          {
+            '@about': { type: 'Subject', mind: 'parent', exposure: 'internal' },
+            location: { type: 'Location', exposure: 'spatial' }
+          },
+          {
+            Thing: { traits: { '@about': null } },
+            Location: { bases: ['Thing'] },
+            Container: {
+              bases: ['Thing'],
+              traits: {
+                location: 'warehouse'  // Default location label (will resolve to Subject)
+              }
+            }
+          },
+          {
+            warehouse: { bases: ['Location'] }
+          }
+        )
+
+        const location_tt = Traittype.get_by_label('location')
+        const eidos_state = eidos().origin_state
+        const warehouse = eidos_state.get_belief_by_label('warehouse')
+
+        // Create world state and add chest that inherits Container archetype
+        const state = createStateInNewMind('world')
+
+        // Create chest that inherits from Container archetype
+        // chest does NOT explicitly set location - inherits from archetype default
+        const chest = state.add_belief_from_template({
+          bases: ['Container'],
+          traits: { '@label': 'chest' }
+        })
+
+        state.lock()
+
+        // Verify chest inherited the location from archetype default
+        const chest_location = chest.get_trait(state, location_tt)
+
+        // NOTE: Archetype defaults are NOT resolved to Subjects!
+        // They remain as string labels when inherited.
+        // This is documented behavior - archetype.get_own_trait_value() returns template values
+        assert.strictEqual(chest_location, 'warehouse', 'chest should inherit warehouse location STRING from Container archetype (not Subject)')
+
+        // Test: Does warehouse.rev_trait() find chest?
+        const items_in_warehouse = warehouse.rev_trait(state, location_tt)
+
+        // Archetype defaults are NOT resolved to Subjects (they remain as string labels)
+        // Therefore warehouse.subject is never added to reverse index
+        assert.isArray(items_in_warehouse, 'should return array')
+        assert.lengthOf(items_in_warehouse, 0, 'chest should NOT appear - archetype defaults are string labels, not Subjects')
+      })
+    })
+
+    describe('Test 7.3: Composable Inheritance Without Explicit Set', () => {
+      it('sword inherited WITHOUT explicit set should appear in sword.rev_trait()', () => {
+        // Setup: Register inventory as composable trait
+        DB.reset_registries()
+        DB.register(
+          {
+            '@about': { type: 'Subject', mind: 'parent', exposure: 'internal' },
+            inventory: {
+              type: 'PortableObject',
+              container: Array,
+              composable: true
+            }
+          },
+          {
+            Thing: { traits: { '@about': null } },
+            PortableObject: { bases: ['Thing'] },
+            Person: {
+              bases: ['Thing'],
+              traits: { inventory: null }
+            }
+          },
+          {
+            sword: { bases: ['PortableObject'] },
+            Warrior: {
+              bases: ['Person'],
+              traits: {
+                inventory: ['sword']  // Warrior proto has sword
+              }
+            }
+          }
+        )
+
+        const inventory_tt = Traittype.get_by_label('inventory')
+        const eidos_state = eidos().origin_state
+        const sword = eidos_state.get_belief_by_label('sword')
+        const warrior_proto = eidos_state.get_belief_by_label('Warrior')
+
+        // Create knight that inherits from Warrior but does NOT set inventory
+        const state = createStateInNewMind('world')
+
+        const knight = state.add_belief_from_template({
+          bases: [warrior_proto],  // Inherit Warrior prototype
+          traits: {
+            '@label': 'knight'
+            // NO inventory trait set! Should inherit [sword] from Warrior
+          }
+        })
+
+        state.lock()
+
+        // Verify knight inherited the sword
+        const knight_inventory = knight.get_trait(state, inventory_tt)
+        assert.isArray(knight_inventory, 'inventory should be array')
+        assert.lengthOf(knight_inventory, 1, 'knight should have 1 item (inherited)')
+        assert.strictEqual(knight_inventory[0].get_label(), 'sword', 'knight should have inherited sword')
+
+        // Verify knight does NOT have inventory in own _traits
+        assert.isFalse(knight._traits.has(inventory_tt), 'knight should NOT have inventory in own _traits (inherited only)')
+
+        // Test: Does sword.rev_trait() find knight even though knight._traits doesn't have inventory?
+        const who_has_sword = sword.rev_trait(state, inventory_tt)
+
+        assert.include(who_has_sword, knight, 'knight should appear in sword.rev_trait() even though inventory is inherited, not in _traits')
+      })
+    })
+
+    describe('Test 5.1: Inherited References from Belief Bases', () => {
+      it('npc_v2 inheriting location from npc_v1 should appear in tavern.rev_trait()', () => {
+        DB.reset_registries()
+        setupStandardArchetypes()
+
+        const location_tt = Traittype.get_by_label('location')
+
+        // State 1: Create NPC v1 with explicit location
+        const mind = createStateInNewMind('world', 1).in_mind
+        const state1 = mind.origin_state
+        const logos_state_ref = mind.parent.origin_state  // Get logos_state from parent mind
+
+        const tavern = state1.add_belief_from_template({
+          bases: ['Location'],
+          traits: { '@label': 'tavern' }
+        })
+
+        const npc_v1 = state1.add_belief_from_template({
+          bases: ['Actor'],
+          traits: {
+            '@label': 'npc',
+            location: tavern.subject  // Explicitly set
+          }
+        })
+
+        state1.lock()
+
+        // State 2: Branch from state1 (ground_state must be in parent mind = logos_state)
+        const state2 = state1.branch_state(logos_state_ref, 2)  // vt = 2
+
+        // Create v2 as new version of same subject (same sid, new belief)
+        const npc_v2 = Belief.from_template(state2, {
+          sid: npc_v1.subject.sid,  // Same subject (versioned belief)
+          bases: [npc_v1],  // Inherit from v1
+          traits: {}  // Does NOT set location explicitly (inherits from v1)
+        })
+
+        state2.lock()
+
+        // Verify npc_v2 inherited the location
+        const v2_location = npc_v2.get_trait(state2, location_tt)
+        assert.strictEqual(v2_location, tavern.subject, 'npc_v2 should inherit tavern location from npc_v1')
+
+        // Verify npc_v2 does NOT have location in own traits
+        assert.isFalse(npc_v2._traits.has(location_tt), 'npc_v2 should NOT have location in own _traits (inherited only)')
+
+        // Test: Does tavern.rev_trait() find npc_v2 even though npc_v2._traits doesn't have location?
+        const who_is_in_tavern = tavern.rev_trait(state2, location_tt)
+
+        // Both v1 and v2 should appear (v2 inherits the reference)
+        assert.include(who_is_in_tavern, npc_v1, 'npc_v1 should appear (explicit location)')
+        assert.include(who_is_in_tavern, npc_v2, 'npc_v2 should appear even though location is inherited, not in _traits')
+      })
+    })
+
+    describe('Test 3.3: Composable Array - Explicit Set with Composition', () => {
+      it('both inherited and explicit items should appear when composable trait is set', () => {
+        // This tests composition AT CREATION TIME (different from Test 7.3)
+        DB.reset_registries()
+        DB.register(
+          {
+            '@about': { type: 'Subject', mind: 'parent', exposure: 'internal' },
+            inventory: {
+              type: 'PortableObject',
+              container: Array,
+              composable: true
+            }
+          },
+          {
+            Thing: { traits: { '@about': null } },
+            PortableObject: { bases: ['Thing'] },
+            Person: {
+              bases: ['Thing'],
+              traits: { inventory: null }
+            }
+          },
+          {
+            sword: { bases: ['PortableObject'] },
+            shield: { bases: ['PortableObject'] },
+            Warrior: {
+              bases: ['Person'],
+              traits: {
+                inventory: ['sword']
+              }
+            }
+          }
+        )
+
+        const inventory_tt = Traittype.get_by_label('inventory')
+        const eidos_state = eidos().origin_state
+        const sword = eidos_state.get_belief_by_label('sword')
+        const shield = eidos_state.get_belief_by_label('shield')
+        const warrior_proto = eidos_state.get_belief_by_label('Warrior')
+
+        const state = createStateInNewMind('world')
+
+        // Knight explicitly sets inventory (composes at creation time)
+        const knight = state.add_belief_from_template({
+          bases: [warrior_proto],
+          traits: {
+            '@label': 'knight',
+            inventory: [shield.subject]  // Explicit set triggers composition
+          }
+        })
+
+        state.lock()
+
+        // Verify composition happened at creation (both items in _traits)
+        assert.isTrue(knight._traits.has(inventory_tt), 'knight should have inventory in _traits (composed at creation)')
+        const knight_inventory = knight._traits.get(inventory_tt)
+        assert.lengthOf(knight_inventory, 2, 'knight._traits should have 2 items (composed)')
+
+        // Both items should appear in rev_trait
+        const who_has_sword = sword.rev_trait(state, inventory_tt)
+        const who_has_shield = shield.rev_trait(state, inventory_tt)
+
+        assert.include(who_has_sword, knight, 'sword should appear (composed into _traits)')
+        assert.include(who_has_shield, knight, 'shield should appear (explicit)')
+      })
+    })
+
+    describe('Test 1.3: Non-Composable Array References', () => {
+      it('each array element should appear in rev_trait for non-composable arrays', () => {
+        DB.reset_registries()
+        setupStandardArchetypes()
+
+        // Register children as non-composable array
+        const children_tt = new Traittype('children', 'Person', {
+          container: Array,
+          composable: false  // Non-composable
+        })
+        Traittype.register('children', children_tt)
+
+        const person_arch = Archetype.get_by_label('Person')
+        person_arch._traits_template.set(children_tt, null)
+
+        const state = createStateInNewMind('world')
+
+        // Create family members
+        const alice = state.add_belief_from_template({
+          bases: ['Person'],
+          traits: { '@label': 'alice' }
+        })
+        const bob = state.add_belief_from_template({
+          bases: ['Person'],
+          traits: { '@label': 'bob' }
+        })
+
+        // Create family with children array
+        const family = state.add_belief_from_template({
+          bases: ['Person'],
+          traits: {
+            '@label': 'family',
+            children: [alice.subject, bob.subject]
+          }
+        })
+
+        state.lock()
+
+        // Each child should appear in rev_trait
+        const alice_parents = alice.rev_trait(state, children_tt)
+        const bob_parents = bob.rev_trait(state, children_tt)
+
+        assert.include(alice_parents, family, 'alice should appear in family.children reverse lookup')
+        assert.include(bob_parents, family, 'bob should appear in family.children reverse lookup')
+      })
+    })
+
+    describe('Test 3.1: Array with Multiple Subjects', () => {
+      it('all array elements should appear in rev_trait', () => {
+        DB.reset_registries()
+        setupStandardArchetypes()
+
+        // Register witnesses as non-composable array
+        const witnesses_tt = new Traittype('witnesses', 'Person', {
+          container: Array,
+          composable: false
+        })
+        Traittype.register('witnesses', witnesses_tt)
+
+        const thing_arch = Archetype.get_by_label('Thing')
+        thing_arch._traits_template.set(witnesses_tt, null)
+
+        const state = createStateInNewMind('world')
+
+        // Create witnesses
+        const alice = state.add_belief_from_template({
+          bases: ['Person'],
+          traits: { '@label': 'alice' }
+        })
+        const bob = state.add_belief_from_template({
+          bases: ['Person'],
+          traits: { '@label': 'bob' }
+        })
+        const charlie = state.add_belief_from_template({
+          bases: ['Person'],
+          traits: { '@label': 'charlie' }
+        })
+
+        // Create crime with witnesses
+        const crime = state.add_belief_from_template({
+          bases: ['Thing'],
+          traits: {
+            '@label': 'crime',
+            witnesses: [alice.subject, bob.subject, charlie.subject]
+          }
+        })
+
+        state.lock()
+
+        // All witnesses should appear in crime.witnesses reverse lookup
+        const alice_witnessed = alice.rev_trait(state, witnesses_tt)
+        const bob_witnessed = bob.rev_trait(state, witnesses_tt)
+        const charlie_witnessed = charlie.rev_trait(state, witnesses_tt)
+
+        assert.include(alice_witnessed, crime, 'alice should appear in rev_trait for witnesses')
+        assert.include(bob_witnessed, crime, 'bob should appear in rev_trait for witnesses')
+        assert.include(charlie_witnessed, crime, 'charlie should appear in rev_trait for witnesses')
+      })
+    })
+
+    describe('Test 3.2: Array Add/Remove Over Time', () => {
+      it('array elements should be tracked correctly through add/remove', () => {
+        DB.reset_registries()
+        setupStandardArchetypes()
+
+        const witnesses_tt = new Traittype('witnesses', 'Person', {
+          container: Array,
+          composable: false
+        })
+        Traittype.register('witnesses', witnesses_tt)
+
+        const thing_arch = Archetype.get_by_label('Thing')
+        thing_arch._traits_template.set(witnesses_tt, null)
+
+        const logos_state_ref = logos().origin_state
+        const mind = createStateInNewMind('world', 1).in_mind
+        const state1 = mind.origin_state
+
+        const alice = state1.add_belief_from_template({
+          bases: ['Person'],
+          traits: { '@label': 'alice' }
+        })
+        const bob = state1.add_belief_from_template({
+          bases: ['Person'],
+          traits: { '@label': 'bob' }
+        })
+        const charlie = state1.add_belief_from_template({
+          bases: ['Person'],
+          traits: { '@label': 'charlie' }
+        })
+
+        // State 1: crime.witnesses = [alice, bob]
+        const crime_v1 = state1.add_belief_from_template({
+          bases: ['Thing'],
+          traits: {
+            '@label': 'crime',
+            witnesses: [alice.subject, bob.subject]
+          }
+        })
+
+        state1.lock()
+
+        // State 2: Add charlie
+        const state2 = state1.branch_state(logos_state_ref, 2)
+        const crime_v2 = Belief.from_template(state2, {
+          sid: crime_v1.subject.sid,
+          bases: [crime_v1],
+          traits: {
+            witnesses: [alice.subject, bob.subject, charlie.subject]
+          }
+        })
+        state2.replace_beliefs(crime_v2)
+        state2.lock()
+
+        // State 3: Remove bob
+        const state3 = state2.branch_state(logos_state_ref, 3)
+        const crime_v3 = Belief.from_template(state3, {
+          sid: crime_v1.subject.sid,
+          bases: [crime_v2],
+          traits: {
+            witnesses: [alice.subject, charlie.subject]
+          }
+        })
+        state3.replace_beliefs(crime_v3)
+        state3.lock()
+
+        // Verify state 2: all three should be found
+        const bob_at_state2 = bob.rev_trait(state2, witnesses_tt)
+        assert.include(bob_at_state2, crime_v2, 'bob should appear in state2 witnesses')
+
+        // Verify state 3: bob should NOT be found (removed via replace_beliefs)
+        const bob_at_state3 = bob.rev_trait(state3, witnesses_tt)
+        const has_crime = bob_at_state3.some(b => b.subject.sid === crime_v1.subject.sid)
+        assert.isFalse(has_crime, 'bob should NOT appear in state3 witnesses after removal')
+
+        // Alice and charlie should still be found in state3
+        const alice_at_state3 = alice.rev_trait(state3, witnesses_tt)
+        const charlie_at_state3 = charlie.rev_trait(state3, witnesses_tt)
+        assert.include(alice_at_state3, crime_v3, 'alice should still appear in state3')
+        assert.include(charlie_at_state3, crime_v3, 'charlie should appear in state3')
+      })
+    })
+
+    describe('Test 3.4: Composable Array - Items Added Over Time', () => {
+      it('inherited and added items should both appear in rev_trait across states', () => {
+        DB.reset_registries()
+        DB.register(
+          {
+            '@about': { type: 'Subject', mind: 'parent', exposure: 'internal' },
+            inventory: {
+              type: 'PortableObject',
+              container: Array,
+              composable: true
+            }
+          },
+          {
+            Thing: { traits: { '@about': null } },
+            PortableObject: { bases: ['Thing'] },
+            Person: {
+              bases: ['Thing'],
+              traits: { inventory: null }
+            }
+          },
+          {
+            sword: { bases: ['PortableObject'] },
+            shield: { bases: ['PortableObject'] },
+            helmet: { bases: ['PortableObject'] },
+            Warrior: {
+              bases: ['Person'],
+              traits: {
+                inventory: ['sword']
+              }
+            }
+          }
+        )
+
+        const inventory_tt = Traittype.get_by_label('inventory')
+        const eidos_state = eidos().origin_state
+        const sword = eidos_state.get_belief_by_label('sword')
+        const shield = eidos_state.get_belief_by_label('shield')
+        const helmet = eidos_state.get_belief_by_label('helmet')
+        const warrior_proto = eidos_state.get_belief_by_label('Warrior')
+
+        const logos_state_ref = logos().origin_state
+        const mind = createStateInNewMind('world', 1).in_mind
+        const state1 = mind.origin_state
+
+        // State 1: knight inherits [sword] from Warrior (no explicit inventory set)
+        const knight_v1 = state1.add_belief_from_template({
+          bases: [warrior_proto],
+          traits: { '@label': 'knight' }
+        })
+
+        state1.lock()
+
+        // State 2: knight adds [shield]
+        const state2 = state1.branch_state(logos_state_ref, 2)
+        const knight_v2 = Belief.from_template(state2, {
+          sid: knight_v1.subject.sid,
+          bases: [knight_v1],
+          traits: {
+            inventory: [shield.subject]
+          }
+        })
+        state2.replace_beliefs(knight_v2)
+        state2.lock()
+
+        // State 3: knight adds [helmet]
+        const state3 = state2.branch_state(logos_state_ref, 3)
+        const knight_v3 = Belief.from_template(state3, {
+          sid: knight_v1.subject.sid,
+          bases: [knight_v2],
+          traits: {
+            inventory: [shield.subject, helmet.subject]
+          }
+        })
+        state3.replace_beliefs(knight_v3)
+        state3.lock()
+
+        // Sword should appear in all states (inherited)
+        const sword_at_state1 = sword.rev_trait(state1, inventory_tt)
+        const sword_at_state2 = sword.rev_trait(state2, inventory_tt)
+        const sword_at_state3 = sword.rev_trait(state3, inventory_tt)
+
+        assert.include(sword_at_state1, knight_v1, 'sword should appear in state1 (inherited)')
+        assert.include(sword_at_state2, knight_v2, 'sword should appear in state2 (still inherited)')
+        assert.include(sword_at_state3, knight_v3, 'sword should appear in state3 (still inherited)')
+
+        // Shield should appear in state2 and state3
+        const shield_at_state2 = shield.rev_trait(state2, inventory_tt)
+        const shield_at_state3 = shield.rev_trait(state3, inventory_tt)
+
+        assert.include(shield_at_state2, knight_v2, 'shield should appear in state2 (added)')
+        assert.include(shield_at_state3, knight_v3, 'shield should appear in state3 (retained)')
+
+        // Helmet should only appear in state3
+        const helmet_at_state3 = helmet.rev_trait(state3, inventory_tt)
+        assert.include(helmet_at_state3, knight_v3, 'helmet should appear in state3 (added)')
+      })
+    })
+
+    describe('Null and Empty Array Semantics', () => {
+      it('null blocks composition from bases', () => {
+        // Test: Explicit null in composable array blocks inheritance
+        DB.reset_registries()
+        DB.register(
+          {
+            '@about': { type: 'Subject', mind: 'parent', exposure: 'internal' },
+            inventory: {
+              type: 'PortableObject',
+              container: Array,
+              composable: true
+            }
+          },
+          {
+            Thing: { traits: { '@about': null } },
+            PortableObject: { bases: ['Thing'] },
+            Actor: {
+              bases: ['Thing'],
+              traits: { inventory: null }
+            }
+          },
+          {
+            sword: { bases: ['PortableObject'] },
+            Warrior: {
+              bases: ['Actor'],
+              traits: {
+                inventory: ['sword']
+              }
+            }
+          }
+        )
+
+        const eidos_state = eidos().origin_state
+        const sword = eidos_state.get_belief_by_label('sword')
+        const warrior_proto = eidos_state.get_belief_by_label('Warrior')
+
+        const state = createStateInNewMind('world')
+
+        // Pacifist explicitly sets inventory to null (blocks composition)
+        const pacifist = state.add_belief_from_template({
+          bases: [warrior_proto],
+          traits: {
+            '@label': 'pacifist',
+            inventory: null  // Blocks inheritance from Warrior
+          }
+        })
+        state.lock()
+
+        const inventory_tt = Traittype.get_by_label('inventory')
+
+        // pacifist should NOT appear in sword.rev_trait (null blocked it)
+        const who_has_sword = sword.rev_trait(state, inventory_tt)
+
+        assert.notInclude(who_has_sword, pacifist, 'null should block composition - pacifist should not have sword')
+
+        // Verify inventory is null
+        const pacifist_inventory = pacifist.get_trait(state, inventory_tt)
+        assert.isNull(pacifist_inventory)
+      })
+
+      it('empty array composes with base values', () => {
+        // Test: Empty array [] is different from null - it still composes
+        DB.reset_registries()
+        DB.register(
+          {
+            '@about': { type: 'Subject', mind: 'parent', exposure: 'internal' },
+            inventory: {
+              type: 'PortableObject',
+              container: Array,
+              composable: true
+            }
+          },
+          {
+            Thing: { traits: { '@about': null } },
+            PortableObject: { bases: ['Thing'] },
+            Actor: {
+              bases: ['Thing'],
+              traits: { inventory: null }
+            }
+          },
+          {
+            sword: { bases: ['PortableObject'] },
+            Warrior: {
+              bases: ['Actor'],
+              traits: {
+                inventory: ['sword']
+              }
+            }
+          }
+        )
+
+        const eidos_state = eidos().origin_state
+        const sword = eidos_state.get_belief_by_label('sword')
+        const warrior_proto = eidos_state.get_belief_by_label('Warrior')
+
+        const state = createStateInNewMind('world')
+
+        // Student sets empty array (should still compose with inherited items)
+        const student = state.add_belief_from_template({
+          bases: [warrior_proto],
+          traits: {
+            '@label': 'student',
+            inventory: []  // Empty array - should compose with base
+          }
+        })
+        state.lock()
+
+        const inventory_tt = Traittype.get_by_label('inventory')
+
+        // Student should still have sword (empty array composes with base)
+        const student_inventory = student.get_trait(state, inventory_tt)
+        assert.lengthOf(student_inventory, 1, 'empty array should compose with inherited values')
+
+        // Student should appear in sword.rev_trait
+        const who_has_sword = sword.rev_trait(state, inventory_tt)
+        assert.include(who_has_sword, student, 'empty array should compose - student should have inherited sword')
+      })
+    })
+  })
+
+  describe('Advanced Edge Cases', () => {
+    describe('Shared Belief References', () => {
+      it('tracks references to shared beliefs (prototypes)', () => {
+        DB.reset_registries()
+        setupStandardArchetypes()
+
+        // Create shared belief in Eidos
+        const eidos_inst = eidos()
+        const eidos_state = eidos_inst.create_timed_state(100)
+
+        Archetype.register('Weapon', new Archetype('Weapon', ['Thing']))
+
+        const generic_weapon = eidos_state.add_belief_from_template({
+          bases: ['Weapon'],
+          traits: {'@label': 'GenericSword'}
+        })
+        generic_weapon.lock(eidos_state)
+
+        // Create belief in world that references the prototype
+        const world_state = createStateInNewMind('world')
+        Traittype.register('prototype', new Traittype('prototype', 'Subject'))
+
+        const weapon_archetype = Archetype.get_by_label('Weapon')
+        weapon_archetype._traits_template.set(Traittype.get_by_label('prototype'), null)
+
+        const player_sword = Belief.from_template(world_state, {
+          bases: ['Weapon'],
+          traits: {
+            '@label': 'player_sword',
+            prototype: generic_weapon.subject  // References shared belief
+          }
+        })
+        world_state.lock()
+
+        // Query: what beliefs reference GenericSword?
+        const prototype_traittype = Traittype.get_by_label('prototype')
+        const instances = generic_weapon.rev_trait(world_state, prototype_traittype)
+
+        assert.lengthOf(instances, 1)
+        assert.strictEqual(instances[0], player_sword)
+      })
+    })
+
+    describe('Self-Reference', () => {
+      it('handles self-referencing belief', () => {
+        DB.reset_registries()
+        setupStandardArchetypes()
+
+        const state = createStateInNewMind('world')
+
+        Traittype.register('parent', new Traittype('parent', 'Subject'))
+
+        const thing_archetype = Archetype.get_by_label('Thing')
+        thing_archetype._traits_template.set(Traittype.get_by_label('parent'), null)
+
+        const entity = Belief.from_template(state, {
+          bases: ['Thing'],
+          traits: {'@label': 'ouroboros'}
+        })
+
+        // Entity references itself
+        const parent_traittype = Traittype.get_by_label('parent')
+        entity._set_trait(parent_traittype, entity.subject)
+        state.lock()
+
+        // Query should find itself
+        const children = entity.rev_trait(state, parent_traittype)
+
+        assert.lengthOf(children, 1)
+        assert.strictEqual(children[0], entity)
+      })
+    })
+
+    describe('Cross-Mind Queries', () => {
+      it('queries are state-scoped (cross-mind via shared parent)', () => {
+        DB.reset_registries()
+        setupStandardArchetypes()
+
+        // Create two minds with shared parent state
+        const parent_mind = new Mind(logos(), 'parent')
+        const parent_state = parent_mind.create_state(logos().origin_state, {tt: 1})
+
+        const shared_room = Belief.from_template(parent_state, {
+          bases: ['Location'],
+          traits: {'@label': 'shared_room'}
+        })
+        parent_state.lock()
+
+        // Child mind A
+        const mind_a = new Mind(parent_mind, 'child_a')
+        const state_a = mind_a.create_state(parent_state)
+        const npc_a = Belief.from_template(state_a, {
+          bases: ['Actor'],
+          traits: {
+            '@label': 'npc_a',
+            location: shared_room.subject
+          }
+        })
+        state_a.lock()
+
+        // Child mind B
+        const mind_b = new Mind(parent_mind, 'child_b')
+        const state_b = mind_b.create_state(parent_state)
+        const npc_b = Belief.from_template(state_b, {
+          bases: ['Actor'],
+          traits: {
+            '@label': 'npc_b',
+            location: shared_room.subject
+          }
+        })
+        state_b.lock()
+
+        const location_traittype = Traittype.get_by_label('location')
+
+        // Query from mind_a should only see npc_a
+        const occupants_a = shared_room.rev_trait(state_a, location_traittype)
+        assert.lengthOf(occupants_a, 1)
+        assert.strictEqual(occupants_a[0], npc_a)
+
+        // Query from mind_b should only see npc_b
+        const occupants_b = shared_room.rev_trait(state_b, location_traittype)
+        assert.lengthOf(occupants_b, 1)
+        assert.strictEqual(occupants_b[0], npc_b)
+      })
     })
   })
 })
