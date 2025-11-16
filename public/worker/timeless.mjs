@@ -26,6 +26,7 @@ import * as DB from './db.mjs'
  * @typedef {import('./belief.mjs').Belief} Belief
  * @typedef {import('./state.mjs').State} State
  * @typedef {import('./subject.mjs').Subject} Subject
+ * @typedef {import('./traittype.mjs').Traittype} Traittype
  */
 
 /**
@@ -46,36 +47,21 @@ export class Timeless {
    * NOTE: ground_state must be set before calling this
    * @param {Mind} mind - Mind this timeless state belongs to
    */
-  _init(mind) { // FIXME: use common init
-    // Initialize all State properties without calling State constructor
+  _init(mind) {
+    // Set variable properties (Timeless-specific values)
     this._id = next_id()
     this.in_mind = mind
-    /** @type {number|null} */
-    this.tt = null            // Timeless - no transaction time
-    /** @type {number|null} */
-    this.vt = null            // Timeless - no valid time
-    /** @type {State|null} */
-    this.base = null
-    /** @type {Subject|null} */
-    this.self = null
-    /** @type {Belief[]} */
-    this._insert = []
-    /** @type {Belief[]} */
-    this._remove = []
-    this.locked = false
-    /** @type {State[]} */
-    this._branches = []
-    /** @type {Map<number, Belief>|null} */
-    this._subject_index = null
+    /** @type {number|null} */ this.tt = null            // Timeless - no transaction time
+    /** @type {number|null} */ this.vt = null            // Timeless - no valid time
+    /** @type {State|null} */ this.base = null
+    /** @type {Subject|null} */ this.self = null
+    /** @type {Belief[]} */ this._insert = []
+    /** @type {Belief[]} */ this._remove = []
 
-    this._rev_base = new Map()
-    this._rev_add = new Map()
-    this._rev_del = new Map()
-
-    // Register with mind and global DB
+    // Initialize common properties and register
     // Timeless extends State via runtime prototype manipulation (_setup_timeless_inheritance)
-    this.in_mind.register_state(/** @type {any} */ (this))
-    DB.register_state(/** @type {any} */ (this))
+    // @ts-ignore - _init_state_properties is inherited from State via runtime prototype chain
+    this._init_state_properties()
   }
 }
 

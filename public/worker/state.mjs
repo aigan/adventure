@@ -43,6 +43,7 @@ import { Traittype } from './traittype.mjs'
  * @property {number|null} base - Base state _id (null for root states)
  * @property {number|null} ground_state - Ground state _id (null if no external reference)
  * @property {number|null} self - Subject sid (null if no self identity)
+ * @property {number|null} [about_state] - State _id this state is about (meta-level reasoning)
  * @property {number[]} insert - Belief _ids present in this state (serialized from private _insert)
  * @property {number[]} remove - Belief _ids removed in this state (serialized from private _remove)
  * @property {number} in_mind - Mind _id this state belongs to
@@ -57,23 +58,30 @@ import { Traittype } from './traittype.mjs'
 
 /**
  * Immutable state snapshot with differential updates
- * @property {number} _id - Unique identifier
- * @property {Mind} in_mind - Mind this state belongs to
- * @property {number|null} tt - State transaction time/tick (null for timeless states like logos)
- * @property {number|null} vt - State valid time (null for timeless states like logos)
- * @property {State|null} base - Parent state (inheritance chain)
- * @property {State} ground_state - External world state this references (required except logos)
- * @property {Belief[]} _insert - Beliefs added/present in this state (private)
- * @property {Belief[]} _remove - Beliefs removed in this state (private)
- * @property {boolean} locked - Whether state can be modified
- * @property {State[]} _branches - Child states branching from this one (access via get_branches())
- * @property {Map<Subject, Belief>|null} _subject_index - Cached subject→belief lookup (lazy, only on locked states)
  */
 export class State {
   // TODO: Populate this registry for prototype state templates
   // Will be used to share belief lists across many nodes
   // See resolve_template() lines 364-367 for planned usage
   // Now stored in DB.state_by_label
+
+  // Property declarations for TypeScript
+  /** @type {number} */ _id
+  /** @type {Mind} */ in_mind
+  /** @type {State|null} */ base
+  /** @type {number|null} */ tt
+  /** @type {number|null} */ vt
+  /** @type {Belief[]} */ _insert
+  /** @type {Belief[]} */ _remove
+  /** @type {State} */ ground_state
+  /** @type {Subject|null} */ self
+  /** @type {State|null} */ about_state
+  /** @type {boolean} */ locked = false
+  /** @type {State[]} */ _branches = []
+  /** @type {Map<Subject, Belief|null>|null} */ _subject_index = null
+  /** @type {Map<Subject, Map<Traittype, State|null>>} */ _rev_base = new Map()
+  /** @type {Map<Subject, Map<Traittype, Set<Belief>>>} */ _rev_add = new Map()
+  /** @type {Map<Subject, Map<Traittype, Set<Belief>>>} */ _rev_del = new Map()
 
   /**
    * @param {Mind} mind
@@ -131,16 +139,28 @@ export class State {
       assert(self_belief === null || !self_belief.locked, 'Cannot create state for locked self')
     }
 
+    // Set variable properties
     this._id = next_id()
     this.in_mind = mind
-    /** @type {State|null} */ this.base = base
+    this.base = base
     this.tt = tt
     this.vt = effective_vt
-    /** @type {Belief[]} */ this._insert = []
-    /** @type {Belief[]} */ this._remove = []
-    /** @type {State} */ this.ground_state = ground_state
-    /** @type {Subject|null} */ this.self = effective_self
-    /** @type {State|null} */ this.about_state = about_state ?? null
+    this._insert = []
+    this._remove = []
+    this.ground_state = ground_state
+    this.self = effective_self
+    this.about_state = about_state ?? null
+
+    // Initialize common properties and register
+    this._init_state_properties()
+  }
+
+  /**
+   * Initialize common state properties
+   * Sets properties that are always initialized the same way across all state creation paths
+   * Call this after setting variable properties (_id, in_mind, base, tt, vt, etc.)
+   */
+  _init_state_properties() {
     this.locked = false
 
     /**
@@ -387,7 +407,7 @@ export class State {
         {belief_id: belief._id, expected_state: this._id, actual_state: belief.origin_state?._id})
 
       // Add to reverse index for all subject-reference traits (including inherited)
-      // FIXME: EXPENSIVE - iterates all traits (own + inherited) for each belief
+      // TODO: EXPENSIVE - iterates all traits (own + inherited) for each belief
       for (const [traittype, value] of belief.get_traits()) {
         if (traittype.is_subject_reference) {
           for (const subject of belief.extract_subjects(value)) {
@@ -407,7 +427,7 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     // Clean up reverse index for removed beliefs
-    // FIXME: EXPENSIVE - iterates all traits (own + inherited) for each belief
+    // TODO: EXPENSIVE - iterates all traits (own + inherited) for each belief
     for (const belief of beliefs) {
       for (const [traittype, value] of belief.get_traits()) {
         if (traittype.is_subject_reference) {
@@ -852,6 +872,7 @@ export class State {
       base: this.base?._id ?? null,
       ground_state: this.ground_state?._id ?? null,
       self: this.self?.toJSON() ?? null,
+      about_state: this.about_state?._id ?? null,
       insert: this._insert.map(b => b._id),
       remove: this._remove.map(b => b._id),
       in_mind: this.in_mind?._id ?? null
@@ -905,6 +926,15 @@ export class State {
       self = DB.get_or_create_subject(ground_mind, data.self)
     }
 
+    // Resolve about_state reference
+    let about_state = null
+    if (data.about_state != null) {
+      about_state = DB.get_state_by_id(data.about_state)
+      if (!about_state) {
+        throw new Error(`Cannot resolve about_state ${data.about_state} for state ${data._id}`)
+      }
+    }
+
     // Resolve insert/remove belief references
     const insert = []
     for (const belief_id of data.insert) {
@@ -924,9 +954,10 @@ export class State {
       remove.push(belief)
     }
 
-    // FIXME: use common init
     // Create fully materialized state
     const state = Object.create(State.prototype)
+
+    // Set variable properties
     state._id = data._id
     state.in_mind = resolved_mind
     state.base = base
@@ -936,16 +967,10 @@ export class State {
     state._remove = remove
     state.ground_state = ground_state
     state.self = self
-    state._branches = []
-    state.locked = false
-    state._subject_index = null
+    state.about_state = about_state
 
-    state._rev_base = new Map()
-    state._rev_add = new Map()
-    state._rev_del = new Map()
-
-    // Register in global registry
-    DB.register_state(state)
+    // Initialize common properties and register
+    state._init_state_properties()
 
     // Update branches
     if (base) {
