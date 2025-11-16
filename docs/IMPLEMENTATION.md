@@ -342,7 +342,7 @@ country_v2 = Belief.from_template(state, {
   bases: [country_v1],
   traits: {season: 'winter'}
 })
-// Belief is automatically added to state.insert during from_template()
+// Belief is automatically added to state._insert during from_template()
 
 // NPC queries season (lazy resolution)
 npc_belief.get_trait(state, 'season')

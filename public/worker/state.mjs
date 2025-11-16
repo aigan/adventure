@@ -43,8 +43,8 @@ import { Traittype } from './traittype.mjs'
  * @property {number|null} base - Base state _id (null for root states)
  * @property {number|null} ground_state - Ground state _id (null if no external reference)
  * @property {number|null} self - Subject sid (null if no self identity)
- * @property {number[]} insert - Belief _ids present in this state
- * @property {number[]} remove - Belief _ids removed in this state
+ * @property {number[]} insert - Belief _ids present in this state (serialized from private _insert)
+ * @property {number[]} remove - Belief _ids removed in this state (serialized from private _remove)
  * @property {number} in_mind - Mind _id this state belongs to
  * @property {number[]} [component_states] - Component state _ids (only for UnionState)
  */
@@ -63,8 +63,8 @@ import { Traittype } from './traittype.mjs'
  * @property {number|null} vt - State valid time (null for timeless states like logos)
  * @property {State|null} base - Parent state (inheritance chain)
  * @property {State} ground_state - External world state this references (required except logos)
- * @property {Belief[]} insert - Beliefs added/present in this state
- * @property {Belief[]} remove - Beliefs removed in this state
+ * @property {Belief[]} _insert - Beliefs added/present in this state (private)
+ * @property {Belief[]} _remove - Beliefs removed in this state (private)
  * @property {boolean} locked - Whether state can be modified
  * @property {State[]} _branches - Child states branching from this one (access via get_branches())
  * @property {Map<Subject, Belief>|null} _subject_index - Cached subject→belief lookup (lazy, only on locked states)
@@ -136,8 +136,8 @@ export class State {
     /** @type {State|null} */ this.base = base
     this.tt = tt
     this.vt = effective_vt
-    /** @type {Belief[]} */ this.insert = [] // FIXME: make private
-    /** @type {Belief[]} */ this.remove = [] // FIXME: make private
+    /** @type {Belief[]} */ this._insert = []
+    /** @type {Belief[]} */ this._remove = []
     /** @type {State} */ this.ground_state = ground_state
     /** @type {Subject|null} */ this.self = effective_self
     /** @type {State|null} */ this.about_state = about_state ?? null
@@ -278,7 +278,7 @@ export class State {
       this.in_mind.state = null
     }
 
-    for (const belief of this.insert) {
+    for (const belief of this._insert) {
       belief.lock(this)
     }
     return this
@@ -396,7 +396,7 @@ export class State {
         }
       }
     }
-    this.insert.push(...beliefs)
+    this._insert.push(...beliefs)
   }
 
   /**
@@ -418,7 +418,7 @@ export class State {
       }
     }
 
-    this.remove.push(...beliefs)
+    this._remove.push(...beliefs)
   }
 
   /**
@@ -456,12 +456,12 @@ export class State {
 
     /** @type {State|null} s */ let s
     for (s = this; s; s = s.base) {
-      for (const belief of s.insert) {
+      for (const belief of s._insert) {
         if (!removed.has(belief._id)) {
           yield belief
         }
       }
-      for (const belief of s.remove) {
+      for (const belief of s._remove) {
         removed.add(belief._id)
       }
     }
@@ -852,8 +852,8 @@ export class State {
       base: this.base?._id ?? null,
       ground_state: this.ground_state?._id ?? null,
       self: this.self?.toJSON() ?? null,
-      insert: this.insert.map(b => b._id),
-      remove: this.remove.map(b => b._id),
+      insert: this._insert.map(b => b._id),
+      remove: this._remove.map(b => b._id),
       in_mind: this.in_mind?._id ?? null
     }
   }
@@ -932,8 +932,8 @@ export class State {
     state.base = base
     state.tt = data.tt
     state.vt = data.vt ?? data.tt  // Default vt to tt for backward compatibility
-    state.insert = insert
-    state.remove = remove
+    state._insert = insert
+    state._remove = remove
     state.ground_state = ground_state
     state.self = self
     state._branches = []

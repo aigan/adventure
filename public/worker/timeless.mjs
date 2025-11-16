@@ -23,6 +23,9 @@ import * as DB from './db.mjs'
 
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
+ * @typedef {import('./belief.mjs').Belief} Belief
+ * @typedef {import('./state.mjs').State} State
+ * @typedef {import('./subject.mjs').Subject} Subject
  */
 
 /**
@@ -51,18 +54,18 @@ export class Timeless {
     this.tt = null            // Timeless - no transaction time
     /** @type {number|null} */
     this.vt = null            // Timeless - no valid time
-    /** @type {import('./state.mjs').State|null} */
+    /** @type {State|null} */
     this.base = null
-    /** @type {import('./subject.mjs').Subject|null} */
+    /** @type {Subject|null} */
     this.self = null
-    /** @type {number[]} */
-    this.insert = []
-    /** @type {number[]} */
-    this.remove = []
+    /** @type {Belief[]} */
+    this._insert = []
+    /** @type {Belief[]} */
+    this._remove = []
     this.locked = false
-    /** @type {import('./state.mjs').State[]} */
+    /** @type {State[]} */
     this._branches = []
-    /** @type {Map<number, import('./belief.mjs').Belief>|null} */
+    /** @type {Map<number, Belief>|null} */
     this._subject_index = null
 
     this._rev_base = new Map()

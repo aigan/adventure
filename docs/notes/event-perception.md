@@ -153,7 +153,7 @@ export function cmd_look() {
       mind: player_mind  // Mind now has the locked current_state
     }
   })
-  new_world_state.remove.push(player)
+  new_world_state.remove_beliefs(player)
   new_world_state.lock()
   Adventure.state = new_world_state
 

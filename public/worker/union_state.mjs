@@ -101,7 +101,7 @@ export class UnionState extends State {
     }
 
     // Finally, yield our own insert operations (override component beliefs)
-    for (const belief of this.insert) {
+    for (const belief of this._insert) {
       if (!seen.has(belief.subject.sid)) {
         seen.add(belief.subject.sid)
         yield belief
@@ -128,7 +128,7 @@ export class UnionState extends State {
     }
 
     // Then yield union's own insert operations
-    for (const belief of union_state.insert) {
+    for (const belief of union_state._insert) {
       if (!seen.has(belief.subject.sid)) {
         seen.add(belief.subject.sid)
         yield belief
@@ -190,8 +190,8 @@ export class UnionState extends State {
       component_states: this.component_states.map(s => s._id),
       ground_state: this.ground_state._id,  // ground_state is always required for UnionState
       self: this.self?.toJSON() ?? null,
-      insert: this.insert.map(b => b._id),
-      remove: this.remove.map(b => b._id),
+      insert: this._insert.map(b => b._id),
+      remove: this._remove.map(b => b._id),
       in_mind: this.in_mind._id
     }
   }
@@ -239,14 +239,14 @@ export class UnionState extends State {
     for (const belief_id of data.insert) {
       const belief = DB.get_belief_by_id(belief_id)
       assert(belief, `Belief ${belief_id} not found`)
-      union_state.insert.push(belief)
+      union_state._insert.push(belief)
     }
 
     // Resolve remove beliefs
     for (const belief_id of data.remove) {
       const belief = DB.get_belief_by_id(belief_id)
       assert(belief, `Belief ${belief_id} not found`)
-      union_state.remove.push(belief)
+      union_state._remove.push(belief)
     }
 
     return union_state

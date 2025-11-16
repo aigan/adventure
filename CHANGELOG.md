@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## 2025-11-16
 
+### State Properties Made Private
+- Refactored `state.insert` and `state.remove` to private properties (`_insert`, `_remove`)
+- Updated 3 core modules: `state.mjs`, `union_state.mjs`, `timeless.mjs`
+- Fixed documentation example in `docs/notes/event-perception.md` to use public API
+- Updated internal implementation comment in `docs/IMPLEMENTATION.md`
+- Added automated style checker (`test/z_style.test.mjs`) to enforce STYLE.md rules
+  - Detects inline imports in JSDoc (STYLE.md row 7 violation)
+  - Runs automatically with `npm test`
+- Zero breaking changes: All external code already uses public API methods
+- All 450 tests pass (1 new style checker test added)
+- Follows underscore convention for private properties per `docs/STYLE.md`
+
 ### Comprehensive Test Coverage Project Complete
 - **458 tests passing** (up from 413 at project start), 99.5% pass rate
 - **45 new tests added** across trait inheritance and reverse trait lookup systems
