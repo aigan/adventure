@@ -95,6 +95,7 @@ export class Belief {
     this._cache = new Map()
     /** @type {State} */
     this.origin_state = state
+    // TODO: add this._cached_all = false
 
     DB.register_belief_by_id(this)
     DB.register_belief_by_subject(this)
@@ -341,13 +342,18 @@ export class Belief {
     assert(state instanceof State, 'rev_trait requires State', {belief_id: this._id, traittype: traittype?.label})
     assert(traittype instanceof Traittype, 'rev_trait requires Traittype', {belief_id: this._id, traittype})
 
+    debug([state], "rev_trait", this, traittype.label)
+
     // FIXME: Update the trait indexes here instead of on modify
     const seen = new Set()
     const results = new Set()
 
     // Walk skip list - only visit states with changes for this (subject, traittype)
-    let current = state
-    while (current) {
+    // Use queue to handle UnionState's multiple component_states
+    const queue = [state]
+    while (queue.length > 0) {
+      const current = /** @type {State} */ (queue.shift())
+
       // Add all deletions to seen set
       const del_beliefs = current._rev_del.get(this.subject)?.get(traittype)
       if (del_beliefs) {
@@ -366,8 +372,9 @@ export class Belief {
         }
       }
 
-      // Follow skip list pointer to next state with changes, or walk base chain
-      current = current._rev_base.get(this.subject)?.get(traittype) ?? current.base
+      // Get next state(s) via polymorphic rev_base (handles UnionState components)
+      const next_states = current.rev_base(this.subject, traittype)
+      queue.push(...next_states)
     }
 
     return [...results]
@@ -447,12 +454,15 @@ export class Belief {
       yield [traittype, value]
       yielded.add(traittype)
     }
+    // TODO: return if this._cached_all === true
 
     // Walk bases chain for inherited traits
     const queue = [...this._bases]
     const seen = new Set()
 
     while (queue.length > 0) {
+      // FIXME: Could potentially short-circuit here if base._cache is fully populated
+      // (when base.locked and cache contains all inherited traits from deeper bases)
       const base = queue.shift()
       if (!base || seen.has(base)) continue
       seen.add(base)
@@ -472,6 +482,8 @@ export class Belief {
 
       queue.push(...base._bases)
     }
+
+    // TODO: this._cached_all = true
   }
 
   /**
@@ -594,6 +606,8 @@ export class Belief {
    */
   lock(state) {
     this._locked = true
+
+    // FIXME: check that the belief exists in the state.insert
 
     // Cascade to child mind states
     // Note: Only checks _traits (directly set on this belief), not inherited traits.

@@ -136,8 +136,8 @@ export class State {
     /** @type {State|null} */ this.base = base
     this.tt = tt
     this.vt = effective_vt
-    /** @type {Belief[]} */ this.insert = []
-    /** @type {Belief[]} */ this.remove = []
+    /** @type {Belief[]} */ this.insert = [] // FIXME: make private
+    /** @type {Belief[]} */ this.remove = [] // FIXME: make private
     /** @type {State} */ this.ground_state = ground_state
     /** @type {Subject|null} */ this.self = effective_self
     /** @type {State|null} */ this.about_state = about_state ?? null
@@ -252,6 +252,18 @@ export class State {
       this._rev_base.set(subject, base_by_subject = new Map())
     }
     base_by_subject.set(trait_type, null)
+  }
+
+  /**
+   * Get next state(s) to check in reverse trait lookup chain
+   * Returns array of states to continue traversal (polymorphic with UnionState)
+   * @param {Subject} subject - Subject being queried in reverse lookup
+   * @param {Traittype} traittype - Traittype being queried
+   * @returns {State[]} Array of next states to check (single element or empty)
+   */
+  rev_base(subject, traittype) {
+    const next = this._rev_base.get(subject)?.get(traittype) ?? this.base
+    return next ? [next] : []
   }
 
   /**
@@ -376,6 +388,7 @@ export class State {
         {belief_id: belief._id, expected_state: this._id, actual_state: belief.origin_state?._id})
 
       // Add to reverse index for all subject-reference traits (including inherited)
+      // FIXME: EXPENSIVE - iterates all traits (own + inherited) for each belief
       for (const [traittype, value] of belief.get_traits()) {
         if (traittype.is_subject_reference) {
           for (const subject of belief.extract_subjects(value)) {
@@ -395,6 +408,7 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     // Clean up reverse index for removed beliefs
+    // FIXME: EXPENSIVE - iterates all traits (own + inherited) for each belief
     for (const belief of beliefs) {
       for (const [traittype, value] of belief.get_traits()) {
         if (traittype.is_subject_reference) {

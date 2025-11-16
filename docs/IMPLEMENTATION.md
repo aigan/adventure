@@ -444,6 +444,7 @@ This enables narrative-driven collapse instead of arbitrary selection.
 **Implementation**:
 - [STYLE.md](STYLE.md) - Code quality guidelines
 - [ALPHA-1.md](ALPHA-1.md) - Alpha 1 development stages
+- [trait-inheritance/](trait-inheritance/) - Comprehensive trait inheritance documentation and tests
 - [public/worker/.CONTEXT.md](../public/worker/.CONTEXT.md) - Worker implementation details
 - [test/.CONTEXT.md](../test/.CONTEXT.md) - Test structure
 

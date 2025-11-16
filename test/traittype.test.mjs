@@ -112,7 +112,18 @@ describe('Traittype', () => {
     });
   });
 
+  /**
+   * MATRIX COVERAGE: Array container
+   * ✅ 4.3 Mind Array from Own (line 223)
+   * ✅ 5.1 State from Own (line 104, 116)
+   *
+   * MISSING:
+   * ❌ 4.4 Mind Array Composable
+   * ❌ 5.2 State from Archetype
+   * ❌ 5.3 State Array Composable
+   */
   describe('Array container', () => {
+    // Matrix 5.1: State from Own
     it('resolves array of States with valid min constraint', () => {
       const state1 = createStateInNewMind('test_mind');
       const state2 = createStateInNewMind('test_mind', 2);
@@ -220,6 +231,7 @@ describe('Traittype', () => {
       expect(tags).to.have.lengthOf(0);
     });
 
+    // Matrix 4.3: Mind Array from Own
     it('resolves array of Minds from templates', () => {
       // Setup world with beliefs to learn about
       const world_mind = new Mind(logos(), 'world');
@@ -445,6 +457,13 @@ describe('Traittype', () => {
     });
   });
 
+  /**
+   * MATRIX COVERAGE: Exposure metadata
+   * ✅ 1.2 Single Archetype Inheritance (line 530 - "@form trait inherits")
+   * ✅ 6.1 Archetype with Primitive Default (line 530, 595)
+   * ✅ 6.2 Archetype with null Default (line 595 - "archetype default values appear")
+   * ✅ 7.2 get_defined_traits() includes null traits (line 595)
+   */
   describe('Exposure metadata', () => {
     beforeEach(() => {
       DB.reset_registries();
@@ -527,6 +546,7 @@ describe('Traittype', () => {
       expect(form_tt.exposure).to.be.null;
     });
 
+    // Matrix 1.2: Single Archetype Inheritance + 6.1: Archetype with Primitive Default
     it('@form trait inherits through archetype bases', () => {
       const state = createStateInNewMind('test_mind');
 
@@ -592,6 +612,7 @@ describe('Traittype', () => {
       expect(form_entry[1]).to.equal('solid');
     });
 
+    // Matrix 6.1, 6.2, 7.2: Archetype defaults and iteration
     it('archetype default values appear in iteration', () => {
       const state = createStateInNewMind('test_mind');
 

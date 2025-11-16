@@ -209,6 +209,7 @@ describe('Belief', () => {
       expect(beliefs_with_subject.has(room_v3)).to.be.true;
     });
 
+    // Matrix 2.1: Subject from Own
     it('stores trait value as Subject when value is a Belief', () => {
       const world_mind = new Mind(logos(), 'world');
       const state = world_mind.create_state(logos().origin_state, {tt: 1});
@@ -344,7 +345,22 @@ describe('Belief', () => {
     });
   });
 
+  /**
+   * MATRIX COVERAGE: Trait Value Inheritance
+   * ✅ 1.1 Own Trait (Baseline) - Primitive-String
+   * ✅ 1.3 Single Belief Inheritance
+   * ✅ 1.5 Multi-Level Inheritance (Transitive)
+   * ✅ 1.7 Own Shadows Inherited
+   * ✅ 2.1 Subject from Own
+   * ✅ 7.3 to_inspect_view() shows composed values
+   *
+   * MISSING FROM THIS SECTION:
+   * ❌ 1.6 Diamond Archetype Conflict
+   * ❌ 1.8 Null vs Absence
+   * ❌ 2.2 Subject from Archetype (Default Value)
+   */
   describe('Trait Value Inheritance', () => {
+    // Matrix 1.1: Own Trait (Baseline) - Primitive-String
     it('returns trait from own _traits', () => {
       const mind = new Mind(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 100});
@@ -366,6 +382,7 @@ describe('Belief', () => {
       expect(hammer.get_trait(state, Traittype.get_by_label('color'))).to.equal('grey');
     });
 
+    // Matrix 1.3: Single Belief Inheritance
     it('inherits trait value from base belief', () => {
       const mind = new Mind(logos(), 'test');
       const state1 = mind.create_state(logos().origin_state, {tt: 100});
@@ -404,6 +421,7 @@ describe('Belief', () => {
       expect(location_value.sid).to.equal(workshop.subject.sid);
     });
 
+    // Matrix 1.7: Own Shadows Inherited
     it('own trait shadows inherited trait', () => {
       const mind = new Mind(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 100});
@@ -427,6 +445,7 @@ describe('Belief', () => {
       expect(hammer_v2.get_trait(state, Traittype.get_by_label('color'))).to.equal('blue');
     });
 
+    // Matrix 1.5: Multi-Level Inheritance (Transitive)
     it('multi-level inheritance works', () => {
       const mind = new Mind(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 100});
@@ -486,6 +505,7 @@ describe('Belief', () => {
       expect(hammer.get_trait(state, mind_traittype)).to.be.null;
     });
 
+    // Matrix 7.3: to_inspect_view() shows composed values
     it('to_inspect_view includes inherited traits', () => {
       const mind = new Mind(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 100});
@@ -530,7 +550,18 @@ describe('Belief', () => {
     });
   });
 
+  /**
+   * MATRIX COVERAGE: Shared Belief Resolution
+   * ✅ 1.4 Shared Belief Inheritance
+   * ✅ 2.3 Subject Through Multi-Level Chain
+   * ✅ 7.8 Trait from Shared Belief at Different Timestamps
+   * ✅ 7.9 Mixed Archetype + Shared Belief Bases
+   *
+   * MISSING FROM THIS SECTION:
+   * ❌ 2.2 Subject from Archetype (archetype with default Subject value)
+   */
   describe('Shared Belief Resolution', () => {
+    // Matrix 1.4: Shared Belief Inheritance
     it('inherits traits from shared belief prototype', () => {
       // Create shared belief "GenericSword" with damage: 10, weight: 5
       const eidos = DB.get_eidos();
@@ -620,6 +651,7 @@ describe('Belief', () => {
       expect(sword_2._bases.has(standard_sword)).to.be.true;
     });
 
+    // Matrix 7.8: Trait from Shared Belief at Different Timestamps
     it('resolves correct version at different timestamps', () => {
       // Create shared belief v1 at timestamp 100
       const eidos = DB.get_eidos();
@@ -654,6 +686,7 @@ describe('Belief', () => {
       expect(at_50).to.have.lengthOf(0);
     });
 
+    // Matrix 2.3: Subject Through Multi-Level Chain
     it('resolves traits through shared belief chain', () => {
       // Create shared belief chain: Weapon (base damage) → Sword (adds sharpness)
       const eidos = DB.get_eidos();
@@ -697,6 +730,7 @@ describe('Belief', () => {
       expect(sword._bases.has(weapon)).to.be.true;
     });
 
+    // Matrix 7.9: Mixed Archetype + Shared Belief Bases
     it('inherits from shared belief through regular belief chain', () => {
       // Create shared belief "Tool" with durability
       const eidos = DB.get_eidos();
@@ -802,7 +836,15 @@ describe('Belief', () => {
     });
   });
 
+  /**
+   * MATRIX COVERAGE: Shared Belief Scoping
+   * ✅ 7.7 Shared Belief Scoping (all tests)
+   *   - Accessible from child minds
+   *   - NOT accessible from different parent hierarchy
+   *   - Global shared beliefs (ground_mind=null)
+   */
   describe('Shared Belief Scoping', () => {
+    // Matrix 7.7: Shared Belief Scoping
     it('shared belief scoped to parent mind is accessible from child minds', () => {
       // Create parent mind with initial state
       const world_mind = new Mind(logos(), 'world');
@@ -1006,7 +1048,13 @@ describe('Belief', () => {
     });
   });
 
+  /**
+   * MATRIX COVERAGE: Trait Caching
+   * ✅ 7.4 Caching behavior for locked beliefs
+   * ✅ 7.5 Caching doesn't poison unlocked states
+   */
   describe('Trait Caching', () => {
+    // Matrix 7.4, 7.5: Caching behavior
     it('does not cache get_trait results for unlocked states', () => {
       const world_state = createMindWithBeliefs('world', {
         player: {

@@ -267,6 +267,9 @@ export class Traittype {
     // Build single-item resolver based on data_type
     let item_resolver;
 
+    // FIXME: unless trait is marked as required (not implemented) we should ALWAYS allow a null
+    // value in addition to the value of the specified type
+
     // Type class (Mind, State, Belief, Subject)
     const type_class = /** @type {any} */ (Traittype.type_class_by_name[this.data_type] ?? null)
     if (type_class?.resolve_trait_value_from_template) {
@@ -278,6 +281,10 @@ export class Traittype {
       const expected_type = this.data_type
       const allowed_values = this.values  // Capture in closure for enum validation
       item_resolver = (/** @type {Belief} */ belief, /** @type {any} */ data) => {
+        // TODO: This validation rejects explicit null values (typeof null === 'object')
+        // which means you cannot pass `color: null` in from_template() to explicitly
+        // block composition. Workaround: Use belief._traits.set(traittype, null) directly.
+        // Consider: Should we special-case null to support explicit "no value" semantics?
         if (typeof data !== expected_type) {
           throw new Error(`Expected ${expected_type} for trait '${this.label}', got ${typeof data}`)
         }
@@ -382,5 +389,46 @@ export class Traittype {
     // Fallback for other objects
     if (value?.toJSON) return value.toJSON()
     return value
+  }
+
+  /**
+   * System designation - compact debug string
+   * @returns {string}
+   */
+  sysdesig() {
+    const parts = []
+
+    // Always show label
+    parts.push(`Traittype '${this.label}'`)
+
+    // Show data type
+    parts.push(`type=${this.data_type}`)
+
+    // Show container if present
+    if (this.container === Array) {
+      parts.push('Array')
+    }
+
+    // Show composable flag if true
+    if (this.composable) {
+      parts.push('composable')
+    }
+
+    // Show enum values if present
+    if (this.values) {
+      parts.push(`values=[${this.values.join(', ')}]`)
+    }
+
+    // Show exposure if present
+    if (this.exposure) {
+      parts.push(`exposure=${this.exposure}`)
+    }
+
+    // Show mind scope if present
+    if (this.mind_scope) {
+      parts.push(`mind=${this.mind_scope}`)
+    }
+
+    return parts.join(' ')
   }
 }

@@ -37,6 +37,13 @@ npm test                 # Run tests + linting (see test/.CONTEXT.md)
 - ❌ NEVER use system `/tmp` - files there are invisible in the project
 - ❌ NEVER use `cat <<< 'content'` or pipe commands to create content
 
+**File Permissions**:
+- **CRITICAL**: All files must be fully accessible by the group
+- User and group must have the same access permissions (read, write, execute)
+- After creating files with `Write` tool, ensure group permissions match user permissions
+- This enables collaboration when multiple users work on the codebase
+- Example: If user has `rw-`, group must also have `rw-` (not `r--`)
+
 **Directories for temporary work**:
 - `tmp/` - Your temporary scripts and debugging files (gitignored)
 - `tools/` - Permanent utility scripts

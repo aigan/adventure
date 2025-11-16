@@ -21,6 +21,7 @@
 import { assert } from './debug.mjs'
 import * as DB from './db.mjs'
 import { Traittype } from './traittype.mjs'
+import { Subject } from './subject.mjs'
 
 /**
  * Archetype definition for beliefs
@@ -168,38 +169,22 @@ export class Archetype {
    * @returns {*} Resolved Subject
    */
   static resolve_trait_value_from_template(traittype, belief, data) {
-    // String input: lookup belief by label and return its subject
-    if (typeof data === 'string') {
-      // First try local state
-      let found_belief = belief.origin_state.get_belief_by_label(data)
+    // Use shared lookup helper (no duplicate lookups)
+    const { belief: found_belief, subject } = Subject._lookup_belief_from_template(traittype, belief, data)
 
-      // If not found, try shared beliefs (prototypes in Eidos)
-      if (found_belief == null) {
-        const subject = DB.get_subject_by_label(data)
-        found_belief = subject?.get_shared_belief_by_state(belief.origin_state)
-      }
-
-      if (found_belief == null) {
-        throw new Error(`Belief not found for trait '${traittype.label}': ${data}`)
-      }
-
-      // Validate archetype
+    // If lookup found a belief (from string label), validate archetype
+    if (found_belief) {
       const required_archetype = Archetype.get_by_label(traittype.data_type)
       for (const a of found_belief.get_archetypes()) {
         if (a === required_archetype) {
-          return found_belief.subject
+          return subject
         }
       }
       throw new Error(`Belief '${data}' does not have required archetype '${traittype.data_type}' for trait '${traittype.label}'`)
     }
 
-    // Belief input: reject - this is a programming error
-    if (data?.subject && typeof data.get_archetypes === 'function') {
-      throw new Error(`Template data for trait '${traittype.label}' should use belief labels (strings) or Subject objects, not Belief objects`)
-    }
-
-    // Subject input (or other): return as-is
-    return data
+    // Passthrough (Subject or other value, no belief to validate)
+    return subject
   }
 
   /**

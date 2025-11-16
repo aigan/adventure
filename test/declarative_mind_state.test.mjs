@@ -72,6 +72,7 @@ describe('Mind Trait', () => {
         }
       }
     });
+    world_state.replace_beliefs(player);
 
     world_state.lock();
 
@@ -210,6 +211,7 @@ describe('Mind Trait', () => {
         }
       }
     });
+    world_state.replace_beliefs(npc1);
 
     // NPC2 learns about same world entities (different trait selections)
     const npc2 = Belief.from_template(world_state, {
@@ -222,6 +224,7 @@ describe('Mind Trait', () => {
         }
       }
     });
+    world_state.replace_beliefs(npc2);
 
     world_state.lock();
 
@@ -484,6 +487,7 @@ describe('Mind Trait', () => {
         }
       }
     });
+    world_state.replace_beliefs(entity);
 
     world_state.lock();
 

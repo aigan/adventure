@@ -3,6 +3,16 @@
  *
  * Tests composable mind trait behavior mirroring inventory composition patterns.
  * See docs/plans/mind-composition-tests.md for full test plan.
+ *
+ * MATRIX COVERAGE:
+ * ✅ 4.1 Mind from Own (Partial - via UnionState composition)
+ * ⚠️  Mind null blocking (line 16 - similar to 3.6 but for Mind specifically)
+ *
+ * UNIONSTATE COVERAGE:
+ * ✅ UnionState composition (multiple minds combined)
+ * ❌ MISSING: rev_trait with UnionState (see docs/plans/UNIONSTATE_CRITICAL.md)
+ *
+ * NOTE: This file tests Mind composition via UnionState, not trait inheritance matrix
  */
 
 import { expect } from 'chai'

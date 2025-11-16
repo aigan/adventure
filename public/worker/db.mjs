@@ -15,6 +15,7 @@ import { log, assert } from './debug.mjs';
 import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
 import { logos, logos_state, eidos, _reset_singletons } from './cosmos.mjs'
+import { Serialize } from './serialize.mjs'
 
 // ============================================================================
 // Mind Registries
@@ -430,6 +431,7 @@ export function get_mind_trait_names() {
  * Reset all registries (for testing)
  */
 export function reset_registries() {
+  Serialize.reset_state()
   reset_all_registries()
   reset_id_sequence()
 }

@@ -190,6 +190,57 @@ export class Subject {
       }
     }
   }
+
+  /**
+   * Internal helper: Lookup belief from template data
+   * Shared by Subject.resolve_trait_value_from_template and Archetype.resolve_trait_value_from_template
+   * Note: Underscore prefix indicates internal use, but intentionally accessible by Archetype
+   * @param {*} traittype - Traittype instance
+   * @param {*} belief - Belief being constructed
+   * @param {*} data - Raw template data
+   * @returns {{belief: Belief|null, subject: Subject|*}} Lookup result
+   * @internal
+   */
+  static _lookup_belief_from_template(traittype, belief, data) {
+    // String input: lookup belief by label
+    if (typeof data === 'string') {
+      // First try local state
+      let found_belief = belief.origin_state.get_belief_by_label(data)
+
+      // If not found, try shared beliefs (prototypes in Eidos)
+      if (found_belief == null) {
+        const subject = DB.get_subject_by_label(data)
+        found_belief = subject?.get_shared_belief_by_state(belief.origin_state)
+      }
+
+      assert(found_belief, `Belief not found for trait '${traittype.label}': ${data}`)
+
+      return { belief: found_belief, subject: found_belief.subject }
+    }
+
+    // Belief input: reject - this is a programming error
+    assert(
+      !(data?.subject && typeof data.get_archetypes === 'function'),
+      `Template data for trait '${traittype.label}' should use belief labels (strings) or Subject objects, not Belief objects`,
+      { trait: traittype.label, data_type: typeof data }
+    )
+
+    // Subject or other: pass through (no belief lookup needed)
+    return { belief: null, subject: data }
+  }
+
+  /**
+   * Resolve trait value from template data for generic Subject references
+   * Accepts any archetype (no validation)
+   * @param {*} traittype - Traittype instance (for accessing label, constraints)
+   * @param {*} belief - Belief being constructed (provides origin_state for lookup)
+   * @param {*} data - Raw template data (string label, Subject, or invalid Belief)
+   * @returns {*} Resolved Subject
+   */
+  static resolve_trait_value_from_template(traittype, belief, data) {
+    const { subject } = Subject._lookup_belief_from_template(traittype, belief, data)
+    return subject
+  }
 }
 
 /**

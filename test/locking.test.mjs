@@ -1,4 +1,3 @@
-import { describe, it, beforeEach } from 'mocha'
 import { expect } from 'chai'
 import { Mind, State, Belief, Traittype, logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'

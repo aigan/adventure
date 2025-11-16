@@ -104,6 +104,17 @@ export class Serialize {
 
     return JSON.stringify(root, null, 2)
   }
+
+  /**
+   * Reset serialization state (for testing)
+   * Clears dependency tracking to prevent test pollution
+   * @internal
+   */
+  static reset_state() {
+    Serialize.active = false
+    Serialize.dependency_queue = null
+    Serialize.seen = null
+  }
 }
 
 /**

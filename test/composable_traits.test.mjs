@@ -1,5 +1,22 @@
 /**
  * Tests for composable trait composition (e.g., inventory arrays)
+ *
+ * MATRIX COVERAGE:
+ * ✅ 3.3 Composable Transitive (line 15)
+ * ✅ 3.5 Composable Deduplication (line 74)
+ * ✅ 7.3 to_inspect_view() shows composed values (line 125)
+ *
+ * MISSING FROM THIS FILE:
+ * ❌ 3.1 Composable from Single Base (baseline - need isolated test)
+ * ❌ 3.2 Composable from Multiple Bases (Direct) - covered in 3.3 but not isolated
+ * ❌ 3.4 Composable + Own Value (own adds to inherited)
+ * ❌ 3.6 Composable with null Blocks Composition
+ * ❌ 3.7 Composable with Empty Array
+ * ❌ 3.8 Composable Diamond (same item via multiple paths)
+ * ❌ 3.9 Composable from Archetype + Belief Bases (mixed sources)
+ * ❌ 6.4 Archetype with Array Default (Villager has default inventory but not tested explicitly)
+ *
+ * NOTE: These missing tests are in test/trait_inheritance_comprehensive.test.mjs
  */
 
 import { expect } from 'chai'
@@ -12,6 +29,7 @@ describe('Composable Traits', () => {
   })
 
   describe('Inventory Composition', () => {
+    // Matrix 3.3: Composable Transitive (A→B→C)
     it('composes inventory from multiple bases (transitive)', () => {
       // Register inventory as composable
       DB.register(
@@ -71,6 +89,7 @@ describe('Composable Traits', () => {
       expect(labels).to.deep.equal(['badge', 'hammer', 'token'])
     })
 
+    // Matrix 3.5: Composable Deduplication
     it('deduplicates items when same item appears in multiple bases', () => {
       DB.register(
         {
@@ -122,6 +141,7 @@ describe('Composable Traits', () => {
       expect(vb_inv[0].get_label()).to.equal('hammer')
     })
 
+    // Matrix 7.3: to_inspect_view() shows composed values
     it('composes inventory in to_inspect_view()', () => {
       DB.register(
         {

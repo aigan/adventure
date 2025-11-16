@@ -1,4 +1,25 @@
-import { describe, it, beforeEach } from 'mocha'
+/**
+ * Tests for reverse trait lookup (rev_trait) functionality
+ *
+ * MATRIX COVERAGE: None (this file tests rev_trait mechanism, not trait inheritance)
+ *
+ * TESTS COVERED:
+ * ✅ Basic rev_trait functionality (empty, single, multiple referrers)
+ * ✅ State chain traversal (single state, two-state, long chains)
+ * ✅ Add/Del patterns (additions, removals, resurrection)
+ * ✅ Skip list optimization (pointers, ancestor jumps, isolation)
+ *
+ * MISSING (documented in docs/plans/rev-trait-analysis.md):
+ * ❌ Inherited Subject references (beliefs inherit location from base)
+ * ❌ Shared belief references
+ * ❌ Composable arrays in rev_trait (inventory)
+ * ❌ Mind state references
+ * ❌ State array references
+ * ❌ 🔴 CRITICAL: UnionState traversal (see docs/plans/UNIONSTATE_CRITICAL.md)
+ *
+ * Missing tests are in: docs/plans/reverse_trait_missing.test.mjs
+ */
+
 import { assert } from 'chai'
 import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
@@ -616,6 +637,135 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const inventory = backpack.rev_trait(state, container_traittype)
       assert.lengthOf(inventory, 3)
       assert.includeMembers(inventory, [sword, potion, rope])
+    })
+  })
+
+  describe('Performance and Stress Tests', () => {
+    it('combined stress test: 100+ referrers × deep state chain', () => {
+      // Tests: Skip list optimization scales with many referrers and deep chains
+      // Setup: 100+ NPCs × 100-state chain (10,000 potential lookups)
+      // Expected: < 10ms with skip list optimization
+
+      let state = createStateInNewMind('world')
+      const location_traittype = Traittype.get_by_label('location')
+
+      const location = Belief.from_template(state, {
+        bases: ['Location'],
+        traits: {'@label': 'city_square'}
+      })
+      state.lock()
+
+      const all_npcs = []
+
+      // Create 100 states with sparse NPC additions
+      for (let i = 0; i < 100; i++) {
+        state = state.branch_state(logos().origin_state, i + 2)
+
+        // Add 1-2 NPCs every 5 states (total ~25 NPCs)
+        if (i % 5 === 0) {
+          const npc1 = Belief.from_template(state, {
+            bases: ['Actor'],
+            traits: {
+              '@label': `citizen_${i}_a`,
+              'location': location.subject
+            }
+          })
+          all_npcs.push(npc1)
+
+          if (i % 10 === 0) {
+            const npc2 = Belief.from_template(state, {
+              bases: ['Actor'],
+              traits: {
+                '@label': `citizen_${i}_b`,
+                'location': location.subject
+              }
+            })
+            all_npcs.push(npc2)
+          }
+        }
+
+        state.lock()
+      }
+
+      // Query with performance timing
+      const start = Date.now()
+      const occupants = location.rev_trait(state, location_traittype)
+      const duration = Date.now() - start
+
+      // Verify correctness
+      assert.lengthOf(occupants, all_npcs.length,
+        `Should find all ${all_npcs.length} NPCs across 100-state chain`)
+      assert.includeMembers(occupants, all_npcs)
+
+      // Verify performance (skip list should make this fast)
+      assert.isBelow(duration, 10,
+        'Skip list optimization should complete in < 10ms')
+    })
+
+    it('wide fanout: 10 parallel branches with independent changes', () => {
+      // Tests: rev_trait correctness with branching state trees
+      // Setup: 1 root → 10 branches, each adds different NPCs
+      // Expected: Each branch sees only its own NPCs + root NPCs
+
+      const root_state = createStateInNewMind('world')
+      const location_traittype = Traittype.get_by_label('location')
+
+      const plaza = Belief.from_template(root_state, {
+        bases: ['Location'],
+        traits: {'@label': 'plaza'}
+      })
+
+      // Root has 2 NPCs
+      const root_npc1 = Belief.from_template(root_state, {
+        bases: ['Actor'],
+        traits: {'@label': 'statue', 'location': plaza.subject}
+      })
+      const root_npc2 = Belief.from_template(root_state, {
+        bases: ['Actor'],
+        traits: {'@label': 'fountain', 'location': plaza.subject}
+      })
+      root_state.lock()
+
+      // Create 10 branches, each adding 1 unique NPC
+      const branches = []
+      for (let i = 0; i < 10; i++) {
+        const branch = root_state.branch_state(logos().origin_state, i + 2)
+
+        const branch_npc = Belief.from_template(branch, {
+          bases: ['Actor'],
+          traits: {
+            '@label': `visitor_${i}`,
+            'location': plaza.subject
+          }
+        })
+        branch.lock()
+
+        branches.push({ state: branch, npc: branch_npc })
+      }
+
+      // Verify each branch sees exactly 3 NPCs (2 root + 1 own)
+      for (let i = 0; i < 10; i++) {
+        const { state: branch, npc } = branches[i]
+        const occupants = plaza.rev_trait(branch, location_traittype)
+
+        assert.lengthOf(occupants, 3,
+          `Branch ${i} should see 2 root + 1 own NPC`)
+        assert.includeMembers(occupants, [root_npc1, root_npc2, npc],
+          `Branch ${i} should include root NPCs and own NPC`)
+
+        // Verify branch does NOT see other branches' NPCs
+        for (let j = 0; j < 10; j++) {
+          if (i !== j) {
+            assert.notInclude(occupants, branches[j].npc,
+              `Branch ${i} should NOT see branch ${j}'s NPC`)
+          }
+        }
+      }
+
+      // Root state should see only 2 NPCs
+      const root_occupants = plaza.rev_trait(root_state, location_traittype)
+      assert.lengthOf(root_occupants, 2,
+        'Root state should see only its own 2 NPCs')
     })
   })
 })

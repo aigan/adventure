@@ -3,6 +3,13 @@
  *
  * These tests verify that get_traits() properly composes trait values from multiple bases,
  * matching the behavior of get_trait() for composable traits like inventory and mind.
+ *
+ * MATRIX COVERAGE:
+ * ✅ 7.1 get_trait() vs get_traits() Consistency (entire file)
+ * ✅ 3.2 Composable from Multiple Bases (Direct) - line 18
+ * ✅ 3.3 Composable Transitive - line 117
+ *
+ * NOTE: This file is entirely focused on verifying consistency between the two APIs
  */
 
 import { expect } from 'chai';
@@ -15,6 +22,7 @@ describe('get_traits() composable trait consistency', () => {
     DB.reset_registries();
   });
 
+  // Matrix 7.1 + 3.2: get_trait() vs get_traits() consistency + Composable from Multiple Bases
   it('composes from multiple bases consistently with get_trait()', () => {
     // Setup with composable inventory trait
     const traittypes = {
@@ -114,6 +122,7 @@ describe('get_traits() composable trait consistency', () => {
       'get_traits() and get_trait() should return identical composed values');
   });
 
+  // Matrix 7.1 + 3.3: get_trait() vs get_traits() consistency + Composable Transitive
   it('returns inherited composed trait consistently', () => {
     // Test: belief inherits a composable trait that was itself composed
     const traittypes = {

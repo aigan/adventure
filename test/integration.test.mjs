@@ -1,3 +1,17 @@
+/**
+ * Integration tests for cross-system scenarios
+ *
+ * MATRIX COVERAGE: None (tests complex scenarios, not specific matrix cases)
+ *
+ * TESTS:
+ * ✅ Cross-mind queries with @about trait
+ * ✅ Shared beliefs with mind traits
+ * ✅ Complex world setup scenarios
+ *
+ * NOTE: These are integration tests combining multiple systems,
+ * not focused on trait inheritance permutations
+ */
+
 import { expect } from 'chai';
 import { Mind, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';

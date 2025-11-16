@@ -68,7 +68,7 @@ describe('learn_about', () => {
         bases: [hammer_v1],
         traits: { color: 'red' }
       });
-      world_mind_state.insert.push(hammer_v2);
+      world_mind_state.replace_beliefs(hammer_v2);
 
       const npc_mind = new Mind(world_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_mind_state);
@@ -204,12 +204,12 @@ describe('learn_about', () => {
       // NPC has two different beliefs about the workshop (uncertainty case)
       const belief1 = npc_mind_state.add_belief_from_template({
                 bases: ['Location'],
-        traits: {'@label': 'workshop_belief_1', '@about': get_first_belief_by_label('workshop')}
+        traits: {'@label': 'workshop_belief_1', '@about': get_first_belief_by_label('workshop').subject}
       });
 
       const belief2 = npc_mind_state.add_belief_from_template({
                 bases: ['Location'],
-        traits: {'@label': 'workshop_belief_2', '@about': get_first_belief_by_label('workshop')}
+        traits: {'@label': 'workshop_belief_2', '@about': get_first_belief_by_label('workshop').subject}
       });
 
       npc_mind_state.lock();
@@ -238,7 +238,7 @@ describe('learn_about', () => {
         bases: [hammer_v1],
         traits: { color: 'red' }
       });
-      world_mind_state.insert.push(hammer_v2);
+      world_mind_state.replace_beliefs(hammer_v2);
 
       const npc_mind = new Mind(world_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_mind_state);
@@ -378,7 +378,7 @@ describe('learn_about', () => {
           color: 'blue'
         }
       });
-      world_state2.insert.push(hammer_v2);
+      world_state2.replace_beliefs(hammer_v2);
 
       world_state2.lock();
 

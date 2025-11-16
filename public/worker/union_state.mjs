@@ -13,7 +13,7 @@
  * See docs/plans/union-state.md for design details
  */
 
-import { assert } from './debug.mjs'
+import { assert, debug } from './debug.mjs'
 import * as DB from './db.mjs'
 import { State } from './state.mjs'
 
@@ -22,6 +22,7 @@ import { State } from './state.mjs'
  * @typedef {import('./belief.mjs').Belief} Belief
  * @typedef {import('./state.mjs').StateJSON} StateJSON
  * @typedef {import('./subject.mjs').Subject} Subject
+ * @typedef {import('./traittype.mjs').Traittype} Traittype
  */
 
 /**
@@ -153,6 +154,17 @@ export class UnionState extends State {
   }
 
   /**
+   * Override: Get next state(s) for reverse trait lookup traversal
+   * Returns all component next states (polymorphic with State.rev_base)
+   * @param {Subject} subject - Subject being queried in reverse lookup
+   * @param {Traittype} traittype - Traittype being queried
+   * @returns {State[]} Array of next states from all components
+   */
+  rev_base(subject, traittype) {
+    return [...this.component_states]
+  }
+
+  /**
    * Override remove to throw error (not supported in UnionState)
    * @throws {Error} Always throws - remove operations not allowed in UnionState
    */
@@ -238,5 +250,18 @@ export class UnionState extends State {
     }
 
     return union_state
+  }
+
+  /**
+   * System designation - compact debug string
+   * Decorates parent State.sysdesig() with UnionState-specific info
+   * @returns {string}
+   */
+  sysdesig() {
+    // Get base State sysdesig output
+    const base = super.sysdesig()
+
+    // Replace "State#" with "UnionState#" and add component count
+    return base.replace(/State#(\d+)/, `UnionState#$1 (${this.component_states.length} components)`)
   }
 }

@@ -1,3 +1,13 @@
+/**
+ * Tests for Archetype functionality
+ *
+ * MATRIX COVERAGE:
+ * ✅ 1.6 Multi-Archetype Inheritance (Partial) - Person has multiple bases (line 43)
+ * ⚠️  MISSING: Diamond archetype conflict - what happens when same trait appears in multiple paths?
+ *
+ * NON-MATRIX: Archetype composition, structure, validation (most of file)
+ */
+
 import { expect } from 'chai';
 import { Mind, State, Belief, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
@@ -40,6 +50,7 @@ describe('Archetype', () => {
       expect(hammer.can_have_trait(location_traittype)).to.be.true;
     });
 
+    // Matrix 1.6: Multi-Archetype Inheritance (Partial - doesn't test conflict resolution)
     it('Person archetype inherits from multiple bases', () => {
       const state = createStateInNewMind();
       const player = Belief.from_template(state, {
