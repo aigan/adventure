@@ -308,11 +308,10 @@ export class State {
   add_beliefs_from_template(beliefs, {about_state=null} = {}) {
     const created_beliefs = []
     for (const [label, def] of Object.entries(beliefs)) {
-      const existing_traits = /** @type {Record<string, any>} */ ('traits' in def ? def.traits : {})
       const belief = Belief.from_template(this, {
         ...def,
         about_state,
-        traits: {...existing_traits, '@label': label}
+        label
       })
       created_beliefs.push(belief)
     }

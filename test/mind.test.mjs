@@ -112,7 +112,7 @@ describe('Mind', () => {
       // Create a belief that can be learned about
       const workshop_belief = world_state.add_belief_from_template({
         bases: ['Base'],
-        traits: {'@label': 'workshop', name: 'Workshop'}
+        traits: {name: 'Workshop'}, label: 'workshop'
       });
 
       // Create NPC belief that will have a mind trait
@@ -141,7 +141,7 @@ describe('Mind', () => {
 
       const workshop_belief = world_state.add_belief_from_template({
         bases: ['Base'],
-        traits: {'@label': 'workshop', name: 'Workshop'}
+        traits: {name: 'Workshop'}, label: 'workshop'
       });
 
       const npc_belief = world_state.add_belief_from_template({

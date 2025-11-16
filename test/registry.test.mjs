@@ -13,10 +13,10 @@ describe('Registry', () => {
   describe('Label Uniqueness', () => {
     it('currently allows duplicate labels across minds', () => {
       const state_a = createStateInNewMind('mind_a');
-      const workshop_a = Belief.from_template(state_a, {traits: {'@label': 'workshop_unique_a'}, bases: ['Location']});
+      const workshop_a = Belief.from_template(state_a, {traits: {}, bases: ['Location'], label: 'workshop_unique_a'});
 
       const state_b = createStateInNewMind('mind_b');
-      const workshop_b = Belief.from_template(state_b, {traits: {'@label': 'workshop_unique_b'}, bases: ['Location']});
+      const workshop_b = Belief.from_template(state_b, {traits: {}, bases: ['Location'], label: 'workshop_unique_b'});
 
       // Labels are globally unique now
       expect(get_first_belief_by_label('workshop_unique_a')).to.exist;
@@ -28,11 +28,11 @@ describe('Registry', () => {
 
     it('throws error on duplicate labels', () => {
       const state = createStateInNewMind();
-      Belief.from_template(state, {traits: {'@label': 'item1'}, bases: ['PortableObject']});
+      Belief.from_template(state, {traits: {}, bases: ['PortableObject'], label: 'item1'});
 
       // Adding another with same label should throw
       expect(() => {
-        Belief.from_template(state, {traits: {'@label': 'item1'}, bases: ['Location']});
+        Belief.from_template(state, {traits: {}, bases: ['Location'], label: 'item1'});
       }).to.throw(/Label 'item1' is already used/);
     });
 
@@ -41,7 +41,7 @@ describe('Registry', () => {
 
       // Trying to create belief with same label as archetype should throw
       expect(() => {
-        Belief.from_template(state, {traits: {'@label': 'PortableObject'}, bases: ['Location']});
+        Belief.from_template(state, {traits: {}, bases: ['Location'], label: 'PortableObject'});
       }).to.throw(/Label 'PortableObject' is already used by an archetype/);
     });
   });

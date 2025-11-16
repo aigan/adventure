@@ -46,7 +46,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const sword = state.add_belief_from_template({
           bases: ['PortableObject'],
-          traits: { '@label': 'sword' }
+          traits: {}, label: 'sword'
         })
 
         // Create prototype with inventory
@@ -55,9 +55,9 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const warrior_proto = eidos_state.add_belief_from_template({
           bases: ['HasInventory'],
           traits: {
-            '@label': 'WarriorProto',
             inventory: [sword.subject]
-          }
+          },
+          label: 'WarriorProto'
         })
         warrior_proto.lock(eidos_state)
 
@@ -65,9 +65,9 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const pacifist = state.add_belief_from_template({
           bases: [warrior_proto],
           traits: {
-            '@label': 'pacifist',
             inventory: null  // Explicitly null
-          }
+          },
+          label: 'pacifist'
         })
 
         const inventory_traittype = Traittype.get_by_label('inventory')
@@ -83,12 +83,12 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const sword = state.add_belief_from_template({
           bases: ['PortableObject'],
-          traits: { '@label': 'sword' }
+          traits: {}, label: 'sword'
         })
 
         const shield = state.add_belief_from_template({
           bases: ['PortableObject'],
-          traits: { '@label': 'shield' }
+          traits: {}, label: 'shield'
         })
 
         const eidos = DB.get_eidos()
@@ -98,9 +98,9 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const pacifist_proto = eidos_state.add_belief_from_template({
           bases: ['HasInventory'],
           traits: {
-            '@label': 'PacifistProto',
             inventory: null
-          }
+          },
+          label: 'PacifistProto'
         })
         pacifist_proto.lock(eidos_state)
 
@@ -108,16 +108,16 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const warrior_proto = eidos_state.add_belief_from_template({
           bases: ['HasInventory'],
           traits: {
-            '@label': 'WarriorProto',
             inventory: [sword.subject]
-          }
+          },
+          label: 'WarriorProto'
         })
         warrior_proto.lock(eidos_state)
 
         // Inherits from both
         const hybrid = state.add_belief_from_template({
           bases: [pacifist_proto, warrior_proto],
-          traits: { '@label': 'hybrid' }
+          traits: {}, label: 'hybrid'
         })
 
         const inventory_traittype = Traittype.get_by_label('inventory')
@@ -157,7 +157,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const sword = state.add_belief_from_template({
           bases: ['PortableObject'],
-          traits: { '@label': 'sword' }
+          traits: {}, label: 'sword'
         })
 
         const eidos = DB.get_eidos()
@@ -165,9 +165,9 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const warrior_proto = eidos_state.add_belief_from_template({
           bases: ['HasInventory'],
           traits: {
-            '@label': 'WarriorProto',
             inventory: [sword.subject]
-          }
+          },
+          label: 'WarriorProto'
         })
         warrior_proto.lock(eidos_state)
 
@@ -175,9 +175,9 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const stripped = state.add_belief_from_template({
           bases: [warrior_proto],
           traits: {
-            '@label': 'stripped',
             inventory: []  // Empty array
-          }
+          },
+          label: 'stripped'
         })
 
         const inventory_traittype = Traittype.get_by_label('inventory')
@@ -200,7 +200,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const sword = state.add_belief_from_template({
           bases: ['PortableObject'],
-          traits: { '@label': 'sword' }
+          traits: {}, label: 'sword'
         })
 
         const eidos = DB.get_eidos()
@@ -208,9 +208,9 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const warrior_proto = eidos_state.add_belief_from_template({
           bases: ['HasInventory'],
           traits: {
-            '@label': 'WarriorProto',
             inventory: [sword.subject]
-          }
+          },
+          label: 'WarriorProto'
         })
         warrior_proto.lock(eidos_state)
 
@@ -218,14 +218,14 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const with_empty = state.add_belief_from_template({
           bases: [warrior_proto],
           traits: {
-            '@label': 'with_empty',
             inventory: []
-          }
+          },
+          label: 'with_empty'
         })
 
         const without_inventory = state.add_belief_from_template({
           bases: [warrior_proto],
-          traits: { '@label': 'without_inventory' }
+          traits: {}, label: 'without_inventory'
           // NOT setting inventory - should inherit
         })
 
@@ -274,17 +274,17 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const child1 = state.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'child1' }
+          traits: {}, label: 'child1'
         })
 
         const child2 = state.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'child2' }
+          traits: {}, label: 'child2'
         })
 
         const child3 = state.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'child3' }
+          traits: {}, label: 'child3'
         })
 
         const eidos = DB.get_eidos()
@@ -293,9 +293,9 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const parent_proto = eidos_state.add_belief_from_template({
           bases: ['Person'],
           traits: {
-            '@label': 'ParentProto',
             children: [child1.subject, child2.subject]
-          }
+          },
+          label: 'ParentProto'
         })
         parent_proto.lock(eidos_state)
 
@@ -303,9 +303,9 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const parent_instance = state.add_belief_from_template({
           bases: [parent_proto],
           traits: {
-            '@label': 'parent_instance',
             children: [child3.subject]  // Replaces, doesn't compose
-          }
+          },
+          label: 'parent_instance'
         })
 
         const children_traittype = Traittype.get_by_label('children')
@@ -322,12 +322,12 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const child1 = state.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'child1' }
+          traits: {}, label: 'child1'
         })
 
         const child2 = state.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'child2' }
+          traits: {}, label: 'child2'
         })
 
         const eidos = DB.get_eidos()
@@ -336,25 +336,25 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const parent1 = eidos_state.add_belief_from_template({
           bases: ['Person'],
           traits: {
-            '@label': 'Parent1',
             children: [child1.subject]
-          }
+          },
+          label: 'Parent1'
         })
         parent1.lock(eidos_state)
 
         const parent2 = eidos_state.add_belief_from_template({
           bases: ['Person'],
           traits: {
-            '@label': 'Parent2',
             children: [child2.subject]
-          }
+          },
+          label: 'Parent2'
         })
         parent2.lock(eidos_state)
 
         // Multiple bases, non-composable
         const combined = state.add_belief_from_template({
           bases: [parent1, parent2],
-          traits: { '@label': 'combined' }
+          traits: {}, label: 'combined'
         })
 
         const children_traittype = Traittype.get_by_label('children')
@@ -392,7 +392,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
             // Prototypes with default locations
             DefaultForge: {
               bases: ['Location'],
-              traits: { '@label': 'DefaultForge' }
+              traits: {}, label: 'DefaultForge'
             },
             StandardBlacksmith: {
               bases: ['Blacksmith'],
@@ -425,7 +425,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         // Create instance inheriting from archetype with default Subject
         const blacksmith = state.add_belief_from_template({
           bases: ['StandardBlacksmith'],
-          traits: { '@label': 'blacksmith_instance' }
+          traits: {}, label: 'blacksmith_instance'
         })
 
         const workplace_traittype = Traittype.get_by_label('workplace')
@@ -481,7 +481,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const spellblade = state.add_belief_from_template({
           bases: ['Spellblade'],
-          traits: { '@label': 'spellblade' }
+          traits: {}, label: 'spellblade'
         })
 
         const combat_style_traittype = Traittype.get_by_label('combat_style')
@@ -519,7 +519,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const mage = state.add_belief_from_template({
           bases: ['PhysicalMage'],
-          traits: { '@label': 'mage' }
+          traits: {}, label: 'mage'
         })
 
         const combat_style_traittype = Traittype.get_by_label('combat_style')
@@ -630,7 +630,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
           {
             token: {
               bases: ['PortableObject'],
-              traits: { '@label': 'token' }
+              traits: {}, label: 'token'
             },
             VillagerWithToken: {
               bases: ['Villager'],
@@ -650,22 +650,22 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const sword = eidos_state.add_belief_from_template({
           bases: ['PortableObject'],
-          traits: { '@label': 'sword' }
+          traits: {}, label: 'sword'
         })
 
         const guard_proto = eidos_state.add_belief_from_template({
           bases: ['Villager'],
           traits: {
-            '@label': 'GuardProto',
             inventory: [sword.subject]
-          }
+          },
+          label: 'GuardProto'
         })
         guard_proto.lock(eidos_state)
 
         // Inherits from both archetype (with token) and belief (with sword)
         const guard = state.add_belief_from_template({
           bases: ['VillagerWithToken', guard_proto],
-          traits: { '@label': 'guard' }
+          traits: {}, label: 'guard'
         })
 
         const inventory_traittype = Traittype.get_by_label('inventory')
@@ -718,14 +718,14 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const with_null = state.add_belief_from_template({
           bases: ['Colored'],
           traits: {
-            '@label': 'with_null',
             color: null  // Explicitly set to null
-          }
+          },
+          label: 'with_null'
         })
 
         const without_color = state.add_belief_from_template({
           bases: ['Thing'],
-          traits: { '@label': 'without_color' }
+          traits: {}, label: 'without_color'
           // color not set at all
         })
 
@@ -749,10 +749,10 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const obj = state.add_belief_from_template({
           bases: ['Colored'],
           traits: {
-            '@label': 'obj',
             color: null,  // Explicit
             // count not set (undefined)
-          }
+          },
+          label: 'obj'
         })
 
         const defined_traits = new Map(obj.get_defined_traits())
@@ -804,7 +804,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const sword = state.add_belief_from_template({
           bases: ['PortableObject'],
-          traits: { '@label': 'sword' }
+          traits: {}, label: 'sword'
         })
 
         const eidos = DB.get_eidos()
@@ -813,16 +813,16 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const warrior_proto = eidos_state.add_belief_from_template({
           bases: ['HasInventory'],
           traits: {
-            '@label': 'WarriorProto',
             inventory: [sword.subject]
-          }
+          },
+          label: 'WarriorProto'
         })
         warrior_proto.lock(eidos_state)
 
         // Single base, no own inventory
         const warrior = state.add_belief_from_template({
           bases: [warrior_proto],
-          traits: { '@label': 'warrior' }
+          traits: {}, label: 'warrior'
         })
 
         const inventory_traittype = Traittype.get_by_label('inventory')
@@ -839,12 +839,12 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const sword = state.add_belief_from_template({
           bases: ['PortableObject'],
-          traits: { '@label': 'sword' }
+          traits: {}, label: 'sword'
         })
 
         const shield = state.add_belief_from_template({
           bases: ['PortableObject'],
-          traits: { '@label': 'shield' }
+          traits: {}, label: 'shield'
         })
 
         const eidos = DB.get_eidos()
@@ -853,9 +853,9 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const warrior_proto = eidos_state.add_belief_from_template({
           bases: ['HasInventory'],
           traits: {
-            '@label': 'WarriorProto',
             inventory: [sword.subject]
-          }
+          },
+          label: 'WarriorProto'
         })
         warrior_proto.lock(eidos_state)
 
@@ -863,9 +863,9 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const knight = state.add_belief_from_template({
           bases: [warrior_proto],
           traits: {
-            '@label': 'knight',
             inventory: [shield.subject]  // Adds to inherited
-          }
+          },
+          label: 'knight'
         })
 
         const inventory_traittype = Traittype.get_by_label('inventory')
@@ -910,7 +910,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const entity = state.add_belief_from_template({
           bases: ['Mental'],
-          traits: { '@label': 'entity' }
+          traits: {}, label: 'entity'
         })
 
         const mind_traittype = Traittype.get_by_label('mind')
@@ -931,9 +931,9 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const entity = state.add_belief_from_template({
           bases: ['Mental'],
           traits: {
-            '@label': 'entity',
             mind: {}  // Create mind via template
-          }
+          },
+          label: 'entity'
         })
 
         const mind_traittype = Traittype.get_by_label('mind')
@@ -969,7 +969,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const entity = state.add_belief_from_template({
           bases: ['Temporal'],
-          traits: { '@label': 'entity' }
+          traits: {}, label: 'entity'
         })
 
         const creation_state_traittype = Traittype.get_by_label('creation_state')
@@ -993,16 +993,16 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const proto = eidos_state.add_belief_from_template({
           bases: ['Temporal'],
           traits: {
-            '@label': 'TemporalProto',
             creation_state: ref_state  // Default state
-          }
+          },
+          label: 'TemporalProto'
         })
         proto.lock(eidos_state)
 
         const state = createStateInNewMind('test')
         const entity = state.add_belief_from_template({
           bases: [proto],
-          traits: { '@label': 'entity' }
+          traits: {}, label: 'entity'
         })
 
         const creation_state_traittype = Traittype.get_by_label('creation_state')
@@ -1019,7 +1019,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
         const bare = state.add_belief_from_template({
           bases: [],  // No bases at all
-          traits: { '@label': 'bare' }
+          traits: {}, label: 'bare'
         })
 
         // Should exist and work

@@ -50,9 +50,8 @@ describe('Composable Traits - Complex Scenarios', () => {
       // NPC with two prototype bases
       const npc = state.add_belief_from_template({
         bases: ['Villager', 'Guard'],
-        traits: {
-          '@label': 'guard_npc'
-        }
+        traits: {},
+        label: 'guard_npc'
       })
 
       // Should compose from both prototypes
@@ -193,9 +192,8 @@ describe('Composable Traits - Complex Scenarios', () => {
       // Create player inheriting from Blacksmith
       const player = state.add_belief_from_template({
         bases: ['Blacksmith'],
-        traits: {
-          '@label': 'player'
-        }
+        traits: {},
+        label: 'player'
       })
 
       // Player should have null inventory (inherited from Blacksmith)
@@ -243,9 +241,9 @@ describe('Composable Traits - Complex Scenarios', () => {
       const npc = state.add_belief_from_template({
         bases: ['Villager', 'Guard'],
         traits: {
-          '@label': 'npc',
           inventory: ['apprentice_token', 'sword']  // Explicit refs to Eidos shared beliefs
-        }
+        },
+        label: 'npc'
       })
 
       // Should compose all sources, deduplicating by subject.sid
@@ -291,9 +289,9 @@ describe('Composable Traits - Complex Scenarios', () => {
       const npc = state.add_belief_from_template({
         bases: ['Villager'],
         traits: {
-          '@label': 'villager_npc',
           inventory: []
-        }
+        },
+        label: 'villager_npc'
       })
 
       // Still has token from base (empty array composes to base + empty = base)
@@ -335,18 +333,17 @@ describe('Composable Traits - Complex Scenarios', () => {
       // Create sword in world state
       state.add_belief_from_template({
         bases: ['PortableObject'],
-        traits: {
-          '@label': 'sword'
-        }
+        traits: {},
+        label: 'sword'
       })
 
       // NPC with own inventory - composition happens at creation
       const npc = state.add_belief_from_template({
         bases: ['Villager'],
         traits: {
-          '@label': 'guard',
           inventory: ['sword']  // Own trait: composes [token] + [sword] at creation
-        }
+        },
+        label: 'guard'
       })
 
       // Has both token (from base) and sword (own) via creation-time composition
@@ -399,9 +396,8 @@ describe('Composable Traits - Complex Scenarios', () => {
       // Tick 1: Create NPC as just a Villager (has token)
       const npc = state.add_belief_from_template({
         bases: ['Villager'],
-        traits: {
-          '@label': 'npc'
-        }
+        traits: {},
+        label: 'npc'
       })
 
       const inv1 = npc.get_trait(state, Traittype.get_by_label('inventory'))
@@ -417,9 +413,8 @@ describe('Composable Traits - Complex Scenarios', () => {
       const npc_v2 = Belief.from_template(state, {
         sid: npc.subject.sid,  // Same subject
         bases: ['Villager', 'Guard'],  // Now has both bases
-        traits: {
-          '@label': 'npc'
-        }
+        traits: {},
+        label: 'npc'
       })
 
       state.replace_beliefs(npc_v2)
@@ -466,17 +461,15 @@ describe('Composable Traits - Complex Scenarios', () => {
       // Create sword in world state
       state.add_belief_from_template({
         bases: ['PortableObject'],
-        traits: {
-          '@label': 'sword'
-        }
+        traits: {},
+        label: 'sword'
       })
 
       // Tick 1: Create NPC inheriting from Villager (has token via composition)
       const npc = state.add_belief_from_template({
         bases: ['Villager'],
-        traits: {
-          '@label': 'npc'
-        }
+        traits: {},
+        label: 'npc'
       })
 
       const inv1 = npc.get_trait(state, Traittype.get_by_label('inventory'))
@@ -533,9 +526,8 @@ describe('Composable Traits - Complex Scenarios', () => {
 
       const npc = state1.add_belief_from_template({
         bases: ['Villager'],
-        traits: {
-          '@label': 'npc'
-        }
+        traits: {},
+        label: 'npc'
       })
 
       state1.lock()
@@ -601,17 +593,15 @@ describe('Composable Traits - Complex Scenarios', () => {
       // Create sword in world state
       state.add_belief_from_template({
         bases: ['PortableObject'],
-        traits: {
-          '@label': 'sword'
-        }
+        traits: {},
+        label: 'sword'
       })
 
       // Tick 1: NPC inherits from deep chain (Blacksmith -> Villager)
       const npc = state.add_belief_from_template({
         bases: ['Blacksmith'],
-        traits: {
-          '@label': 'npc'
-        }
+        traits: {},
+        label: 'npc'
       })
 
       // Should have token + hammer via composition

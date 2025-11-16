@@ -35,7 +35,6 @@ describe('Composable Traits', () => {
       DB.register(
         {
           '@about': {type: 'Subject', mind: 'parent'},
-          '@label': {type: 'string'},
           inventory: {
             type: 'PortableObject',
             container: Array,
@@ -146,7 +145,6 @@ describe('Composable Traits', () => {
       DB.register(
         {
           '@about': {type: 'Subject', mind: 'parent'},
-          '@label': {type: 'string'},
           inventory: {
             type: 'PortableObject',
             container: Array,

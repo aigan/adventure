@@ -540,7 +540,8 @@ describe('Integration', () => {
 
       let ball = world_state.add_belief_from_template({
                 bases: ['PortableObject'],
-        traits: {'@label': 'ball', location: 'workshop',},
+        traits: {location: 'workshop'},
+        label: 'ball'
       });
 
       ball = Belief.from_template(world_state, {
@@ -640,11 +641,11 @@ describe('Integration', () => {
       const player_belief = Belief.from_template(world_state, {
         bases: ['Villager'],
         traits: {
-          '@label': 'player',
           mind: {
             hammer: ['location']  // Player learns hammer location (extending Villager's knowledge)
           }
-        }
+        },
+        label: 'player'
       });
 
       const player = world_state.get_belief_by_label('player');
@@ -764,9 +765,8 @@ describe('Integration', () => {
       // When UnionState is implemented, this should merge knowledge from both minds
       const village_blacksmith_belief = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
-        traits: {
-          '@label': 'village_blacksmith'
-        }
+        traits: {},
+        label: 'village_blacksmith'
       });
 
       const village_blacksmith = world_state.get_belief_by_label('village_blacksmith');
@@ -861,9 +861,9 @@ describe('Integration', () => {
       const player = Belief.from_template(world_state, {
         bases: ['Villager'],
         traits: {
-          '@label': 'player',
           mind: {}  // Empty template - does this override or inherit?
-        }
+        },
+        label: 'player'
       });
 
       const player_belief = world_state.get_belief_by_label('player');
@@ -959,11 +959,11 @@ describe('Integration', () => {
       const player = Belief.from_template(world_state, {
         bases: ['Villager'],
         traits: {
-          '@label': 'player',
           mind: {
             market: ['location']
           }
-        }
+        },
+        label: 'player'
       });
 
       // Get all the minds and states in the chain
@@ -1079,11 +1079,11 @@ describe('Integration', () => {
       const player = Belief.from_template(world_state, {
         bases: ['Villager'],
         traits: {
-          '@label': 'player',
           mind: {
             workshop: ['size']  // Adds size to inherited location+tools
           }
-        }
+        },
+        label: 'player'
       });
 
       const player_belief = world_state.get_belief_by_label('player');
@@ -1196,11 +1196,11 @@ describe('Integration', () => {
       const player = Belief.from_template(world_state, {
         bases: ['Villager'],
         traits: {
-          '@label': 'player',
           mind: {
             workshop: ['location']  // Same trait as Villager - should recognize, not duplicate
           }
-        }
+        },
+        label: 'player'
       });
 
       const player_belief = world_state.get_belief_by_label('player');

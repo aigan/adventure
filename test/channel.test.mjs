@@ -129,7 +129,7 @@ describe('Channel Message Handlers', () => {
       const state = world_mind.create_state(logos().origin_state, {tt: 1});
       const hammer = state.add_belief_from_template({
         bases: ['PortableObject'],
-        traits: { '@label': 'test_hammer', color: 'red' }
+        traits: { color: 'red' }, label: 'test_hammer'
       });
 
       mockSession = new Session(world_mind, state, hammer);
@@ -224,7 +224,7 @@ describe('Channel Message Handlers', () => {
     it('can find state by searching all minds', () => {
       const mind2 = new Mind(logos(), 'mind2');
       const state2 = mind2.create_state(logos().origin_state, {tt: 1});
-      const hammer = state2.add_belief_from_template({ bases: ['PortableObject'], traits: {'@label': 'hammer'} });
+      const hammer = state2.add_belief_from_template({ bases: ['PortableObject'], traits: {}, label: 'hammer' });
 
       messages.length = 0;
 
@@ -277,7 +277,7 @@ describe('Channel Message Handlers', () => {
       const mind = new Mind(logos(), 'belief_test_mind');
       const state = mind.create_state(logos().origin_state, {tt: 1});
       const hammer = state.add_belief_from_template({
-        traits: {'@label': 'query_hammer'},
+        traits: {}, label: 'query_hammer',
         bases: ['PortableObject']
       });
 
@@ -313,7 +313,7 @@ describe('Channel Message Handlers', () => {
       const world_mind = new Mind(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
       const workshop = world_state.add_belief_from_template({
-        traits: {'@label': 'query_workshop'},
+        traits: {}, label: 'query_workshop',
         bases: ['Location']
       });
 
@@ -339,7 +339,7 @@ describe('Channel Message Handlers', () => {
       const mind = new Mind(logos(), 'bases_test_mind');
       const state = mind.create_state(logos().origin_state, {tt: 1});
       const hammer = state.add_belief_from_template({
-        traits: {'@label': 'bases_hammer'},
+        traits: {}, label: 'bases_hammer',
         bases: ['PortableObject']
       });
 
@@ -365,11 +365,11 @@ describe('Channel Message Handlers', () => {
       const player = world_state.add_belief_from_template({
         bases: ['Person'],
         traits: {
-          '@label': 'player',
           mind: {
             // Empty mind knowledge for now
           }
-        }
+        },
+        label: 'player'
       });
 
       messages.length = 0;
@@ -409,7 +409,7 @@ describe('Channel Message Handlers', () => {
       const state = mind.create_state(logos().origin_state, {tt: 1});
       const ball = state.add_belief_from_template({
                 bases: ['PortableObject'],
-        traits: {'@label': 'test_ball', color: 'red'}
+        traits: {color: 'red'}, label: 'test_ball'
       });
 
       const mockSession = new Session(mind, state, ball);

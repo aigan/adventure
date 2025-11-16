@@ -19,10 +19,10 @@ describe('Belief', () => {
 
       const ball = Belief.from_template(state, {
         traits: {
-          '@label': 'ball',
           location: 'workshop'
         },
-        bases: ['PortableObject']
+        bases: ['PortableObject'],
+        label: 'ball'
       });
 
       const ball_v2 = Belief.from_template(state, {
@@ -42,8 +42,9 @@ describe('Belief', () => {
     it('versioned belief inherits archetypes from base', () => {
       const state = createStateInNewMind();
       const hammer = Belief.from_template(state, {
-        traits: {'@label': 'hammer'},
-        bases: ['PortableObject']
+        traits: {},
+        bases: ['PortableObject'],
+        label: 'hammer'
       });
 
       const hammer_v2 = Belief.from_template(state, {
@@ -66,7 +67,7 @@ describe('Belief', () => {
     it('beliefs store in_mind reference', () => {
       const mind = new Mind(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 1});
-      Belief.from_template(state, {traits: {'@label': 'workshop'}, bases: ['Location']});
+      Belief.from_template(state, {traits: {}, bases: ['Location'], label: 'workshop'});
 
       const workshop = get_first_belief_by_label('workshop');
       expect(workshop.in_mind).to.equal(mind);
@@ -78,8 +79,8 @@ describe('Belief', () => {
       const mind_b = new Mind(logos(), 'mind_b');
       const state_b = mind_b.create_state(logos().origin_state, {tt: 1});
 
-      const item_a = Belief.from_template(state_a, {traits: {'@label': 'item_unique_a'}, bases: ['PortableObject']});
-      const item_b = Belief.from_template(state_b, {traits: {'@label': 'item_unique_b'}, bases: ['PortableObject']});
+      const item_a = Belief.from_template(state_a, {traits: {}, bases: ['PortableObject'], label: 'item_unique_a'});
+      const item_b = Belief.from_template(state_b, {traits: {}, bases: ['PortableObject'], label: 'item_unique_b'});
 
       // Stored in different minds
       expect(item_a.in_mind).to.equal(mind_a);
@@ -92,7 +93,7 @@ describe('Belief', () => {
     it('currently allows referencing other mind\'s beliefs in bases', () => {
       const mind_a = new Mind(logos(), 'mind_a');
       const state_a = mind_a.create_state(logos().origin_state, {tt: 1});
-      Belief.from_template(state_a, {traits: {'@label': 'workshop'}, bases: ['Location']});
+      Belief.from_template(state_a, {traits: {}, bases: ['Location'], label: 'workshop'});
 
       const mind_b = new Mind(logos(), 'mind_b');
       const state_b = mind_b.create_state(logos().origin_state, {tt: 1});
@@ -114,7 +115,8 @@ describe('Belief', () => {
       const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const workshop = Belief.from_template(state, {
-        traits: {'@label': 'workshop'},
+        traits: {},
+        label: 'workshop',
         bases: ['Location'],
       });
 
@@ -135,7 +137,8 @@ describe('Belief', () => {
       const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const room1 = Belief.from_template(state, {
-        traits: {'@label': 'room1'},
+        traits: {},
+        label: 'room1',
         bases: ['Location'],
       });
 
@@ -162,7 +165,8 @@ describe('Belief', () => {
       const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const room = Belief.from_template(state, {
-        traits: {'@label': 'room'},
+        traits: {},
+        label: 'room',
         bases: ['Location'],
       });
 
@@ -181,7 +185,8 @@ describe('Belief', () => {
       const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const room_v1 = Belief.from_template(state, {
-        traits: {'@label': 'room'},
+        traits: {},
+        label: 'room',
         bases: ['Location'],
       });
 
@@ -215,16 +220,17 @@ describe('Belief', () => {
       const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const workshop = Belief.from_template(state, {
-        traits: {'@label': 'workshop'},
+        traits: {},
+        label: 'workshop',
         bases: ['Location'],
       });
 
       const hammer = Belief.from_template(state, {
         traits: {
-          '@label': 'hammer',
           location: workshop.subject,
         },
-        bases: ['PortableObject']
+        bases: ['PortableObject'],
+        label: 'hammer'
       });
 
       // Trait should store a Subject wrapping the sid
@@ -239,10 +245,10 @@ describe('Belief', () => {
 
       const ball = Belief.from_template(state, {
         traits: {
-          '@label': 'ball',
           color: 'red',
         },
-        bases: ['PortableObject']
+        bases: ['PortableObject'],
+        label: 'ball'
       });
 
       // Primitives should be stored as-is
@@ -254,7 +260,8 @@ describe('Belief', () => {
       const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const room_v1 = Belief.from_template(state, {
-        traits: {'@label': 'room'},
+        traits: {},
+        label: 'room',
         bases: ['Location'],
       });
 
@@ -277,7 +284,8 @@ describe('Belief', () => {
       const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const room = state.add_belief_from_template({
-        traits: {'@label': 'workshop'},
+        traits: {},
+        label: 'workshop',
         bases: ['Location'],
       });
 
@@ -297,8 +305,9 @@ describe('Belief', () => {
       const state = mind.create_state(logos().origin_state, {tt: 100});
 
       const hammer = Belief.from_template(state, {
-        traits: {'@label': 'hammer'},
-        bases: ['PortableObject']
+        traits: {},
+        bases: ['PortableObject'],
+        label: 'hammer'
       });
 
       expect(hammer.get_tt()).to.equal(100);
@@ -366,13 +375,14 @@ describe('Belief', () => {
       const state = mind.create_state(logos().origin_state, {tt: 100});
 
       const workshop = state.add_belief_from_template({
-        traits: {'@label': 'workshop'},
+        traits: {},
+        label: 'workshop',
         bases: ['Location']
       });
 
       const hammer = state.add_belief_from_template({
                 bases: ['PortableObject'],
-        traits: {'@label': 'hammer', location: workshop.subject,
+        traits: {location: workshop.subject,
           color: 'grey'}
       });
 
@@ -388,13 +398,14 @@ describe('Belief', () => {
       const state1 = mind.create_state(logos().origin_state, {tt: 100});
 
       const workshop = state1.add_belief_from_template({
-        traits: {'@label': 'workshop'},
+        traits: {},
+        label: 'workshop',
         bases: ['Location']
       });
 
       const hammer_v1 = state1.add_belief_from_template({
                 bases: ['PortableObject'],
-        traits: {'@label': 'hammer', location: workshop.subject,
+        traits: {location: workshop.subject,
           color: 'grey'}
       });
 
@@ -428,7 +439,6 @@ describe('Belief', () => {
 
       const hammer_v1 = Belief.from_template(state, {
         traits: {
-          '@label': 'hammer',
           color: 'grey'
         },
         bases: ['PortableObject']
@@ -451,13 +461,13 @@ describe('Belief', () => {
       const state = mind.create_state(logos().origin_state, {tt: 100});
 
       const workshop = Belief.from_template(state, {
-        traits: {'@label': 'workshop'},
+        traits: {},
+        label: 'workshop',
         bases: ['Location']
       });
 
       const hammer_v1 = Belief.from_template(state, {
         traits: {
-          '@label': 'hammer',
           location: workshop.subject,
           color: 'grey'
         },
@@ -493,7 +503,6 @@ describe('Belief', () => {
 
       const hammer = Belief.from_template(state, {
         traits: {
-          '@label': 'hammer',
           color: 'grey'
         },
         bases: ['PortableObject']
@@ -511,14 +520,14 @@ describe('Belief', () => {
       const state = mind.create_state(logos().origin_state, {tt: 100});
 
       const workshop = Belief.from_template(state, {
-        traits: {'@label': 'workshop'},
+        traits: {},
+        label: 'workshop',
         bases: ['Location']
       });
 
       // Create v1 with location and color
       const hammer_v1 = Belief.from_template(state, {
         traits: {
-          '@label': 'hammer',
           location: workshop.subject,
           color: 'grey'
         },
@@ -569,7 +578,6 @@ describe('Belief', () => {
       const generic_sword = state_100.add_belief_from_template({
         bases: ['MeleeWeapon'],
         traits: {
-          '@label': 'GenericSword',
           damage: 10,
           weight: 5
         }
@@ -584,7 +592,6 @@ describe('Belief', () => {
 
       const player_sword = Belief.from_template(state, {
         traits: {
-          '@label': 'player_sword'
         },
         bases: [generic_sword]
       });
@@ -607,10 +614,10 @@ describe('Belief', () => {
       const standard_sword = state_100.add_belief_from_template({
         bases: ['MeleeWeapon'],
         traits: {
-          '@label': 'StandardSword',
           damage: 10,
           weight: 3
-        }
+        },
+        label: 'StandardSword'
       });
 
       // Create two different minds with beliefs inheriting from same shared belief
@@ -619,10 +626,10 @@ describe('Belief', () => {
 
       const sword_1 = Belief.from_template(state1, {
         traits: {
-          '@label': 'sword_1',
           sharpness: 7
         },
-        bases: [standard_sword]
+        bases: [standard_sword],
+        label: 'sword_1'
       });
 
       const mind2 = new Mind(logos(), 'player2');
@@ -630,10 +637,10 @@ describe('Belief', () => {
 
       const sword_2 = Belief.from_template(state2, {
         traits: {
-          '@label': 'sword_2',
           sharpness: 9
         },
-        bases: [standard_sword]
+        bases: [standard_sword],
+        label: 'sword_2'
       });
 
       // Both should inherit from same shared belief
@@ -659,9 +666,9 @@ describe('Belief', () => {
       const seasonal_v1 = state_100.add_belief_from_template({
         bases: ['Effect'],
         traits: {
-          '@label': 'SeasonalBonus',
           bonus: 5
-        }
+        },
+        label: 'SeasonalBonus'
       });
 
       // Create shared belief v2 at tt 200 (newer version)
@@ -694,18 +701,18 @@ describe('Belief', () => {
       const weapon = state_100.add_belief_from_template({
         bases: ['MeleeWeapon'],
         traits: {
-          '@label': 'Weapon',
           damage: 5,
           weight: 2
-        }
+        },
+        label: 'Weapon'
       });
 
       const sword = state_100.add_belief_from_template({
         bases: [weapon],
         traits: {
-          '@label': 'Sword',
           sharpness: 8
-        }
+        },
+        label: 'Sword'
       });
 
       // Create regular belief inheriting from Sword
@@ -714,10 +721,10 @@ describe('Belief', () => {
 
       const magic_sword = Belief.from_template(state, {
         traits: {
-          '@label': 'magic_sword',
           weight: 1  // Override weight to be lighter
         },
-        bases: [sword]
+        bases: [sword],
+        label: 'magic_sword'
       });
 
       // Should resolve traits through entire chain
@@ -738,9 +745,9 @@ describe('Belief', () => {
       const tool = state_100.add_belief_from_template({
         bases: ['Tool'],
         traits: {
-          '@label': 'GenericTool',
           durability: 100
-        }
+        },
+        label: 'GenericTool'
       });
 
       const mind = new Mind(logos(), 'player');
@@ -749,7 +756,6 @@ describe('Belief', () => {
       // Create regular belief inheriting from shared belief
       const hammer_v1 = Belief.from_template(state, {
         traits: {
-          '@label': 'hammer',
           weight: 10
         },
         bases: [tool]
@@ -780,9 +786,9 @@ describe('Belief', () => {
       const default_item = state_100.add_belief_from_template({
         bases: ['Item'],
         traits: {
-          '@label': 'default_item',
           value: 50
-        }
+        },
+        label: 'default_item'
       });
 
       // Create state in mind (no belief for default_item in this mind)
@@ -805,9 +811,9 @@ describe('Belief', () => {
       const prototype = state_100.add_belief_from_template({
         bases: ['Item'],
         traits: {
-          '@label': 'prototype_1',
           value: 42
-        }
+        },
+        label: 'prototype_1'
       });
 
       // Shared belief should be in belief_by_subject
@@ -822,10 +828,9 @@ describe('Belief', () => {
       const mind = new Mind(logos(), 'player');
       const state = mind.create_state(logos().origin_state, {tt: 200});
       const regular_belief = Belief.from_template(state, {
-        traits: {
-          '@label': 'regular_item'
-        },
-        bases: ['Thing']
+        traits: {},
+        bases: ['Thing'],
+        label: 'regular_item'
       });
 
       // Regular belief SHOULD be in belief_by_mind
@@ -855,9 +860,8 @@ describe('Belief', () => {
       const state_100 = eidos.create_timed_state(100);
       const cultural_knowledge = state_100.add_belief_from_template({
         bases: ['Thing'],
-        traits: {
-          '@label': 'CityLore'
-        }
+        traits: {},
+        label: 'CityLore'
       });
       cultural_knowledge.lock(state_100);
       cultural_knowledge.subject.ground_mind = world_mind;
@@ -871,9 +875,8 @@ describe('Belief', () => {
       // NPC should be able to access shared belief via from_template
       const npc_belief = Belief.from_template(npc_state, {
         bases: ['CityLore'],
-        traits: {
-          '@label': 'npc_knowledge'
-        }
+        traits: {},
+        label: 'npc_knowledge'
       });
 
       expect(npc_belief._bases.has(cultural_knowledge)).to.be.true;
@@ -889,9 +892,8 @@ describe('Belief', () => {
       const state_100 = eidos.create_timed_state(100);
       const world_culture = state_100.add_belief_from_template({
         bases: ['Thing'],
-        traits: {
-          '@label': 'WorldCulture'
-        }
+        traits: {},
+        label: 'WorldCulture'
       });
       world_culture.lock(state_100);
       world_culture.subject.ground_mind = world_mind;
@@ -906,7 +908,8 @@ describe('Belief', () => {
       expect(() => {
         Belief.from_template(dream_child_state, {
           bases: ['WorldCulture'],
-          traits: {'@label': 'dream_belief'}
+          traits: {},
+        label: 'dream_belief'
         });
       }).to.throw(/Base 'WorldCulture' not found/);
     });
@@ -923,18 +926,16 @@ describe('Belief', () => {
       const state_100 = eidos.create_timed_state(100);
       const world_tavern = state_100.add_belief_from_template({
         bases: ['Thing'],
-        traits: {
-          '@label': 'WorldTavern'
-        }
+        traits: {},
+        label: 'WorldTavern'
       });
       world_tavern.lock(state_100);
       world_tavern.subject.ground_mind = world_mind;
 
       const dream_tavern = state_100.add_belief_from_template({
         bases: ['Thing'],
-        traits: {
-          '@label': 'DreamTavern'
-        }
+        traits: {},
+        label: 'DreamTavern'
       });
       dream_tavern.lock(state_100);
       dream_tavern.subject.ground_mind = dream_mind;
@@ -948,7 +949,8 @@ describe('Belief', () => {
       const world_state = world_child.create_state(world_parent_state);
       const world_belief = Belief.from_template(world_state, {
         bases: ['WorldTavern'],
-        traits: {'@label': 'world_tavern_instance'}
+        traits: {},
+        label: 'world_tavern_instance'
       });
       expect(world_belief._bases.has(world_tavern)).to.be.true;
 
@@ -957,7 +959,8 @@ describe('Belief', () => {
       const dream_state = dream_child.create_state(dream_parent_state);
       const dream_belief = Belief.from_template(dream_state, {
         bases: ['DreamTavern'],
-        traits: {'@label': 'dream_tavern_instance'}
+        traits: {},
+        label: 'dream_tavern_instance'
       });
       expect(dream_belief._bases.has(dream_tavern)).to.be.true;
     });
@@ -968,9 +971,8 @@ describe('Belief', () => {
       const state_100 = eidos.create_timed_state(100);
       const generic_weapon = state_100.add_belief_from_template({
         bases: ['Thing'],
-        traits: {
-          '@label': 'GenericWeapon'
-        }
+        traits: {},
+        label: 'GenericWeapon'
       });
       generic_weapon.lock(state_100);  // Test-created prototypes must be manually locked
 
@@ -991,13 +993,15 @@ describe('Belief', () => {
       // Both should be able to access the global shared belief
       const world_weapon = Belief.from_template(world_state, {
         bases: ['GenericWeapon'],
-        traits: {'@label': 'guard_sword'}
+        traits: {},
+        label: 'guard_sword'
       });
       expect(world_weapon._bases.has(generic_weapon)).to.be.true;
 
       const dream_weapon = Belief.from_template(dream_state, {
         bases: ['GenericWeapon'],
-        traits: {'@label': 'phantom_blade'}
+        traits: {},
+        label: 'phantom_blade'
       });
       expect(dream_weapon._bases.has(generic_weapon)).to.be.true;
     });
@@ -1155,7 +1159,8 @@ describe('Belief', () => {
       const state = createStateInNewMind('test');
       const ball = Belief.from_template(state, {
         bases: ['PortableObject'],
-        traits: {'@label': 'ball'}
+        traits: {},
+        label: 'ball'
       });
 
       const slots = [...ball.get_slots()];
@@ -1179,7 +1184,8 @@ describe('Belief', () => {
       // Both Actor and Mental have '@label', should only appear once
       const person = Belief.from_template(state, {
         bases: ['Person'],
-        traits: {'@label': 'alice'}
+        traits: {},
+        label: 'alice'
       });
 
       const slots = [...person.get_slots()];
@@ -1200,7 +1206,8 @@ describe('Belief', () => {
 
       const ball = Belief.from_template(state, {
         bases: ['PortableObject'],
-        traits: {'@label': 'ball'}
+        traits: {},
+        label: 'ball'
       });
 
       const ball_v2 = Belief.from_template(state, {
@@ -1222,13 +1229,15 @@ describe('Belief', () => {
 
       const ball = Belief.from_template(state, {
         bases: ['PortableObject'],
-        traits: {'@label': 'ball'}
+        traits: {},
+        label: 'ball'
       });
 
       // Create belief with both archetype and belief base
       const combined = Belief.from_template(state, {
         bases: ['Actor', ball], // Mixed bases
-        traits: {'@label': 'mobile_ball'}
+        traits: {},
+        label: 'mobile_ball'
       });
 
       const slots = [...combined.get_slots()];

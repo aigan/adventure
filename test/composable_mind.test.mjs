@@ -62,9 +62,9 @@ describe('Composable Mind Trait', () => {
       const empty_person = Belief.from_template(world_state, {
         bases: ['Villager'],
         traits: {
-          '@label': 'empty_person',
           mind: null  // Explicit null blocks composition
-        }
+        },
+        label: 'empty_person'
       })
 
       const ep = world_state.get_belief_by_label('empty_person')
@@ -116,9 +116,9 @@ describe('Composable Mind Trait', () => {
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
         traits: {
-          '@label': 'village_blacksmith',
           mind: {market: ['location']}  // Own mind trait
-        }
+        },
+        label: 'village_blacksmith'
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
@@ -177,11 +177,11 @@ describe('Composable Mind Trait', () => {
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
         traits: {
-          '@label': 'village_blacksmith',
           mind: {
             market: ['location']  // Own knowledge
           }
-        }
+        },
+        label: 'village_blacksmith'
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
@@ -247,7 +247,8 @@ describe('Composable Mind Trait', () => {
 
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
-        traits: {'@label': 'village_blacksmith'}
+        traits: {},
+        label: 'village_blacksmith'
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
@@ -313,7 +314,8 @@ describe('Composable Mind Trait', () => {
 
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
-        traits: {'@label': 'village_blacksmith'}
+        traits: {},
+        label: 'village_blacksmith'
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
@@ -388,7 +390,8 @@ describe('Composable Mind Trait', () => {
       // UnionState (multiple bases, composed)
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
-        traits: {'@label': 'village_blacksmith'}
+        traits: {},
+        label: 'village_blacksmith'
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
@@ -435,7 +438,8 @@ describe('Composable Mind Trait', () => {
 
       const vb = Belief.from_template(world_state1, {
         bases: ['Villager', 'Blacksmith'],
-        traits: {'@label': 'village_blacksmith'}
+        traits: {},
+        label: 'village_blacksmith'
       })
 
       // Create second world state (branched)
@@ -523,7 +527,8 @@ describe('Composable Mind Trait', () => {
       // This creates a nested UnionState (VillageBlacksmith's mind is already a UnionState)
       const mc = Belief.from_template(world_state, {
         bases: ['VillageBlacksmith', 'Guild'],
-        traits: {'@label': 'master_craftsman'}
+        traits: {},
+        label: 'master_craftsman'
       })
 
       const mc_belief = world_state.get_belief_by_label('master_craftsman')
@@ -600,7 +605,8 @@ describe('Composable Mind Trait', () => {
       // VillageBlacksmith inherits from both
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
-        traits: {'@label': 'village_blacksmith'}
+        traits: {},
+        label: 'village_blacksmith'
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
@@ -665,7 +671,8 @@ describe('Composable Mind Trait', () => {
       // Multi-role NPC with three direct bases
       const jack = Belief.from_template(world_state, {
         bases: ['Villager', 'Guard', 'Merchant'],
-        traits: {'@label': 'jack_of_all_trades'}
+        traits: {},
+        label: 'jack_of_all_trades'
       })
 
       const jack_belief = world_state.get_belief_by_label('jack_of_all_trades')
@@ -750,9 +757,9 @@ describe('Composable Mind Trait', () => {
       const alice = Belief.from_template(world_state, {
         bases: ['Villager'],
         traits: {
-          '@label': 'alice',
           mind: {room_loc: ['location']}
-        }
+        },
+        label: 'alice'
       })
 
       const alice_belief = world_state.get_belief_by_label('alice')
@@ -826,7 +833,8 @@ describe('Composable Mind Trait', () => {
       // Both Villager and Blacksmith minds are children of Eidos (compatible parent)
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
-        traits: {'@label': 'village_blacksmith'}
+        traits: {},
+        label: 'village_blacksmith'
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
@@ -886,7 +894,8 @@ describe('Composable Mind Trait', () => {
 
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
-        traits: {'@label': 'village_blacksmith'}
+        traits: {},
+        label: 'village_blacksmith'
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
@@ -936,7 +945,8 @@ describe('Composable Mind Trait', () => {
 
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
-        traits: {'@label': 'village_blacksmith'}
+        traits: {},
+        label: 'village_blacksmith'
       })
 
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
@@ -1001,7 +1011,8 @@ describe('Composable Mind Trait', () => {
       // Create belief with composable mind BEFORE locking
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
-        traits: {'@label': 'village_blacksmith'}
+        traits: {},
+        label: 'village_blacksmith'
       })
 
       // Lock the state (immutable snapshot)

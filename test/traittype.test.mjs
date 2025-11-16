@@ -9,7 +9,6 @@ describe('Traittype', () => {
     DB.reset_registries();
     const traittypes = {
       ...stdTypes,
-      '@label': {type: 'string'},
       mind: 'Mind',
       location: 'Location',
       mind_states: {
@@ -74,7 +73,7 @@ describe('Traittype', () => {
     it('resolves string type', () => {
       const state = createStateInNewMind('test_mind');
       const obj = Belief.from_template(state, {
-        traits: { '@label': 'test_obj', color: 'blue' },
+        traits: { color: 'blue' },
         bases: ['ObjectPhysical']
       });
 
@@ -84,7 +83,7 @@ describe('Traittype', () => {
     it('resolves number type', () => {
       const state = createStateInNewMind('test_mind');
       const obj = Belief.from_template(state, {
-        traits: { '@label': 'test_obj', count: 42 },
+        traits: { count: 42 },
         bases: ['TestObject']
       });
 
@@ -94,7 +93,7 @@ describe('Traittype', () => {
     it('resolves boolean type', () => {
       const state = createStateInNewMind('test_mind');
       const obj = Belief.from_template(state, {
-        traits: { '@label': 'test_obj', active: true },
+        traits: { active: true },
         bases: ['TestObject']
       });
 
@@ -104,7 +103,7 @@ describe('Traittype', () => {
     it('resolves State type', () => {
       const state = createStateInNewMind('test_mind');
       const obj = Belief.from_template(state, {
-        traits: { '@label': 'test_obj', mind_states: [state] },
+        traits: { mind_states: [state] },
         bases: ['Mental']
       });
 
@@ -129,7 +128,7 @@ describe('Traittype', () => {
       const state2 = createStateInNewMind('test_mind', 2);
 
       const obj = Belief.from_template(state1, {
-        traits: { '@label': 'test_obj', states_array: [state1, state2] },
+        traits: { states_array: [state1, state2] },
         bases: ['Mental']
       });
 
@@ -143,7 +142,7 @@ describe('Traittype', () => {
     it('resolves array of strings with valid min/max constraints', () => {
       const state = createStateInNewMind('test_mind');
       const obj = Belief.from_template(state, {
-        traits: { '@label': 'test_obj', colors_array: ['red', 'blue', 'green'] },
+        traits: { colors_array: ['red', 'blue', 'green'] },
         bases: ['TestObject']
       });
 
@@ -158,7 +157,7 @@ describe('Traittype', () => {
 
       expect(() => {
         Belief.from_template(state, {
-          traits: { '@label': 'test_obj', colors_array: ['red'] },  // min is 2
+          traits: { colors_array: ['red'] },  // min is 2
           bases: ['TestObject']
         });
       }).to.throw(/min is 2/);
@@ -169,7 +168,7 @@ describe('Traittype', () => {
 
       expect(() => {
         Belief.from_template(state, {
-          traits: { '@label': 'test_obj', colors_array: ['red', 'blue', 'green', 'yellow', 'purple', 'orange'] },  // max is 5
+          traits: { colors_array: ['red', 'blue', 'green', 'yellow', 'purple', 'orange'] },  // max is 5
           bases: ['TestObject']
         });
       }).to.throw(/max is 5/);
@@ -180,7 +179,7 @@ describe('Traittype', () => {
 
       expect(() => {
         Belief.from_template(state, {
-          traits: { '@label': 'test_obj', states_array: state },  // Should be an array
+          traits: { states_array: state },  // Should be an array
           bases: ['Mental']
         });
       }).to.throw(/Expected array/);
@@ -191,7 +190,7 @@ describe('Traittype', () => {
 
       expect(() => {
         Belief.from_template(state, {
-          traits: { '@label': 'test_obj', colors_array: ['red', 42, 'blue'] },  // 42 is not a string
+          traits: { colors_array: ['red', 42, 'blue'] },  // 42 is not a string
           bases: ['TestObject']
         });
       }).to.throw(/Expected string/);
@@ -222,7 +221,7 @@ describe('Traittype', () => {
 
       const state = createStateInNewMind('test_mind');
       const obj = Belief.from_template(state, {
-        traits: { '@label': 'test_obj', tags: [] },
+        traits: { tags: [] },
         bases: ['Tagged']
       });
 
@@ -239,24 +238,26 @@ describe('Traittype', () => {
 
       const workshop = world_state.add_belief_from_template({
         bases: ['Location'],
-        traits: { '@label': 'workshop', color: 'brown' }
+        traits: { color: 'brown' },
+        label: 'workshop'
       });
 
       const main_area = world_state.add_belief_from_template({
         bases: ['Location'],
-        traits: { '@label': 'main_area', color: 'green' }
+        traits: { color: 'green' },
+        label: 'main_area'
       });
 
       // Create belief with array of Mind templates
       const npc = Belief.from_template(world_state, {
         traits: {
-          '@label': 'npc',
           minds_array: [
             { workshop: ['color'] },  // Mind template 1
             { main_area: ['color'] }  // Mind template 2
           ]
         },
-        bases: ['Mental']
+        bases: ['Mental'],
+        label: 'npc'
       });
 
       world_state.lock();
@@ -291,7 +292,7 @@ describe('Traittype', () => {
       const state2 = createStateInNewMind('test_mind', 2);
 
       const obj = Belief.from_template(state1, {
-        traits: { '@label': 'test_obj', states_array: [state1, state2] },
+        traits: { states_array: [state1, state2] },
         bases: ['Mental']
       });
 
@@ -305,7 +306,7 @@ describe('Traittype', () => {
       const state2 = createStateInNewMind('test_mind', 2);
 
       const obj = Belief.from_template(state1, {
-        traits: { '@label': 'test_obj', states_array: [state1, state2] },
+        traits: { states_array: [state1, state2] },
         bases: ['Mental']
       });
 
@@ -326,8 +327,9 @@ describe('Traittype', () => {
       expect(traittype.resolve_trait_value_from_template).to.be.a('function');
 
       const belief = Belief.from_template(state, {
-        traits: {'@label': 'test'},
-        bases: ['Mental']
+        traits: {},
+        bases: ['Mental'],
+        label: 'test'
       });
 
       const result = traittype.resolve_trait_value_from_template(belief, [state]);
@@ -379,7 +381,7 @@ describe('Traittype', () => {
     it('accepts valid enum value', () => {
       const state = createStateInNewMind('test_mind');
       const obj = Belief.from_template(state, {
-        traits: { '@label': 'test_obj', form: 'solid' },
+        traits: { form: 'solid' },
         bases: ['Physical']
       });
 
@@ -391,8 +393,9 @@ describe('Traittype', () => {
 
       for (const value of ['solid', 'liquid', 'vapor', 'intangible']) {
         const obj = Belief.from_template(state, {
-          traits: { '@label': `test_${value}`, form: value },
-          bases: ['Physical']
+          traits: { form: value },
+          bases: ['Physical'],
+          label: `test_${value}`
         });
         expect(obj._traits.get(Traittype.get_by_label('form'))).to.equal(value);
       }
@@ -403,7 +406,7 @@ describe('Traittype', () => {
 
       expect(() => {
         Belief.from_template(state, {
-          traits: { '@label': 'test_obj', form: 'plasma' },  // Not in enum values
+          traits: { form: 'plasma' },  // Not in enum values
           bases: ['Physical']
         });
       }).to.throw(/Invalid value 'plasma' for trait 'form'/);
@@ -414,7 +417,7 @@ describe('Traittype', () => {
 
       expect(() => {
         Belief.from_template(state, {
-          traits: { '@label': 'test_obj', form: 'invalid' },
+          traits: { form: 'invalid' },
           bases: ['Physical']
         });
       }).to.throw(/Must be one of: solid, liquid, vapor, intangible/);
@@ -450,7 +453,7 @@ describe('Traittype', () => {
       // Should accept any string when no enum values
       const state = createStateInNewMind('test_mind');
       const obj = Belief.from_template(state, {
-        traits: { '@label': 'test_obj', name: 'anything' },
+        traits: { name: 'anything' },
         bases: ['Named']
       });
       expect(obj._traits.get(Traittype.get_by_label('name'))).to.equal('anything');
@@ -469,7 +472,6 @@ describe('Traittype', () => {
       DB.reset_registries();
       const traittypes = {
         ...stdTypes,
-        '@label': 'string',
         '@form': {
           type: 'string',
           values: ['solid', 'liquid', 'vapor', 'intangible']
@@ -497,7 +499,6 @@ describe('Traittype', () => {
       const archetypes = {
         Thing: {
           traits: {
-            '@label': null,
             '@form': null,  // Allow @form trait on Thing
           },
         },
@@ -552,8 +553,9 @@ describe('Traittype', () => {
 
       // PortableObject extends ObjectPhysical which has @form: 'solid'
       const hammer = Belief.from_template(state, {
-        traits: { '@label': 'hammer' },
-        bases: ['PortableObject']
+        traits: {},
+        bases: ['PortableObject'],
+        label: 'hammer'
       });
 
       const form_traittype = Traittype.get_by_label('@form');
@@ -565,16 +567,18 @@ describe('Traittype', () => {
 
       // Valid value should work
       const vapor_entity = Belief.from_template(state, {
-        traits: { '@label': 'fog', '@form': 'vapor' },
-        bases: ['Thing']
+        traits: { '@form': 'vapor' },
+        bases: ['Thing'],
+        label: 'fog'
       });
       expect(vapor_entity._traits.get(Traittype.get_by_label('@form'))).to.equal('vapor');
 
       // Invalid value should throw
       expect(() => {
         Belief.from_template(state, {
-          traits: { '@label': 'invalid', '@form': 'plasma' },
-          bases: ['Thing']
+          traits: { '@form': 'plasma' },
+          bases: ['Thing'],
+          label: 'invalid'
         });
       }).to.throw(/Invalid value 'plasma' for trait '@form'/);
     });
@@ -584,8 +588,9 @@ describe('Traittype', () => {
 
       // Override solid with vapor
       const fog = Belief.from_template(state, {
-        traits: { '@label': 'fog', '@form': 'vapor' },
-        bases: ['ObjectPhysical']  // Has @form: 'solid' by default
+        traits: { '@form': 'vapor' },
+        bases: ['ObjectPhysical'],  // Has @form: 'solid' by default
+        label: 'fog'
       });
 
       expect(fog._traits.get(Traittype.get_by_label('@form'))).to.equal('vapor');
@@ -595,8 +600,9 @@ describe('Traittype', () => {
       const state = createStateInNewMind('test_mind');
 
       const hammer = Belief.from_template(state, {
-        traits: { '@label': 'hammer', color: 'black' },
-        bases: ['PortableObject']  // Inherits @form: 'solid' from ObjectPhysical
+        traits: { color: 'black' },
+        bases: ['PortableObject'],  // Inherits @form: 'solid' from ObjectPhysical
+        label: 'hammer'
       });
 
       // Should be accessible via get_trait
@@ -617,7 +623,7 @@ describe('Traittype', () => {
       const state = createStateInNewMind('test_mind');
 
       const obj = Belief.from_template(state, {
-        traits: { '@label': 'test_obj', weight: 5 },
+        traits: { weight: 5 },
         bases: ['ObjectPhysical']
       });
 

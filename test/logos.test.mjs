@@ -131,8 +131,8 @@ describe('Logos Singleton', () => {
       const shared_template = state_100.add_belief_from_template({
         bases: ['Thing'],
         traits: {
-          '@label': 'SharedTemplate'
-        }
+        },
+        label: 'SharedTemplate'
       })
 
       // Create a mind using the shared belief as ground_belief

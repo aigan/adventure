@@ -24,7 +24,7 @@ describe('Archetype', () => {
     it('single archetype has correct structure', () => {
       const state = createStateInNewMind('test', 1, logos());
       const workshop = Belief.from_template(state, {
-        traits: {'@label': 'workshop'},
+        traits: {}, label: 'workshop',
         bases: ['Location']
       });
 
@@ -37,9 +37,9 @@ describe('Archetype', () => {
       const state = createStateInNewMind();
       const hammer = Belief.from_template(state, {
         traits: {
-          '@label': 'hammer',
           color: 'black'
         },
+        label: 'hammer',
         bases: ['PortableObject']
       });
 
@@ -54,7 +54,7 @@ describe('Archetype', () => {
     it('Person archetype inherits from multiple bases', () => {
       const state = createStateInNewMind();
       const player = Belief.from_template(state, {
-        traits: {'@label': 'player'},
+        traits: {}, label: 'player',
         bases: ['Person']
       });
 
@@ -72,7 +72,7 @@ describe('Archetype', () => {
     it('get_archetypes walks full inheritance chain', () => {
       const state = createStateInNewMind();
       const player = Belief.from_template(state, {
-        traits: {'@label': 'player'},
+        traits: {}, label: 'player',
         bases: ['Person']
       });
 
@@ -103,12 +103,13 @@ describe('Archetype', () => {
       const state = createStateInNewMind();
       const workshop = state.add_belief_from_template({
         bases: ['Location'],
-        traits: { '@label': 'workshop', color: 'brown' }
+        traits: { color: 'brown' },
+        label: 'workshop'
       });
 
       const traittype = Traittype.get_by_label('location');
       const test_belief = Belief.from_template(state, {
-        traits: {'@label': 'test'},
+        traits: {}, label: 'test',
         bases: ['ObjectPhysical']
       });
 
@@ -121,12 +122,12 @@ describe('Archetype', () => {
       const state = createStateInNewMind();
       const workshop = state.add_belief_from_template({
         bases: ['Location'],
-        traits: {'@label': 'workshop'}
+        traits: {}, label: 'workshop'
       });
 
       const traittype = Traittype.get_by_label('location');
       const test_belief = Belief.from_template(state, {
-        traits: {'@label': 'test'},
+        traits: {}, label: 'test',
         bases: ['ObjectPhysical']
       });
 
@@ -139,12 +140,12 @@ describe('Archetype', () => {
       const state = createStateInNewMind();
       const workshop = state.add_belief_from_template({
         bases: ['Location'],
-        traits: {'@label': 'workshop'}
+        traits: {}, label: 'workshop'
       });
 
       const traittype = Traittype.get_by_label('location');
       const test_belief = Belief.from_template(state, {
-        traits: {'@label': 'test'},
+        traits: {}, label: 'test',
         bases: ['ObjectPhysical']
       });
 
@@ -158,7 +159,7 @@ describe('Archetype', () => {
 
       const traittype = Traittype.get_by_label('location');
       const test_belief = Belief.from_template(state, {
-        traits: {'@label': 'test'},
+        traits: {}, label: 'test',
         bases: ['ObjectPhysical']
       });
 
@@ -171,12 +172,12 @@ describe('Archetype', () => {
       const state = createStateInNewMind();
       const hammer = state.add_belief_from_template({
         bases: ['PortableObject'],
-        traits: {'@label': 'hammer'}
+        traits: {}, label: 'hammer'
       });
 
       const traittype = Traittype.get_by_label('location');
       const test_belief = Belief.from_template(state, {
-        traits: {'@label': 'test'},
+        traits: {}, label: 'test',
         bases: ['ObjectPhysical']
       });
 
@@ -189,15 +190,15 @@ describe('Archetype', () => {
       const state = createStateInNewMind();
       const workshop = state.add_belief_from_template({
         bases: ['Location'],
-        traits: {'@label': 'workshop'}
+        traits: {}, label: 'workshop'
       });
 
       // This uses the traittype resolver which delegates to Archetype
       const hammer = Belief.from_template(state, {
         traits: {
-          '@label': 'hammer',
           location: 'workshop'
         },
+        label: 'hammer',
         bases: ['PortableObject']
       });
 

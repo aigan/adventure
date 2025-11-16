@@ -27,12 +27,12 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'room'}
+        traits: {}, label: 'room'
       })
 
       const person = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'person', location: room.subject}
+        traits: {location: room.subject}, label: 'person'
       })
 
       state1.lock()
@@ -42,7 +42,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       const hallway = Belief.from_template(state2, {
         bases: ['Location'],
-        traits: {'@label': 'hallway'}
+        traits: {}, label: 'hallway'
       })
 
       const person2 = Belief.from_template(state2, {
@@ -71,7 +71,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'room'}
+        traits: {}, label: 'room'
       })
 
       state1.lock()
@@ -95,7 +95,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'room'}
+        traits: {}, label: 'room'
       })
 
       state1.lock()
@@ -114,7 +114,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       const unreferenced = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'unreferenced'}
+        traits: {}, label: 'unreferenced'
       })
 
       state1.lock()
@@ -158,9 +158,9 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
         traits: {
-          '@label': 'village_blacksmith',
           mind: {}
-        }
+        },
+        label: 'village_blacksmith'
       })
 
       world_state.lock()
@@ -197,9 +197,9 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
         traits: {
-          '@label': 'village_blacksmith',
           mind: {}
-        }
+        },
+        label: 'village_blacksmith'
       })
 
       world_state.lock()
@@ -230,7 +230,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'room'}
+        traits: {}, label: 'room'
       })
 
       state1.lock()
@@ -265,9 +265,9 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       const vb = Belief.from_template(world_state, {
         bases: ['Villager'],
         traits: {
-          '@label': 'villager',
           mind: {}
-        }
+        },
+        label: 'villager'
       })
 
       world_state.lock()
@@ -306,12 +306,12 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'room'}
+        traits: {}, label: 'room'
       })
 
       const person = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'person', location: room.subject}
+        traits: {location: room.subject}, label: 'person'
       })
 
       state1.lock()
@@ -338,12 +338,12 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'room'}
+        traits: {}, label: 'room'
       })
 
       const person = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'person', location: room.subject}
+        traits: {location: room.subject}, label: 'person'
       })
 
       state1.lock()
@@ -395,9 +395,9 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
         traits: {
-          '@label': 'village_blacksmith',
           mind: {}
-        }
+        },
+        label: 'village_blacksmith'
       })
 
       world_state.lock()
@@ -429,12 +429,12 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'room'}
+        traits: {}, label: 'room'
       })
 
       const person = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'person', location: room.subject}
+        traits: {location: room.subject}, label: 'person'
       })
 
       state1.lock()
@@ -443,7 +443,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       const state2 = state1.branch_state(state1.ground_state, 2)
       const person2 = Belief.from_template(state2, {
         bases: [person],
-        traits: {'@label': 'person_v2'}  // Change label but not location
+        traits: {}, label: 'person_v2'  // Change label but not location
       })
       state2.replace_beliefs(person2)
       state2.lock()
@@ -466,22 +466,22 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       const room1 = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'room1'}
+        traits: {}, label: 'room1'
       })
 
       const room2 = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'room2'}
+        traits: {}, label: 'room2'
       })
 
       const person1 = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'person1', location: room1.subject}
+        traits: {location: room1.subject}, label: 'person1'
       })
 
       const person2 = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'person2', location: room2.subject}
+        traits: {location: room2.subject}, label: 'person2'
       })
 
       state1.lock()
@@ -506,7 +506,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'room'}
+        traits: {}, label: 'room'
       })
 
       state1.lock()
@@ -566,9 +566,9 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       const mc = Belief.from_template(world_state, {
         bases: ['VillageBlacksmith', 'Guild'],
         traits: {
-          '@label': 'master_craftsman',
           mind: {}
-        }
+        },
+        label: 'master_craftsman'
       })
 
       world_state.lock()
@@ -598,18 +598,18 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       const room1 = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'room1'}
+        traits: {}, label: 'room1'
       })
 
       const room2 = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'room2'}
+        traits: {}, label: 'room2'
       })
 
       // Person has location reference
       const person = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'person', location: room1.subject}
+        traits: {location: room1.subject}, label: 'person'
       })
 
       state1.lock()

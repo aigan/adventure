@@ -842,7 +842,7 @@ export class Belief {
 
     // If about field exists in JSON (for backward compat or from @about trait serialization),
     // store it as sid in @about trait
-    if (data.about != null && !belief._deserialized_traits.has('@about')) { // FIXME: Convert @about to an option
+    if (data.about != null && !belief._deserialized_traits.has('@about')) {
       // data.about is a sid (from Subject.toJSON()), store it directly
       belief._deserialized_traits.set('@about', data.about)
     }
@@ -870,10 +870,10 @@ export class Belief {
   /**
    * Create belief from template with string resolution and trait templates
    * @param {State} state - State context (provides mind and creator_state)
-   * @param {any} template - Template with sid, bases, traits, about_state
+   * @param {any} template - Template with sid, bases, traits, about_state, label
    * @returns {Belief}
    */
-  static from_template(state, {sid=null, bases=[], traits={}, about_state=null} = {}) {
+  static from_template(state, {sid=null, bases=[], traits={}, about_state=null, label=null} = {}) {
     assert(state instanceof State, 'from_template requires State as first argument', {state})
 
     const resolved_bases = bases.map((/** @type {string|Belief|Archetype} */ base_in) => {
@@ -898,7 +898,7 @@ export class Belief {
                    unlocked_base_in_state: base.origin_state?._id,
                    unlocked_base_in_mind: base.in_mind?.label,
                    needs_lock_call: `${base.get_label()}.lock(${origin_state_label}.origin_state)`,
-                   creating_belief_label: traits['@label'] ?? 'unlabeled',
+                   creating_belief_label: label ?? 'unlabeled',
                    creating_belief_in_state: state._id,
                    creating_belief_in_mind: state.in_mind?.label,
                    base_name_resolved: base_in
@@ -914,13 +914,7 @@ export class Belief {
 
     const ground_mind = state.in_mind.parent
     const subject = DB.get_or_create_subject(ground_mind, sid)
-
-    // Handle @label first (must be set before other traits or creating belief)
-    if ('@label' in traits) {
-      const label_value = traits['@label']
-      delete traits['@label']
-      subject.set_label(label_value)
-    }
+    if (label) subject.set_label(label)
 
     debug([state], "Create belief with", ...resolved_bases)
 
@@ -959,66 +953,4 @@ export class Belief {
     return belief
   }
 
-  /**
-   * Create shared belief from template (limbo - no mind/state ownership)
-   * @param {Mind} parent_mind - Parent mind context for scoping
-   * @param {Array<string|Belief|Archetype>} bases - Base archetypes/beliefs (can be strings)
-   * @param {Object<string, any>} traits - Traits (including optional @label)
-   * @param {((subject: Subject) => Belief|Archetype|null)|null} [decider] - Function to decide which belief to use for a subject
-   * @returns {Belief}
-   */
-  static create_shared_from_template(parent_mind, bases, traits, decider = null) {
-    // Resolve bases from strings
-    const resolved_bases = bases.map(base => {
-      if (typeof base === 'string') {
-        // Try archetype first
-        const archetype = Archetype.get_by_label(base)
-        if (archetype) return archetype
-
-        // Get subject by label
-        const subject = DB.get_subject_by_label(base)
-        assert(subject instanceof Subject, `Base '${base}' not found as archetype or subject label`, {base})
-
-        // Use decider to get appropriate belief
-        assert(typeof decider === 'function', `Decider required for string base '${base}'`, {base})
-        const belief= decider(subject)
-        assert(belief instanceof Belief, `Decider returned invalid type for base '${base}'`, {base, subject, belief})
-
-        assert(belief.is_shared, `Decider must return a shared belief for base '${base}'`, {base, subject, belief})
-
-        return belief
-      }
-      return base
-    })
-
-    // Create belief in Eidos (realm of forms)
-    const eidos_state = eidos().origin_state
-    assert(eidos_state instanceof State, 'Eidos origin_state must be State', {eidos_state})
-    const belief = new Belief(eidos_state, null, resolved_bases)
-
-    // Set ground_mind on auto-created subject for scoping
-    belief.subject.ground_mind = parent_mind
-
-    // Handle @label first (must be set before other traits)
-    if ('@label' in traits) {
-      const label_value = traits['@label']
-      assert(typeof label_value === 'string', '@label must be a string', {label: label_value})
-      belief.subject.set_label(label_value)
-    }
-
-    // Add remaining traits
-    for (const [trait_label, trait_data] of Object.entries(traits)) {
-      if (trait_label === '@label') continue
-      const traittype = Traittype.get_by_label(trait_label)
-      assert(traittype instanceof Traittype, `Trait ${trait_label} do not exist`, {trait_label, belief: belief.get_label(), trait_data})
-      belief.add_trait_from_template(eidos_state, traittype, trait_data)
-    }
-
-    // Lock shared belief (prototypes must be immutable before use as bases)
-    belief.lock(eidos_state)
-
-    return belief
-  }
-
 }
-

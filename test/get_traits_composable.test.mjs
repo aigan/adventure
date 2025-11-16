@@ -54,12 +54,12 @@ describe('get_traits() composable trait consistency', () => {
     // Create items
     const sword = state.add_belief_from_template({
       bases: ['PortableObject'],
-      traits: { '@label': 'sword' }
+      traits: {}, label: 'sword'
     });
 
     const shield = state.add_belief_from_template({
       bases: ['PortableObject'],
-      traits: { '@label': 'shield' }
+      traits: {}, label: 'shield'
     });
 
     // Create TWO base prototypes, each with different inventory items
@@ -69,18 +69,18 @@ describe('get_traits() composable trait consistency', () => {
     const warrior_proto = eidos_state.add_belief_from_template({
       bases: ['HasInventory'],
       traits: {
-        '@label': 'WarriorProto',
         inventory: [sword.subject]  // Has sword
-      }
+      },
+      label: 'WarriorProto'
     });
     warrior_proto.lock(eidos_state);
 
     const defender_proto = eidos_state.add_belief_from_template({
       bases: ['HasInventory'],
       traits: {
-        '@label': 'DefenderProto',
         inventory: [shield.subject]  // Has shield
-      }
+      },
+      label: 'DefenderProto'
     });
     defender_proto.lock(eidos_state);
 
@@ -89,9 +89,9 @@ describe('get_traits() composable trait consistency', () => {
     const knight = state.add_belief_from_template({
       bases: [warrior_proto, defender_proto],  // Multiple bases!
       traits: {
-        '@label': 'knight'
         // NOT setting inventory here - should be composed from both bases
-      }
+      },
+      label: 'knight'
     });
 
     // State is unlocked
@@ -153,12 +153,12 @@ describe('get_traits() composable trait consistency', () => {
 
     const sword = state.add_belief_from_template({
       bases: ['PortableObject'],
-      traits: { '@label': 'sword' }
+      traits: {}, label: 'sword'
     });
 
     const shield = state.add_belief_from_template({
       bases: ['PortableObject'],
-      traits: { '@label': 'shield' }
+      traits: {}, label: 'shield'
     });
 
     // Create a base prototype that itself inherits and adds to inventory
@@ -168,9 +168,9 @@ describe('get_traits() composable trait consistency', () => {
     const warrior_proto = eidos_state.add_belief_from_template({
       bases: ['HasInventory'],
       traits: {
-        '@label': 'WarriorProto',
         inventory: [sword.subject]
-      }
+      },
+      label: 'WarriorProto'
     });
     warrior_proto.lock(eidos_state);
 
@@ -178,9 +178,9 @@ describe('get_traits() composable trait consistency', () => {
     const knight_proto = eidos_state.add_belief_from_template({
       bases: [warrior_proto],
       traits: {
-        '@label': 'KnightProto',
         inventory: [shield.subject]  // This composes with inherited sword during creation
-      }
+      },
+      label: 'KnightProto'
     });
     knight_proto.lock(eidos_state);
 
@@ -188,9 +188,9 @@ describe('get_traits() composable trait consistency', () => {
     const knight_instance = state.add_belief_from_template({
       bases: [knight_proto],
       traits: {
-        '@label': 'knight_instance'
         // NOT setting inventory - should inherit composed [sword, shield]
-      }
+      },
+      label: 'knight_instance'
     });
 
     // Instance should NOT have inventory in own _traits

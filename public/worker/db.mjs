@@ -464,16 +464,11 @@ export function register(traittypes, archetypes, prototypes = {}) {
     // Validate required fields
     assert(def.bases && Array.isArray(def.bases), `Prototype '${label}' must have 'bases' array`, {label, def})
 
-    // Build traits object with @label
-    const traits = {
-      '@label': label,
-      ...(def.traits || {})
-    }
-
     // Create prototype in Eidos origin_state
     const prototype = eidos_mind.origin_state.add_belief_from_template({
       bases: def.bases,
-      traits
+      traits: def.traits || {},
+      label
     })
     // Lock prototypes (must be immutable before use as bases)
     prototype.lock(eidos_mind.origin_state)

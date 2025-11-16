@@ -67,7 +67,7 @@ describe('inspect.mjs', () => {
             data: {
               _id: 42,
               archetypes: ['TestType'],
-              traits: {'@label': 'test_entity'}
+              traits: {}, label: 'test_entity'
             }
           }
         }
@@ -115,17 +115,17 @@ describe('inspect.mjs', () => {
             data: {
               _id: 10,
               traits: {
-                '@label': 'player',
                 mind: {
                   _ref: 7,
                   _type: 'Mind',
-                  traits: {'@label': 'player_mind'},
+                  traits: {}, label: 'player_mind',
                   states: [
                     { _ref: 8, _type: 'State' },
                     { _ref: 9, _type: 'State' }
                   ]
                 }
-              }
+              },
+              label: 'player'
             }
           }
         }
@@ -197,7 +197,6 @@ describe('inspect.mjs', () => {
             data: {
               _id: 50,
               traits: {
-                '@label': 'belief_about_workshop',
                 '@about': {
                   _ref: 100,
                   _type: 'Belief',
@@ -205,7 +204,8 @@ describe('inspect.mjs', () => {
                   mind_id: 1,
                   mind_label: 'world'
                 }
-              }
+              },
+              label: 'belief_about_workshop'
             }
           },
           mind: {
@@ -254,7 +254,7 @@ describe('inspect.mjs', () => {
           data: {
             data: {
               _id: 70,
-              traits: {'@label': 'tagged_item'},
+              traits: {}, label: 'tagged_item',
               traits: {
                 tags: ['urgent', 'review', 'pending']
               }
@@ -278,7 +278,7 @@ describe('inspect.mjs', () => {
           data: {
             data: {
               _id: 71,
-              traits: {'@label': 'inventory'},
+              traits: {}, label: 'inventory',
               traits: {
                 items: [
                   { _ref: 201, _type: 'Belief', label: 'sword' },
@@ -313,7 +313,7 @@ describe('inspect.mjs', () => {
           data: {
             data: {
               _id: 72,
-              traits: {'@label': 'npc_with_multiple_states'},
+              traits: {}, label: 'npc_with_multiple_states',
               traits: {
                 state_history: [
                   { _ref: 301, _type: 'State' },
@@ -350,7 +350,6 @@ describe('inspect.mjs', () => {
             data: {
               _id: 30,
               traits: {
-                '@label': 'hammer_knowledge',
                 location: {
                   _ref: 22,
                   _type: 'Belief',
@@ -358,7 +357,8 @@ describe('inspect.mjs', () => {
                   mind_label: 'Villager',
                   about_label: 'workshop'
                 }
-              }
+              },
+              label: 'hammer_knowledge'
             }
           },
           mind: {

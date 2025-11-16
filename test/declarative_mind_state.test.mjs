@@ -48,18 +48,18 @@ describe('Mind Trait', () => {
     const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
     const main_area = world_state.add_belief_from_template({
-      traits: {'@label': 'main_area'},
+      traits: {}, label: 'main_area',
       bases: ['Location'],
     });
 
     const workshop = world_state.add_belief_from_template({
             bases: ['Location'],
-      traits: {'@label': 'workshop', location: main_area.subject,},
+      traits: {location: main_area.subject,}, label: 'workshop',
     });
 
     const player_body = world_state.add_belief_from_template({
             bases: ['Person'],
-      traits: {'@label': 'player_body', location: workshop.subject,},
+      traits: {location: workshop.subject,}, label: 'player_body',
     });
 
     // Create player with mind trait (before locking state)
@@ -162,17 +162,17 @@ describe('Mind Trait', () => {
     const tavern_proto = state_100.add_belief_from_template({
       bases: ['Location'],
       traits: {
-        '@label': 'TavernPrototype',
         size: 'large'  // Default size for taverns
-      }
+      },
+      label: 'TavernPrototype'
     });
 
     const square_proto = state_100.add_belief_from_template({
       bases: ['Location'],
       traits: {
-        '@label': 'SquarePrototype',
         size: 'huge'  // Default size for squares
-      }
+      },
+      label: 'SquarePrototype'
     });
 
     // Create world with two NPC bodies
@@ -182,21 +182,21 @@ describe('Mind Trait', () => {
     // World beliefs inherit from shared prototypes
     const blacksmith_tavern = world_state.add_belief_from_template({
       bases: [tavern_proto],
-      traits: {'@label': 'blacksmith_tavern', coordinates: '50,30'}  // Specific location
+      traits: {coordinates: '50,30'}, label: 'blacksmith_tavern'  // Specific location
     });
 
     const town_square = world_state.add_belief_from_template({
       bases: [square_proto],
-      traits: {'@label': 'town_square', coordinates: '100,100'}  // Specific location
+      traits: {coordinates: '100,100'}, label: 'town_square'  // Specific location
     });
 
     const npc1_body = world_state.add_belief_from_template({
-      traits: {'@label': 'npc1_body'},
+      traits: {}, label: 'npc1_body',
       bases: ['Person']
     });
 
     const npc2_body = world_state.add_belief_from_template({
-      traits: {'@label': 'npc2_body'},
+      traits: {}, label: 'npc2_body',
       bases: ['Person']
     });
 
@@ -204,12 +204,12 @@ describe('Mind Trait', () => {
     const npc1 = Belief.from_template(world_state, {
       bases: [npc1_body],
       traits: {
-        '@label': 'npc1',
         mind: {
           blacksmith_tavern: ['coordinates'],
           town_square: ['size']
         }
-      }
+      },
+      label: 'npc1'
     });
     world_state.replace_beliefs(npc1);
 
@@ -217,12 +217,12 @@ describe('Mind Trait', () => {
     const npc2 = Belief.from_template(world_state, {
       bases: [npc2_body],
       traits: {
-        '@label': 'npc2',
         mind: {
           blacksmith_tavern: ['coordinates', 'size'],
           town_square: ['coordinates']
         }
-      }
+      },
+      label: 'npc2'
     });
     world_state.replace_beliefs(npc2);
 
@@ -348,9 +348,9 @@ describe('Mind Trait', () => {
     const tavern_proto = state_100.add_belief_from_template({
       bases: ['Location'],
       traits: {
-        '@label': 'TavernPrototype',
         size: 'large'
-      }
+      },
+      label: 'TavernPrototype'
     });
 
     // Create world entity
@@ -359,8 +359,8 @@ describe('Mind Trait', () => {
 
     const blacksmith_tavern = world_state.add_belief_from_template({
             bases: [tavern_proto],
-      traits: {'@label': 'blacksmith_tavern', coordinates: '50,30',
-        owner: 'blacksmith_guild'}
+      traits: {coordinates: '50,30',
+        owner: 'blacksmith_guild'}, label: 'blacksmith_tavern'
     });
 
     world_state.lock();
@@ -372,11 +372,11 @@ describe('Mind Trait', () => {
     const cultural_knowledge = state_200.add_belief_from_template({
       bases: ['CulturalKnowledge'],
       traits: {
-        '@label': 'CulturalKnowledge_Tavern',
         size: 'large',  // Everyone knows it's large
         owner: 'blacksmith_guild'  // Everyone knows who owns it
         // NOTE: coordinates are NOT in cultural knowledge - must be observed
-      }
+      },
+      label: 'CulturalKnowledge_Tavern'
     });
 
     // Create NPC1 with initial cultural knowledge (manual setup, not via mind template)
@@ -471,21 +471,21 @@ describe('Mind Trait', () => {
     const world_mind = new Mind(logos(), 'world');
     const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
-    const location1 = world_state.add_belief_from_template({ bases: ['Location'], traits: {'@label': 'location1'} });
+    const location1 = world_state.add_belief_from_template({ bases: ['Location'], traits: {}, label: 'location1' });
 
     const entity_body = world_state.add_belief_from_template({
       bases: ['Mental'],
-      traits: {'@label': 'entity_body'}
+      traits: {}, label: 'entity_body'
     });
 
     const entity = Belief.from_template(world_state, {
       bases: [entity_body],
       traits: {
-        '@label': 'entity',
         mind: {
           location1: []  // Empty array = learn nothing
         }
-      }
+      },
+      label: 'entity'
     });
     world_state.replace_beliefs(entity);
 
@@ -520,7 +520,7 @@ describe('Mind Trait', () => {
     const world_state = createStateInNewMind('world');
 
     const entity_body = world_state.add_belief_from_template({
-      traits: {'@label': 'entity_body'},
+      traits: {}, label: 'entity_body',
       bases: ['Mental']
     });
 
@@ -529,11 +529,11 @@ describe('Mind Trait', () => {
     expect(() => {
       Belief.from_template(world_state, {
         traits: {
-          '@label': 'entity',
           mind: {
             non_existent: ['some_trait']
           }
         },
+        label: 'entity',
         bases: [entity_body]
       });
     }).to.throw("Cannot learn about 'non_existent': belief not found");

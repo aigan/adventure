@@ -84,7 +84,7 @@ describe('Temporal Reasoning', () => {
       const world_state = world_mind.create_state(logos().origin_state, {tt: 200})
 
       world_state.add_belief_from_template({
-        traits: {'@label': 'tavern'},
+        traits: {}, label: 'tavern',
         bases: ['Location']
       })
 
@@ -92,9 +92,9 @@ describe('Temporal Reasoning', () => {
       const npc = Belief.from_template(world_state, {
         bases: ['Person'],
         traits: {
-          '@label': 'npc',
           mind: { tavern: ['location'] }  // Mind template with learning spec
-        }
+        },
+        label: 'npc'
       })
 
       world_state.lock()

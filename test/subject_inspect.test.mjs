@@ -91,7 +91,7 @@ describe('Subject.to_inspect_view()', () => {
     // Then create chest with references to them
     const chest = world_state.add_belief_from_template({
       bases: ['Container'],
-      traits: {'@label': 'chest', items: [sword.subject, shield.subject]}
+      traits: {items: [sword.subject, shield.subject]}, label: 'chest'
     })
 
     const items_traittype = Traittype.get_by_label('items')

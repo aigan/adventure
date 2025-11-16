@@ -46,7 +46,7 @@ describe('UnionState + rev_trait() Integration', () => {
       // Create shared location
       const village = world_state.add_belief_from_template({
         bases: ['Location'],
-        traits: {'@label': 'village'}
+        traits: {}, label: 'village'
       })
 
       world_state.lock()
@@ -58,10 +58,10 @@ describe('UnionState + rev_trait() Integration', () => {
       const villager_knowledge = villager_state.add_belief_from_template({
         bases: ['Location'],
         traits: {
-          '@label': 'village_knowledge',
           '@about': village.subject,
           description: 'Where villagers live'
-        }
+        },
+        label: 'village_knowledge'
       })
       villager_state.lock()
 
@@ -72,10 +72,10 @@ describe('UnionState + rev_trait() Integration', () => {
       const blacksmith_knowledge = blacksmith_state.add_belief_from_template({
         bases: ['Location'],
         traits: {
-          '@label': 'blacksmith_knowledge',
           '@about': village.subject,
           description: 'Where the forge is'
-        }
+        },
+        label: 'blacksmith_knowledge'
       })
       blacksmith_state.lock()
 
@@ -103,7 +103,7 @@ describe('UnionState + rev_trait() Integration', () => {
 
       const tavern = world_state.add_belief_from_template({
         bases: ['Location'],
-        traits: {'@label': 'tavern'}
+        traits: {}, label: 'tavern'
       })
 
       world_state.lock()
@@ -119,10 +119,10 @@ describe('UnionState + rev_trait() Integration', () => {
         const knowledge = component_state.add_belief_from_template({
           bases: ['Location'],
           traits: {
-            '@label': `knowledge${i}`,
             '@about': tavern.subject,
             description: `Component ${i} knows about tavern`
-          }
+          },
+          label: `knowledge${i}`
         })
 
         component_state.lock()
@@ -159,7 +159,7 @@ describe('UnionState + rev_trait() Integration', () => {
 
       const workshop = world_state.add_belief_from_template({
         bases: ['Location'],
-        traits: {'@label': 'workshop'}
+        traits: {}, label: 'workshop'
       })
 
       world_state.lock()
@@ -170,9 +170,9 @@ describe('UnionState + rev_trait() Integration', () => {
       villager_state.add_belief_from_template({
         bases: ['Location'],
         traits: {
-          '@label': 'villager_knowledge',
           '@about': workshop.subject
-        }
+        },
+        label: 'villager_knowledge'
       })
       villager_state.lock()
 
@@ -181,9 +181,9 @@ describe('UnionState + rev_trait() Integration', () => {
       blacksmith_state.add_belief_from_template({
         bases: ['Location'],
         traits: {
-          '@label': 'blacksmith_knowledge',
           '@about': workshop.subject
-        }
+        },
+        label: 'blacksmith_knowledge'
       })
       blacksmith_state.lock()
 
@@ -198,9 +198,9 @@ describe('UnionState + rev_trait() Integration', () => {
       master_state.add_belief_from_template({
         bases: ['Location'],
         traits: {
-          '@label': 'master_knowledge',
           '@about': workshop.subject
-        }
+        },
+        label: 'master_knowledge'
       })
       master_state.lock()
 
@@ -232,7 +232,7 @@ describe('UnionState + rev_trait() Integration', () => {
 
       const room = world_state.add_belief_from_template({
         bases: ['Location'],
-        traits: {'@label': 'room'}
+        traits: {}, label: 'room'
       })
 
       world_state.lock()
@@ -243,9 +243,9 @@ describe('UnionState + rev_trait() Integration', () => {
       component_state.add_belief_from_template({
         bases: ['Location'],
         traits: {
-          '@label': 'knowledge',
           '@about': room.subject
-        }
+        },
+        label: 'knowledge'
       })
       component_state.lock()
 
@@ -309,9 +309,9 @@ describe('UnionState + rev_trait() Integration', () => {
       warrior_state.add_belief_from_template({
         bases: ['Actor'],
         traits: {
-          '@label': 'warrior_self',
           inventory: [sword.subject]
-        }
+        },
+        label: 'warrior_self'
       })
       warrior_state.lock()
 
@@ -321,9 +321,9 @@ describe('UnionState + rev_trait() Integration', () => {
       knight_state.add_belief_from_template({
         bases: ['Actor'],
         traits: {
-          '@label': 'knight_self',
           inventory: [shield.subject]
-        }
+        },
+        label: 'knight_self'
       })
       knight_state.lock()
 
@@ -353,7 +353,7 @@ describe('UnionState + rev_trait() Integration', () => {
 
       const location = world_state.add_belief_from_template({
         bases: ['Location'],
-        traits: {'@label': 'location'}
+        traits: {}, label: 'location'
       })
 
       world_state.lock()
@@ -367,9 +367,9 @@ describe('UnionState + rev_trait() Integration', () => {
         component_state.add_belief_from_template({
           bases: ['Location'],
           traits: {
-            '@label': `knowledge${i}`,
             '@about': location.subject
-          }
+          },
+          label: `knowledge${i}`
         })
 
         component_state.lock()

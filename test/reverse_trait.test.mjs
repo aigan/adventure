@@ -57,7 +57,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       // Create a room that nothing references
       const room = Belief.from_template(state, {
         bases: ['Location'],
-        traits: {'@label': 'empty_room'}
+        traits: {}, label: 'empty_room'
       })
       state.lock()
 
@@ -75,16 +75,16 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       // Create a room
       const room = state.add_belief_from_template({
         bases: ['Location'],
-        traits: {'@label': 'tavern'}
+        traits: {}, label: 'tavern'
       })
 
       // Create NPC in that room
       const npc = state.add_belief_from_template({
         bases: ['Actor'],
         traits: {
-          '@label': 'bartender',
           'location': room.subject
-        }
+        },
+        label: 'bartender'
       })
       state.lock()
 
@@ -102,21 +102,21 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       // Create a room
       const room = Belief.from_template(state, {
         bases: ['Location'],
-        traits: {'@label': 'marketplace'}
+        traits: {}, label: 'marketplace'
       })
 
       // Create multiple NPCs in that room
       const npc1 = Belief.from_template(state, {
         bases: ['Actor'],
-        traits: {'@label': 'merchant', 'location': room.subject}
+        traits: {'location': room.subject}, label: 'merchant'
       })
       const npc2 = Belief.from_template(state, {
         bases: ['Actor'],
-        traits: {'@label': 'guard', 'location': room.subject}
+        traits: {'location': room.subject}, label: 'guard'
       })
       const npc3 = Belief.from_template(state, {
         bases: ['Actor'],
-        traits: {'@label': 'customer', 'location': room.subject}
+        traits: {'location': room.subject}, label: 'customer'
       })
       state.lock()
 
@@ -135,11 +135,11 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room = Belief.from_template(state, {
         bases: ['Location'],
-        traits: {'@label': 'cellar'}
+        traits: {}, label: 'cellar'
       })
       const npc = Belief.from_template(state, {
         bases: ['Actor'],
-        traits: {'@label': 'prisoner', 'location': room.subject}
+        traits: {'location': room.subject}, label: 'prisoner'
       })
       state.lock()
 
@@ -154,11 +154,11 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'hall'}
+        traits: {}, label: 'hall'
       })
       const npc1 = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'noble', 'location': room.subject}
+        traits: {'location': room.subject}, label: 'noble'
       })
       state1.lock()
 
@@ -166,7 +166,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const state2 = state1.branch_state(logos().origin_state, 1)
       const npc2 = Belief.from_template(state2, {
         bases: ['Actor'],
-        traits: {'@label': 'servant', 'location': room.subject}
+        traits: {'location': room.subject}, label: 'servant'
       })
       state2.lock()
 
@@ -187,7 +187,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room = Belief.from_template(state, {
         bases: ['Location'],
-        traits: {'@label': 'forest'}
+        traits: {}, label: 'forest'
       })
       state.lock()
 
@@ -200,9 +200,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
           const npc = Belief.from_template(state, {
             bases: ['Actor'],
             traits: {
-              '@label': `traveler${i}`,
               'location': room.subject
-            }
+            },
+            label: `traveler${i}`
           })
           npcs.push(npc)
         }
@@ -224,7 +224,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room = Belief.from_template(state, {
         bases: ['Location'],
-        traits: {'@label': 'inn'}
+        traits: {}, label: 'inn'
       })
       state.lock()
 
@@ -235,9 +235,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         const npc = Belief.from_template(state, {
           bases: ['Actor'],
           traits: {
-            '@label': `guest${i}`,
             'location': room.subject
-          }
+          },
+          label: `guest${i}`
         })
         npcs.push(npc)
         state.lock()
@@ -254,15 +254,15 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room1 = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'kitchen'}
+        traits: {}, label: 'kitchen'
       })
       const room2 = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'bedroom'}
+        traits: {}, label: 'bedroom'
       })
       const npc = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'cook', 'location': room1.subject}
+        traits: {'location': room1.subject}, label: 'cook'
       })
       state1.lock()
 
@@ -295,11 +295,11 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'throne_room'}
+        traits: {}, label: 'throne_room'
       })
       const npc = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'king', 'location': room.subject}
+        traits: {'location': room.subject}, label: 'king'
       })
       state1.lock()
 
@@ -339,14 +339,14 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'workshop'}
+        traits: {}, label: 'workshop'
       })
       state1.lock()
 
       const state2 = state1.branch_state(logos().origin_state, 1)
       const npc = Belief.from_template(state2, {
         bases: ['Actor'],
-        traits: {'@label': 'smith', 'location': room.subject}
+        traits: {'location': room.subject}, label: 'smith'
       })
       state2.lock()
 
@@ -363,11 +363,11 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'library'}
+        traits: {}, label: 'library'
       })
       const npc1 = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'scholar', 'location': room.subject}
+        traits: {'location': room.subject}, label: 'scholar'
       })
       state1.lock()
 
@@ -383,7 +383,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const state4 = state3.branch_state(logos().origin_state, 3)
       const npc2 = Belief.from_template(state4, {
         bases: ['Actor'],
-        traits: {'@label': 'student', 'location': room.subject}
+        traits: {'location': room.subject}, label: 'student'
       })
       state4.lock()
 
@@ -400,15 +400,15 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room1 = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'armory'}
+        traits: {}, label: 'armory'
       })
       const room2 = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'treasury'}
+        traits: {}, label: 'treasury'
       })
       const npc = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'guard', 'location': room1.subject}
+        traits: {'location': room1.subject}, label: 'guard'
       })
       state1.lock()
 
@@ -416,7 +416,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const state2 = state1.branch_state(logos().origin_state, 1)
       const npc2 = Belief.from_template(state2, {
         bases: ['Actor'],
-        traits: {'@label': 'treasurer', 'location': room2.subject}
+        traits: {'location': room2.subject}, label: 'treasurer'
       })
       state2.lock()
 
@@ -438,7 +438,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room = Belief.from_template(state, {
         bases: ['Location'],
-        traits: {'@label': 'void'}
+        traits: {}, label: 'void'
       })
       state.lock()
 
@@ -453,7 +453,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room = Belief.from_template(state, {
         bases: ['Location'],
-        traits: {'@label': 'abandoned'}
+        traits: {}, label: 'abandoned'
       })
       state.lock()
 
@@ -467,11 +467,11 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'plaza'}
+        traits: {}, label: 'plaza'
       })
       const npc = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'statue', 'location': room.subject}
+        traits: {'location': room.subject}, label: 'statue'
       })
       state1.lock()
 
@@ -499,28 +499,28 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const container = Belief.from_template(state, {
         bases: ['PortableObject'],
-        traits: {'@label': 'chest'}
+        traits: {}, label: 'chest'
       })
       const room = Belief.from_template(state, {
         bases: ['Location'],
-        traits: {'@label': 'vault'}
+        traits: {}, label: 'vault'
       })
 
       // Chest is both located in room AND contains items
       const item1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         traits: {
-          '@label': 'sword',
           'location': room.subject,
           'container': container.subject
-        }
+        },
+        label: 'sword'
       })
       const item2 = Belief.from_template(state, {
         bases: ['PortableObject'],
         traits: {
-          '@label': 'gold',
           'container': container.subject
-        }
+        },
+        label: 'gold'
       })
       state.lock()
 
@@ -543,11 +543,11 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const room = Belief.from_template(state1, {
         bases: ['Location'],
-        traits: {'@label': 'stable'}
+        traits: {}, label: 'stable'
       })
       const npc = Belief.from_template(state1, {
         bases: ['Actor'],
-        traits: {'@label': 'groom', 'location': room.subject}
+        traits: {'location': room.subject}, label: 'groom'
       })
 
       // Query on unlocked state
@@ -569,9 +569,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const npc = Belief.from_template(state, {
         bases: ['Actor'],
         traits: {
-          '@label': 'wizard',
           'name': 'Gandalf'  // string, not Subject
-        }
+        },
+        label: 'wizard'
       })
       state.lock()
 
@@ -589,20 +589,20 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const tavern = Belief.from_template(state, {
         bases: ['Location'],
-        traits: {'@label': 'tavern'}
+        traits: {}, label: 'tavern'
       })
 
       const bartender = Belief.from_template(state, {
         bases: ['Actor'],
-        traits: {'@label': 'bartender', 'location': tavern.subject}
+        traits: {'location': tavern.subject}, label: 'bartender'
       })
       const patron1 = Belief.from_template(state, {
         bases: ['Actor'],
-        traits: {'@label': 'drunk', 'location': tavern.subject}
+        traits: {'location': tavern.subject}, label: 'drunk'
       })
       const patron2 = Belief.from_template(state, {
         bases: ['Actor'],
-        traits: {'@label': 'merchant', 'location': tavern.subject}
+        traits: {'location': tavern.subject}, label: 'merchant'
       })
       state.lock()
 
@@ -617,20 +617,20 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const backpack = Belief.from_template(state, {
         bases: ['PortableObject'],
-        traits: {'@label': 'backpack'}
+        traits: {}, label: 'backpack'
       })
 
       const sword = Belief.from_template(state, {
         bases: ['PortableObject'],
-        traits: {'@label': 'sword', 'container': backpack.subject}
+        traits: {'container': backpack.subject}, label: 'sword'
       })
       const potion = Belief.from_template(state, {
         bases: ['PortableObject'],
-        traits: {'@label': 'potion', 'container': backpack.subject}
+        traits: {'container': backpack.subject}, label: 'potion'
       })
       const rope = Belief.from_template(state, {
         bases: ['PortableObject'],
-        traits: {'@label': 'rope', 'container': backpack.subject}
+        traits: {'container': backpack.subject}, label: 'rope'
       })
       state.lock()
 
@@ -651,7 +651,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const location = Belief.from_template(state, {
         bases: ['Location'],
-        traits: {'@label': 'city_square'}
+        traits: {}, label: 'city_square'
       })
       state.lock()
 
@@ -666,9 +666,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
           const npc1 = Belief.from_template(state, {
             bases: ['Actor'],
             traits: {
-              '@label': `citizen_${i}_a`,
               'location': location.subject
-            }
+            },
+            label: `citizen_${i}_a`
           })
           all_npcs.push(npc1)
 
@@ -676,9 +676,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
             const npc2 = Belief.from_template(state, {
               bases: ['Actor'],
               traits: {
-                '@label': `citizen_${i}_b`,
                 'location': location.subject
-              }
+              },
+              label: `citizen_${i}_b`
             })
             all_npcs.push(npc2)
           }
@@ -712,17 +712,17 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       const plaza = Belief.from_template(root_state, {
         bases: ['Location'],
-        traits: {'@label': 'plaza'}
+        traits: {}, label: 'plaza'
       })
 
       // Root has 2 NPCs
       const root_npc1 = Belief.from_template(root_state, {
         bases: ['Actor'],
-        traits: {'@label': 'statue', 'location': plaza.subject}
+        traits: {'location': plaza.subject}, label: 'statue'
       })
       const root_npc2 = Belief.from_template(root_state, {
         bases: ['Actor'],
-        traits: {'@label': 'fountain', 'location': plaza.subject}
+        traits: {'location': plaza.subject}, label: 'fountain'
       })
       root_state.lock()
 
@@ -734,9 +734,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         const branch_npc = Belief.from_template(branch, {
           bases: ['Actor'],
           traits: {
-            '@label': `visitor_${i}`,
             'location': plaza.subject
-          }
+          },
+          label: `visitor_${i}`
         })
         branch.lock()
 
@@ -805,7 +805,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         // chest does NOT explicitly set location - inherits from archetype default
         const chest = state.add_belief_from_template({
           bases: ['Container'],
-          traits: { '@label': 'chest' }
+          traits: {}, label: 'chest'
         })
 
         state.lock()
@@ -871,9 +871,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         const knight = state.add_belief_from_template({
           bases: [warrior_proto],  // Inherit Warrior prototype
           traits: {
-            '@label': 'knight'
             // NO inventory trait set! Should inherit [sword] from Warrior
-          }
+          },
+          label: 'knight'
         })
 
         state.lock()
@@ -908,15 +908,15 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
         const tavern = state1.add_belief_from_template({
           bases: ['Location'],
-          traits: { '@label': 'tavern' }
+          traits: {}, label: 'tavern'
         })
 
         const npc_v1 = state1.add_belief_from_template({
           bases: ['Actor'],
           traits: {
-            '@label': 'npc',
             location: tavern.subject  // Explicitly set
-          }
+          },
+          label: 'npc'
         })
 
         state1.lock()
@@ -994,9 +994,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         const knight = state.add_belief_from_template({
           bases: [warrior_proto],
           traits: {
-            '@label': 'knight',
             inventory: [shield.subject]  // Explicit set triggers composition
-          }
+          },
+          label: 'knight'
         })
 
         state.lock()
@@ -1035,20 +1035,20 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         // Create family members
         const alice = state.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'alice' }
+          traits: {}, label: 'alice'
         })
         const bob = state.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'bob' }
+          traits: {}, label: 'bob'
         })
 
         // Create family with children array
         const family = state.add_belief_from_template({
           bases: ['Person'],
           traits: {
-            '@label': 'family',
             children: [alice.subject, bob.subject]
-          }
+          },
+          label: 'family'
         })
 
         state.lock()
@@ -1082,24 +1082,24 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         // Create witnesses
         const alice = state.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'alice' }
+          traits: {}, label: 'alice'
         })
         const bob = state.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'bob' }
+          traits: {}, label: 'bob'
         })
         const charlie = state.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'charlie' }
+          traits: {}, label: 'charlie'
         })
 
         // Create crime with witnesses
         const crime = state.add_belief_from_template({
           bases: ['Thing'],
           traits: {
-            '@label': 'crime',
             witnesses: [alice.subject, bob.subject, charlie.subject]
-          }
+          },
+          label: 'crime'
         })
 
         state.lock()
@@ -1135,24 +1135,24 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
         const alice = state1.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'alice' }
+          traits: {}, label: 'alice'
         })
         const bob = state1.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'bob' }
+          traits: {}, label: 'bob'
         })
         const charlie = state1.add_belief_from_template({
           bases: ['Person'],
-          traits: { '@label': 'charlie' }
+          traits: {}, label: 'charlie'
         })
 
         // State 1: crime.witnesses = [alice, bob]
         const crime_v1 = state1.add_belief_from_template({
           bases: ['Thing'],
           traits: {
-            '@label': 'crime',
             witnesses: [alice.subject, bob.subject]
-          }
+          },
+          label: 'crime'
         })
 
         state1.lock()
@@ -1245,7 +1245,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         // State 1: knight inherits [sword] from Warrior (no explicit inventory set)
         const knight_v1 = state1.add_belief_from_template({
           bases: [warrior_proto],
-          traits: { '@label': 'knight' }
+          traits: {}, label: 'knight'
         })
 
         state1.lock()
@@ -1338,9 +1338,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         const pacifist = state.add_belief_from_template({
           bases: [warrior_proto],
           traits: {
-            '@label': 'pacifist',
             inventory: null  // Blocks inheritance from Warrior
-          }
+          },
+          label: 'pacifist'
         })
         state.lock()
 
@@ -1397,9 +1397,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         const student = state.add_belief_from_template({
           bases: [warrior_proto],
           traits: {
-            '@label': 'student',
             inventory: []  // Empty array - should compose with base
-          }
+          },
+          label: 'student'
         })
         state.lock()
 
@@ -1430,7 +1430,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
         const generic_weapon = eidos_state.add_belief_from_template({
           bases: ['Weapon'],
-          traits: {'@label': 'GenericSword'}
+          traits: {}, label: 'GenericSword'
         })
         generic_weapon.lock(eidos_state)
 
@@ -1444,9 +1444,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         const player_sword = Belief.from_template(world_state, {
           bases: ['Weapon'],
           traits: {
-            '@label': 'player_sword',
             prototype: generic_weapon.subject  // References shared belief
-          }
+          },
+          label: 'player_sword'
         })
         world_state.lock()
 
@@ -1473,7 +1473,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
         const entity = Belief.from_template(state, {
           bases: ['Thing'],
-          traits: {'@label': 'ouroboros'}
+          traits: {}, label: 'ouroboros'
         })
 
         // Entity references itself
@@ -1500,7 +1500,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
         const shared_room = Belief.from_template(parent_state, {
           bases: ['Location'],
-          traits: {'@label': 'shared_room'}
+          traits: {}, label: 'shared_room'
         })
         parent_state.lock()
 
@@ -1510,9 +1510,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         const npc_a = Belief.from_template(state_a, {
           bases: ['Actor'],
           traits: {
-            '@label': 'npc_a',
             location: shared_room.subject
-          }
+          },
+          label: 'npc_a'
         })
         state_a.lock()
 
@@ -1522,9 +1522,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         const npc_b = Belief.from_template(state_b, {
           bases: ['Actor'],
           traits: {
-            '@label': 'npc_b',
             location: shared_room.subject
-          }
+          },
+          label: 'npc_b'
         })
         state_b.lock()
 
