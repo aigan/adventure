@@ -1,75 +1,131 @@
 /**
- * Timeless - timeless state without ground_state restrictions
+ * Timeless - timeless state without temporal restrictions
  *
- * Special State subclass that allows null values for ground_state, tt, and vt.
- * Used for primordial states (Logos, Eidos) and timeless constructs that exist
- * outside normal temporal flow.
+ * Special State subclass for states that exist outside normal temporal flow.
+ * Used for primordial states (Logos, Eidos) that don't have tt/vt.
  *
- * Unlike regular State, Timeless:
- * - Has ground_state=null (no external reference)
+ * Unlike regular State:
  * - Has tt=null and vt=null (timeless)
- * - Bypasses State constructor validation
- *
- * Usage:
- *   const timeless = new Timeless(mind)
+ * - ground_state can be null (for Logos) or parent's origin_state
  */
 
-import { next_id } from './id_sequence.mjs'
+import { State } from './state.mjs'  // ✅ No circular dependency!
 import * as DB from './db.mjs'
-
-// Note: Cannot import State here due to circular dependency
-// State imports Timeless for instanceof checks
-// Instead, we set up prototype chain after State is loaded via _setup_timeless_inheritance
 
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
  * @typedef {import('./belief.mjs').Belief} Belief
- * @typedef {import('./state.mjs').State} State
  * @typedef {import('./subject.mjs').Subject} Subject
  * @typedef {import('./traittype.mjs').Traittype} Traittype
+ * @typedef {import('./state.mjs').StateJSON} StateJSON
  */
 
 /**
  * Timeless state - exists outside normal temporal flow
- * Prototype will be set to extend State after module initialization
  */
-export class Timeless {
+export class Timeless extends State {  // ✅ Clean extends!
   /**
+   * Override type discriminator
+   * @type {string}
+   */
+  _type = 'Timeless'
+
+  /**
+   * Create a timeless state
    * @param {Mind} mind - Mind this timeless state belongs to
    */
   constructor(mind) {
-    this.ground_state = mind.parent.origin_state  // Ground state is parent mind's origin_state
-    this._init(mind)
+    // Resolve ground_state:
+    // - For Logos: mind.parent is null, so ground_state will be null
+    // - For Eidos/others: mind.parent exists, so ground_state is parent's origin_state
+    const ground_state = mind.parent?.origin_state ?? null
+
+    // Call State constructor with timeless options
+    super(mind, ground_state, null, {
+      tt: null,   // Timeless - no transaction time
+      vt: null    // Timeless - no valid time
+    })
   }
 
   /**
-   * Initialize Timeless state (used by constructor and Logos bootstrap)
-   * NOTE: ground_state must be set before calling this
-   * @param {Mind} mind - Mind this timeless state belongs to
+   * Deserialize Timeless from JSON
+   * @param {Mind} mind - Mind context for resolution
+   * @param {StateJSON} data - JSON data with _type: 'Timeless'
+   * @returns {Timeless}
    */
-  _init(mind) {
-    // Set variable properties (Timeless-specific values)
-    this._id = next_id()
-    this.in_mind = mind
-    /** @type {number|null} */ this.tt = null            // Timeless - no transaction time
-    /** @type {number|null} */ this.vt = null            // Timeless - no valid time
-    /** @type {State|null} */ this.base = null
-    /** @type {Subject|null} */ this.self = null
-    /** @type {Belief[]} */ this._insert = []
-    /** @type {Belief[]} */ this._remove = []
+  static from_json(mind, data) {
+    // Resolve references
+    const resolved_mind = data.in_mind ? DB.get_mind_by_id(data.in_mind) : mind
+    if (!resolved_mind) {
+      throw new Error(`Cannot resolve in_mind ${data.in_mind} for timeless state ${data._id}`)
+    }
 
-    // Initialize common properties and register
-    // Timeless extends State via runtime prototype manipulation (_setup_timeless_inheritance)
-    // @ts-ignore - _init_state_properties is inherited from State via runtime prototype chain
-    this._init_state_properties()
+    const ground_state = data.ground_state ? DB.get_state_by_id(data.ground_state) : null
+    // Note: ground_state can be null for Logos bootstrap
+
+    const self = data.self ? DB.get_or_create_subject(mind.parent, data.self) : null
+
+    // Create instance using Object.create (bypasses constructor)
+    const timeless = Object.create(Timeless.prototype)
+
+    // Set _type (class field initializers don't run with Object.create)
+    timeless._type = 'Timeless'
+
+    // Use inherited _init_properties from State with deserialized ID
+    timeless._init_properties(
+      resolved_mind,
+      ground_state,
+      null,        // base is always null for timeless
+      null,        // tt is always null for timeless
+      null,        // vt is always null for timeless
+      self,
+      null,        // about_state
+      data._id     // Use deserialized ID
+    )
+
+    // Restore insert beliefs
+    for (const belief_id of data.insert) {
+      const belief = DB.get_belief_by_id(belief_id)
+      if (!belief) {
+        throw new Error(`Cannot resolve insert belief ${belief_id} for timeless state ${data._id}`)
+      }
+      timeless._insert.push(belief)
+    }
+
+    // Restore remove beliefs
+    for (const belief_id of data.remove) {
+      const belief = DB.get_belief_by_id(belief_id)
+      if (!belief) {
+        throw new Error(`Cannot resolve remove belief ${belief_id} for timeless state ${data._id}`)
+      }
+      timeless._remove.push(belief)
+    }
+
+    return timeless
+  }
+
+  /**
+   * Serialize to JSON
+   * @returns {StateJSON}
+   */
+  toJSON() {
+    return {
+      _type: 'Timeless',  // ✅ Override to specify correct type
+      _id: this._id,
+      tt: null,  // Always null for Timeless
+      vt: null,  // Always null for Timeless
+      base: null,  // Always null for Timeless
+      ground_state: this.ground_state?._id ?? null,  // Can be null for Logos
+      self: this.self?.toJSON() ?? null,
+      about_state: null,  // Timeless states don't have about_state
+      insert: this._insert.map(b => b._id),
+      remove: this._remove.map(b => b._id),
+      in_mind: this.in_mind._id
+    }
   }
 }
 
-/**
- * Set up Timeless to extend State
- * Called by State module after it's loaded to avoid circular dependency
- * @param {any} StateClass - State class constructor
- */
-export function _setup_timeless_inheritance(StateClass) {
-  Object.setPrototypeOf(Timeless.prototype, StateClass.prototype)
-}
+// ✅ NO MORE _init() method - use inherited constructor
+// ✅ NO MORE _setup_timeless_inheritance() callback
+// ✅ NO MORE Object.setPrototypeOf hack
+// ✅ Clean extends State with proper super() call

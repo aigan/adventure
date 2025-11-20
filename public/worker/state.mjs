@@ -27,7 +27,7 @@ import * as Cosmos from './cosmos.mjs'
 import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
 import { Serialize } from './serialize.mjs'
-import { Timeless } from './timeless.mjs'
+// REMOVED: import { Timeless } from './timeless.mjs' - breaks circular dependency
 import { Traittype } from './traittype.mjs'
 
 /**
@@ -36,12 +36,12 @@ import { Traittype } from './traittype.mjs'
 
 /**
  * @typedef {object} StateJSON
- * @property {string} _type - "State" or "UnionState"
+ * @property {string} _type - "State", "Timeless", or "UnionState"
  * @property {number} _id - State identifier
  * @property {number|null} tt - State transaction time/tick (null for timeless states like logos)
  * @property {number|null} vt - State valid time (null for timeless states like logos)
  * @property {number|null} base - Base state _id (null for root states)
- * @property {number|null} ground_state - Ground state _id (null if no external reference)
+ * @property {number|null} ground_state - Ground state _id (null for Timeless/Logos bootstrap)
  * @property {number|null} self - Subject sid (null if no self identity)
  * @property {number|null} [about_state] - State _id this state is about (meta-level reasoning)
  * @property {number[]} insert - Belief _ids present in this state (serialized from private _insert)
@@ -66,6 +66,9 @@ export class State {
   // Now stored in DB.state_by_label
 
   // Property declarations for TypeScript
+  /** @type {string} - Type discriminator for polymorphism */
+  _type = 'State'
+
   /** @type {number} */ _id
   /** @type {Mind} */ in_mind
   /** @type {State|null} */ base
@@ -73,7 +76,7 @@ export class State {
   /** @type {number|null} */ vt
   /** @type {Belief[]} */ _insert
   /** @type {Belief[]} */ _remove
-  /** @type {State} */ ground_state
+  /** @type {State|null} */ ground_state  // Null only for Timeless (Logos bootstrap)
   /** @type {Subject|null} */ self
   /** @type {State|null} */ about_state
   /** @type {boolean} */ locked = false
@@ -85,10 +88,10 @@ export class State {
 
   /**
    * @param {Mind} mind
-   * @param {State} ground_state - Required (except logos_state which bypasses constructor)
+   * @param {State|null} ground_state - Ground state (null only for Timeless with Logos)
    * @param {State|null} base
    * @param {object} options - Optional meta-parameters
-   * @param {number|null} [options.tt] - Transaction time (only when ground_state.vt is null)
+   * @param {number|null} [options.tt] - Transaction time (explicit for timeless states)
    * @param {number|null} [options.vt] - Valid time (defaults to tt)
    * @param {Subject|null} [options.self] - Self identity (defaults to base.self)
    * @param {State|null} [options.about_state] - State context for belief resolution (for prototype minds)
@@ -96,62 +99,87 @@ export class State {
    */
   constructor(mind, ground_state, base=null, {tt: tt_option, vt, self, about_state, derivation} = {}) {
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
-    assert(ground_state instanceof State, 'ground_state is required and must be a State')
 
-    // Type cast needed for TypeScript - assertion doesn't narrow types
-    /** @type {State} */ const gs = ground_state
-    assert(
-      gs.in_mind === mind.parent,
-      'ground_state must be in parent mind',
-      {
-        mind: mind.label,
-        parent: mind.parent?.label ?? null,
-        ground_state_mind: gs.in_mind?.label ?? null
-      }
-    )
-
-    // Derive tt from ground_state.vt (fork invariant)
-    // Exception: When ground_state is Timeless, allow explicit tt
-    const tt = tt_option ?? ground_state.vt
-
-    // If tt was explicitly provided, validate it's only for Timeless ground_state
-    if (tt_option != null) {
+    // Allow null ground_state for Timeless (Logos bootstrap)
+    if (ground_state !== null) {
+      // Use _type property instead of instanceof (breaks circular dependency!)
       assert(
-        ground_state instanceof Timeless,
-        'tt can only be provided explicitly when ground_state is Timeless (timeless state)',
-        {provided_tt: tt_option, is_timeless_ground: ground_state instanceof Timeless}
+        ground_state._type === 'State' ||
+        ground_state._type === 'Timeless' ||
+        ground_state._type === 'UnionState',
+        'ground_state must be a State',
+        { ground_type: ground_state?._type }
+      )
+
+      assert(
+        ground_state.in_mind === mind.parent,
+        'ground_state must be in parent mind',
+        {
+          mind: mind.label,
+          parent: mind.parent?.label ?? null,
+          ground_state_mind: ground_state.in_mind?.label ?? null
+        }
       )
     }
 
-    assert(tt !== undefined, 'tt must be derivable from ground_state.vt or provided for logos ground_state')
+    // Derive tt from ground_state.vt (fork invariant)
+    // Exception: When ground_state is timeless (vt === null), allow explicit tt
+    const tt = tt_option ?? ground_state?.vt ?? null
+
+    // If tt was explicitly provided, validate it's only for timeless ground_state
+    if (tt_option != null && ground_state !== null) {
+      assert(
+        ground_state.vt === null,
+        'tt can only be provided explicitly when ground_state is timeless (vt === null)',
+        { provided_tt: tt_option, ground_vt: ground_state.vt }
+      )
+    }
 
     // Default self to base.self, vt to tt
     const effective_self = self ?? base?.self ?? null
     const effective_vt = vt ?? tt
 
-    // Validate self and vt
+    // Validate self
     assert(effective_self === null || effective_self instanceof Subject, 'self must be Subject or null')
 
     // Check if self belief is unlocked (only for initial states, not versioning)
     // Skip this check for derivations (computed views that don't mutate)
-    if (effective_self !== null && base === null && !derivation) {
+    if (effective_self !== null && base === null && !derivation && ground_state !== null) {
       const self_belief = ground_state.get_belief_by_subject(effective_self)
       assert(self_belief === null || !self_belief.locked, 'Cannot create state for locked self')
     }
 
-    // Set variable properties
-    this._id = next_id()
-    this.in_mind = mind
+    // Use shared initialization
+    this._init_properties(mind, ground_state, base, tt, effective_vt, effective_self, about_state)
+  }
+
+  /**
+   * Shared initialization - SINGLE SOURCE OF TRUTH for property assignment
+   * Used by both constructor and from_json
+   * @protected
+   * @param {Mind} in_mind
+   * @param {State|null} ground_state
+   * @param {State|null} base
+   * @param {number|null} tt
+   * @param {number|null} vt
+   * @param {Subject|null} self
+   * @param {State|null} about_state
+   * @param {number} [id] - Optional ID (for deserialization), otherwise generates new ID
+   */
+  _init_properties(in_mind, ground_state, base, tt, vt, self, about_state, id = null) {
+    // Initialize ALL properties
+    this._id = id ?? next_id()  // Use provided ID or generate new one
+    this.in_mind = in_mind
     this.base = base
+    this.ground_state = ground_state
     this.tt = tt
-    this.vt = effective_vt
+    this.vt = vt
+    this.self = self
+    this.about_state = about_state
     this._insert = []
     this._remove = []
-    this.ground_state = ground_state
-    this.self = effective_self
-    this.about_state = about_state ?? null
 
-    // Initialize common properties and register
+    // Initialize collections and register (keep existing method)
     this._init_state_properties()
   }
 
@@ -865,7 +893,7 @@ export class State {
     }
 
     return {
-      _type: 'State',
+      _type: this._type,  // Use instance _type property for polymorphism
       _id: this._id,
       tt: this.tt,
       vt: this.vt,
@@ -886,9 +914,12 @@ export class State {
    * @returns {State}
    */
   static from_json(mind, data) {
-    // Check if this is a UnionState and delegate to UnionState.from_json
+    // Dispatch based on _type (polymorphic deserialization)
     if (data._type === 'UnionState') {
       return Cosmos.UnionState.from_json(mind, data)
+    }
+    if (data._type === 'Timeless') {
+      return Cosmos.Timeless.from_json(mind, data)
     }
 
     // Resolve in_mind reference (if present in data, otherwise use parameter)
@@ -910,7 +941,7 @@ export class State {
       }
     }
 
-    // Resolve ground_state reference
+    // Resolve ground_state reference (can be null for Timeless)
     let ground_state = null
     if (data.ground_state != null) {
       ground_state = DB.get_state_by_id(data.ground_state)
@@ -935,42 +966,32 @@ export class State {
       }
     }
 
-    // Resolve insert/remove belief references
-    const insert = []
+    // Create instance using Object.create (bypasses constructor)
+    const state = Object.create(State.prototype)
+
+    // Set _type (class field initializers don't run with Object.create)
+    state._type = 'State'
+
+    // Use shared initialization with deserialized ID
+    const vt = data.vt ?? data.tt  // Default vt to tt for backward compatibility
+    state._init_properties(resolved_mind, ground_state, base, data.tt, vt, self, about_state, data._id)
+
+    // Restore insert/remove arrays
     for (const belief_id of data.insert) {
       const belief = DB.get_belief_by_id(belief_id)
       if (!belief) {
         throw new Error(`Cannot resolve insert belief ${belief_id} for state ${data._id}`)
       }
-      insert.push(belief)
+      state._insert.push(belief)
     }
 
-    const remove = []
     for (const belief_id of data.remove) {
       const belief = DB.get_belief_by_id(belief_id)
       if (!belief) {
         throw new Error(`Cannot resolve remove belief ${belief_id} for state ${data._id}`)
       }
-      remove.push(belief)
+      state._remove.push(belief)
     }
-
-    // Create fully materialized state
-    const state = Object.create(State.prototype)
-
-    // Set variable properties
-    state._id = data._id
-    state.in_mind = resolved_mind
-    state.base = base
-    state.tt = data.tt
-    state.vt = data.vt ?? data.tt  // Default vt to tt for backward compatibility
-    state._insert = insert
-    state._remove = remove
-    state.ground_state = ground_state
-    state.self = self
-    state.about_state = about_state
-
-    // Initialize common properties and register
-    state._init_state_properties()
 
     // Update branches
     if (base) {
@@ -981,6 +1002,5 @@ export class State {
   }
 }
 
-// Set up Timeless inheritance after State is fully defined
-import { _setup_timeless_inheritance } from './timeless.mjs'
-_setup_timeless_inheritance(State)
+// NOTE: Timeless now uses clean extends State inheritance
+// Removed _setup_timeless_inheritance hack - no longer needed

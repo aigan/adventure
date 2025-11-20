@@ -27,7 +27,8 @@ import { State } from './state.mjs'
 import * as Cosmos from './cosmos.mjs'
 import { Belief } from './belief.mjs'
 import { Traittype } from './traittype.mjs'
-import { Timeless } from './timeless.mjs'
+// REMOVED: import { Timeless } from './timeless.mjs' - breaks circular dependency
+// Use duck typing instead: ground_state.vt === null to detect timeless states
 
 /**
  * @typedef {import('./belief.mjs').BeliefJSON} BeliefJSON
@@ -39,7 +40,7 @@ import { Timeless } from './timeless.mjs'
 
 /**
  * @typedef {object} MindJSON
- * @property {string} _type - Always "Mind"
+ * @property {string} _type - "Mind", "Logos", "Eidos", or "TemporalMind"
  * @property {number} _id - Mind identifier
  * @property {string|null} label - Optional label for lookup
  * @property {BeliefJSON[]} belief - All beliefs in this mind
@@ -62,17 +63,45 @@ import { Timeless } from './timeless.mjs'
  * @property {Set<State>} state - All states belonging to this mind
  */
 export class Mind {
+  /** @type {string} - Type discriminator for polymorphism */
+  _type = 'Mind'
+
   /**
-   * @param {Mind} parent_mind - Parent mind
+   * @param {Mind|null} parent_mind - Parent mind (null only for Logos)
    * @param {string|null} label - Mind identifier
    * @param {Belief|null} self - What this mind considers "self" (can be null, can change)
    */
   constructor(parent_mind, label = null, self = null) {
-    // parent_mind must be Mind instance
-    assert(parent_mind instanceof Mind, 'parent_mind must be Mind instance', {label, parent_mind})
+    // Allow null parent for Logos (primordial mind)
+    if (parent_mind !== null) {
+      // Use _type property instead of instanceof
+      assert(
+        parent_mind._type === 'Mind' ||
+        parent_mind._type === 'Logos' ||
+        parent_mind._type === 'Eidos' ||
+        parent_mind._type === 'TemporalMind',
+        'parent_mind must be a Mind',
+        { label, parent_type: parent_mind?._type }
+      )
+    }
 
-    this._id = next_id()
-    /** @type {Mind} - Internal storage, use getter/setter to access */
+    // Use shared initialization
+    this._init_properties(parent_mind, label, self)
+  }
+
+  /**
+   * Shared initialization - SINGLE SOURCE OF TRUTH for property assignment
+   * Used by both constructor and from_json
+   * @protected
+   * @param {Mind|null} parent_mind
+   * @param {string|null} label
+   * @param {Belief|null} self
+   * @param {number} [id] - Optional ID (for deserialization), otherwise generates new ID
+   */
+  _init_properties(parent_mind, label, self, id = null) {
+    // Initialize ALL properties
+    this._id = id ?? next_id()  // Use provided ID or generate new one
+    /** @type {Mind|null} - Internal storage, use getter/setter to access */
     this._parent = parent_mind
     this.label = label
     /** @type {Belief|null} */
@@ -122,11 +151,12 @@ export class Mind {
      */
     this.origin_state = null
 
-    // Register as child in parent
-    if (this.parent) {
-      this.parent._child_minds.add(this)
+    // Register as child in parent (skip for Logos)
+    if (parent_mind !== null) {
+      parent_mind._child_minds.add(this)
     }
 
+    // Register with DB
     DB.register_mind(this)
   }
 
@@ -299,7 +329,7 @@ export class Mind {
     const mind_beliefs = [...DB.get_beliefs_by_mind(this)].map(b => b.toJSON())
 
     return {
-      _type: 'Mind',
+      _type: this._type,  // Use instance _type property for polymorphism
       _id: this._id,
       label: this.label,
       belief: mind_beliefs,
@@ -314,25 +344,22 @@ export class Mind {
    * @returns {Mind}
    */
   static from_json(data, parent_mind) {
-    // Create mind shell manually (can't use constructor due to ID/registration requirements)
-    const mind = Object.create(Mind.prototype)
-
-    // Set properties from JSON
-    mind._id = data._id
-    mind.label = data.label
-    mind.self = null
-    mind._parent = parent_mind
-    mind._child_minds = new Set()
-    mind._states = new Set()
-    mind._states_by_ground_state = new Map()
-
-    // Register as child in parent
-    if (parent_mind) {
-      parent_mind._child_minds.add(mind)
+    // Dispatch based on _type (polymorphic deserialization)
+    if (data._type === 'Logos') {
+      return Cosmos.Logos.from_json(data)
+    }
+    if (data._type === 'Eidos') {
+      return Cosmos.Eidos.from_json(data, parent_mind)
     }
 
-    // Register in DB
-    DB.register_mind(mind)
+    // Create instance using Object.create (bypasses constructor)
+    const mind = Object.create(Mind.prototype)
+
+    // Set _type (class field initializers don't run with Object.create)
+    mind._type = 'Mind'
+
+    // Use shared initialization with deserialized ID
+    mind._init_properties(parent_mind, data.label, null, data._id)
 
     // Create belief shells
     for (const belief_data of data.belief) {
@@ -492,8 +519,8 @@ export class Mind {
       return mind.state.lock().in_mind
     }
 
-    // Detect explicit Mind template with _type field
-    if (data?._type === 'Mind') {
+    // Detect explicit Mind template with _type field (but not an actual Mind instance)
+    if (data?._type === 'Mind' && !(data._states instanceof Set)) {
       // Strip _type from template before passing to create_from_template
       const {_type, ...traits} = data
       const mind = Mind.create_from_template(creator_state, belief, traits, {
@@ -623,7 +650,7 @@ export class Mind {
           self: self_subject,
           about_state,
           // When ground_state is Timeless (vt=null), must provide explicit tt
-          ...(ground_state instanceof Timeless ? { tt: null } : {})
+          ...(ground_state.vt === null ? { tt: null } : {})
         }
       )
     } else {
@@ -636,7 +663,7 @@ export class Mind {
           self: self_subject,  // self (WHO is experiencing this)
           about_state,  // State context for belief resolution (where beliefs to learn about exist)
           // When ground_state is Timeless (vt=null), must provide explicit tt
-          ...(ground_state instanceof Timeless ? { tt: 0 } : {})
+          ...(ground_state.vt === null ? { tt: 0 } : {})
           // Otherwise tt and vt both derive from ground_state.vt (fork invariant)
         }
       )
