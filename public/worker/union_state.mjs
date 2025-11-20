@@ -224,16 +224,22 @@ export class UnionState extends State {
     // Resolve self
     const self = data.self ? DB.get_or_create_subject(mind.parent, data.self) : null
 
-    // Create UnionState instance
-    const union_state = new UnionState(
-      mind,
-      ground_state,
-      component_states,
-      {tt: data.tt, vt: data.vt, self}
-    )
+    // Resolve about_state
+    const about_state = data.about_state ? DB.get_state_by_id(data.about_state) : null
 
-    // Override _id to match deserialized value
-    union_state._id = data._id
+    // Create instance using Object.create (bypasses constructor)
+    const union_state = Object.create(UnionState.prototype)
+
+    // Set _type (class field initializers don't run with Object.create)
+    union_state._type = 'UnionState'
+
+    // Use inherited _init_properties from State with deserialized ID
+    const vt = data.vt ?? data.tt
+    union_state._init_properties(mind, ground_state, null, data.tt, vt, self, about_state, data._id)
+
+    // Set UnionState-specific properties
+    union_state.component_states = Object.freeze(component_states)
+    union_state.is_union = true
 
     // Resolve insert beliefs
     for (const belief_id of data.insert) {

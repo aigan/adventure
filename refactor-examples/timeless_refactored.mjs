@@ -1,6 +1,9 @@
 /**
  * Timeless - timeless state without temporal restrictions
  *
+ * REFACTORED VERSION - Uses clean extends State with shared initialization
+ * See docs/INHERITANCE_PATTERN.md for full pattern documentation
+ *
  * Special State subclass for states that exist outside normal temporal flow.
  * Used for primordial states (Logos, Eidos) that don't have tt/vt.
  *
@@ -68,10 +71,7 @@ export class Timeless extends State {  // ✅ Clean extends!
     // Create instance using Object.create (bypasses constructor)
     const timeless = Object.create(Timeless.prototype)
 
-    // Set _type (class field initializers don't run with Object.create)
-    timeless._type = 'Timeless'
-
-    // Use inherited _init_properties from State with deserialized ID
+    // Use inherited _init_properties from State
     timeless._init_properties(
       resolved_mind,
       ground_state,
@@ -79,9 +79,11 @@ export class Timeless extends State {  // ✅ Clean extends!
       null,        // tt is always null for timeless
       null,        // vt is always null for timeless
       self,
-      null,        // about_state
-      data._id     // Use deserialized ID
+      null         // about_state
     )
+
+    // Override _id to match deserialized value
+    timeless._id = data._id
 
     // Restore insert beliefs
     for (const belief_id of data.insert) {
@@ -116,7 +118,7 @@ export class Timeless extends State {  // ✅ Clean extends!
       vt: null,  // Always null for Timeless
       base: null,  // Always null for Timeless
       ground_state: this.ground_state?._id ?? null,  // Can be null for Logos
-      self: this.self?.toJSON() ?? null,
+      self: this.self?.sid ?? null,
       about_state: null,  // Timeless states don't have about_state
       insert: this._insert.map(b => b._id),
       remove: this._remove.map(b => b._id),

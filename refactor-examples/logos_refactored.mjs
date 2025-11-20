@@ -1,6 +1,9 @@
 /**
  * Logos - the primordial mind, ground of being
  *
+ * REFACTORED VERSION - Uses clean extends Mind with shared initialization
+ * See docs/INHERITANCE_PATTERN.md for full pattern documentation
+ *
  * Logos is the ONE mind with parent=null. All other minds descend from Logos.
  * It represents the ultimate ground of existence in the mind hierarchy.
  *
@@ -8,13 +11,13 @@
  * only state with ground_state=null.
  */
 
-import { Mind } from './mind.mjs'
+import { Mind } from './mind.mjs'  // ✅ Can import directly now!
 import { Timeless } from './timeless.mjs'
+import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
-import { Belief } from './belief.mjs'
-import { State } from './state.mjs'
 
 /**
+ * @typedef {import('./state.mjs').State} State
  * @typedef {import('./mind.mjs').MindJSON} MindJSON
  */
 
@@ -65,11 +68,11 @@ export class Logos extends Mind {  // ✅ Clean extends!
     // Create instance using Object.create (bypasses constructor)
     const logos_instance = Object.create(Logos.prototype)
 
-    // Set _type (class field initializers don't run with Object.create)
-    logos_instance._type = 'Logos'
+    // Use inherited _init_properties from Mind
+    logos_instance._init_properties(null, 'logos', null)
 
-    // Use inherited _init_properties from Mind with deserialized ID
-    logos_instance._init_properties(null, 'logos', null, data._id)
+    // Override _id to match deserialized value
+    logos_instance._id = data._id
 
     // Restore beliefs
     for (const belief_data of data.belief) {
@@ -94,7 +97,7 @@ export class Logos extends Mind {  // ✅ Clean extends!
     }
 
     // Finalize belief traits
-    for (const belief of DB.get_beliefs_by_mind(logos_instance)) {
+    for (const belief of logos_instance._get_all_beliefs()) {
       if (belief._deserialized_traits) {
         belief._finalize_traits_from_json()
       }
