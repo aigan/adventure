@@ -69,16 +69,16 @@ export class State {
   /** @type {string} - Type discriminator for polymorphism */
   _type = 'State'
 
-  /** @type {number} */ _id
-  /** @type {Mind} */ in_mind
-  /** @type {State|null} */ base
-  /** @type {number|null} */ tt
-  /** @type {number|null} */ vt
-  /** @type {Belief[]} */ _insert
-  /** @type {Belief[]} */ _remove
-  /** @type {State|null} */ ground_state  // Null only for Timeless (Logos bootstrap)
-  /** @type {Subject|null} */ self
-  /** @type {State|null} */ about_state
+  /** @type {number} */ _id = 0
+  /** @type {Mind} */ in_mind = /** @type {Mind} */ ({})
+  /** @type {State|null} */ base = null
+  /** @type {number|null} */ tt = null
+  /** @type {number|null} */ vt = null
+  /** @type {Belief[]} */ _insert = []
+  /** @type {Belief[]} */ _remove = []
+  /** @type {State|null} */ ground_state = null  // Null only for Timeless (Logos bootstrap)
+  /** @type {Subject|null} */ self = null
+  /** @type {State|null} */ about_state = null
   /** @type {boolean} */ locked = false
   /** @type {State[]} */ _branches = []
   /** @type {Map<Subject, Belief|null>|null} */ _subject_index = null
@@ -150,7 +150,7 @@ export class State {
     }
 
     // Use shared initialization
-    this._init_properties(mind, ground_state, base, tt, effective_vt, effective_self, about_state)
+    this._init_properties(mind, ground_state, base, tt, effective_vt, effective_self, about_state ?? null)
   }
 
   /**
@@ -164,7 +164,7 @@ export class State {
    * @param {number|null} vt
    * @param {Subject|null} self
    * @param {State|null} about_state
-   * @param {number} [id] - Optional ID (for deserialization), otherwise generates new ID
+   * @param {number|null} [id] - ID for deserialization (null = generate new)
    */
   _init_properties(in_mind, ground_state, base, tt, vt, self, about_state, id = null) {
     // Initialize ALL properties
@@ -492,7 +492,8 @@ export class State {
    */
   tick_with_traits(belief, vt, traits) {
     this.lock()
-    const new_state = this.branch_state(this.ground_state, vt)
+    // ground_state is only null for Timeless, which never calls tick_with_traits
+    const new_state = this.branch_state(/** @type {State} */ (this.ground_state), vt)
     const new_belief = Belief.from_template(new_state, {sid: belief.subject.sid, bases: [belief], traits})
     new_state.remove_beliefs(belief)
     new_state.lock()
@@ -581,7 +582,7 @@ export class State {
 
     const query_state = this.ground_state ?? this.about_state
     let about_belief = query_state?.get_belief_by_subject(source_belief.subject)
-    if (!about_belief) {
+    if (!about_belief && query_state) {
       about_belief = source_belief.subject.get_shared_belief_by_state(query_state)
     }
 

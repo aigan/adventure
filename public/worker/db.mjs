@@ -312,7 +312,7 @@ export function register_belief_by_subject(belief) {
 
 /**
  * Get or create the canonical Subject for a given SID
- * @param {Mind} ground_mind - Parent mind context (null for truly global subjects like archetypes)
+ * @param {Mind|null} ground_mind - Parent mind context (null for truly global subjects like archetypes)
  * @param {number|null} [sid] - Subject ID (auto-generated if not provided)
  * @returns {Subject}
  */

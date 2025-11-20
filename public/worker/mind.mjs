@@ -65,16 +65,71 @@ import { Traittype } from './traittype.mjs'
 export class Mind {
   /** @type {string} - Type discriminator for polymorphism */
   _type = 'Mind'
+  /** @type {number} - Unique identifier */
+  _id = 0
+  /** @type {Mind|null} - Parent mind */
+  _parent = null
+  /** @type {string|null} - Mind label */
+  label = null
+  /** @type {Belief|null} - What this mind considers "self" */
+  self = null
 
   /**
-   * @param {Mind|null} parent_mind - Parent mind (null only for Logos)
+   * Direct child minds (nested minds)
+   * Query: O(1) enumeration of children for hierarchy traversal
+   * Maintained by: Mind constructor (parent._child_minds.add)
+   * Scale: Essential - enables mind hierarchy navigation
+   * @type {Set<Mind>}
+   */
+  _child_minds = new Set()
+
+  /**
+   * All states belonging to this mind
+   * Query: O(n) enumeration for states_valid_at(), state iteration
+   * Maintained by: register_state() - called by State constructor
+   * Scale: Essential - without this, would need to scan global state_by_id registry
+   * @type {Set<State>}
+   */
+  _states = new Set()
+
+  /**
+   * Index: states by their ground_state reference
+   * Query: O(1) to get Set<State> of child mind states linked to parent mind state
+   * Maintained by: register_state() - populated when state has ground_state
+   * Scale: Essential - critical for cascading lock operations and nested mind queries
+   *   Example: When parent mind state changes, find all child mind states that reference it
+   *   Without this: O(all states in mind), with this: O(matching states)
+   * @type {Map<State, Set<State>>}
+   */
+  _states_by_ground_state = new Map()
+
+  /**
+   * Latest unlocked state, or null if all states are locked
+   * Updated by register_state() when unlocked state is registered
+   * Cleared by State.lock() when this state is locked
+   * @type {State|null}
+   */
+  state = null
+
+  /**
+   * Origin state - primordial state for this mind (used for prototypes)
+   * Set on first create_state() call or explicitly during initialization
+   * @type {State|null}
+   */
+  origin_state = null
+
+
+  /**
+   * @param {Mind|null} parent_mind - Parent mind (null only for Logos) // FIXME: add subtype for TemporalMind
    * @param {string|null} label - Mind identifier
    * @param {Belief|null} self - What this mind considers "self" (can be null, can change)
    */
   constructor(parent_mind, label = null, self = null) {
     // Allow null parent for Logos (primordial mind)
     if (parent_mind !== null) {
-      // Use _type property instead of instanceof
+
+      // FIXME: Use just one check
+      // Use _type property instead of instanceof.
       assert(
         parent_mind._type === 'Mind' ||
         parent_mind._type === 'Logos' ||
@@ -96,60 +151,24 @@ export class Mind {
    * @param {Mind|null} parent_mind
    * @param {string|null} label
    * @param {Belief|null} self
-   * @param {number} [id] - Optional ID (for deserialization), otherwise generates new ID
+   * @param {number|null} [id] - ID for deserialization (null = generate new)
    */
   _init_properties(parent_mind, label, self, id = null) {
-    // Initialize ALL properties
-    this._id = id ?? next_id()  // Use provided ID or generate new one
+    this._id = /** @type {number} */ (id ?? next_id())  // Use provided ID or generate new one
+
     /** @type {Mind|null} - Internal storage, use getter/setter to access */
     this._parent = parent_mind
+
     this.label = label
+
     /** @type {Belief|null} */
     this.self = self
 
-    /**
-     * Direct child minds (nested minds)
-     * Query: O(1) enumeration of children for hierarchy traversal
-     * Maintained by: Mind constructor (parent._child_minds.add)
-     * Scale: Essential - enables mind hierarchy navigation
-     * @type {Set<Mind>}
-     */
-    this._child_minds = new Set()
-
-    /**
-     * All states belonging to this mind
-     * Query: O(n) enumeration for states_valid_at(), state iteration
-     * Maintained by: register_state() - called by State constructor
-     * Scale: Essential - without this, would need to scan global state_by_id registry
-     * @type {Set<State>}
-     */
-    this._states = new Set()
-
-    /**
-     * Index: states by their ground_state reference
-     * Query: O(1) to get Set<State> of child mind states linked to parent mind state
-     * Maintained by: register_state() - populated when state has ground_state
-     * Scale: Essential - critical for cascading lock operations and nested mind queries
-     *   Example: When parent mind state changes, find all child mind states that reference it
-     *   Without this: O(all states in mind), with this: O(matching states)
-     * @type {Map<State, Set<State>>}
-     */
-    this._states_by_ground_state = new Map()
-
-    /**
-     * Latest unlocked state, or null if all states are locked
-     * Updated by register_state() when unlocked state is registered
-     * Cleared by State.lock() when this state is locked
-     * @type {State|null}
-     */
-    this.state = null
-
-    /**
-     * Origin state - primordial state for this mind (used for prototypes)
-     * Set on first create_state() call or explicitly during initialization
-     * @type {State|null}
-     */
-    this.origin_state = null
+    // Initialize collections (needed when Object.create bypasses field initializers)
+    if (!this._child_minds) this._child_minds = new Set()
+    if (!this._states) this._states = new Set()
+    if (!this._states_by_ground_state) this._states_by_ground_state = new Map()
+    if (!this._belief) this._belief = new Set()
 
     // Register as child in parent (skip for Logos)
     if (parent_mind !== null) {
@@ -161,9 +180,9 @@ export class Mind {
   }
 
   /**
-   * Get parent mind (never null - all Minds descend from Logos)
+   * Get parent mind (never null - all Minds descend from Logos) // FIXME
    * Note: Logos overrides this to return null
-   * @returns {Mind}
+   * @returns {Mind|null}
    */
   get parent() {
     return this._parent
@@ -171,7 +190,7 @@ export class Mind {
 
   /**
    * Set parent mind (used during deserialization)
-   * @param {Mind} value
+   * @param {Mind|null} value
    */
   set parent(value) {
     this._parent = value

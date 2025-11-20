@@ -188,7 +188,7 @@ export class UnionState extends State {
       vt: this.vt,
       base: null,  // UnionState doesn't use base, always null
       component_states: this.component_states.map(s => s._id),
-      ground_state: this.ground_state._id,  // ground_state is always required for UnionState
+      ground_state: /** @type {State} */ (this.ground_state)._id,  // ground_state is always required for UnionState
       self: this.self?.toJSON() ?? null,
       insert: this._insert.map(b => b._id),
       remove: this._remove.map(b => b._id),

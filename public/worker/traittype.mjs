@@ -378,10 +378,12 @@ export class Traittype {
           resolve_state = state.about_state
         } else if (value instanceof Subject) {
           // For Subjects, try ground_state first, fall back to current state
-          const ground_belief = state.ground_state?.get_belief_by_subject(value) ?? value.get_shared_belief_by_state(state.ground_state)
-          resolve_state = ground_belief ? state.ground_state : state
+          if (state.ground_state) {
+            const ground_belief = state.ground_state.get_belief_by_subject(value) ?? value.get_shared_belief_by_state(state.ground_state)
+            resolve_state = ground_belief ? state.ground_state : state
+          }
         } else {
-          resolve_state = state.ground_state
+          resolve_state = state.ground_state ?? state
         }
       }
       return value.to_inspect_view(resolve_state)

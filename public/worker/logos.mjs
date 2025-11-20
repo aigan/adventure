@@ -27,7 +27,7 @@ let _logos = null
 /**
  * Primordial mind - ground of being
  */
-export class Logos extends Mind {  // ✅ Clean extends!
+export class Logos extends Mind {
   /**
    * Override type discriminator
    * @type {string}
@@ -95,6 +95,7 @@ export class Logos extends Mind {  // ✅ Clean extends!
 
     // Finalize belief traits
     for (const belief of DB.get_beliefs_by_mind(logos_instance)) {
+      // @ts-expect-error - _deserialized_traits is set dynamically during from_json()
       if (belief._deserialized_traits) {
         belief._finalize_traits_from_json()
       }
@@ -127,7 +128,7 @@ export function logos() {
  */
 export function logos_state() {
   // origin_state is always initialized in Logos constructor
-  return logos().origin_state
+  return /** @type {State} */ (logos().origin_state)
 }
 
 /**
