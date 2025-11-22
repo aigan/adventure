@@ -3,6 +3,8 @@
  * Provides monotonically increasing IDs for Mind, State, and Belief objects
  */
 
+import { register_reset_hook } from './reset.mjs'
+
 let id_sequence = 0
 
 /**
@@ -37,3 +39,5 @@ export function set_id_sequence(value) {
 export function reset_id_sequence() {
   id_sequence = 0
 }
+
+register_reset_hook(reset_id_sequence)

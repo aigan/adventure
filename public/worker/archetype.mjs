@@ -22,6 +22,7 @@ import { assert } from './debug.mjs'
 import * as DB from './db.mjs'
 import { Traittype } from './traittype.mjs'
 import { Subject } from './subject.mjs'
+import { register_reset_hook } from './reset.mjs'
 
 /**
  * Archetype definition for beliefs
@@ -216,3 +217,5 @@ export class Archetype {
     return `Archetype ${this.label}`
   }
 }
+
+register_reset_hook(() => Archetype.reset_registry())

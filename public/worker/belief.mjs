@@ -594,9 +594,9 @@ export class Belief {
    */
   get_about(belief_state) {
     // Use get_trait to check own and inherited @about trait
-    const about_traittype = Traittype.get_by_label('@about')
-    assert(about_traittype, "Traittype '@about' not found in registry")
-    const about_trait = this.get_trait(belief_state, about_traittype)
+    const t_about = Traittype.get_by_label('@about')
+    assert(t_about, "Traittype '@about' not found in registry")
+    const about_trait = this.get_trait(belief_state, t_about)
 
     //log("belief about", this, about_trait);
     if (!(about_trait instanceof Subject)) return null
@@ -781,8 +781,8 @@ export class Belief {
   }
 
   toJSON() {
-    const about_traittype = Traittype.get_by_label('@about')
-    const about_trait = about_traittype ? this._traits.get(about_traittype) : null
+    const t_about = Traittype.get_by_label('@about')
+    const about_trait = t_about ? this._traits.get(t_about) : null
     return {
       _type: 'Belief',
       _id: this._id,

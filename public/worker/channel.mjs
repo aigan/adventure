@@ -79,9 +79,10 @@ export const dispatch = {
 			})
 		}
 
-		const state_info = /** @type {{id: number, tt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
+		const state_info = /** @type {{id: number, tt: number, vt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
 			id: state._id,
 			tt: state.tt,
+			vt: state.vt,
 			mind_id: state.in_mind._id,
 			mind_label: state.in_mind.label,
 			self_label: state.in_mind.self?.get_label(),
@@ -120,9 +121,10 @@ export const dispatch = {
 			})
 		}
 
-		const state_info = /** @type {{id: number, tt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
+		const state_info = /** @type {{id: number, tt: number, vt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
 			id: state_obj._id,
 			tt: state_obj.tt,
+			vt: state_obj.vt,
 			mind_id: state_obj.in_mind._id,
 			mind_label: state_obj.in_mind.label,
 			self_label: state_obj.in_mind.self?.get_label(),
@@ -178,6 +180,9 @@ export const dispatch = {
 			server_id,
 			client_id,
 			state_id: state._id,
+			state_tt: state.tt,
+			state_vt: state.vt,
+			ground_state_id: state.ground_state?._id ?? null,
 			data: {
 				data: belief_obj.to_inspect_view(state),
 				rev_traits,

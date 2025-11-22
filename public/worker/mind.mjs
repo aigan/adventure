@@ -458,14 +458,14 @@ export class Mind {
     // Check for Mind traits from ALL bases (for multi-parent composition)
     // belief._bases is set before traits are resolved, so get_trait works here
     // Filter to only Belief bases (skip Archetypes which don't have get_trait)
-    const mind_traittype = Traittype.get_by_label('mind')
-    assert(mind_traittype, "Traittype 'mind' not found in registry")
+    const t_mind = Traittype.get_by_label('mind')
+    assert(t_mind, "Traittype 'mind' not found in registry")
     const base_minds = []
     for (const base of belief._bases) {
       // Skip archetypes - they don't have mind traits
       if (!(base instanceof Belief)) continue
 
-      const mind = base.get_trait(creator_state, mind_traittype)
+      const mind = base.get_trait(creator_state, t_mind)
       if (mind) {
         base_minds.push(mind)
       }

@@ -6,7 +6,9 @@
  * See CLAUDE.md for instance-specific indexes (Mind, State classes).
  */
 
-import { reset_id_sequence, next_id } from './id_sequence.mjs'
+import { register_reset_hook, reset_registries } from './reset.mjs'
+export { reset_registries }
+import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import { Traittype } from './traittype.mjs'
 import { Subject } from './subject.mjs'
@@ -14,8 +16,7 @@ import { Belief } from './belief.mjs'
 import { log, assert } from './debug.mjs';
 import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
-import { logos, logos_state, eidos, _reset_singletons } from './cosmos.mjs'
-import { Serialize } from './serialize.mjs'
+import { logos, logos_state, eidos } from './cosmos.mjs'
 
 // ============================================================================
 // Mind Registries
@@ -363,9 +364,18 @@ export function get_subject_by_label(label) {
 }
 
 /**
- * Reset all registries (for testing)
+ * Get Subject by sid
+ * @param {number} sid
+ * @returns {Subject|null}
  */
-export function reset_all_registries() {
+export function get_subject_by_sid(sid) {
+  return subject_by_sid.get(sid) ?? null
+}
+
+/**
+ * Reset db.mjs internal registries
+ */
+function reset_db_registries() {
   mind_by_id.clear()
   mind_by_label.clear()
   state_by_id.clear()
@@ -375,14 +385,10 @@ export function reset_all_registries() {
   sid_by_label.clear()
   label_by_sid.clear()
   subject_by_sid.clear()
-
-  // Reset primordial singletons (Logos, Eidos)
-  _reset_singletons()
-
   for (const key in state_by_label) delete state_by_label[key]
-  Archetype.reset_registry()
-  Traittype.reset_registry()
 }
+
+register_reset_hook(reset_db_registries)
 
 // ============================================================================
 // Database Operations
@@ -425,15 +431,6 @@ export function get_mind_trait_names() {
     }
   }
   return mind_traits
-}
-
-/**
- * Reset all registries (for testing)
- */
-export function reset_registries() {
-  Serialize.reset_state()
-  reset_all_registries()
-  reset_id_sequence()
 }
 
 /**

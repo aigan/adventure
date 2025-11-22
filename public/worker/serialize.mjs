@@ -2,6 +2,7 @@ import { set_id_sequence } from './id_sequence.mjs'
 import { Mind } from './mind.mjs'
 import { logos } from './cosmos.mjs'
 import * as DB from './db.mjs'
+import { register_reset_hook } from './reset.mjs'
 
 /**
  * @typedef {import('./belief.mjs').Belief} Belief
@@ -204,3 +205,5 @@ function update_id_sequence_from_data(data) {
 
   set_id_sequence(find_max_id(data))
 }
+
+register_reset_hook(() => Serialize.reset_state())

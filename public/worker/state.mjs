@@ -597,8 +597,8 @@ export class State {
   recognize(source_belief) {
     // Find beliefs in this state where @about points to source_belief.subject
     // Uses reverse trait index for efficient lookup (only returns visible beliefs)
-    const about_traittype = Traittype.get_by_label('@about')
-    assert(about_traittype, "Traittype '@about' not found in registry")
+    const t_about = Traittype.get_by_label('@about')
+    assert(t_about, "Traittype '@about' not found in registry")
 
     const query_state = this.ground_state ?? this.about_state
     let about_belief = query_state?.get_belief_by_subject(source_belief.subject)
@@ -606,7 +606,7 @@ export class State {
       about_belief = source_belief.subject.get_shared_belief_by_state(query_state)
     }
 
-    const beliefs_about_subject = about_belief ? [...about_belief.rev_trait(this, about_traittype)] : []
+    const beliefs_about_subject = about_belief ? [...about_belief.rev_trait(this, t_about)] : []
 
     // TODO: Sort by confidence (for now just return first 3)
     // TODO: Limit to explicit knowledge beliefs (not observation events, etc.)

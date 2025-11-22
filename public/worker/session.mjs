@@ -10,7 +10,7 @@
  */
 
 import { log, assert } from "./debug.mjs"
-import { Traittype } from "./traittype.mjs"
+import { Traittype, T } from "./traittype.mjs"
 
 /**
  * Session class - manages the current game state
@@ -139,24 +139,22 @@ export class Session {
 
     const pl = this.player.subject
     const st = this.state
-    const location_traittype = Traittype.get_by_label('location')
-    assert(location_traittype, "Traittype 'location' not found in registry")
-    const loc = this.player.get_trait(st, location_traittype)
+    const loc = this.player.get_trait(st, T.location)
 
-    narrator.do_look(st, {
+    /*
+    narrator.do_look_in_location(st, {
       subject: loc,
       player: this.player,
     })
+    */
 
-    /*
     const obs = {
       subject: loc,
       known_as: narrator.desig(st, loc),
       actions: [
         {
           do: 'look',
-          target_blipp: loc.sid,
-          subject_blopp: pl.sid,
+          subject: loc.sid,
           label: `Look around`,
         },
       ],
@@ -164,7 +162,6 @@ export class Session {
     const lines = []
     lines.push(narrator.tt`You are in ${obs}.`)
     postMessage(['main_add', ...lines])
-    */
 
     return true
   }

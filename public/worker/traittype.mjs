@@ -31,6 +31,7 @@ import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
 import { deserialize_reference } from './serialize.mjs'
+import { register_reset_hook } from './reset.mjs'
 
 /**
  * @typedef {string|TraitTypeSchema} TraitTypeDefinition
@@ -412,3 +413,16 @@ export class Traittype {
     return parts.join(' ')
   }
 }
+
+/**
+ * Proxy for concise traittype access by label
+ * Usage: T.location instead of Traittype.get_by_label('location')
+ * @type {Record<string, Traittype>}
+ */
+export const T = new Proxy(/** @type {Record<string, Traittype>} */ ({}), {
+  get(_, prop) {
+    return Traittype.get_by_label(/** @type {string} */ (prop))
+  }
+})
+
+register_reset_hook(() => Traittype.reset_registry())

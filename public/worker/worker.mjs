@@ -1,5 +1,7 @@
 import { log, assert } from "../lib/debug.mjs";
 import { Session } from "./session.mjs"
+import { Subject } from "./subject.mjs"
+import { register_reset_hook } from "./reset.mjs"
 
 /*
 	All imports async here in top worker for catching errors
@@ -56,6 +58,23 @@ import { Session } from "./session.mjs"
  * @typedef {MainAddMessage | MainClearMessage | HeaderSetMessage | TopicUpdateMessage | AckMessage} WorkerMessage
  */
 
+/**
+ * Current active session for this worker's client connection
+ * Single-client for now; future multi-client would use session_id lookup
+ * @type {Session|null}
+ */
+let current_session = null
+
+/**
+ * Reset current session (for testing)
+ */
+export function reset_session() {
+  current_session = null
+}
+
+// Register with DB reset system
+register_reset_hook(reset_session)
+
 /** @type {{[key: string]: (...args: any[]) => any}} */
 const dispatch = {
   ping(){
@@ -86,8 +105,8 @@ addEventListener('message', async e =>{
 
   if( cmd === "start" ){
     log('Starting');
-    const session = new Session();
-    const res = await session.start()
+    current_session = new Session();
+    const res = await current_session.start()
     /** @type {AckMessage} */
     const ackMsg = ['ack', ackid, res];
     postMessage(ackMsg);
@@ -96,11 +115,16 @@ addEventListener('message', async e =>{
 
   if( !dispatch[cmd] ) throw(Error(`Message ${cmd} not recognized`));
 
-  //if( !data.from ) data.from = world.Adventure.player;
-  //if( data.from ) data.world = DB.World.get(data.from._world);
-  //if( data.target ) data.target = data.world.get_entity_current( data.target );
+  // Enrich data with session context if session is initialized
+  if (current_session?.state) {
+    const state = current_session.state
+    data.session = current_session
+    data.state = state
+    if (data.subject) data.subject = Subject.get_by_sid(data.subject)
+    if (data.target) data.target = Subject.get_by_sid(data.target)
+  }
 
-  // log('dispatch', cmd, data);
+  log('dispatch', cmd, data);
   const res = await dispatch[cmd](data);
   /** @type {AckMessage} */
   const ackMsg = ['ack', ackid, res];

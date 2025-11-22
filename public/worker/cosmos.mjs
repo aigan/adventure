@@ -4,6 +4,7 @@
  */
 
 import * as DB from './db.mjs'
+import { register_reset_hook } from './reset.mjs'
 
 export { Archetype } from './archetype.mjs'
 export { Traittype } from './traittype.mjs'
@@ -38,3 +39,5 @@ export function _reset_singletons() {
   _reset_logos()
   _reset_eidos()
 }
+
+register_reset_hook(_reset_singletons)

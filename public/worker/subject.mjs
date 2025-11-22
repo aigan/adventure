@@ -25,6 +25,15 @@ export class Subject {
   }
 
   /**
+   * Get Subject by sid from registry
+   * @param {number} sid
+   * @returns {Subject|null}
+   */
+  static get_by_sid(sid) {
+    return DB.get_subject_by_sid(sid)
+  }
+
+  /**
    * Get Belief for this Subject in state context
    * @param {State} state
    * @returns {Belief}

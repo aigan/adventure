@@ -189,6 +189,64 @@ Before adding an import, verify:
 4. **Do I only need JSDoc types?** → Use `@typedef` import (no runtime cost)
 5. **Am I constructing at module level?** → Move to factory function
 
+## Reset Hook Pattern
+
+When modules need to register cleanup functions with a central registry (like `db.mjs`) but importing from that registry would create a circular dependency, use the hook pattern:
+
+**The `reset.mjs` module:**
+```javascript
+// reset.mjs - standalone module with no dependencies
+const hooks = []
+
+export function register_reset_hook(fn) {
+  hooks.push(fn)
+}
+
+export function reset_all_hooks() {
+  for (const hook of hooks) hook()
+}
+```
+
+**Modules register their own reset functions:**
+```javascript
+// archetype.mjs
+import { register_reset_hook } from './reset.mjs'
+
+export class Archetype {
+  static reset_registry() { /* ... */ }
+}
+
+register_reset_hook(() => Archetype.reset_registry())
+```
+
+**reset.mjs owns the reset function:**
+```javascript
+// reset.mjs
+export function reset_registries() {
+  for (const hook of hooks) hook()
+}
+```
+
+**db.mjs re-exports for backward compatibility:**
+```javascript
+// db.mjs
+import { register_reset_hook, reset_registries } from './reset.mjs'
+export { reset_registries }
+
+// Register own cleanup
+function reset_db_registries() {
+  mind_by_id.clear()
+  // ...
+}
+register_reset_hook(reset_db_registries)
+```
+
+**Benefits:**
+- No circular dependencies - `reset.mjs` has no imports
+- Each module owns its cleanup logic
+- Tests use familiar `DB.reset_registries()` API
+- New modules just register their hook - no coordination needed
+
 ## Anti-Patterns
 
 ❌ **Import for instanceof:**

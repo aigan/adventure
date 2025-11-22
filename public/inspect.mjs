@@ -125,6 +125,9 @@ const dispatch = {
       header: `${mind_prefix}: ${dat.desig}`,
       entity: dat,
       state_id: dat.state_id,
+      state_tt: dat.state_tt,
+      state_vt: dat.state_vt,
+      ground_state_id: dat.ground_state_id,
       bases: dat.bases,
     });
   },
@@ -242,6 +245,17 @@ function render_entity(a, target){
   // Display label
   if (belief_data.label) {
     hout += `<dt>Label</dt><dd>${belief_data.label}</dd>`;
+  }
+
+  // Display state info with link
+  if (state_id) {
+    const time_info = a.state_vt !== a.state_tt && a.state_vt !== undefined
+      ? `tt: ${a.state_tt}, vt: ${a.state_vt}`
+      : `tt: ${a.state_tt}`;
+    const ground_link = a.ground_state_id
+      ? ` ← <a href="?state=${a.ground_state_id}">ground #${a.ground_state_id}</a>`
+      : '';
+    hout += `<dt>State</dt><dd><a href="?state=${state_id}">#${state_id}</a> (${time_info})${ground_link}</dd>`;
   }
 
   // Display prototypes (Archetypes and shared Beliefs with labels)

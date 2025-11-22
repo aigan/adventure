@@ -11,7 +11,7 @@
 
 import { log } from "./debug.mjs"
 import { Subject } from "./subject.mjs"
-import {Traittype} from "./traittype.mjs"
+import {Traittype, T} from "./traittype.mjs"
 
 /**
  * @typedef {import('./belief.mjs').Belief} Belief
@@ -37,21 +37,23 @@ export async function ensure_init() {
   _initialized = true
 
   const {handler_register} = await import("./worker.mjs")
-  handler_register('look', do_look)
+  handler_register('look', do_look_in_location)
 }
 
 /**
  * Handle look action
- * @param {State} state - State context
  * @param {any} context
  */
-export function do_look(state, context) {
+export function do_look_in_location(context) {
+  const session = context.session;
+  const state = session.state;
+  const player = session.player;
+
   const target = context.subject.get_belief_by_state(state)
-  const location_traittype = Traittype.get_by_label('location')
-  const content = target.rev_trait(state, location_traittype)
+  const content = target.rev_trait(state, T.location)
 
   // Get player's mind state
-  const player_state = state.get_active_state_by_host(context.player)
+  const player_state = state.get_active_state_by_host(player)
 
   log([state], 'looking at', target)
   for (const item of content) {

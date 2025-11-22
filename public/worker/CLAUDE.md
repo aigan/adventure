@@ -27,6 +27,7 @@ Core game logic in Web Worker thread.
 - `db.mjs` - Global indexes
 - `serialize.mjs` - JSON round-trips
 - `id_sequence.mjs` - ID generation
+- `reset.mjs` - Test reset hooks (see [CIRCULAR_DEPENDENCIES.md](../../docs/CIRCULAR_DEPENDENCIES.md))
 
 ### Worker/UI
 - `worker.mjs` - Message dispatch
