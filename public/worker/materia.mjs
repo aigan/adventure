@@ -91,13 +91,13 @@ export class Materia extends Mind {
   }
 
   /**
-   * Compose multiple Mind instances into a single Materia with UnionState
+   * Compose multiple Mind instances into a single Materia with Convergence
    * Called by Traittype.compose() when a belief has multiple bases with mind traits
    * @param {Traittype} _traittype - The mind traittype
    * @param {Belief} belief - The belief being composed for
    * @param {Mind[]} minds - Array of Mind instances to compose
    * @param {object} _options - Optional parameters (unused)
-   * @returns {Materia} New Materia instance with UnionState merging all component states
+   * @returns {Materia} New Materia instance with Convergence merging all component states
    */
   static compose(_traittype, belief, minds, _options = {}) {
     assert(Array.isArray(minds), 'compose() requires array of minds', {minds})
@@ -111,7 +111,7 @@ export class Materia extends Mind {
       return state
     })
 
-    // All component states must be locked (UnionState requirement)
+    // All component states must be locked (Convergence requirement)
     for (const state of component_states) {
       assert(state.locked, 'All component states must be locked', {state})
     }
@@ -123,14 +123,14 @@ export class Materia extends Mind {
     const parent_mind = ground_state.in_mind
     const self_subject = belief.subject
 
-    const { UnionState } = Cosmos
+    const { Convergence } = Cosmos
 
     // Create composed mind (self_subject is Subject, belief.subject is the actual instance)
     const composed_mind = new Materia(parent_mind, self_subject?.get_label() ?? null, null)
 
-    // UnionState will derive tt from ground_state.vt (fork invariant)
+    // Convergence will derive tt from ground_state.vt (fork invariant)
     // Mark as derivation: this is a computed view, not a mutation of the knowledge base
-    const union_state = new UnionState(
+    const convergence = new Convergence(
       composed_mind,
       ground_state,
       component_states,
@@ -138,8 +138,8 @@ export class Materia extends Mind {
     )
 
     // Set as origin state and track
-    composed_mind.origin_state = union_state
-    composed_mind.state = union_state
+    composed_mind.origin_state = convergence
+    composed_mind.state = convergence
 
     return composed_mind
   }
@@ -153,7 +153,7 @@ export class Materia extends Mind {
    * @param {object} options - Optional meta-parameters
    * @param {State|null} [options.about_state] - State context for belief resolution (where beliefs exist)
    * @param {State|null} [options.base_mind_state] - State from base mind to use as base for knowledge inheritance
-   * @param {State[]|null} [options.component_states] - States for multi-parent composition (creates UnionState)
+   * @param {State[]|null} [options.component_states] - States for multi-parent composition (creates Convergence)
    * @returns {Materia} The created mind (access unlocked state via mind.state)
    */
   static create_from_template(ground_state, ground_belief, traits, {about_state, base_mind_state, component_states} = {}) {
@@ -200,12 +200,12 @@ export class Materia extends Mind {
 
     // Create initial state with self reference - fork invariant: child.tt = parent_state.vt
     // When ground_state is Timeless (vt=null), must provide explicit tt
-    // If component_states provided (multi-parent), use UnionState, otherwise use State
+    // If component_states provided (multi-parent), use Convergence, otherwise use State
     let state
     if (component_states && component_states.length > 1) {
-      // Multi-parent composition - create UnionState
-      const { UnionState } = Cosmos
-      state = new UnionState(
+      // Multi-parent composition - create Convergence
+      const { Convergence } = Cosmos
+      state = new Convergence(
         entity_mind,
         ground_state,
         component_states,

@@ -31,7 +31,7 @@ export function deserialize_reference(value) {
       return belief
     }
 
-    if (value._type === 'State' || value._type === 'Temporal' || value._type === 'Timeless' || value._type === 'UnionState') {
+    if (value._type === 'State' || value._type === 'Temporal' || value._type === 'Timeless' || value._type === 'Convergence') {
       const state = DB.get_state_by_id(value._id)
       if (!state) {
         throw new Error(`Cannot resolve state reference ${value._id} in trait`)

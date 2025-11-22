@@ -181,7 +181,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
 
       // Each element should be a State
       for (const state of tavern_next) {
-        expect(state.constructor.name).to.match(/State|Temporal|UnionState/)
+        expect(state.constructor.name).to.match(/State|Temporal|Convergence/)
       }
     })
 
@@ -420,7 +420,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       expect(next_states).to.be.an('array')
       // All returned states should be State instances
       for (const state of next_states) {
-        expect(state.constructor.name).to.match(/State|Temporal|UnionState/)
+        expect(state.constructor.name).to.match(/State|Temporal|Convergence/)
       }
     })
 
@@ -589,7 +589,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       expect(next_states).to.be.an('array')
       // All returned states should be valid State instances
       for (const state of next_states) {
-        expect(state.constructor.name).to.match(/State|Temporal|UnionState/)
+        expect(state.constructor.name).to.match(/State|Temporal|Convergence/)
       }
     })
 

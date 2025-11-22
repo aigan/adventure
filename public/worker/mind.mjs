@@ -35,7 +35,7 @@ import { Traittype } from './traittype.mjs'
  * @typedef {import('./state.mjs').StateJSON} StateJSON
  * @typedef {import('./subject.mjs').Subject} Subject
  * @typedef {import('./archetype.mjs').Archetype} Archetype
- * @typedef {import('./union_state.mjs').UnionState} UnionState
+ * @typedef {import('./convergence.mjs').Convergence} Convergence
  */
 
 /**
@@ -410,13 +410,13 @@ export class Mind {
   }
 
   /**
-   * Compose multiple Mind instances into a single Materia with UnionState
+   * Compose multiple Mind instances into a single Materia with Convergence
    * Delegates to Materia.compose() for actual implementation
    * @param {Traittype} traittype - The mind traittype
    * @param {Belief} belief - The belief being composed for
    * @param {Mind[]} minds - Array of Mind instances to compose
    * @param {object} options - Optional parameters
-   * @returns {Mind} New Materia instance with UnionState merging all component states
+   * @returns {Mind} New Materia instance with Convergence merging all component states
    */
   static compose(traittype, belief, minds, options = {}) {
     const { Materia } = Cosmos
@@ -432,7 +432,7 @@ export class Mind {
    * @param {object} options - Optional meta-parameters
    * @param {State|null} [options.about_state] - State context for belief resolution (where beliefs exist)
    * @param {State|null} [options.base_mind_state] - State from base mind to use as base for knowledge inheritance
-   * @param {State[]|null} [options.component_states] - States for multi-parent composition (creates UnionState)
+   * @param {State[]|null} [options.component_states] - States for multi-parent composition (creates Convergence)
    * @returns {Mind} The created Materia (access unlocked state via mind.state)
    */
   static create_from_template(ground_state, ground_belief, traits, options = {}) {

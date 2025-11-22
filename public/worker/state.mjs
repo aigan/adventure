@@ -36,7 +36,7 @@ import { Traittype } from './traittype.mjs'
 
 /**
  * @typedef {object} StateJSON
- * @property {string} _type - "State", "Temporal", "Timeless", or "UnionState"
+ * @property {string} _type - "State", "Temporal", "Timeless", or "Convergence"
  * @property {number} _id - State identifier
  * @property {number|null} tt - State transaction time/tick (null for timeless states like logos)
  * @property {number|null} vt - State valid time (null for timeless states like logos)
@@ -47,7 +47,7 @@ import { Traittype } from './traittype.mjs'
  * @property {number[]} insert - Belief _ids present in this state (serialized from private _insert)
  * @property {number[]} remove - Belief _ids removed in this state (serialized from private _remove)
  * @property {number} in_mind - Mind _id this state belongs to
- * @property {number[]} [component_states] - Component state _ids (only for UnionState)
+ * @property {number[]} [component_states] - Component state _ids (only for Convergence)
  */
 
 /**
@@ -99,11 +99,11 @@ export class State {
    */
   constructor(mind, ground_state, base=null, {tt: tt_option, vt, self, about_state, derivation} = {}) {
     // Prevent direct instantiation - State is abstract
-    // Only allow construction through subclasses (Temporal, Timeless, UnionState)
+    // Only allow construction through subclasses (Temporal, Timeless, Convergence)
     if (new.target === State) {
       throw new Error(
         'Cannot instantiate State directly - use Temporal for temporal states, ' +
-        'Timeless for timeless states, or UnionState for compositions'
+        'Timeless for timeless states, or Convergence for compositions'
       )
     }
 
@@ -116,7 +116,7 @@ export class State {
         ground_state._type === 'State' ||
         ground_state._type === 'Temporal' ||
         ground_state._type === 'Timeless' ||
-        ground_state._type === 'UnionState',
+        ground_state._type === 'Convergence',
         'ground_state must be a State',
         { ground_type: ground_state?._type }
       )
@@ -314,7 +314,7 @@ export class State {
 
   /**
    * Get next state(s) to check in reverse trait lookup chain
-   * Returns array of states to continue traversal (polymorphic with UnionState)
+   * Returns array of states to continue traversal (polymorphic with Convergence)
    * @param {Subject} subject - Subject being queried in reverse lookup
    * @param {Traittype} traittype - Traittype being queried
    * @returns {State[]} Array of next states to check (single element or empty)
@@ -921,13 +921,13 @@ export class State {
   /**
    * Create State from JSON data (fully materialized)
    * @param {Mind} mind - Mind this state belongs to (or context for resolution)
-   * @param {StateJSON} data - JSON data with _type: 'State' or 'UnionState'
+   * @param {StateJSON} data - JSON data with _type: 'State' or 'Convergence'
    * @returns {State}
    */
   static from_json(mind, data) {
     // Dispatch based on _type (polymorphic deserialization)
-    if (data._type === 'UnionState') {
-      return Cosmos.UnionState.from_json(mind, data)
+    if (data._type === 'Convergence') {
+      return Cosmos.Convergence.from_json(mind, data)
     }
     if (data._type === 'Timeless') {
       return Cosmos.Timeless.from_json(mind, data)

@@ -18,7 +18,7 @@ import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
-import { Mind, Materia, State, UnionState, logos, eidos } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, State, Convergence, logos, eidos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 describe('UnionState + rev_trait() Integration', () => {
@@ -81,7 +81,7 @@ describe('UnionState + rev_trait() Integration', () => {
 
       // Create VillageBlacksmith with UnionState composing both minds
       const npc_mind = new Materia(world_mind, 'village_blacksmith')
-      const union_state = new UnionState(npc_mind, world_state, [villager_state, blacksmith_state])
+      const union_state = new Convergence(npc_mind, world_state, [villager_state, blacksmith_state])
       union_state.lock()
 
       // CRITICAL TEST: Does rev_trait traverse UnionState component_states?
@@ -132,7 +132,7 @@ describe('UnionState + rev_trait() Integration', () => {
 
       // Create UnionState combining all 3 components
       const npc_mind = new Materia(world_mind, 'npc')
-      const union_state = new UnionState(npc_mind, world_state, component_states)
+      const union_state = new Convergence(npc_mind, world_state, component_states)
       union_state.lock()
 
       // Query: Should find beliefs from ALL components
@@ -188,7 +188,7 @@ describe('UnionState + rev_trait() Integration', () => {
       blacksmith_state.lock()
 
       const village_blacksmith_mind = new Materia(world_mind, 'village_blacksmith')
-      const union_state1 = new UnionState(village_blacksmith_mind, world_state,
+      const union_state1 = new Convergence(village_blacksmith_mind, world_state,
         [villager_state, blacksmith_state])
       union_state1.lock()
 
@@ -205,7 +205,7 @@ describe('UnionState + rev_trait() Integration', () => {
       master_state.lock()
 
       const master_craftsman_mind = new Materia(world_mind, 'master_craftsman')
-      const union_state2 = new UnionState(master_craftsman_mind, world_state,
+      const union_state2 = new Convergence(master_craftsman_mind, world_state,
         [union_state1, master_state])
       union_state2.lock()
 
@@ -251,7 +251,7 @@ describe('UnionState + rev_trait() Integration', () => {
 
       // UnionState based on component
       const npc_mind = new Materia(world_mind, 'npc')
-      const union_state = new UnionState(npc_mind, world_state, [component_state])
+      const union_state = new Convergence(npc_mind, world_state, [component_state])
       union_state.lock()
 
       // Regular state branching from UnionState
@@ -329,7 +329,7 @@ describe('UnionState + rev_trait() Integration', () => {
 
       // UnionState composing both inventories
       const npc_mind = new Materia(world_mind, 'knight_warrior')
-      const union_state = new UnionState(npc_mind, world_state, [warrior_state, knight_state])
+      const union_state = new Convergence(npc_mind, world_state, [warrior_state, knight_state])
       union_state.lock()
 
       // Query: Should find beliefs from both components
@@ -378,7 +378,7 @@ describe('UnionState + rev_trait() Integration', () => {
 
       // Create large UnionState
       const npc_mind = new Materia(world_mind, 'npc')
-      const union_state = new UnionState(npc_mind, world_state, component_states)
+      const union_state = new Convergence(npc_mind, world_state, component_states)
       union_state.lock()
 
       // Query with performance timing

@@ -1,14 +1,14 @@
 /**
- * UnionState - Flyweight composition for multi-parent prototype minds
+ * Convergence - Flyweight composition for multi-parent prototype minds
  *
- * UnionState enables combining beliefs from multiple parent states without data duplication.
+ * Convergence enables combining beliefs from multiple parent states without data duplication.
  * Used for prototype composition like VillageBlacksmith = Villager + Blacksmith.
  *
  * Key differences from State:
  * - Has component_states array instead of single base
  * - Merges beliefs from all components (last wins for overlaps)
  * - Restricted operations: No remove() (only insert/replace)
- * - Supports nested UnionStates (recursively traverses components)
+ * - Supports nested Convergence states (recursively traverses components)
  *
  * See docs/plans/union-state.md for design details
  */
@@ -26,11 +26,15 @@ import { State } from './state.mjs'
  */
 
 /**
- * UnionState for multi-parent composition // TODO: rename to Convergence
+ * Convergence for multi-parent composition
  */
-export class UnionState extends State {
+export class Convergence extends State {
+  /** @type {string} - Type discriminator */
+  _type = 'Convergence'
+
   /** @type {ReadonlyArray<State>} */
   component_states
+
   /** @type {boolean} */
   is_union
 
@@ -67,11 +71,14 @@ export class UnionState extends State {
       }
     )
 
-    // Call State constructor with base=null (UnionState doesn't use base chain)
-    // UnionStates are derivations - computed views that don't mutate the knowledge base
+    // Call State constructor with base=null (Convergence doesn't use base chain)
+    // Convergence states are derivations - computed views that don't mutate the knowledge base
     super(mind, ground_state, null, {tt, vt, self, about_state, derivation: derivation ?? true})
 
-    // UnionState-specific properties
+    // Set type (overrides State's default)
+    this._type = 'Convergence'
+
+    // Convergence-specific properties
     this.component_states = Object.freeze([...component_states])
     this.is_union = true
   }
@@ -79,7 +86,7 @@ export class UnionState extends State {
   /**
    * Iterator that merges beliefs from all component states
    * - Iterates components left-to-right
-   * - Recursively traverses nested UnionStates
+   * - Recursively traverses nested Convergence states
    * - Uses seen set to avoid duplicates (last component wins)
    * - Then yields own insert operations
    * @yields {Belief}
@@ -91,9 +98,9 @@ export class UnionState extends State {
     for (const component of this.component_states) {
       // @ts-ignore - is_union marker for runtime type detection
       if (component.is_union) {
-        // Nested UnionState - recurse into its components
+        // Nested Convergence - recurse into its components
         // @ts-ignore - Runtime type narrowing
-        yield* this._get_beliefs_from_union(component, seen)
+        yield* this._get_beliefs_from_convergence(component, seen)
       } else {
         // Regular State - yield its direct beliefs only (no base chain)
         yield* this._get_beliefs_from_state(component, seen)
@@ -110,25 +117,25 @@ export class UnionState extends State {
   }
 
   /**
-   * Helper: Get beliefs from a nested UnionState
-   * @param {UnionState} union_state
+   * Helper: Get beliefs from a nested Convergence
+   * @param {Convergence} convergence
    * @param {Set<number>} seen - Set of subject IDs already yielded
    * @returns {Generator<Belief, void, unknown>}
    */
-  *_get_beliefs_from_union(union_state, seen) {
-    // Recurse through union's components
-    for (const component of union_state.component_states) {
+  *_get_beliefs_from_convergence(convergence, seen) {
+    // Recurse through convergence's components
+    for (const component of convergence.component_states) {
       // @ts-ignore - is_union property for runtime type detection
       if (component.is_union) {
-        // @ts-ignore - Runtime type narrowing to UnionState
-        yield* this._get_beliefs_from_union(component, seen)
+        // @ts-ignore - Runtime type narrowing to Convergence
+        yield* this._get_beliefs_from_convergence(component, seen)
       } else {
         yield* this._get_beliefs_from_state(component, seen)
       }
     }
 
-    // Then yield union's own insert operations
-    for (const belief of union_state._insert) {
+    // Then yield convergence's own insert operations
+    for (const belief of convergence._insert) {
       if (!seen.has(belief.subject.sid)) {
         seen.add(belief.subject.sid)
         yield belief
@@ -165,13 +172,13 @@ export class UnionState extends State {
   }
 
   /**
-   * Override remove to throw error (not supported in UnionState)
-   * @throws {Error} Always throws - remove operations not allowed in UnionState
+   * Override remove to throw error (not supported in Convergence)
+   * @throws {Error} Always throws - remove operations not allowed in Convergence
    */
   remove_beliefs() {
     throw new Error(
-      'UnionState does not support remove operations. ' +
-      'UnionState is a read-only composition of component states. ' +
+      'Convergence does not support remove operations. ' +
+      'Convergence is a read-only composition of component states. ' +
       'To remove beliefs, create a new State via branch_state() and use remove there.'
     )
   }
@@ -182,13 +189,13 @@ export class UnionState extends State {
    */
   toJSON() {
     return {
-      _type: 'UnionState',
+      _type: 'Convergence',
       _id: this._id,
       tt: this.tt,
       vt: this.vt,
-      base: null,  // UnionState doesn't use base, always null
+      base: null,  // Convergence doesn't use base, always null
       component_states: this.component_states.map(s => s._id),
-      ground_state: /** @type {State} */ (this.ground_state)._id,  // ground_state is always required for UnionState
+      ground_state: /** @type {State} */ (this.ground_state)._id,  // ground_state is always required for Convergence
       self: this.self?.toJSON() ?? null,
       insert: this._insert.map(b => b._id),
       remove: this._remove.map(b => b._id),
@@ -200,10 +207,10 @@ export class UnionState extends State {
    * Deserialize from JSON
    * @param {Mind} _mind - Mind context (unused, for signature compatibility with State)
    * @param {StateJSON} data
-   * @returns {UnionState}
+   * @returns {Convergence}
    */
   static from_json(_mind, data) {
-    assert(data._type === 'UnionState', 'data._type must be UnionState')
+    assert(data._type === 'Convergence', 'data._type must be Convergence')
     assert(Array.isArray(data.component_states), 'data.component_states must be an array')
 
     // Look up mind from data
@@ -228,46 +235,46 @@ export class UnionState extends State {
     const about_state = data.about_state ? DB.get_state_by_id(data.about_state) : null
 
     // Create instance using Object.create (bypasses constructor)
-    const union_state = Object.create(UnionState.prototype)
+    const convergence = Object.create(Convergence.prototype)
 
     // Set _type (class field initializers don't run with Object.create)
-    union_state._type = 'UnionState'
+    convergence._type = 'Convergence'
 
     // Use inherited _init_properties from State with deserialized ID
     const vt = data.vt ?? data.tt
-    union_state._init_properties(mind, ground_state, null, data.tt, vt, self, about_state, data._id)
+    convergence._init_properties(mind, ground_state, null, data.tt, vt, self, about_state, data._id)
 
-    // Set UnionState-specific properties
-    union_state.component_states = Object.freeze(component_states)
-    union_state.is_union = true
+    // Set Convergence-specific properties
+    convergence.component_states = Object.freeze(component_states)
+    convergence.is_union = true
 
     // Resolve insert beliefs
     for (const belief_id of data.insert) {
       const belief = DB.get_belief_by_id(belief_id)
       assert(belief, `Belief ${belief_id} not found`)
-      union_state._insert.push(belief)
+      convergence._insert.push(belief)
     }
 
     // Resolve remove beliefs
     for (const belief_id of data.remove) {
       const belief = DB.get_belief_by_id(belief_id)
       assert(belief, `Belief ${belief_id} not found`)
-      union_state._remove.push(belief)
+      convergence._remove.push(belief)
     }
 
-    return union_state
+    return convergence
   }
 
   /**
    * System designation - compact debug string
-   * Decorates parent State.sysdesig() with UnionState-specific info
+   * Decorates parent State.sysdesig() with Convergence-specific info
    * @returns {string}
    */
   sysdesig() {
     // Get base State sysdesig output
     const base = super.sysdesig()
 
-    // Replace "State#" with "UnionState#" and add component count
-    return base.replace(/State#(\d+)/, `UnionState#$1 (${this.component_states.length} components)`)
+    // Replace "State#" with "Convergence#" and add component count
+    return base.replace(/State#(\d+)/, `Convergence#$1 (${this.component_states.length} components)`)
   }
 }
