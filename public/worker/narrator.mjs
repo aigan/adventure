@@ -46,16 +46,17 @@ export async function ensure_init() {
  * @param {any} context
  */
 export function do_look(state, context) {
-
-  const subj = context.subject
-  const target = subj.get_belief_by_state(state)
+  const target = context.subject.get_belief_by_state(state)
   const location_traittype = Traittype.get_by_label('location')
   const content = target.rev_trait(state, location_traittype)
 
+  // Get player's mind state
+  const player_state = state.get_active_state_by_host(context.player)
 
-  log([state], 'looking', target)
+  log([state], 'looking at', target)
   for (const item of content) {
-    log([state], '*', item)
+    log([state], '  seeing', item)
+    player_state.learn_about(item)
   }
 }
 

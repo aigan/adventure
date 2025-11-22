@@ -453,6 +453,11 @@ export class State {
       }
     }
     this._insert.push(...beliefs)
+
+    // Notify listeners of state mutation (for inspect UI updates)
+    if (typeof self !== 'undefined' && self.dispatchEvent) {
+      self.dispatchEvent(new CustomEvent('state_mutated', { detail: { state_id: this._id } }))
+    }
   }
 
   /**
@@ -475,6 +480,11 @@ export class State {
     }
 
     this._remove.push(...beliefs)
+
+    // Notify listeners of state mutation (for inspect UI updates)
+    if (typeof self !== 'undefined' && self.dispatchEvent) {
+      self.dispatchEvent(new CustomEvent('state_mutated', { detail: { state_id: this._id } }))
+    }
   }
 
   /**
@@ -513,13 +523,15 @@ export class State {
 
     /** @type {State|null} s */ let s
     for (s = this; s; s = s.base) {
+      // Process _remove BEFORE _insert to handle same-state updates correctly
+      // (e.g., when a belief is both inserted and then removed/replaced in same state)
+      for (const belief of s._remove) {
+        removed.add(belief._id)
+      }
       for (const belief of s._insert) {
         if (!removed.has(belief._id)) {
           yield belief
         }
-      }
-      for (const belief of s._remove) {
-        removed.add(belief._id)
       }
     }
   }

@@ -16,6 +16,9 @@ import { Traittype } from "./traittype.mjs"
  * Session class - manages the current game state
  * Replaces the old Adventure object
  */
+/** @type {number} Debounce delay for state change notifications (ms) */
+const STATE_CHANGE_DEBOUNCE_MS = 500
+
 export class Session {
   /**
    * @param {Mind} [world_mind] - Optional world mind (for tests)
@@ -32,12 +35,54 @@ export class Session {
     this.player = undefined
     /** @type {BroadcastChannel|null} */
     this._channel = null
+    /** @type {Set<number>} Dirty state IDs pending notification */
+    this._dirty_states = new Set()
+    /** @type {number|null} Debounce timer ID */
+    this._debounce_timer = null
 
     if (world_mind) {
       this.world = world_mind
       this._state = initial_state
       this.player = player
     }
+
+    // Listen for state mutation events (only in worker context)
+    if (typeof self !== 'undefined' && self.addEventListener) {
+      self.addEventListener('state_mutated', /** @type {EventListener} */ (e) => {
+        this._on_state_mutated(/** @type {CustomEvent} */ (e).detail.state_id)
+      })
+    }
+  }
+
+  /**
+   * Handle state mutation event with debouncing
+   * @param {number} state_id - ID of the mutated state
+   */
+  _on_state_mutated(state_id) {
+    this._dirty_states.add(state_id)
+
+    // Reset debounce timer
+    if (this._debounce_timer !== null) {
+      clearTimeout(this._debounce_timer)
+    }
+
+    this._debounce_timer = setTimeout(() => {
+      this._broadcast_dirty_states()
+    }, STATE_CHANGE_DEBOUNCE_MS)
+  }
+
+  /**
+   * Broadcast dirty states to inspect UI and clear the set
+   */
+  _broadcast_dirty_states() {
+    if (this._channel && this._dirty_states.size > 0) {
+      this._channel.postMessage({
+        msg: 'states_changed',
+        state_ids: [...this._dirty_states]
+      })
+    }
+    this._dirty_states.clear()
+    this._debounce_timer = null
   }
 
   /**
@@ -54,14 +99,8 @@ export class Session {
    */
   set state(new_state) {
     this._state = new_state
-    // Auto-broadcast state change to inspector
-    if (this._channel) {
-      this._channel.postMessage({
-        msg: 'state_changed',
-        state_id: new_state._id,
-        tt: new_state.tt
-      })
-    }
+    // Notify via debounced mechanism
+    this._on_state_mutated(new_state._id)
   }
 
   /**
@@ -106,6 +145,7 @@ export class Session {
 
     narrator.do_look(st, {
       subject: loc,
+      player: this.player,
     })
 
     /*

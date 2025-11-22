@@ -123,6 +123,33 @@ const dispatch = {
       state_id: dat.state_id,  // Use state_id from server response
     });
   },
+  /**
+   * Handle notification that states have changed (debounced from worker)
+   * @param {any} dat
+   */
+  states_changed(dat){
+    const changed_ids = new Set(dat.state_ids)
+    // Check if the current view involves any of the changed states
+    if (query?.state_id && changed_ids.has(Number(query.state_id))) {
+      // Re-run the current query to refresh the view
+      log('State changed, refreshing view for state', query.state_id)
+      assert(channel, 'channel not initialized')
+      channel.postMessage({
+        ...query,
+        client_id,
+        server_id,
+      })
+    } else if (query?.state && changed_ids.has(Number(query.state))) {
+      // Handle query_state case
+      log('State changed, refreshing view for state', query.state)
+      assert(channel, 'channel not initialized')
+      channel.postMessage({
+        ...query,
+        client_id,
+        server_id,
+      })
+    }
+  },
 }
 
 if (typeof BroadcastChannel !== 'undefined' && channel) {

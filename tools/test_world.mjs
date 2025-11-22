@@ -17,10 +17,9 @@ console.log('Loading world.mjs...')
 const world_module = await import('../public/worker/world.mjs')
 
 console.log('\n✓ World module loaded successfully')
-console.log('✓ World state and player exported')
+console.log('✓ Calling init_world()...')
 
-const state = world_module.world_state
-const player = world_module.player_body
+const { world_state: state, player_body: player } = world_module.init_world()
 
 console.log('\nWorld state:', state ? '✓ Available' : '✗ Missing')
 console.log('Player:', player ? '✓ Available' : '✗ Missing')
@@ -129,6 +128,50 @@ for (const mind of all_minds) {
       console.log(`      beliefs: (none)`)
     }
   }
+}
+
+// ============================================================================
+// DIAGNOSTIC: do_look simulation
+// ============================================================================
+console.log('\n' + '='.repeat(80))
+console.log('DIAGNOSTIC: do_look simulation')
+console.log('='.repeat(80))
+
+import { Traittype } from '../public/worker/traittype.mjs'
+
+const player_state_before = state.get_active_state_by_host(player)
+console.log('\nPlayer state:', player_state_before._id, 'locked:', player_state_before.locked)
+
+const beliefs_before = [...player_state_before.get_beliefs()]
+console.log(`\n  Beliefs in player mind (${beliefs_before.length}):`)
+for (const b of beliefs_before) {
+  const about_tt = Traittype.get_by_label('@about')
+  const about = b.get_trait(player_state_before, about_tt)
+  console.log(`    #${b._id} ${b.get_label() || '(unlabeled)'} @about=${about?.sid}`)
+}
+
+// Simulate do_look
+const location_traittype = Traittype.get_by_label('location')
+const workshop = state.get_belief_by_label('workshop')
+const content = [...workshop.rev_trait(state, location_traittype)]
+console.log(`\nContent at workshop: ${content.map(b => `#${b._id} ${b.get_label()}`).join(', ')}`)
+
+const player_state = state.get_active_state_by_host(player)
+console.log(`\nPlayer state for do_look: ${player_state._id}, same as before: ${player_state === player_state_before}`)
+
+for (const item of content) {
+  console.log(`\n  Learning about: #${item._id} ${item.get_label()}`)
+  const existing = player_state.recognize(item)
+  console.log(`    recognize() found: ${existing.length} beliefs: ${existing.map(b => `#${b._id}`).join(', ')}`)
+  player_state.learn_about(item)
+}
+
+const beliefs_after = [...player_state.get_beliefs()]
+console.log(`\n  Beliefs in player mind AFTER do_look (${beliefs_after.length}):`)
+for (const b of beliefs_after) {
+  const about_tt = Traittype.get_by_label('@about')
+  const about = b.get_trait(player_state, about_tt)
+  console.log(`    #${b._id} ${b.get_label() || '(unlabeled)'} @about=${about?.sid}`)
 }
 
 // ============================================================================

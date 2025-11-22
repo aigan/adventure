@@ -10,7 +10,6 @@ export default [
       "docs/**",
       "lab/**",
       "tmp/**",
-      "refactor-examples/**",
       "public/vendor/**",
       "public/lab/**",
       "dist/**",
