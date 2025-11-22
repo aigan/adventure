@@ -8,8 +8,7 @@
   "browser": "public/client.mjs",
   "scripts": {
     "test": "NODE_ENV=test mocha test/**/*.test.mjs",
-    "typecheck": "tsc",
-    "postinstall": "gulp default"
+    "typecheck": "tsc"
   },
   "keywords": [
     "game-engine",
@@ -30,18 +29,17 @@
     "url": "https://github.com/aigan/adventure/issues"
   },
   "homepage": "https://github.com/aigan/adventure#readme",
+  "overrides": {
+    "mocha": {
+      "glob": "10.5.0"
+    }
+  },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^25.0.7",
-    "@rollup/plugin-node-resolve": "^15.2.3",
     "chai": "^6.2.0",
     "eslint": "^9.35.0",
     "eslint-plugin-jsdoc": "^61.0.1",
     "globals": "^16.4.0",
-    "gulp": "^5.0.0",
-    "gulp-exec": "^5.0.0",
-    "indefinite": "^2.3.2",
     "mocha": "^11.7.4",
-    "rollup": "^4.16.4",
     "typescript": "^5.9.3"
   }
 }
