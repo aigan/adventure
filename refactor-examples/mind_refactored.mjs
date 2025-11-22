@@ -19,7 +19,7 @@ import { Timeless } from './timeless.mjs'
  * @typedef {import('./state.mjs').StateJSON} StateJSON
  * @typedef {import('./subject.mjs').Subject} Subject
  * @typedef {import('./archetype.mjs').Archetype} Archetype
- * @typedef {import('./union_state.mjs').Convergence} Convergence
+ * @typedef {import('./convergence.mjs').Convergence} Convergence
  */
 
 /**

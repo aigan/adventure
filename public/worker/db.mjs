@@ -3,7 +3,7 @@
  *
  * All indexes below are designed for external DB scalability (billions of items).
  * See inline comments on each index for query patterns and scale justification.
- * See .CONTEXT.md for instance-specific indexes (Mind, State classes).
+ * See CLAUDE.md for instance-specific indexes (Mind, State classes).
  */
 
 import { reset_id_sequence, next_id } from './id_sequence.mjs'

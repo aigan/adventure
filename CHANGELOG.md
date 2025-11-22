@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-11-22
+
+### Belief Trait Caching Optimization
+- **New `_cached_all` flag**: Tracks when all inherited traits are fully cached
+  - Added to Belief constructor and `from_json()`
+  - `get_defined_traits()` returns early when cache is complete
+  - Subsequent iterations skip expensive base-walking entirely
+- **Parent cache reuse**: When iterating traits, uses parent belief's cache if `_cached_all` is true
+  - Avoids re-walking deep inheritance chains
+  - O(traits) instead of O(depth × traits) for cached parents
+- **Code cleanup**: Refactored `get_defined_traits()` to use early return/continue patterns
+
+### Belief Lock Safety
+- **New assertion in `belief.lock()`**: Verifies belief exists in `state._insert` before locking
+  - Catches bugs where `belief.lock()` called without proper state context
+  - Found and fixed 5 test bugs calling `lock()` incorrectly
+
+### `rev_trait()` Converted to Generator
+- **Lazy evaluation**: `rev_trait()` now yields beliefs instead of collecting into array
+  - Enables early termination when only first few results needed
+  - Uses `yielded` Set to track already-yielded beliefs (avoids duplicates)
+- **Updated callers**: All test files and `state.mjs` updated to spread generator results
+
+### Narrator Initialization Guard
+- **Fixed `ensure_init()`**: Added `_initialized` flag to prevent double-registration
+  - Keeps async/dynamic import pattern (needed to avoid loading browser code in tests)
+
+### Files Modified
+- `belief.mjs` - caching, lock assertion, rev_trait generator
+- `state.mjs` - spread rev_trait results
+- `narrator.mjs` - initialization guard
+- `session.mjs` - no change (await already present)
+- Test files - fixed lock() calls, spread rev_trait results
+
+### All Tests Passing: 455 tests
+
 ## 2025-11-20
 
 ### Materia Introduced - Mind Made Abstract
@@ -30,7 +66,7 @@ All notable changes to this project will be documented in this file.
 
 ### State Properties Made Private
 - Refactored `state.insert` and `state.remove` to private properties (`_insert`, `_remove`)
-- Updated 3 core modules: `state.mjs`, `union_state.mjs`, `timeless.mjs`
+- Updated 3 core modules: `state.mjs`, `convergence.mjs`, `timeless.mjs`
 - Fixed documentation example in `docs/notes/event-perception.md` to use public API
 - Updated internal implementation comment in `docs/IMPLEMENTATION.md`
 - Added automated style checker (`test/z_style.test.mjs`) to enforce STYLE.md rules

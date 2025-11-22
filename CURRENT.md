@@ -6,27 +6,6 @@
 
 ---
 
-## Recently Completed
-
-**Comprehensive Test Coverage** - 2025-11-16
-- 458 tests passing (up from 413), 99.5% pass rate
-- All critical bugs fixed (Convergence rev_trait, Subject resolution, test isolation)
-- 45 new tests added across trait inheritance and reverse trait lookup
-- Comprehensive documentation in `docs/trait-inheritance/`
-- See [CHANGELOG.md](CHANGELOG.md) for details
-- Archived: [docs/plans/archive/test-coverage-comprehensive-COMPLETE.md](docs/plans/archive/test-coverage-comprehensive-COMPLETE.md)
-
-**Client-Worker Message Protocol** - 2025-11-14
-- All message formats documented in `docs/IMPLEMENTATION.md`
-- 367 tests passing (12 new message protocol tests)
-- Message format consistency established
-- GUI terminology clarified (Locus/topic)
-- Archived plans in `docs/plans/archive/`
-
-See [CHANGELOG.md](CHANGELOG.md) for older completed work.
-
----
-
 ## Backlog
 
 - [ ] **Observation and Recognition System** - Implement trait-based observation and acquaintance-based recognition ([spec](docs/notes/observation_recognition_spec.md))

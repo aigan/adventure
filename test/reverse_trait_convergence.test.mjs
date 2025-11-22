@@ -76,12 +76,12 @@ describe('Convergence + rev_trait() Integration', () => {
 
       // Create VillageBlacksmith with Convergence composing both minds
       const npc_mind = new Materia(world_mind, 'village_blacksmith')
-      const union_state = new Convergence(npc_mind, world_state, [villager_state, blacksmith_state])
-      union_state.lock()
+      const conv_state = new Convergence(npc_mind, world_state, [villager_state, blacksmith_state])
+      conv_state.lock()
 
       // Verify rev_trait traverses Convergence component_states
       const about_tt = Traittype.get_by_label('@about')
-      const beliefs_about_village = [...village.rev_trait(union_state, about_tt)]
+      const beliefs_about_village = [...village.rev_trait(conv_state, about_tt)]
 
       // Expected: Should find BOTH villager_knowledge and blacksmith_knowledge
       expect(beliefs_about_village).to.have.lengthOf(2,
@@ -127,12 +127,12 @@ describe('Convergence + rev_trait() Integration', () => {
 
       // Create Convergence combining all 3 components
       const npc_mind = new Materia(world_mind, 'npc')
-      const union_state = new Convergence(npc_mind, world_state, component_states)
-      union_state.lock()
+      const conv_state = new Convergence(npc_mind, world_state, component_states)
+      conv_state.lock()
 
       // Query: Should find beliefs from ALL components
       const about_tt = Traittype.get_by_label('@about')
-      const beliefs_about_tavern = [...tavern.rev_trait(union_state, about_tt)]
+      const beliefs_about_tavern = [...tavern.rev_trait(conv_state, about_tt)]
 
       expect(beliefs_about_tavern).to.have.lengthOf(3,
         'Should find beliefs from all 3 Convergence components')
@@ -183,9 +183,9 @@ describe('Convergence + rev_trait() Integration', () => {
       blacksmith_state.lock()
 
       const village_blacksmith_mind = new Materia(world_mind, 'village_blacksmith')
-      const union_state1 = new Convergence(village_blacksmith_mind, world_state,
+      const conv_state1 = new Convergence(village_blacksmith_mind, world_state,
         [villager_state, blacksmith_state])
-      union_state1.lock()
+      conv_state1.lock()
 
       // Level 2: Add Master component and create nested Convergence
       const master_mind = new Materia(world_mind, 'master')
@@ -200,13 +200,13 @@ describe('Convergence + rev_trait() Integration', () => {
       master_state.lock()
 
       const master_craftsman_mind = new Materia(world_mind, 'master_craftsman')
-      const union_state2 = new Convergence(master_craftsman_mind, world_state,
-        [union_state1, master_state])
-      union_state2.lock()
+      const conv_state2 = new Convergence(master_craftsman_mind, world_state,
+        [conv_state1, master_state])
+      conv_state2.lock()
 
       // Query from nested Convergence
       const about_tt = Traittype.get_by_label('@about')
-      const beliefs_about_workshop = [...workshop.rev_trait(union_state2, about_tt)]
+      const beliefs_about_workshop = [...workshop.rev_trait(conv_state2, about_tt)]
 
       // Should find all 3 beliefs through nested Convergence traversal
       expect(beliefs_about_workshop).to.have.lengthOf(3,
@@ -219,7 +219,7 @@ describe('Convergence + rev_trait() Integration', () => {
     })
 
     it('Convergence in middle of chain history', () => {
-      // Setup: state3 (regular) → union_state → component (has reference)
+      // Setup: state3 (regular) → conv_state → component (has reference)
       // Tests: Does rev_trait traverse through Convergence in chain middle?
 
       const world_mind = new Materia(logos(), 'world')
@@ -246,11 +246,11 @@ describe('Convergence + rev_trait() Integration', () => {
 
       // Convergence based on component
       const npc_mind = new Materia(world_mind, 'npc')
-      const union_state = new Convergence(npc_mind, world_state, [component_state])
-      union_state.lock()
+      const conv_state = new Convergence(npc_mind, world_state, [component_state])
+      conv_state.lock()
 
       // Regular state branching from Convergence
-      const state3 = union_state.branch_state(world_state, 4)
+      const state3 = conv_state.branch_state(world_state, 4)
       state3.lock()
 
       // Query from state3 - should traverse back through Convergence
@@ -324,13 +324,13 @@ describe('Convergence + rev_trait() Integration', () => {
 
       // Convergence composing both inventories
       const npc_mind = new Materia(world_mind, 'knight_warrior')
-      const union_state = new Convergence(npc_mind, world_state, [warrior_state, knight_state])
-      union_state.lock()
+      const conv_state = new Convergence(npc_mind, world_state, [warrior_state, knight_state])
+      conv_state.lock()
 
       // Query: Should find beliefs from both components
       const inventory_tt = Traittype.get_by_label('inventory')
-      const who_has_sword = [...sword.rev_trait(union_state, inventory_tt)]
-      const who_has_shield = [...shield.rev_trait(union_state, inventory_tt)]
+      const who_has_sword = [...sword.rev_trait(conv_state, inventory_tt)]
+      const who_has_shield = [...shield.rev_trait(conv_state, inventory_tt)]
 
       expect(who_has_sword).to.have.lengthOf(1,
         'Should find warrior_self from Convergence component')
@@ -373,13 +373,13 @@ describe('Convergence + rev_trait() Integration', () => {
 
       // Create large Convergence
       const npc_mind = new Materia(world_mind, 'npc')
-      const union_state = new Convergence(npc_mind, world_state, component_states)
-      union_state.lock()
+      const conv_state = new Convergence(npc_mind, world_state, component_states)
+      conv_state.lock()
 
       // Query with performance timing
       const about_tt = Traittype.get_by_label('@about')
       const start = Date.now()
-      const beliefs = [...location.rev_trait(union_state, about_tt)]
+      const beliefs = [...location.rev_trait(conv_state, about_tt)]
       const duration = Date.now() - start
 
       expect(beliefs).to.have.lengthOf(20,

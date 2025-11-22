@@ -26,11 +26,15 @@ import { Subject } from "./subject.mjs"
  * @property {'subject'} is - Type discriminator
  */
 
+let _initialized = false
+
 /**
  * One-time initialization of narrator handlers
  */
 export async function ensure_init() {
-  // FIXME: just return if already init
+  if (_initialized) return
+  _initialized = true
+
   const {handler_register} = await import("./worker.mjs")
   handler_register('look', do_look)
 }

@@ -166,7 +166,7 @@ Return array
 
 - `public/worker/belief.mjs` - Inheritance and composition logic
 - `public/worker/traittype.mjs` - Type-specific trait resolution
-- `public/worker/union_state.mjs` - Multi-parent state composition, polymorphic `rev_base()`
+- `public/worker/convergence.mjs` - Multi-parent state composition, polymorphic `rev_base()`
 - `public/worker/archetype.mjs` - Archetype-based defaults
 
 ---

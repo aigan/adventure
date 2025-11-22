@@ -225,5 +225,5 @@ Run: `npx eslint .` or `npx eslint <file>`
 
 - [IMPLEMENTATION.md](IMPLEMENTATION.md) - System design and patterns
 - [CIRCULAR_DEPENDENCIES.md](CIRCULAR_DEPENDENCIES.md) - Module dependency patterns
-- [test/.CONTEXT.md](../test/.CONTEXT.md) - Testing conventions
+- [test/CLAUDE.md](../test/CLAUDE.md) - Testing conventions
 - ESLint config: `eslint.config.mjs`

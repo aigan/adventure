@@ -172,7 +172,7 @@ All current indexes are necessary and non-redundant - each serves distinct query
 - `public/worker/db.mjs` - Global registry indexes
 - `public/worker/mind.mjs` - Mind instance indexes
 - `public/worker/state.mjs` - State lazy caching
-- `public/worker/.CONTEXT.md` - Index architecture overview
+- `public/worker/CLAUDE.md` - Index architecture overview
 
 **Core Data Structures**:
 
@@ -452,8 +452,8 @@ This enables narrative-driven collapse instead of arbitrary selection.
 - [STYLE.md](STYLE.md) - Code quality guidelines
 - [ALPHA-1.md](ALPHA-1.md) - Alpha 1 development stages
 - [trait-inheritance/](trait-inheritance/) - Comprehensive trait inheritance documentation and tests
-- [public/worker/.CONTEXT.md](../public/worker/.CONTEXT.md) - Worker implementation details
-- [test/.CONTEXT.md](../test/.CONTEXT.md) - Test structure
+- [public/worker/CLAUDE.md](../public/worker/CLAUDE.md) - Worker implementation details
+- [test/CLAUDE.md](../test/CLAUDE.md) - Test structure
 
 **Specification**:
 - [SPECIFICATION.md](SPECIFICATION.md) - Language-agnostic data model specification

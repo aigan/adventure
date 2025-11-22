@@ -1,7 +1,7 @@
 /**
  * Test utilities for creating consistent test fixtures
  *
- * See .CONTEXT.md for test patterns and conventions
+ * See CLAUDE.md for test patterns and conventions
  * See docs/IMPLEMENTATION.md for implementation architecture
  */
 

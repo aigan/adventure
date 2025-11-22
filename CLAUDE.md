@@ -9,8 +9,8 @@ Guidance for Claude Code when working with this codebase.
 - **[docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)** - Current codebase architecture (how it's built)
 - **[docs/STYLE.md](docs/STYLE.md)** - Code quality checklist (use after implementation)
 - **[docs/ALPHA-1.md](docs/ALPHA-1.md)** - Alpha 1 detailed stages
-- **[public/worker/.CONTEXT.md](public/worker/.CONTEXT.md)** - Worker implementation (primary work area)
-- **[test/.CONTEXT.md](test/.CONTEXT.md)** - Test structure and utilities
+- **[public/worker/CLAUDE.md](public/worker/CLAUDE.md)** - Worker implementation (primary work area)
+- **[test/CLAUDE.md](test/CLAUDE.md)** - Test structure and utilities
 
 ## Project Summary
 
@@ -20,12 +20,12 @@ Systemic story game where narrative emerges from simulated agents and constraint
 
 **Current stage**: Pre-alpha (Alpha 1 Stage 1 complete)
 
-**Primary work area**: `public/worker/` - See [.CONTEXT.md](public/worker/.CONTEXT.md) for details
+**Primary work area**: `public/worker/` - See [CLAUDE.md](public/worker/CLAUDE.md) for details
 
 ## Development Commands
 
 ```bash
-npm test                 # Run tests + linting (see test/.CONTEXT.md)
+npm test                 # Run tests + linting (see test/CLAUDE.md)
 ```
 
 ## File Creation Rules
@@ -57,7 +57,7 @@ npm test                 # Run tests + linting (see test/.CONTEXT.md)
 
 **Testing**: Every feature needs tests using `test/helpers.mjs` utilities
 
-See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for detailed patterns and [public/worker/.CONTEXT.md](public/worker/.CONTEXT.md) for modules.
+See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for detailed patterns and [public/worker/CLAUDE.md](public/worker/CLAUDE.md) for modules.
 
 ## Code Style
 
@@ -76,8 +76,8 @@ Project under Git, but Claude Code has no direct access. Ask user about Git hist
 
 - [docs/SPECIFICATION.md](docs/SPECIFICATION.md) - Data model specification (what we're building)
 - [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) - Current architecture (how it's built)
-- [public/worker/.CONTEXT.md](public/worker/.CONTEXT.md) - Worker modules (Mind, Belief, State, etc.)
-- [test/.CONTEXT.md](test/.CONTEXT.md) - Test patterns
+- [public/worker/CLAUDE.md](public/worker/CLAUDE.md) - Worker modules (Mind, Belief, State, etc.)
+- [test/CLAUDE.md](test/CLAUDE.md) - Test patterns
 - [docs/STYLE.md](docs/STYLE.md) - Quality checklist
 - [README.md](README.md) - Project roadmap (all Alphas)
 - [docs/ALPHA-1.md](docs/ALPHA-1.md) - Alpha 1 detailed stages

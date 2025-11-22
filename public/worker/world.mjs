@@ -2,7 +2,7 @@
  * Game world setup: archetypes, traittypes, and initial state
  *
  * See docs/SPECIFICATION.md for data model design
- * See .CONTEXT.md for worker implementation details
+ * See CLAUDE.md for worker implementation details
  * See docs/ALPHA-1.md for development stages
  */
 
