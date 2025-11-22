@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { setupStandardArchetypes, createMindWithBeliefs, get_first_belief_by_label } from './helpers.mjs'
 import * as DB from '../public/worker/db.mjs'
-import { Mind, TemporalMind, State, Belief, Archetype, logos } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, State, Belief, Archetype, logos } from '../public/worker/cosmos.mjs'
 import { sysdesig } from '../public/worker/debug.mjs'
 
 
@@ -13,7 +13,7 @@ describe('sysdesig', () => {
 
   describe('sysdesig() helper function', () => {
     it('calls obj.sysdesig(state) if method exists', () => {
-      const mind = new TemporalMind(logos(), 'test')
+      const mind = new Materia(logos(), 'test')
       const result = sysdesig(null, mind)
       expect(result).to.be.a('string')
       expect(result).to.include('test')
@@ -38,8 +38,8 @@ describe('sysdesig', () => {
     })
 
     it('handles multiple arguments', () => {
-      const mind1 = new TemporalMind(logos(), 'alice')
-      const mind2 = new TemporalMind(logos(), 'bob')
+      const mind1 = new Materia(logos(), 'alice')
+      const mind2 = new Materia(logos(), 'bob')
 
       const result = sysdesig(null, mind1, mind2)
       expect(result).to.be.an('array')
@@ -51,8 +51,8 @@ describe('sysdesig', () => {
     })
 
     it('handles arrays by calling sysdesig on each element', () => {
-      const mind1 = new TemporalMind(logos(), 'alice')
-      const mind2 = new TemporalMind(logos(), 'bob')
+      const mind1 = new Materia(logos(), 'alice')
+      const mind2 = new Materia(logos(), 'bob')
       const arr = [mind1, mind2]
 
       const result = sysdesig(null, arr)
@@ -65,7 +65,7 @@ describe('sysdesig', () => {
     })
 
     it('handles arrays with mixed types', () => {
-      const mind = new TemporalMind(logos(), 'test')
+      const mind = new Materia(logos(), 'test')
       const arr = [mind, 42, 'hello', { foo: 'bar' }]
 
       const result = sysdesig(null, arr)
@@ -79,8 +79,8 @@ describe('sysdesig', () => {
     })
 
     it('handles nested arrays', () => {
-      const mind1 = new TemporalMind(logos(), 'alice')
-      const mind2 = new TemporalMind(logos(), 'bob')
+      const mind1 = new Materia(logos(), 'alice')
+      const mind2 = new Materia(logos(), 'bob')
       const arr = [[mind1], [mind2]]
 
       const result = sysdesig(null, arr)
@@ -94,8 +94,8 @@ describe('sysdesig', () => {
     })
 
     it('handles plain objects by calling sysdesig on each value', () => {
-      const mind1 = new TemporalMind(logos(), 'alice')
-      const mind2 = new TemporalMind(logos(), 'bob')
+      const mind1 = new Materia(logos(), 'alice')
+      const mind2 = new Materia(logos(), 'bob')
       const obj = { a: mind1, b: mind2 }
 
       const result = sysdesig(null, obj)
@@ -107,7 +107,7 @@ describe('sysdesig', () => {
     })
 
     it('handles plain objects with mixed value types', () => {
-      const mind = new TemporalMind(logos(), 'test')
+      const mind = new Materia(logos(), 'test')
       const obj = {
         mind: mind,
         number: 42,
@@ -125,8 +125,8 @@ describe('sysdesig', () => {
     })
 
     it('handles nested plain objects', () => {
-      const mind1 = new TemporalMind(logos(), 'alice')
-      const mind2 = new TemporalMind(logos(), 'bob')
+      const mind1 = new Materia(logos(), 'alice')
+      const mind2 = new Materia(logos(), 'bob')
       const obj = {
         level1: {
           level2: {
@@ -180,7 +180,7 @@ describe('sysdesig', () => {
 
   describe('Mind.sysdesig()', () => {
     it('includes label and ID', () => {
-      const mind = new TemporalMind(logos(), 'world')
+      const mind = new Materia(logos(), 'world')
       const result = mind.sysdesig()
 
       expect(result).to.include('world')
@@ -189,8 +189,8 @@ describe('sysdesig', () => {
     })
 
     it('shows parent info for child mind', () => {
-      const parent = new TemporalMind(logos(), 'world')
-      const child = new TemporalMind(parent, 'npc')
+      const parent = new Materia(logos(), 'world')
+      const child = new Materia(parent, 'npc')
       const result = child.sysdesig()
 
       expect(result).to.include('npc')
@@ -198,7 +198,7 @@ describe('sysdesig', () => {
     })
 
     it('works without label', () => {
-      const mind = new TemporalMind(logos())
+      const mind = new Materia(logos())
       const result = mind.sysdesig()
 
       expect(result).to.include('Mind#')
@@ -208,7 +208,7 @@ describe('sysdesig', () => {
 
   describe('State.sysdesig()', () => {
     it('includes mind label, ID, and tt', () => {
-      const mind = new TemporalMind(logos(), 'test')
+      const mind = new Materia(logos(), 'test')
       const state = mind.create_state(logos().origin_state, {tt: 42})
       const result = state.sysdesig()
 
@@ -218,7 +218,7 @@ describe('sysdesig', () => {
     })
 
     it('shows vt when different from tt', () => {
-      const mind = new TemporalMind(logos(), 'test')
+      const mind = new Materia(logos(), 'test')
       const state1 = mind.create_state(logos().origin_state, {tt: 100})
       state1.lock()
 
@@ -232,7 +232,7 @@ describe('sysdesig', () => {
     })
 
     it('does not show lock symbol for unlocked states', () => {
-      const mind = new TemporalMind(logos(), 'test')
+      const mind = new Materia(logos(), 'test')
       const state = mind.create_state(logos().origin_state, {tt: 1})
       const result = state.sysdesig()
 
@@ -241,7 +241,7 @@ describe('sysdesig', () => {
     })
 
     it('shows 🔒 for locked states', () => {
-      const mind = new TemporalMind(logos(), 'test')
+      const mind = new Materia(logos(), 'test')
       const state = mind.create_state(logos().origin_state, {tt: 1})
       state.lock()
       const result = state.sysdesig()
@@ -269,7 +269,7 @@ describe('sysdesig', () => {
     })
 
     it('works without label', () => {
-      const mind = new TemporalMind(logos(), 'test')
+      const mind = new Materia(logos(), 'test')
       const state = mind.create_state(logos().origin_state, {tt: 1})
       const belief = Belief.from_template(state, {
         bases: ['Location']
@@ -286,7 +286,7 @@ describe('sysdesig', () => {
       })
       const workshop = get_first_belief_by_label('workshop')
 
-      const npc_mind = new TemporalMind(world_state.in_mind, 'npc')
+      const npc_mind = new Materia(world_state.in_mind, 'npc')
       const npc_state = npc_mind.create_state(world_state)
       const knowledge = npc_state.learn_about(workshop, {traits: []})
 
@@ -321,7 +321,7 @@ describe('sysdesig', () => {
     })
 
     it('shows @logos for subjects scoped to logos', () => {
-      const mind = new TemporalMind(logos(), 'test')
+      const mind = new Materia(logos(), 'test')
       const state = mind.create_state(logos().origin_state, {tt: 1})
       const belief = Belief.from_template(state, {
         bases: ['Location']
@@ -334,7 +334,7 @@ describe('sysdesig', () => {
     })
 
     it('works without label', () => {
-      const mind = new TemporalMind(logos(), 'test')
+      const mind = new Materia(logos(), 'test')
       const state = mind.create_state(logos().origin_state, {tt: 1})
       const belief = Belief.from_template(state, {
         bases: ['Location']

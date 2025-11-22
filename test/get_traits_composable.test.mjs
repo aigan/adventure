@@ -13,7 +13,7 @@
  */
 
 import { expect } from 'chai';
-import { Mind, TemporalMind, Traittype } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, Traittype } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createStateInNewMind, stdTypes, Thing } from './helpers.mjs';
 

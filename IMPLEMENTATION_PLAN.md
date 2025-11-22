@@ -255,7 +255,7 @@ _type = 'Mind'
 @property {string} _type - Always "Mind"
 
 // TO:
-@property {string} _type - "Mind", "Logos", "Eidos", or "TemporalMind"
+@property {string} _type - "Mind", "Logos", "Eidos", or "Materia"
 ```
 
 #### 3. Update constructor to allow null parent (line 70-72)
@@ -271,7 +271,7 @@ if (parent_mind !== null) {
     parent_mind._type === 'Mind' ||
     parent_mind._type === 'Logos' ||
     parent_mind._type === 'Eidos' ||
-    parent_mind._type === 'TemporalMind',
+    parent_mind._type === 'Materia',
     'parent_mind must be a Mind',
     { label, parent_type: parent_mind?._type }
   )
@@ -614,8 +614,8 @@ Review patches, fix issues, reapply incrementally.
 After this refactor is complete and tested, you can add:
 
 1. **TemporalState** class - strict subclass that requires non-null ground_state
-2. **TemporalMind** class - strict subclass that requires non-null parent
-3. Gradually migrate normal usage to TemporalState/TemporalMind for stronger type checking
-4. Update method signatures to use TemporalState/TemporalMind where appropriate
+2. **Materia** class - strict subclass that requires non-null parent
+3. Gradually migrate normal usage to TemporalState/Materia for stronger type checking
+4. Update method signatures to use TemporalState/Materia where appropriate
 
 This can be done incrementally without breaking existing code, since they'll just be stricter versions of State/Mind.

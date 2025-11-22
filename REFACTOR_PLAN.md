@@ -19,7 +19,7 @@ You have two interconnected problems:
 ### 3. Desired Architecture
 ```
 Mind (abstract base)              State (abstract base)
-  ├─ TemporalMind (normal)          ├─ TemporalState (normal)
+  ├─ Materia (normal)          ├─ TemporalState (normal)
   ├─ Logos (primordial)             ├─ Timeless (primordial/eidos)
   └─ Eidos (realm of forms)         └─ UnionState (composition)
 ```
@@ -541,7 +541,7 @@ After this refactor, apply the fixes from CIRCULAR_DEPS_SOLUTION.md:
 ### Phase 3: Fix Remaining Circular Deps (30 minutes)
 Apply fixes from CIRCULAR_DEPS_SOLUTION.md Tier 1-3.
 
-### Phase 4: Optional - Introduce TemporalMind/TemporalState (15 minutes)
+### Phase 4: Optional - Introduce Materia/TemporalState (15 minutes)
 ```javascript
 // temporal-mind.mjs
 import { Mind } from './mind.mjs'
@@ -550,7 +550,7 @@ import { Mind } from './mind.mjs'
  * Normal temporal mind (most minds are this type)
  * Convenience class - identical to Mind but makes intention clear
  */
-export class TemporalMind extends Mind {
+export class Materia extends Mind {
   // No overrides needed - just use base constructor
 }
 
@@ -566,7 +566,7 @@ export class TemporalState extends State {
 }
 ```
 
-Then update code to use `new TemporalMind()` and `new TemporalState()` instead of `new Mind()` and `new State()`.
+Then update code to use `new Materia()` and `new TemporalState()` instead of `new Mind()` and `new State()`.
 
 **OR** just keep using Mind/State directly - they work fine as concrete classes.
 

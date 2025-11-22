@@ -25,7 +25,7 @@ import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
-import { Mind, TemporalMind, logos, eidos } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, logos, eidos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 describe('Reverse Trait Lookup (rev_trait)', () => {
@@ -1495,7 +1495,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         setupStandardArchetypes()
 
         // Create two minds with shared parent state
-        const parent_mind = new TemporalMind(logos(), 'parent')
+        const parent_mind = new Materia(logos(), 'parent')
         const parent_state = parent_mind.create_state(logos().origin_state, {tt: 1})
 
         const shared_room = Belief.from_template(parent_state, {
@@ -1505,7 +1505,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         parent_state.lock()
 
         // Child mind A
-        const mind_a = new TemporalMind(parent_mind, 'child_a')
+        const mind_a = new Materia(parent_mind, 'child_a')
         const state_a = mind_a.create_state(parent_state)
         const npc_a = Belief.from_template(state_a, {
           bases: ['Actor'],
@@ -1517,7 +1517,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state_a.lock()
 
         // Child mind B
-        const mind_b = new TemporalMind(parent_mind, 'child_b')
+        const mind_b = new Materia(parent_mind, 'child_b')
         const state_b = mind_b.create_state(parent_state)
         const npc_b = Belief.from_template(state_b, {
           bases: ['Actor'],

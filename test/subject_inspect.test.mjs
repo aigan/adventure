@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import { setupStandardArchetypes, createMindWithBeliefs, createStateInNewMind, get_first_belief_by_label } from './helpers.mjs'
-import { Mind, TemporalMind, Traittype, logos } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, Traittype, logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 
@@ -39,7 +39,7 @@ describe('Subject.to_inspect_view()', () => {
     const workshop = get_first_belief_by_label('workshop')
 
     // NPC learns about workshop
-    const npc_mind = new TemporalMind(world_state.in_mind, 'npc')
+    const npc_mind = new Materia(world_state.in_mind, 'npc')
     const npc_state = npc_mind.create_state(world_state)
     const workshop_knowledge = npc_state.learn_about(workshop, {traits: []})
 
@@ -120,7 +120,7 @@ describe('Subject.to_inspect_view()', () => {
     const world_hammer = get_first_belief_by_label('hammer')
 
     // NPC learns about the hammer
-    const npc_mind = new TemporalMind(world_state.in_mind, 'npc')
+    const npc_mind = new Materia(world_state.in_mind, 'npc')
     const npc_state = npc_mind.create_state(world_state)
     const hammer_knowledge = npc_state.learn_about(world_hammer, {traits: []})
 
@@ -185,7 +185,7 @@ describe('Subject.to_inspect_view()', () => {
     })
     const workshop = get_first_belief_by_label('workshop')
 
-    const npc_mind = new TemporalMind(world_state.in_mind, 'npc')
+    const npc_mind = new Materia(world_state.in_mind, 'npc')
     const npc_state = npc_mind.create_state(world_state)
     const workshop_knowledge = npc_state.learn_about(workshop, {traits: []})
 

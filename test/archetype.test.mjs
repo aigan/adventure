@@ -9,7 +9,7 @@
  */
 
 import { expect } from 'chai';
-import { Mind, TemporalMind, State, Belief, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs';
 

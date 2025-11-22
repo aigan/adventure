@@ -13,7 +13,7 @@
  */
 
 import { expect } from 'chai';
-import { Mind, TemporalMind, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
 
@@ -79,7 +79,7 @@ describe('Integration', () => {
       DB.register(traittypes, archetypes, prototypes);
 
       // Create world state with workshop
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       state.add_beliefs_from_template({
@@ -190,7 +190,7 @@ describe('Integration', () => {
       DB.register(traittypes, archetypes, {});
 
       // Create world with workshop
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       state.add_beliefs_from_template({
@@ -274,7 +274,7 @@ describe('Integration', () => {
       DB.register(traittypes, archetypes, {});
 
       // Create world with workshop
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       world_state.add_beliefs_from_template({
@@ -355,7 +355,7 @@ describe('Integration', () => {
       DB.register(traittypes, archetypes, {});
 
       // Create world with hammer
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       world_state.add_beliefs_from_template({
@@ -467,7 +467,7 @@ describe('Integration', () => {
       DB.register(traittypes, archetypes, {});
 
       // Create world
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       world_state.add_beliefs_from_template({
@@ -556,7 +556,7 @@ describe('Integration', () => {
 
       // Verify player
       let player = get_first_belief_by_label('player');
-      const player_mind = new TemporalMind(world_state.in_mind, 'player_mind');
+      const player_mind = new Materia(world_state.in_mind, 'player_mind');
       const player_mind_state = player_mind.create_state(world_state);
       player = Belief.from_template(world_state, {
         bases: [player],
@@ -607,7 +607,7 @@ describe('Integration', () => {
       }, {});
 
       // Create world with entities
-      const world = TemporalMind.create_world();
+      const world = Materia.create_world();
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
       world_state.add_beliefs_from_template({
         village: {
@@ -721,7 +721,7 @@ describe('Integration', () => {
       }, {});
 
       // Create world with entities
-      const world = TemporalMind.create_world();
+      const world = Materia.create_world();
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
       world_state.add_beliefs_from_template({
         village: {
@@ -837,7 +837,7 @@ describe('Integration', () => {
       }, {});
 
       // Create world with entities
-      const world = TemporalMind.create_world();
+      const world = Materia.create_world();
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
       world_state.add_beliefs_from_template({
         workshop: {
@@ -923,7 +923,7 @@ describe('Integration', () => {
       }, {});
 
       // Create world with entities
-      const world = TemporalMind.create_world();
+      const world = Materia.create_world();
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
       world_state.add_beliefs_from_template({
         workshop: {bases: ['Location']},
@@ -1049,7 +1049,7 @@ describe('Integration', () => {
       }, {});
 
       // Create world with entities
-      const world = TemporalMind.create_world();
+      const world = Materia.create_world();
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
       world_state.add_beliefs_from_template({
         village: {bases: ['Location']},
@@ -1170,7 +1170,7 @@ describe('Integration', () => {
       }, {});
 
       // Create world with entities
-      const world = TemporalMind.create_world();
+      const world = Materia.create_world();
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
       world_state.add_beliefs_from_template({
         village: {bases: ['Location']},

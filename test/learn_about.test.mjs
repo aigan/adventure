@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, TemporalMind, State, Belief, Subject, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupStandardArchetypes, setupMinimalArchetypes, get_first_belief_by_label, stdTypes, Thing } from './helpers.mjs';
 
@@ -18,7 +18,7 @@ describe('learn_about', () => {
         }
       });
 
-      const player_mind = new TemporalMind(world_state.in_mind, 'player');
+      const player_mind = new Materia(world_state.in_mind, 'player');
       const player_mind_state = player_mind.create_state(world_state);
       const workshop = get_first_belief_by_label('workshop');
       const workshop_knowledge = player_mind_state.learn_about(workshop, {traits: []});
@@ -39,7 +39,7 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new TemporalMind(world_state.in_mind, 'npc');
+      const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_state);
       const hammer = get_first_belief_by_label('hammer');
       const hammer_belief = npc_mind_state.learn_about(hammer, {traits: ['color']});
@@ -59,7 +59,7 @@ describe('learn_about', () => {
     });
 
     it('learn_about on versioned belief walks chain to find archetypes', () => {
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const world_mind_state = world_mind.create_state(logos().origin_state, {tt: 1});
       const hammer_v1_belief = world_mind_state.add_belief_from_template({bases: ['PortableObject'], traits: {}, label: 'hammer_v1'});
 
@@ -70,7 +70,7 @@ describe('learn_about', () => {
       });
       world_mind_state.replace_beliefs(hammer_v2);
 
-      const npc_mind = new TemporalMind(world_mind, 'npc');
+      const npc_mind = new Materia(world_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_mind_state);
       const hammer_knowledge = npc_mind_state.learn_about(hammer_v2, {traits: []});
 
@@ -94,7 +94,7 @@ describe('learn_about', () => {
         }
       });
 
-      const player_mind = new TemporalMind(world_state.in_mind, 'player');
+      const player_mind = new Materia(world_state.in_mind, 'player');
       const player_mind_state = player_mind.create_state(world_state);
       const workshop_knowledge = player_mind_state.learn_about(
         get_first_belief_by_label('workshop'),
@@ -113,13 +113,13 @@ describe('learn_about', () => {
     });
 
     it('learn_about directly from base belief works', () => {
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const world_mind_state = world_mind.create_state(logos().origin_state, {tt: 1});
       const base_hammer_belief = world_mind_state.add_belief_from_template({bases: ['PortableObject'], traits: {}, label: 'base_hammer'});
 
       const base_hammer = get_first_belief_by_label('base_hammer');
 
-      const npc_mind = new TemporalMind(world_mind, 'npc');
+      const npc_mind = new Materia(world_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_mind_state);
       const learned = npc_mind_state.learn_about(base_hammer, {traits: []});
 
@@ -138,7 +138,7 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new TemporalMind(world_state.in_mind, 'npc');
+      const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_state);
       const hammer_knowledge = npc_mind_state.learn_about(
         get_first_belief_by_label('hammer'),
@@ -169,7 +169,7 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new TemporalMind(world_state.in_mind, 'npc');
+      const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_state);
 
       // NPC already knows about the workshop
@@ -198,7 +198,7 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new TemporalMind(world_state.in_mind, 'npc');
+      const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_state);
 
       // NPC has two different beliefs about the workshop (uncertainty case)
@@ -229,7 +229,7 @@ describe('learn_about', () => {
     });
 
     it('learn_about should walk belief chain to find archetypes', () => {
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const world_mind_state = world_mind.create_state(logos().origin_state, {tt: 1});
       world_mind_state.add_belief_from_template({bases: ['PortableObject'], traits: {}, label: 'hammer_v1'});
 
@@ -240,7 +240,7 @@ describe('learn_about', () => {
       });
       world_mind_state.replace_beliefs(hammer_v2);
 
-      const npc_mind = new TemporalMind(world_mind, 'npc');
+      const npc_mind = new Materia(world_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_mind_state);
       const hammer_knowledge = npc_mind_state.learn_about(hammer_v2, {traits: []});
 
@@ -258,7 +258,7 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new TemporalMind(world_state.in_mind, 'npc');
+      const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_state);
       const hammer_knowledge = npc_mind_state.learn_about(
         get_first_belief_by_label('hammer'),
@@ -308,7 +308,7 @@ describe('learn_about', () => {
 
       DB.register(traittypes, archetypes, {});
 
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
 
       const world_mind_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
@@ -329,7 +329,7 @@ describe('learn_about', () => {
         traits: {items: [sword.subject, shield.subject]}, label: 'chest'
       });
 
-      const npc_mind = new TemporalMind(world_mind, 'npc');
+      const npc_mind = new Materia(world_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_mind_state);
 
       const chest_knowledge = npc_mind_state.learn_about(chest, {traits: ['items']});
@@ -353,7 +353,7 @@ describe('learn_about', () => {
     });
 
     it('learn_about copies trait values even when inherited from base', () => {
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100});
 
       const workshop = world_state.add_belief_from_template({
@@ -383,7 +383,7 @@ describe('learn_about', () => {
       world_state2.lock();
 
       // Player sees hammer and learns its location (NOT color)
-      const player_mind = new TemporalMind(world_mind, 'player');
+      const player_mind = new Materia(world_mind, 'player');
       const player_state = player_mind.create_state(world_state2);
 
       const player_hammer = player_state.learn_about(hammer_v2, {traits: ['location']});
@@ -410,7 +410,7 @@ describe('learn_about', () => {
     });
 
     it('incremental knowledge accumulation via inheritance', () => {
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100});
 
       const workshop = world_state.add_belief_from_template({
@@ -427,7 +427,7 @@ describe('learn_about', () => {
       world_state.lock();
 
       // T1: Player learns color only
-      const player_mind = new TemporalMind(world_mind, 'player');
+      const player_mind = new Materia(world_mind, 'player');
       const player_state1 = player_mind.create_state(world_state);
 
       const player_hammer_v1 = player_state1.learn_about(hammer, {traits: ['color']});
@@ -480,7 +480,7 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new TemporalMind(world_state.in_mind, 'npc');
+      const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
 
       const hammer = get_first_belief_by_label('hammer');
@@ -509,7 +509,7 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new TemporalMind(world_state.in_mind, 'npc');
+      const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
 
       const hammer = get_first_belief_by_label('hammer');
@@ -536,7 +536,7 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new TemporalMind(world_state.in_mind, 'npc');
+      const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
 
       const player = get_first_belief_by_label('player');
@@ -563,7 +563,7 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new TemporalMind(world_state.in_mind, 'npc');
+      const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
 
       const hammer = get_first_belief_by_label('hammer');
@@ -588,7 +588,7 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new TemporalMind(world_state.in_mind, 'npc');
+      const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
 
       const hammer = get_first_belief_by_label('hammer');
@@ -619,7 +619,7 @@ describe('learn_about', () => {
         }
       });
 
-      const npc_mind = new TemporalMind(world_state.in_mind, 'npc');
+      const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
 
       const hammer = get_first_belief_by_label('hammer');

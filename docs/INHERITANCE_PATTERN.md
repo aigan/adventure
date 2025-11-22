@@ -15,7 +15,7 @@ State (base - permissive, allows null ground_state)
   └─ UnionState (composition, requires ground_state)
 
 Mind (base - permissive, allows null parent)
-  ├─ TemporalMind (normal minds, strict - requires parent)
+  ├─ Materia (normal minds, strict - requires parent)
   ├─ Logos (primordial, parent must be null)
   └─ Eidos (realm of forms, requires parent)
 ```
@@ -353,7 +353,7 @@ export class Mind {
 }
 ```
 
-**Strict validation goes in TemporalState/TemporalMind:**
+**Strict validation goes in TemporalState/Materia:**
 ```javascript
 // temporal-state.mjs (future addition)
 import { State } from './state.mjs'
@@ -494,9 +494,9 @@ constructor(parent) {
   }
 }
 
-// TemporalMind - strict
+// Materia - strict
 constructor(parent) {
-  assert(parent !== null, 'TemporalMind requires parent')
+  assert(parent !== null, 'Materia requires parent')
   super(parent, ...)
 }
 ```

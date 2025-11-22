@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, TemporalMind, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { stdTypes, Thing, createStateInNewMind } from './helpers.mjs';
 
@@ -44,7 +44,7 @@ describe('Mind Trait', () => {
     DB.register(traittypes, archetypes, {});
 
     // Create world beliefs
-    const world_mind = new TemporalMind(logos(), 'world');
+    const world_mind = new Materia(logos(), 'world');
     const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
     const main_area = world_state.add_belief_from_template({
@@ -176,7 +176,7 @@ describe('Mind Trait', () => {
     });
 
     // Create world with two NPC bodies
-    const world_mind = new TemporalMind(logos(), 'world');
+    const world_mind = new Materia(logos(), 'world');
     const world_state = world_mind.create_state(logos().origin_state, {tt: 200});
 
     // World beliefs inherit from shared prototypes
@@ -354,7 +354,7 @@ describe('Mind Trait', () => {
     });
 
     // Create world entity
-    const world_mind = new TemporalMind(logos(), 'world');
+    const world_mind = new Materia(logos(), 'world');
     const world_state = world_mind.create_state(logos().origin_state, {tt: 200});
 
     const blacksmith_tavern = world_state.add_belief_from_template({
@@ -380,7 +380,7 @@ describe('Mind Trait', () => {
     });
 
     // Create NPC1 with initial cultural knowledge (manual setup, not via mind template)
-    const npc1_mind = new TemporalMind(world_mind, 'npc1');
+    const npc1_mind = new Materia(world_mind, 'npc1');
     const npc1_state = npc1_mind.create_state(world_state);
 
     // NPC1 starts with belief based on cultural knowledge
@@ -395,7 +395,7 @@ describe('Mind Trait', () => {
     npc1_state.lock();
 
     // Create NPC2 with same cultural knowledge
-    const npc2_mind = new TemporalMind(world_mind, 'npc2');
+    const npc2_mind = new Materia(world_mind, 'npc2');
     const npc2_state = npc2_mind.create_state(world_state);
 
     const npc2_initial_belief = Belief.from_template(npc2_state, {
@@ -468,7 +468,7 @@ describe('Mind Trait', () => {
 
     DB.register(traittypes, archetypes, {});
 
-    const world_mind = new TemporalMind(logos(), 'world');
+    const world_mind = new Materia(logos(), 'world');
     const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
     const location1 = world_state.add_belief_from_template({ bases: ['Location'], traits: {}, label: 'location1' });

@@ -1,13 +1,13 @@
 /**
- * TemporalMind - Mind subclass for time-aware entities
+ * Materia - Mind subclass for time-aware entities
  *
  * Represents minds that exist within time (worlds, NPCs, players).
- * All temporal minds have a non-null parent in the mind hierarchy.
+ * All materia minds have a non-null parent in the mind hierarchy.
  *
  * Mind hierarchy:
  * - Logos (timeless root, parent = null)
  *   - Eidos (timeless forms/prototypes)
- *   - TemporalMind instances (world minds, NPC minds, player minds)
+ *   - Materia instances (world minds, NPC minds, player minds)
  *
  * See docs/SPECIFICATION.md for mind architecture
  */
@@ -29,9 +29,9 @@ import * as Cosmos from './cosmos.mjs'
  * Time-aware mind for entities existing within temporal flow
  * @augments Mind
  */
-export class TemporalMind extends Mind {
+export class Materia extends Mind {
   /** @type {string} - Type discriminator */
-  _type = 'TemporalMind'
+  _type = 'Materia'
 
   /**
    * @param {Mind} parent_mind - Parent mind (required - cannot be null)
@@ -39,25 +39,25 @@ export class TemporalMind extends Mind {
    * @param {Belief|null} self - What this mind considers "self"
    */
   constructor(parent_mind, label = null, self = null) {
-    // Temporal minds MUST have a parent
-    assert(parent_mind !== null, 'TemporalMind requires non-null parent_mind', {label})
+    // Materia minds MUST have a parent
+    assert(parent_mind !== null, 'Materia requires non-null parent_mind', {label})
 
     // Call Mind constructor which validates parent_mind type
     super(parent_mind, label, self)
 
     // Set type (overrides Mind's default)
-    this._type = 'TemporalMind'
+    this._type = 'Materia'
   }
 
   /**
    * Create a world mind with logos as parent
    * Convenience helper for creating root-level world minds
    * @param {string} label - World label (default: 'world')
-   * @returns {TemporalMind} World mind with logos as parent
+   * @returns {Materia} World mind with logos as parent
    */
   static create_world(label = 'world') {
     const logos = DB.get_logos_mind()
-    return new TemporalMind(logos, label)
+    return new Materia(logos, label)
   }
 
   /**
@@ -91,13 +91,13 @@ export class TemporalMind extends Mind {
   }
 
   /**
-   * Compose multiple Mind instances into a single TemporalMind with UnionState
+   * Compose multiple Mind instances into a single Materia with UnionState
    * Called by Traittype.compose() when a belief has multiple bases with mind traits
    * @param {Traittype} _traittype - The mind traittype
    * @param {Belief} belief - The belief being composed for
    * @param {Mind[]} minds - Array of Mind instances to compose
    * @param {object} _options - Optional parameters (unused)
-   * @returns {TemporalMind} New TemporalMind instance with UnionState merging all component states
+   * @returns {Materia} New Materia instance with UnionState merging all component states
    */
   static compose(_traittype, belief, minds, _options = {}) {
     assert(Array.isArray(minds), 'compose() requires array of minds', {minds})
@@ -126,7 +126,7 @@ export class TemporalMind extends Mind {
     const { UnionState } = Cosmos
 
     // Create composed mind (self_subject is Subject, belief.subject is the actual instance)
-    const composed_mind = new TemporalMind(parent_mind, self_subject?.get_label() ?? null, null)
+    const composed_mind = new Materia(parent_mind, self_subject?.get_label() ?? null, null)
 
     // UnionState will derive tt from ground_state.vt (fork invariant)
     // Mark as derivation: this is a computed view, not a mutation of the knowledge base
@@ -145,7 +145,7 @@ export class TemporalMind extends Mind {
   }
 
   /**
-   * Create TemporalMind with initial state from declarative template
+   * Create Materia with initial state from declarative template
    * Returns the mind - access unlocked state via mind.state property
    * @param {State} ground_state - State context for belief resolution and ground_state
    * @param {Belief} ground_belief - The belief that owns this mind trait
@@ -154,7 +154,7 @@ export class TemporalMind extends Mind {
    * @param {State|null} [options.about_state] - State context for belief resolution (where beliefs exist)
    * @param {State|null} [options.base_mind_state] - State from base mind to use as base for knowledge inheritance
    * @param {State[]|null} [options.component_states] - States for multi-parent composition (creates UnionState)
-   * @returns {TemporalMind} The created mind (access unlocked state via mind.state)
+   * @returns {Materia} The created mind (access unlocked state via mind.state)
    */
   static create_from_template(ground_state, ground_belief, traits, {about_state, base_mind_state, component_states} = {}) {
     const assert = (/** @type {any} */ condition, /** @type {string} */ message, /** @type {any} */ context) => {
@@ -196,7 +196,7 @@ export class TemporalMind extends Mind {
 
     // Create the mind (parent is the mind where ground_state exists)
     const parent_mind = ground_state.in_mind
-    const entity_mind = new TemporalMind(parent_mind, self_subject.get_label())
+    const entity_mind = new Materia(parent_mind, self_subject.get_label())
 
     // Create initial state with self reference - fork invariant: child.tt = parent_state.vt
     // When ground_state is Timeless (vt=null), must provide explicit tt
@@ -262,19 +262,19 @@ export class TemporalMind extends Mind {
   }
 
   /**
-   * Create TemporalMind from JSON data
-   * @param {MindJSON} data - JSON data with _type: 'TemporalMind'
-   * @param {Mind} parent_mind - Parent mind (required for TemporalMind)
-   * @returns {TemporalMind}
+   * Create Materia from JSON data
+   * @param {MindJSON} data - JSON data with _type: 'Materia'
+   * @param {Mind} parent_mind - Parent mind (required for Materia)
+   * @returns {Materia}
    */
   static from_json(data, parent_mind) {
-    assert(parent_mind !== null, 'TemporalMind.from_json requires parent_mind', {data})
+    assert(parent_mind !== null, 'Materia.from_json requires parent_mind', {data})
 
     // Create instance using Object.create (bypasses constructor)
-    const mind = Object.create(TemporalMind.prototype)
+    const mind = Object.create(Materia.prototype)
 
     // Set _type (class field initializers don't run with Object.create)
-    mind._type = 'TemporalMind'
+    mind._type = 'Materia'
 
     // Use shared initialization with deserialized ID
     mind._init_properties(parent_mind, data.label, null, data._id)

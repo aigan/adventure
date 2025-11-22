@@ -73,7 +73,7 @@ export class Mind {
         parent_mind._type === 'Mind' ||
         parent_mind._type === 'Logos' ||
         parent_mind._type === 'Eidos' ||
-        parent_mind._type === 'TemporalMind',
+        parent_mind._type === 'Materia',
         'parent_mind must be a Mind',
         { label, parent_type: parent_mind?._type }
       )

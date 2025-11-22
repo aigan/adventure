@@ -16,7 +16,7 @@
  */
 
 import { expect } from 'chai'
-import { Mind, TemporalMind, Belief, Subject, Traittype } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, Belief, Subject, Traittype } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 describe('Composable Mind Trait', () => {
@@ -38,7 +38,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -89,7 +89,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -150,7 +150,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -223,7 +223,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -290,7 +290,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -360,7 +360,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -414,7 +414,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state1 = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state1.add_beliefs_from_template({
@@ -484,7 +484,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -569,7 +569,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -638,7 +638,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -710,7 +710,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -808,7 +808,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -871,7 +871,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -922,7 +922,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -986,7 +986,7 @@ describe('Composable Mind Trait', () => {
         Person: {bases: ['Mental']},
       }, {})
 
-      const world = TemporalMind.create_world()
+      const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({

@@ -104,7 +104,7 @@ const prototypes_1 = {
 DB.register(traittypes, archetypes, prototypes_1)
 
 // Create world mind and initial state
-const world_mind = new Cosmos.TemporalMind(Cosmos.logos(), 'world');
+const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world');
 let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1});
 
 

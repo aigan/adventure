@@ -4,24 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## 2025-11-20
 
-### TemporalMind Introduced - Mind Made Abstract
-- **New Class**: Created `TemporalMind` extending `Mind` for time-aware entities
+### Materia Introduced - Mind Made Abstract
+- **New Class**: Created `Materia` extending `Mind` for time-aware entities
   - Moved temporal-specific methods: `create_world()`, `states_at_tt()`, `compose()`, `create_from_template()`
   - Requires non-null parent_mind (all temporal minds have parents)
   - Implements proper serialization with `from_json()`
 - **Mind Class Made Abstract**:
   - Constructor throws error if instantiated directly
-  - Must use subclasses: `TemporalMind` (worlds, NPCs, players), `Logos` (root), `Eidos` (forms)
+  - Must use subclasses: `Materia` (worlds, NPCs, players), `Logos` (root), `Eidos` (forms)
   - Added stub `states_at_tt()` that throws for non-temporal minds
-  - Added delegation methods to `TemporalMind` for backward compatibility
+  - Added delegation methods to `Materia` for backward compatibility
 - **Mind Hierarchy Clarified**:
   - `Mind` (abstract base) → `Logos` (singleton, parent=null)
   - `Mind` (abstract base) → `Eidos` (singleton, parent=Logos)
-  - `Mind` (abstract base) → `TemporalMind` (world minds, NPC minds, player minds)
+  - `Mind` (abstract base) → `Materia` (world minds, NPC minds, player minds)
 - **Updated References**:
-  - All `new Mind()` calls → `new TemporalMind()` (24 test files + 1 production file)
-  - All `Mind.create_world()` → `TemporalMind.create_world()` (6 files)
-  - Updated serialization to handle TemporalMind type
+  - All `new Mind()` calls → `new Materia()` (24 test files + 1 production file)
+  - All `Mind.create_world()` → `Materia.create_world()` (6 files)
+  - Updated serialization to handle Materia type
   - Updated cosmos.mjs exports
 - **All Tests Passing**: 450 tests passing, 0 failing
 - **Files Modified**: 32 files (1 new file, 31 updated)

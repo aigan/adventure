@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, TemporalMind, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { setupStandardArchetypes, get_first_belief_by_label, createStateInNewMind } from './helpers.mjs';
 
@@ -13,7 +13,7 @@ describe('Save/Load functionality', () => {
   describe('save_mind() and load()', () => {
     it('saves and loads a simple mind', () => {
       // Create simple world
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const workshop = world_state.add_belief_from_template({
@@ -45,7 +45,7 @@ describe('Save/Load functionality', () => {
 
     it('handles belief trait references after save/load', () => {
       // Create world with location relationship
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const workshop = world_state.add_belief_from_template({
@@ -79,7 +79,7 @@ describe('Save/Load functionality', () => {
       // This test verifies the SID system fixes the "time-travel" bug where
       // circular trait references would point to old versions from previous states
 
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const state1 = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const room1 = state1.add_belief_from_template({
@@ -191,7 +191,7 @@ describe('Save/Load functionality', () => {
         },
       };
 
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       let state = world_mind.create_state(logos().origin_state, {tt: 1});
       state.add_beliefs_from_template(world_belief);
 
@@ -251,12 +251,12 @@ describe('Save/Load functionality', () => {
       load(json);
 
       // Create new object - should have higher ID
-      const new_mind = new TemporalMind(logos(), 'test');
+      const new_mind = new Materia(logos(), 'test');
       expect(new_mind._id).to.be.greaterThan(max_id);
     });
 
     it('handles state ground_state references', () => {
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const workshop = world_state.add_belief_from_template({
@@ -265,7 +265,7 @@ describe('Save/Load functionality', () => {
       });
 
       // Create player mind with ground_state
-      const player_mind = new TemporalMind(world_mind, 'player_mind');
+      const player_mind = new Materia(world_mind, 'player_mind');
       const player_state = player_mind.create_state(world_state);
 
       // Save and reload both minds
@@ -312,7 +312,7 @@ describe('Save/Load functionality', () => {
         },
       };
 
-      const world_mind = new TemporalMind(logos(), 'world');
+      const world_mind = new Materia(logos(), 'world');
       let state = world_mind.create_state(logos().origin_state, {tt: 1});
       state.add_beliefs_from_template(world_belief);
 

@@ -40,7 +40,7 @@ import { Traittype } from './traittype.mjs'
 
 /**
  * @typedef {object} MindJSON
- * @property {string} _type - "Mind", "Logos", "Eidos", or "TemporalMind"
+ * @property {string} _type - "Mind", "Logos", "Eidos", or "Materia"
  * @property {number} _id - Mind identifier
  * @property {string|null} label - Optional label for lookup
  * @property {BeliefJSON[]} belief - All beliefs in this mind
@@ -120,16 +120,16 @@ export class Mind {
 
 
   /**
-   * @param {Mind|null} parent_mind - Parent mind (null only for Logos, non-null for TemporalMind)
+   * @param {Mind|null} parent_mind - Parent mind (null only for Logos, non-null for Materia)
    * @param {string|null} label - Mind identifier
    * @param {Belief|null} self - What this mind considers "self" (can be null, can change)
    */
   constructor(parent_mind, label = null, self = null) {
     // Prevent direct instantiation - Mind is abstract
-    // Only allow construction through subclasses (Logos, Eidos, TemporalMind)
+    // Only allow construction through subclasses (Logos, Eidos, Materia)
     if (new.target === Mind) {
       throw new Error(
-        'Cannot instantiate Mind directly - use TemporalMind for temporal minds, ' +
+        'Cannot instantiate Mind directly - use Materia for temporal minds, ' +
         'Logos for root mind, or Eidos for forms/prototypes'
       )
     }
@@ -141,7 +141,7 @@ export class Mind {
         parent_mind._type === 'Mind' ||
         parent_mind._type === 'Logos' ||
         parent_mind._type === 'Eidos' ||
-        parent_mind._type === 'TemporalMind',
+        parent_mind._type === 'Materia',
         'parent_mind must be a Mind',
         { label, parent_type: parent_mind?._type }
       )
@@ -230,7 +230,7 @@ export class Mind {
 
   /**
    * Get all states in this mind that were valid at a specific tt
-   * NOTE: This is only implemented in TemporalMind. Logos and Eidos do not support temporal queries.
+   * NOTE: This is only implemented in Materia. Logos and Eidos do not support temporal queries.
    * @param {number} _tt - Transaction time to query at
    * @returns {Generator<State, void, unknown>} Outermost states on each branch at tt
    * @abstract
@@ -238,7 +238,7 @@ export class Mind {
   // eslint-disable-next-line require-yield
   *states_at_tt(_tt) {
     throw new Error(
-      `states_at_tt() is only available on TemporalMind. ` +
+      `states_at_tt() is only available on Materia. ` +
       `This mind is ${this._type} which does not support temporal queries.`
     )
   }
@@ -338,7 +338,7 @@ export class Mind {
 
   /**
    * Create Mind from JSON data with lazy loading
-   * @param {MindJSON} data - JSON data with _type: 'Mind', 'Logos', 'Eidos', or 'TemporalMind'
+   * @param {MindJSON} data - JSON data with _type: 'Mind', 'Logos', 'Eidos', or 'Materia'
    * @param {Mind} [parent_mind] - Parent mind (required for non-logos minds, null only for logos)
    * @returns {Mind}
    */
@@ -350,9 +350,9 @@ export class Mind {
     if (data._type === 'Eidos') {
       return Cosmos.Eidos.from_json(data, parent_mind)
     }
-    if (data._type === 'TemporalMind') {
-      assert(parent_mind, 'TemporalMind requires parent_mind for deserialization', {data})
-      return Cosmos.TemporalMind.from_json(data, parent_mind)
+    if (data._type === 'Materia') {
+      assert(parent_mind, 'Materia requires parent_mind for deserialization', {data})
+      return Cosmos.Materia.from_json(data, parent_mind)
     }
 
     // Legacy Mind type - should not occur with abstract Mind
@@ -410,22 +410,22 @@ export class Mind {
   }
 
   /**
-   * Compose multiple Mind instances into a single TemporalMind with UnionState
-   * Delegates to TemporalMind.compose() for actual implementation
+   * Compose multiple Mind instances into a single Materia with UnionState
+   * Delegates to Materia.compose() for actual implementation
    * @param {Traittype} traittype - The mind traittype
    * @param {Belief} belief - The belief being composed for
    * @param {Mind[]} minds - Array of Mind instances to compose
    * @param {object} options - Optional parameters
-   * @returns {Mind} New TemporalMind instance with UnionState merging all component states
+   * @returns {Mind} New Materia instance with UnionState merging all component states
    */
   static compose(traittype, belief, minds, options = {}) {
-    const { TemporalMind } = Cosmos
-    return TemporalMind.compose(traittype, belief, minds, options)
+    const { Materia } = Cosmos
+    return Materia.compose(traittype, belief, minds, options)
   }
 
   /**
-   * Create TemporalMind with initial state from declarative template
-   * Delegates to TemporalMind.create_from_template() for actual implementation
+   * Create Materia with initial state from declarative template
+   * Delegates to Materia.create_from_template() for actual implementation
    * @param {State} ground_state - State context for belief resolution and ground_state
    * @param {Belief} ground_belief - The belief that owns this mind trait
    * @param {Object<string, string[]>} traits - {belief_label: [trait_names]} to learn
@@ -433,11 +433,11 @@ export class Mind {
    * @param {State|null} [options.about_state] - State context for belief resolution (where beliefs exist)
    * @param {State|null} [options.base_mind_state] - State from base mind to use as base for knowledge inheritance
    * @param {State[]|null} [options.component_states] - States for multi-parent composition (creates UnionState)
-   * @returns {Mind} The created TemporalMind (access unlocked state via mind.state)
+   * @returns {Mind} The created Materia (access unlocked state via mind.state)
    */
   static create_from_template(ground_state, ground_belief, traits, options = {}) {
-    const { TemporalMind } = Cosmos
-    return TemporalMind.create_from_template(ground_state, ground_belief, traits, options)
+    const { Materia } = Cosmos
+    return Materia.create_from_template(ground_state, ground_belief, traits, options)
   }
 
   /**
@@ -489,10 +489,10 @@ export class Mind {
 
       debug("create mind from template with", sysdesig(creator_state, data))
 
-      // It's a learn spec - call create_from_template on TemporalMind
+      // It's a learn spec - call create_from_template on Materia
       // Pass component_states for multi-parent composition
-      const { TemporalMind } = Cosmos
-      const mind = TemporalMind.create_from_template(creator_state, belief, data, {
+      const { Materia } = Cosmos
+      const mind = Materia.create_from_template(creator_state, belief, data, {
         about_state,
         base_mind_state,
         component_states: base_mind_states.length > 1 ? base_mind_states : undefined
@@ -505,8 +505,8 @@ export class Mind {
     if (data?._type === 'Mind' && !(data._states instanceof Set)) {
       // Strip _type from template before passing to create_from_template
       const {_type, ...traits} = data
-      const { TemporalMind } = Cosmos
-      const mind = TemporalMind.create_from_template(creator_state, belief, traits, {
+      const { Materia } = Cosmos
+      const mind = Materia.create_from_template(creator_state, belief, traits, {
         about_state,
         base_mind_state,
         component_states: base_mind_states.length > 1 ? base_mind_states : undefined
