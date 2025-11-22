@@ -2,17 +2,16 @@
  * Mind Composition Tests
  *
  * Tests composable mind trait behavior mirroring inventory composition patterns.
- * See docs/plans/mind-composition-tests.md for full test plan.
  *
  * MATRIX COVERAGE:
- * ✅ 4.1 Mind from Own (Partial - via UnionState composition)
- * ⚠️  Mind null blocking (line 16 - similar to 3.6 but for Mind specifically)
+ * ✅ 4.1 Mind from Own (Partial - via Convergence composition)
+ * ⚠️  Mind null blocking (similar to 3.6 but for Mind specifically)
  *
- * UNIONSTATE COVERAGE:
- * ✅ UnionState composition (multiple minds combined)
- * ❌ MISSING: rev_trait with UnionState (see docs/plans/UNIONSTATE_CRITICAL.md)
+ * CONVERGENCE COVERAGE:
+ * ✅ Convergence composition (multiple minds combined)
+ * ✅ rev_trait with Convergence (fixed 2025-11-16)
  *
- * NOTE: This file tests Mind composition via UnionState, not trait inheritance matrix
+ * NOTE: This file tests Mind composition via Convergence, not trait inheritance matrix
  */
 
 import { expect } from 'chai'
@@ -188,7 +187,7 @@ describe('Composable Mind Trait', () => {
       const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
       const vb_state = vb_mind.origin_state
 
-      // Should be UnionState (composed from own + Villager + Blacksmith)
+      // Should be Convergence (composed from own + Villager + Blacksmith)
       expect(vb_state.is_union).to.be.true
       expect(vb_state.component_states.length).to.equal(3, 'Own mind + Villager + Blacksmith')
 
@@ -208,7 +207,7 @@ describe('Composable Mind Trait', () => {
       expect(has_market).to.be.true
     })
 
-    it('caches composed mind to avoid recreating UnionState', () => {
+    it('caches composed mind to avoid recreating Convergence', () => {
       DB.reset_registries()
 
       // Setup
@@ -256,14 +255,14 @@ describe('Composable Mind Trait', () => {
       // Lock state before testing caching (caching only works on locked states)
       world_state.lock()
 
-      // First call creates UnionState and caches Mind
+      // First call creates Convergence and caches Mind
       const mind1 = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Second call returns cached Mind (same instance)
       const mind2 = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       expect(mind1).to.equal(mind2, 'Should return same cached Mind instance')
-      expect(mind1.origin_state).to.equal(mind2.origin_state, 'Should return same UnionState')
+      expect(mind1.origin_state).to.equal(mind2.origin_state, 'Should return same Convergence')
 
       // Different state still returns same cached Mind (belief-based caching)
       const world_state2 = world.create_state(DB.get_logos_state(), {tt: 2})
@@ -346,7 +345,7 @@ describe('Composable Mind Trait', () => {
       expect(vb_state.component_states[1]).to.equal(blacksmith_mind.origin_state)
     })
 
-    it('is_union flag distinguishes UnionState from regular State', () => {
+    it('is_union flag distinguishes Convergence from regular State', () => {
       DB.reset_registries()
 
       DB.register({
@@ -387,7 +386,7 @@ describe('Composable Mind Trait', () => {
 
       expect(villager_mind.origin_state.is_union).to.be.undefined
 
-      // UnionState (multiple bases, composed)
+      // Convergence (multiple bases, composed)
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
         traits: {},
@@ -451,7 +450,7 @@ describe('Composable Mind Trait', () => {
       const mind1 = vb_belief.get_trait(world_state1, Traittype.get_by_label('mind'))
       const mind2 = vb_belief.get_trait(world_state2, Traittype.get_by_label('mind'))
 
-      // Both should be valid Mind instances with UnionState
+      // Both should be valid Mind instances with Convergence
       expect(mind1).to.be.instanceOf(Mind)
       expect(mind2).to.be.instanceOf(Mind)
       expect(mind1.origin_state.is_union).to.be.true
@@ -470,7 +469,7 @@ describe('Composable Mind Trait', () => {
 
   describe('Phase 3: Edge Cases', () => {
 
-    it('nested UnionStates compose recursively', () => {
+    it('nested Convergences compose recursively', () => {
       DB.reset_registries()
 
       DB.register({
@@ -524,7 +523,7 @@ describe('Composable Mind Trait', () => {
       })
 
       // Second level composition: MasterCraftsman = VillageBlacksmith + Guild
-      // This creates a nested UnionState (VillageBlacksmith's mind is already a UnionState)
+      // This creates a nested Convergence (VillageBlacksmith's mind is already a Convergence)
       const mc = Belief.from_template(world_state, {
         bases: ['VillageBlacksmith', 'Guild'],
         traits: {},
@@ -554,7 +553,7 @@ describe('Composable Mind Trait', () => {
       expect(has_guild_hall).to.be.true
     })
 
-    it('overlapping knowledge - both beliefs present in UnionState', () => {
+    it('overlapping knowledge - both beliefs present in Convergence', () => {
       DB.reset_registries()
 
       DB.register({
@@ -612,14 +611,14 @@ describe('Composable Mind Trait', () => {
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
       const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
-      // UnionState should have beliefs from both component minds
+      // Convergence should have beliefs from both component minds
       expect(vb_mind.origin_state.is_union).to.be.true
 
       const beliefs = [...vb_mind.origin_state.get_beliefs()]
       const workshop_beliefs = beliefs.filter(b => b.get_about(vb_mind.origin_state)?.subject === workshop.subject)
 
       // Both Villager and Blacksmith learned about workshop
-      // UnionState doesn't merge - it yields beliefs from both component states
+      // Convergence doesn't merge - it yields beliefs from both component states
       // So we expect to see beliefs from both (may be 2 separate beliefs or merged depending on implementation)
       expect(workshop_beliefs.length).to.be.at.least(1, 'Should have beliefs about workshop from component minds')
     })
@@ -857,7 +856,7 @@ describe('Composable Mind Trait', () => {
       expect(blacksmith_mind._parent.label).to.equal('Eidos')
     })
 
-    it('self_subject consistency in UnionState', () => {
+    it('self_subject consistency in Convergence', () => {
       DB.reset_registries()
 
       DB.register({
@@ -901,14 +900,14 @@ describe('Composable Mind Trait', () => {
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
       const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
-      // UnionState.self should equal the belief's subject
+      // Convergence.self should equal the belief's subject
       expect(vb_mind.origin_state.self).to.equal(vb_belief.subject)
 
       // self should be a Subject instance
       expect(vb_mind.origin_state.self).to.be.instanceOf(Subject)
     })
 
-    it('about_state propagation in UnionState', () => {
+    it('about_state propagation in Convergence', () => {
       DB.reset_registries()
 
       DB.register({
@@ -1023,7 +1022,7 @@ describe('Composable Mind Trait', () => {
       const vb_belief = world_state.get_belief_by_label('village_blacksmith')
 
       // The critical test: accessing composable mind from locked state
-      // This creates UnionState internally, which shouldn't be blocked by lock
+      // This creates Convergence internally, which shouldn't be blocked by lock
       const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Verify the composed mind is accessible

@@ -1,10 +1,10 @@
 /**
- * Tests for State.rev_base() and UnionState.rev_base()
+ * Tests for State.rev_base() and Convergence.rev_base()
  *
  * These polymorphic methods enable rev_trait() to traverse both regular State chains
- * and UnionState component_states arrays using the same interface.
+ * and Convergence component_states arrays using the same interface.
  *
- * NOTE: Full integration tests for rev_trait() with UnionState are in composable_mind.test.mjs
+ * NOTE: Full integration tests for rev_trait() with Convergence are in composable_mind.test.mjs
  * and reverse_trait.test.mjs. These tests focus on the rev_base() interface itself.
  */
 
@@ -15,7 +15,7 @@ import { Traittype } from '../public/worker/traittype.mjs'
 import { Mind, Materia, logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
-describe('State.rev_base() and UnionState.rev_base()', () => {
+describe('State.rev_base() and Convergence.rev_base()', () => {
   beforeEach(() => {
     DB.reset_registries()
     setupStandardArchetypes()
@@ -133,7 +133,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
     })
   })
 
-  describe('UnionState.rev_base() - Basic Interface', () => {
+  describe('Convergence.rev_base() - Basic Interface', () => {
     it('returns array (polymorphic with State)', () => {
       // Setup world with Mind composition
       const world = Materia.create_world()
@@ -154,7 +154,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
         }
       })
 
-      // Create VillageBlacksmith with composed mind (creates UnionState)
+      // Create VillageBlacksmith with composed mind (creates Convergence)
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
         traits: {
@@ -169,7 +169,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
       const vb_mind_state = vb_mind.origin_state
 
-      // Verify it's a UnionState
+      // Verify it's a Convergence
       expect(vb_mind_state.is_union).to.be.true
 
       const tavern = world_state.get_belief_by_label('tavern')
@@ -225,7 +225,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
   })
 
   describe('Polymorphism: Both return arrays', () => {
-    it('both State and UnionState can be spread into queue', () => {
+    it('both State and Convergence can be spread into queue', () => {
       const state1 = createStateInNewMind('world', 1)
 
       const room = Belief.from_template(state1, {
@@ -279,7 +279,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       const tavern = world_state.get_belief_by_label('tavern')
       const location_tt = Traittype.get_by_label('location')
 
-      // Simulate queue-based traversal mixing State and potentially UnionState
+      // Simulate queue-based traversal mixing State and potentially Convergence
       const queue = [vb_mind_state]
       const visited = []
 
@@ -371,7 +371,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       expect(next_states[0]).to.equal(state2)
     })
 
-    it('UnionState.rev_base() returns array from multiple components', () => {
+    it('Convergence.rev_base() returns array from multiple components', () => {
       const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
@@ -391,7 +391,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
         }
       })
 
-      // Create VillageBlacksmith with composed mind (creates UnionState)
+      // Create VillageBlacksmith with composed mind (creates Convergence)
       const vb = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
         traits: {
@@ -406,7 +406,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
       const vb_mind_state = vb_mind.origin_state
 
-      // Verify it's a UnionState with multiple components
+      // Verify it's a Convergence with multiple components
       expect(vb_mind_state.is_union).to.be.true
       expect(vb_mind_state.component_states.length).to.be.greaterThan(1)
 
@@ -524,7 +524,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       expect(next_states[0]).to.equal(state1)
     })
 
-    it('handles nested UnionState (UnionState containing UnionState components)', () => {
+    it('handles nested Convergence (Convergence containing Convergence components)', () => {
       const world = Materia.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
@@ -545,7 +545,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
         }
       })
 
-      // First create VillageBlacksmith (creates UnionState)
+      // First create VillageBlacksmith (creates Convergence)
       world_state.add_shared_from_template({
         VillageBlacksmith: {
           bases: ['Villager', 'Blacksmith'],
@@ -562,7 +562,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       })
 
       // Create MasterCraftsman from VillageBlacksmith + Guild
-      // This creates nested UnionState: VillageBlacksmith's mind is already a UnionState
+      // This creates nested Convergence: VillageBlacksmith's mind is already a Convergence
       const mc = Belief.from_template(world_state, {
         bases: ['VillageBlacksmith', 'Guild'],
         traits: {
@@ -577,13 +577,13 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
       const mc_mind = mc_belief.get_trait(world_state, Traittype.get_by_label('mind'))
       const mc_mind_state = mc_mind.origin_state
 
-      // Should be a UnionState
+      // Should be a Convergence
       expect(mc_mind_state.is_union).to.be.true
 
       const fake_subject = {sid: 99999, _type: 'Subject'}
       const location_tt = Traittype.get_by_label('location')
 
-      // rev_base should handle nested UnionState components
+      // rev_base should handle nested Convergence components
       const next_states = mc_mind_state.rev_base(fake_subject, location_tt)
 
       expect(next_states).to.be.an('array')

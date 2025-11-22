@@ -146,10 +146,10 @@ Result: [] (person was removed in state4)
 
 ---
 
-## Diagram 5: UnionState Traversal
+## Diagram 5: Convergence Traversal
 
 ```
-UnionState has multiple component_states to search
+Convergence has multiple component_states to search
 
 World State:
 ┌─────────┐ location: tavern  ┌────────┐
@@ -158,7 +158,7 @@ World State:
                               └────────┘
                                   ↑
                                   │ Lives in...
-VillageBlacksmith Mind State (UnionState):
+VillageBlacksmith Mind State (Convergence):
 ┌──────────────────────────────────────┐
 │ component_states = [                  │
 │   villager_mind_state,  ← contains knowledge about tavern
@@ -167,9 +167,9 @@ VillageBlacksmith Mind State (UnionState):
 └──────────────────────────────────────┘
 
 Query: tavern.rev_trait(vb_mind_state, location_tt)
-1. Start with vb_mind_state (UnionState)
+1. Start with vb_mind_state (Convergence)
 2. Call vb_mind_state.rev_base(tavern, location_tt)
-3. UnionState.rev_base() checks EACH component:
+3. Convergence.rev_base() checks EACH component:
    - villager_mind_state.rev_base(tavern, location_tt) → [villager_origin_state]
    - blacksmith_mind_state.rev_base(tavern, location_tt) → []
 4. Queue both results
@@ -178,30 +178,30 @@ Query: tavern.rev_trait(vb_mind_state, location_tt)
 Result: [knowledge_belief]
 ```
 
-**Before UnionState Fix (BROKEN)**:
+**Before Convergence Fix (BROKEN)**:
 ```
 rev_trait would try current.base
   ↓
-UnionState.base = null
+Convergence.base = null
   ↓
 Traversal stops! → returns []
 ```
 
-**After UnionState Fix (WORKS)**:
+**After Convergence Fix (WORKS)**:
 ```
 rev_trait calls current.rev_base()
   ↓
-UnionState.rev_base() returns array of component next states
+Convergence.rev_base() returns array of component next states
   ↓
 Traversal continues through all components → returns [knowledge_belief]
 ```
 
 ---
 
-## Diagram 6: Nested UnionState
+## Diagram 6: Nested Convergence
 
 ```
-UnionState containing another UnionState as component
+Convergence containing another Convergence as component
 
 Components:
 ┌──────────────────┐
@@ -232,7 +232,7 @@ Second Composition (MasterCraftsman):
 
 Query: tavern.rev_trait(master_mind_state, location_tt)
 1. master_mind_state.rev_base() iterates components
-2. Finds VillageBlacksmith (UnionState)
+2. Finds VillageBlacksmith (Convergence)
 3. Recursively calls VillageBlacksmith.rev_base()
 4. VillageBlacksmith iterates ITS components
 5. Finds Villager mind state
@@ -563,8 +563,8 @@ Key: rev_trait is state-scoped, not mind-scoped
 2. **Multiple References** - 1:N mapping (common)
 3. **Array Traits** - 1:N within single belief
 4. **State Chains** - Temporal dimension + skip list
-5. **UnionState** - Spatial dimension (multiple components)
-6. **Nested UnionState** - Recursive traversal
+5. **Convergence** - Spatial dimension (multiple components)
+6. **Nested Convergence** - Recursive traversal
 7. **Inherited Reference** - Potential tracking gap
 8. **Composable Inheritance** - Query-time vs set-time mismatch
 9. **Branching** - Independent per-branch indices
@@ -578,10 +578,10 @@ Key: rev_trait is state-scoped, not mind-scoped
 ### 1. Skip List is Critical for Performance
 Without skip pointers, long chains require O(n) traversal. With skip pointers, most queries are O(log n) or better.
 
-### 2. UnionState Adds Complexity
+### 2. Convergence Adds Complexity
 Simple state chain: linear traversal
-UnionState: fan-out to multiple components
-Nested UnionState: recursive fan-out
+Convergence: fan-out to multiple components
+Nested Convergence: recursive fan-out
 
 ### 3. Inheritance May Have Gap
 Direct traits: tracked in _rev_add/_rev_del
@@ -614,7 +614,7 @@ Deduplication by sid happens in results
    belief.get_trait(state, traittype) // Inherited?
    ```
 
-3. **Check UnionState traversal**:
+3. **Check Convergence traversal**:
    ```javascript
    if (state.is_union) {
      console.log('Components:', state.component_states.length)

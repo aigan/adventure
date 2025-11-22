@@ -10,7 +10,7 @@
 
 **Comprehensive Test Coverage** - 2025-11-16
 - 458 tests passing (up from 413), 99.5% pass rate
-- All critical bugs fixed (UnionState rev_trait, Subject resolution, test isolation)
+- All critical bugs fixed (Convergence rev_trait, Subject resolution, test isolation)
 - 45 new tests added across trait inheritance and reverse trait lookup
 - Comprehensive documentation in `docs/trait-inheritance/`
 - See [CHANGELOG.md](CHANGELOG.md) for details

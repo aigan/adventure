@@ -8,16 +8,9 @@
  * ✅ State chain traversal (single state, two-state, long chains)
  * ✅ Add/Del patterns (additions, removals, resurrection)
  * ✅ Skip list optimization (pointers, ancestor jumps, isolation)
+ * ✅ Convergence traversal (fixed 2025-11-16, see reverse_trait_convergence.test.mjs)
  *
- * MISSING (documented in docs/plans/rev-trait-analysis.md):
- * ❌ Inherited Subject references (beliefs inherit location from base)
- * ❌ Shared belief references
- * ❌ Composable arrays in rev_trait (inventory)
- * ❌ Mind state references
- * ❌ State array references
- * ❌ 🔴 CRITICAL: UnionState traversal (see docs/plans/UNIONSTATE_CRITICAL.md)
- *
- * Missing tests are in: docs/plans/reverse_trait_missing.test.mjs
+ * See also: test/reverse_trait_convergence.test.mjs for Convergence-specific tests
  */
 
 import { assert } from 'chai'

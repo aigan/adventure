@@ -691,7 +691,7 @@ describe('Integration', () => {
     });
 
     it('P1.1: multiple bases with mind traits (VillageBlacksmith = Villager + Blacksmith)', () => {
-      // Tests UnionState composition with knowledge from multiple prototype bases
+      // Tests Convergence composition with knowledge from multiple prototype bases
       // VillageBlacksmith inherits knowledge from BOTH Villager and Blacksmith minds
 
       DB.reset_registries();
@@ -762,7 +762,7 @@ describe('Integration', () => {
       });
 
       // Create VillageBlacksmith with BOTH bases
-      // When UnionState is implemented, this should merge knowledge from both minds
+      // When Convergence is implemented, this should merge knowledge from both minds
       const village_blacksmith_belief = Belief.from_template(world_state, {
         bases: ['Villager', 'Blacksmith'],
         traits: {},

@@ -76,8 +76,8 @@ describe('Save/Load functionality', () => {
     });
 
     it('handles circular references with temporal consistency', () => {
-      // This test verifies the SID system fixes the "time-travel" bug where
-      // circular trait references would point to old versions from previous states
+      // This test verifies the SID system ensures temporal consistency -
+      // circular trait references resolve to correct versions at each state
 
       const world_mind = new Materia(logos(), 'world');
       const state1 = world_mind.create_state(logos().origin_state, {tt: 1});

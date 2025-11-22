@@ -259,9 +259,9 @@ player_action = {
 
 **Key insight**: Operations are about **runtime changes**, not **compile-time composition**.
 
-## Better Approach: UnionState
+## Better Approach: Convergence
 
-For **prototype composition** (Villager + Blacksmith), the solution is **UnionState**:
+For **prototype composition** (Villager + Blacksmith), the solution is **Convergence**:
 
 ```javascript
 // Compose multiple mind states without operations syntax

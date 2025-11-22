@@ -162,7 +162,7 @@ export function load(json_string) {
     case 'State':
     case 'Temporal':
     case 'Timeless':
-    case 'UnionState':
+    case 'Convergence':
       throw new Error('Loading individual State not yet implemented')
     default:
       throw new Error(`Unknown _type: ${data._type}`)

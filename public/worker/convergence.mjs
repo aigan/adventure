@@ -9,8 +9,6 @@
  * - Merges beliefs from all components (last wins for overlaps)
  * - Restricted operations: No remove() (only insert/replace)
  * - Supports nested Convergence states (recursively traverses components)
- *
- * See docs/plans/union-state.md for design details
  */
 
 import { assert, debug } from './debug.mjs'

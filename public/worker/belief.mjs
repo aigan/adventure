@@ -349,7 +349,7 @@ export class Belief {
     const results = new Set()
 
     // Walk skip list - only visit states with changes for this (subject, traittype)
-    // Use queue to handle UnionState's multiple component_states
+    // Use queue to handle Convergence's multiple component_states
     const queue = [state]
     while (queue.length > 0) {
       const current = /** @type {State} */ (queue.shift())
@@ -372,7 +372,7 @@ export class Belief {
         }
       }
 
-      // Get next state(s) via polymorphic rev_base (handles UnionState components)
+      // Get next state(s) via polymorphic rev_base (handles Convergence components)
       const next_states = current.rev_base(this.subject, traittype)
       queue.push(...next_states)
     }

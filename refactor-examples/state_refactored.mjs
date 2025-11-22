@@ -21,7 +21,7 @@ import { Traittype } from './traittype.mjs'
 
 /**
  * @typedef {object} StateJSON
- * @property {string} _type - "State", "Timeless", or "UnionState"
+ * @property {string} _type - "State", "Timeless", or "Convergence"
  * @property {number} _id - State identifier
  * @property {number|null} tt - State transaction time/tick (null for timeless states)
  * @property {number|null} vt - State valid time (null for timeless states)
@@ -32,7 +32,7 @@ import { Traittype } from './traittype.mjs'
  * @property {number[]} insert - Belief _ids present in this state
  * @property {number[]} remove - Belief _ids removed in this state
  * @property {number} in_mind - Mind _id this state belongs to
- * @property {number[]} [component_states] - Component state _ids (only for UnionState)
+ * @property {number[]} [component_states] - Component state _ids (only for Convergence)
  */
 
 /**
@@ -93,7 +93,7 @@ export class State {
       assert(
         ground_state._type === 'State' ||
         ground_state._type === 'Timeless' ||
-        ground_state._type === 'UnionState',
+        ground_state._type === 'Convergence',
         'ground_state must be a State',
         { ground_type: ground_state?._type }
       )
@@ -207,8 +207,8 @@ export class State {
    */
   static from_json(mind, data) {
     // Dispatch based on _type (polymorphic deserialization)
-    if (data._type === 'UnionState') {
-      return Cosmos.UnionState.from_json(mind, data)
+    if (data._type === 'Convergence') {
+      return Cosmos.Convergence.from_json(mind, data)
     }
     if (data._type === 'Timeless') {
       // Will be handled by Timeless.from_json once refactored

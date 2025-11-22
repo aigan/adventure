@@ -118,7 +118,7 @@ tavern.rev_trait(state, location_tt) // → [npc_v1, npc_v2]
 | [summary.md](summary.md) | High-level patterns and examples | Learning the system |
 | [diagrams.md](diagrams.md) | Visual inheritance patterns | Understanding how it works |
 | [matrix.md](matrix.md) | All 42 forward lookup permutations | Finding specific behavior |
-| [rev-trait-diagrams.md](rev-trait-diagrams.md) | Reverse lookup patterns with UnionState | Understanding reverse queries |
+| [rev-trait-diagrams.md](rev-trait-diagrams.md) | Reverse lookup patterns with Convergence | Understanding reverse queries |
 
 ---
 
@@ -188,7 +188,7 @@ pacifist.inventory = null  // Blocks composition
 pacifist.get_trait(state, 'inventory') // → null (not [sword, shield])
 ```
 
-### Pattern: Multi-Parent Composition (UnionState)
+### Pattern: Multi-Parent Composition (Convergence)
 
 Compose knowledge from multiple prototypes:
 
@@ -260,18 +260,18 @@ pacifist.inventory = null
 pacifist.get_trait(state, 'inventory') // → null
 ```
 
-### UnionState and Reverse Lookup
+### Convergence and Reverse Lookup
 
-UnionState (multi-parent composition) requires polymorphic `rev_base()`:
+Convergence (multi-parent composition) requires polymorphic `rev_base()`:
 
 ```javascript
-// VillageBlacksmith has UnionState with multiple component_states
-village_blacksmith.mind.state → UnionState([villager_state, blacksmith_state])
+// VillageBlacksmith has Convergence with multiple component_states
+village_blacksmith.mind.state → Convergence([villager_state, blacksmith_state])
 
 // rev_trait must check ALL component states
 state.rev_base(subject, traittype)
 // Regular State → returns single base state
-// UnionState → returns array of component_states
+// Convergence → returns array of component_states
 ```
 
 ---

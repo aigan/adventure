@@ -1138,10 +1138,10 @@ describe('Belief', () => {
 
       const player = get_first_belief_by_label('player');
 
-      // This is the bug scenario:
+      // This test guards against premature caching:
       // 1. to_inspect_view calls get_trait for composable traits
-      // 2. If state is unlocked and caching happens anyway, null gets cached
-      // 3. Later inspection returns the cached null
+      // 2. If state is unlocked, caching must not happen
+      // 3. Otherwise null would get cached and returned later
 
       const view1 = player.to_inspect_view(world_state);
       expect(view1.traits.mind).to.not.be.null;

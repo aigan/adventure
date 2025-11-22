@@ -44,13 +44,13 @@ All notable changes to this project will be documented in this file.
 - **458 tests passing** (up from 413 at project start), 99.5% pass rate
 - **45 new tests added** across trait inheritance and reverse trait lookup systems
 - **All critical bugs fixed**:
-  - UnionState `rev_trait()` bug - now properly traverses component_states
+  - Convergence `rev_trait()` bug - now properly traverses component_states
   - Subject resolution missing - added `Subject.resolve_trait_value_from_template()`
   - Test isolation issues - fixed Serialize cache and test setup patterns
 - **Verified non-bugs**: Inherited reference tracking and composable inheritance work correctly
 - **Unknown behaviors documented**: Empty array semantics, non-composable arrays, archetype defaults
 - **Code quality improvements**:
-  - Added `sysdesig()` debug methods to Traittype and UnionState
+  - Added `sysdesig()` debug methods to Traittype and Convergence
   - Eliminated ~25 lines of duplication in Subject/Archetype resolve methods
   - Converted error handling to use asserts
 - **Comprehensive documentation**: 12 files in `docs/trait-inheritance/` and `docs/plans/`
@@ -87,13 +87,13 @@ All notable changes to this project will be documented in this file.
 - **Key Finding**: Composable inheritance is fully compatible with reverse trait lookup
 - Documentation: `docs/plans/PHASE1_CRITICAL_TESTS_SUMMARY.md`
 
-### UnionState Support in Reverse Trait Lookup
-- **CRITICAL BUG FIX**: `rev_trait()` now properly traverses UnionState component_states
+### Convergence Support in Reverse Trait Lookup
+- **CRITICAL BUG FIX**: `rev_trait()` now properly traverses Convergence component_states
 - Added polymorphic `State.rev_base(subject, traittype)` method (returns array)
-- Added `UnionState.rev_base()` override to handle multiple component states
+- Added `Convergence.rev_base()` override to handle multiple component states
 - Refactored `Belief.rev_trait()` to use queue-based traversal instead of single-state chain
 - **Impact**: Fixes reverse lookups for ALL multi-parent beliefs (VillageBlacksmith, MasterCraftsman, etc.)
-- Before: `rev_trait()` stopped at UnionState (base = null), returning empty results
+- Before: `rev_trait()` stopped at Convergence (base = null), returning empty results
 - After: Properly searches all component states for trait references
 - All 422 tests passing with no regressions
 
@@ -102,13 +102,13 @@ All notable changes to this project will be documented in this file.
   - Clears `dependency_queue`, `seen`, and `active` static properties
   - Called by `DB.reset_registries()` to ensure clean test state
 - **Test File**: Added `test/rev_base.test.mjs` with 16 comprehensive tests
-  - 8 basic interface tests (State and UnionState polymorphism)
+  - 8 basic interface tests (State and Convergence polymorphism)
   - 4 P0 critical edge cases (null pointers, rev_del, inherited refs)
-  - 4 P1 high priority cases (multiple subjects, nested UnionState)
+  - 4 P1 high priority cases (multiple subjects, nested Convergence)
 - **Test Pattern Fixes**: Corrected state creation and belief versioning patterns
   - Use `state.branch_state(ground_state, vt)` for state chains
   - Use `Belief.from_template({bases: [old]})` + `replace_beliefs()` for versioning
-  - Create beliefs before locking state in UnionState tests
+  - Create beliefs before locking state in Convergence tests
 - All 438 tests passing (16 new tests added)
 
 ## 2025-11-14
@@ -158,11 +158,11 @@ All notable changes to this project will be documented in this file.
 - `ObjectPhysical` archetype includes `@form: 'solid'` (auto-inherits to all physical entities)
 - Foundation for LOOK command and observation mechanics
 
-### UnionState for Multi-Parent Prototype Composition
-- `UnionState` class enables flyweight composition from multiple parent states without data duplication
+### Convergence for Multi-Parent Prototype Composition
+- `Convergence` class enables flyweight composition from multiple parent states without data duplication
 - Beliefs compose knowledge from multiple prototype bases (e.g., VillageBlacksmith = Villager + Blacksmith)
 - Iterator-based `get_beliefs()` merges component states (last wins for overlaps)
-- Supports nested UnionStates (recursively traverses components)
+- Supports nested Convergences (recursively traverses components)
 - Restricted operations: insert and replace only (no remove to avoid ambiguity)
 - Serialization support via `toJSON()` and `from_json()`
 - All component states must be locked before composition
@@ -179,7 +179,7 @@ All notable changes to this project will be documented in this file.
 - Comprehensive test coverage for composable mind traits (285 tests total)
 - Multi-level prototype inheritance scenarios (deep chains, 3+ bases)
 - Temporal evolution tests (versioning with additional bases, state branching)
-- Edge cases: nested UnionStates, overlapping knowledge, own trait overrides
+- Edge cases: nested Convergences, overlapping knowledge, own trait overrides
 - Mind-specific validation: parent mind compatibility, self_subject, about_state
 
 ## 2025-11-08
