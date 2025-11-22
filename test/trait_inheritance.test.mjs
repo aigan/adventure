@@ -6,7 +6,7 @@
  */
 
 import { expect } from 'chai'
-import { Mind, State, Belief, Traittype, Subject } from '../public/worker/cosmos.mjs'
+import { Mind, TemporalMind, State, Belief, Traittype, Subject } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { createStateInNewMind, stdTypes, Thing } from './helpers.mjs'
 
@@ -926,7 +926,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
       it('can set mind value on Mental archetype', () => {
         const state = createStateInNewMind('test')
 
-        const child_mind = new Mind(state.in_mind, 'child')
+        const child_mind = new TemporalMind(state.in_mind, 'child')
 
         const entity = state.add_belief_from_template({
           bases: ['Mental'],

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
+import { Mind, TemporalMind, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { stdTypes, Thing, createStateInNewMind } from './helpers.mjs';
 
@@ -233,7 +233,7 @@ describe('Traittype', () => {
     // Matrix 4.3: Mind Array from Own
     it('resolves array of Minds from templates', () => {
       // Setup world with beliefs to learn about
-      const world_mind = new Mind(logos(), 'world');
+      const world_mind = new TemporalMind(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const workshop = world_state.add_belief_from_template({

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, Belief , logos } from '../public/worker/cosmos.mjs';
+import { Mind, TemporalMind, Belief , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { setupMinimalArchetypes, createStateInNewMind } from './helpers.mjs';
 

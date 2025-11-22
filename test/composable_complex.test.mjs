@@ -5,7 +5,7 @@
 
 import { expect } from 'chai'
 import * as DB from '../public/worker/db.mjs'
-import { Mind, Belief, Traittype } from '../public/worker/cosmos.mjs'
+import { Mind, TemporalMind, Belief, Traittype } from '../public/worker/cosmos.mjs'
 
 describe('Composable Traits - Complex Scenarios', () => {
   beforeEach(() => {
@@ -44,7 +44,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Mind(DB.get_logos_mind(), 'world')
+      const world_mind = new TemporalMind(DB.get_logos_mind(), 'world')
       const state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
 
       // NPC with two prototype bases
@@ -186,7 +186,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Mind(DB.get_logos_mind(), 'world')
+      const world_mind = new TemporalMind(DB.get_logos_mind(), 'world')
       const state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
 
       // Create player inheriting from Blacksmith
@@ -233,7 +233,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Mind(DB.get_logos_mind(), 'world')
+      const world_mind = new TemporalMind(DB.get_logos_mind(), 'world')
       const state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
 
       // Create NPC with explicit inventory referencing shared beliefs from Eidos
@@ -281,7 +281,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Mind(DB.get_logos_mind(), 'world')
+      const world_mind = new TemporalMind(DB.get_logos_mind(), 'world')
       const state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
 
       // NPC with explicit empty inventory - still composes with base!
@@ -327,7 +327,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Mind(DB.get_logos_mind(), 'world')
+      const world_mind = new TemporalMind(DB.get_logos_mind(), 'world')
       const state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
 
       // Create sword in world state
@@ -390,7 +390,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Mind(DB.get_logos_mind(), 'world')
+      const world_mind = new TemporalMind(DB.get_logos_mind(), 'world')
       let state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
 
       // Tick 1: Create NPC as just a Villager (has token)
@@ -455,7 +455,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Mind(DB.get_logos_mind(), 'world')
+      const world_mind = new TemporalMind(DB.get_logos_mind(), 'world')
       let state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
 
       // Create sword in world state
@@ -521,7 +521,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Mind(DB.get_logos_mind(), 'world')
+      const world_mind = new TemporalMind(DB.get_logos_mind(), 'world')
       const state1 = world_mind.create_state(DB.get_logos_state(), {tt: 1})
 
       const npc = state1.add_belief_from_template({
@@ -587,7 +587,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Mind(DB.get_logos_mind(), 'world')
+      const world_mind = new TemporalMind(DB.get_logos_mind(), 'world')
       let state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
 
       // Create sword in world state

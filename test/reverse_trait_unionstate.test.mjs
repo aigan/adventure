@@ -18,7 +18,7 @@ import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
-import { Mind, State, UnionState, logos, eidos } from '../public/worker/cosmos.mjs'
+import { Mind, TemporalMind, State, UnionState, logos, eidos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 describe('UnionState + rev_trait() Integration', () => {
@@ -40,7 +40,7 @@ describe('UnionState + rev_trait() Integration', () => {
       // Setup: Create VillageBlacksmith with Villager + Blacksmith components
       // This is the most common UnionState pattern
 
-      const world_mind = new Mind(logos(), 'world')
+      const world_mind = new TemporalMind(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       // Create shared location
@@ -52,7 +52,7 @@ describe('UnionState + rev_trait() Integration', () => {
       world_state.lock()
 
       // Create Villager component mind with location reference
-      const villager_mind = new Mind(world_mind, 'villager')
+      const villager_mind = new TemporalMind(world_mind, 'villager')
       const villager_state = villager_mind.create_state(world_state)
 
       const villager_knowledge = villager_state.add_belief_from_template({
@@ -66,7 +66,7 @@ describe('UnionState + rev_trait() Integration', () => {
       villager_state.lock()
 
       // Create Blacksmith component mind with location reference
-      const blacksmith_mind = new Mind(world_mind, 'blacksmith')
+      const blacksmith_mind = new TemporalMind(world_mind, 'blacksmith')
       const blacksmith_state = blacksmith_mind.create_state(world_state)
 
       const blacksmith_knowledge = blacksmith_state.add_belief_from_template({
@@ -80,7 +80,7 @@ describe('UnionState + rev_trait() Integration', () => {
       blacksmith_state.lock()
 
       // Create VillageBlacksmith with UnionState composing both minds
-      const npc_mind = new Mind(world_mind, 'village_blacksmith')
+      const npc_mind = new TemporalMind(world_mind, 'village_blacksmith')
       const union_state = new UnionState(npc_mind, world_state, [villager_state, blacksmith_state])
       union_state.lock()
 
@@ -98,7 +98,7 @@ describe('UnionState + rev_trait() Integration', () => {
     it('multiple components with matches in each', () => {
       // Setup: Create UnionState with 3 components, all referencing same location
 
-      const world_mind = new Mind(logos(), 'world')
+      const world_mind = new TemporalMind(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       const tavern = world_state.add_belief_from_template({
@@ -113,7 +113,7 @@ describe('UnionState + rev_trait() Integration', () => {
       const expected_beliefs = []
 
       for (let i = 1; i <= 3; i++) {
-        const component_mind = new Mind(world_mind, `component${i}`)
+        const component_mind = new TemporalMind(world_mind, `component${i}`)
         const component_state = component_mind.create_state(world_state)
 
         const knowledge = component_state.add_belief_from_template({
@@ -131,7 +131,7 @@ describe('UnionState + rev_trait() Integration', () => {
       }
 
       // Create UnionState combining all 3 components
-      const npc_mind = new Mind(world_mind, 'npc')
+      const npc_mind = new TemporalMind(world_mind, 'npc')
       const union_state = new UnionState(npc_mind, world_state, component_states)
       union_state.lock()
 
@@ -154,7 +154,7 @@ describe('UnionState + rev_trait() Integration', () => {
       // Setup: MasterCraftsman contains VillageBlacksmith UnionState
       // Tests: Does rev_trait recurse through nested UnionStates?
 
-      const world_mind = new Mind(logos(), 'world')
+      const world_mind = new TemporalMind(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       const workshop = world_state.add_belief_from_template({
@@ -165,7 +165,7 @@ describe('UnionState + rev_trait() Integration', () => {
       world_state.lock()
 
       // Level 1: Villager + Blacksmith UnionState
-      const villager_mind = new Mind(world_mind, 'villager')
+      const villager_mind = new TemporalMind(world_mind, 'villager')
       const villager_state = villager_mind.create_state(world_state)
       villager_state.add_belief_from_template({
         bases: ['Location'],
@@ -176,7 +176,7 @@ describe('UnionState + rev_trait() Integration', () => {
       })
       villager_state.lock()
 
-      const blacksmith_mind = new Mind(world_mind, 'blacksmith')
+      const blacksmith_mind = new TemporalMind(world_mind, 'blacksmith')
       const blacksmith_state = blacksmith_mind.create_state(world_state)
       blacksmith_state.add_belief_from_template({
         bases: ['Location'],
@@ -187,13 +187,13 @@ describe('UnionState + rev_trait() Integration', () => {
       })
       blacksmith_state.lock()
 
-      const village_blacksmith_mind = new Mind(world_mind, 'village_blacksmith')
+      const village_blacksmith_mind = new TemporalMind(world_mind, 'village_blacksmith')
       const union_state1 = new UnionState(village_blacksmith_mind, world_state,
         [villager_state, blacksmith_state])
       union_state1.lock()
 
       // Level 2: Add Master component and create nested UnionState
-      const master_mind = new Mind(world_mind, 'master')
+      const master_mind = new TemporalMind(world_mind, 'master')
       const master_state = master_mind.create_state(world_state)
       master_state.add_belief_from_template({
         bases: ['Location'],
@@ -204,7 +204,7 @@ describe('UnionState + rev_trait() Integration', () => {
       })
       master_state.lock()
 
-      const master_craftsman_mind = new Mind(world_mind, 'master_craftsman')
+      const master_craftsman_mind = new TemporalMind(world_mind, 'master_craftsman')
       const union_state2 = new UnionState(master_craftsman_mind, world_state,
         [union_state1, master_state])
       union_state2.lock()
@@ -227,7 +227,7 @@ describe('UnionState + rev_trait() Integration', () => {
       // Setup: state3 (regular) → union_state → component (has reference)
       // Tests: Does rev_trait traverse through UnionState in chain middle?
 
-      const world_mind = new Mind(logos(), 'world')
+      const world_mind = new TemporalMind(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       const room = world_state.add_belief_from_template({
@@ -238,7 +238,7 @@ describe('UnionState + rev_trait() Integration', () => {
       world_state.lock()
 
       // Component state with reference
-      const component_mind = new Mind(world_mind, 'component')
+      const component_mind = new TemporalMind(world_mind, 'component')
       const component_state = component_mind.create_state(world_state)
       component_state.add_belief_from_template({
         bases: ['Location'],
@@ -250,7 +250,7 @@ describe('UnionState + rev_trait() Integration', () => {
       component_state.lock()
 
       // UnionState based on component
-      const npc_mind = new Mind(world_mind, 'npc')
+      const npc_mind = new TemporalMind(world_mind, 'npc')
       const union_state = new UnionState(npc_mind, world_state, [component_state])
       union_state.lock()
 
@@ -299,12 +299,12 @@ describe('UnionState + rev_trait() Integration', () => {
       const sword = eidos_state.get_belief_by_label('sword')
       const shield = eidos_state.get_belief_by_label('shield')
 
-      const world_mind = new Mind(logos(), 'world')
+      const world_mind = new TemporalMind(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
       world_state.lock()
 
       // Component 1: Warrior with sword
-      const warrior_mind = new Mind(world_mind, 'warrior')
+      const warrior_mind = new TemporalMind(world_mind, 'warrior')
       const warrior_state = warrior_mind.create_state(world_state)
       warrior_state.add_belief_from_template({
         bases: ['Actor'],
@@ -316,7 +316,7 @@ describe('UnionState + rev_trait() Integration', () => {
       warrior_state.lock()
 
       // Component 2: Knight with shield
-      const knight_mind = new Mind(world_mind, 'knight')
+      const knight_mind = new TemporalMind(world_mind, 'knight')
       const knight_state = knight_mind.create_state(world_state)
       knight_state.add_belief_from_template({
         bases: ['Actor'],
@@ -328,7 +328,7 @@ describe('UnionState + rev_trait() Integration', () => {
       knight_state.lock()
 
       // UnionState composing both inventories
-      const npc_mind = new Mind(world_mind, 'knight_warrior')
+      const npc_mind = new TemporalMind(world_mind, 'knight_warrior')
       const union_state = new UnionState(npc_mind, world_state, [warrior_state, knight_state])
       union_state.lock()
 
@@ -348,7 +348,7 @@ describe('UnionState + rev_trait() Integration', () => {
     it('large UnionState with 20+ components', () => {
       // Tests: Does rev_trait scale with many UnionState components?
 
-      const world_mind = new Mind(logos(), 'world')
+      const world_mind = new TemporalMind(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
 
       const location = world_state.add_belief_from_template({
@@ -361,7 +361,7 @@ describe('UnionState + rev_trait() Integration', () => {
       // Create 20 component states, each with a reference
       const component_states = []
       for (let i = 1; i <= 20; i++) {
-        const component_mind = new Mind(world_mind, `component${i}`)
+        const component_mind = new TemporalMind(world_mind, `component${i}`)
         const component_state = component_mind.create_state(world_state)
 
         component_state.add_belief_from_template({
@@ -377,7 +377,7 @@ describe('UnionState + rev_trait() Integration', () => {
       }
 
       // Create large UnionState
-      const npc_mind = new Mind(world_mind, 'npc')
+      const npc_mind = new TemporalMind(world_mind, 'npc')
       const union_state = new UnionState(npc_mind, world_state, component_states)
       union_state.lock()
 

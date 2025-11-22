@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import * as DB from '../public/worker/db.mjs'
-import { Mind } from '../public/worker/mind.mjs'
+import { Mind, TemporalMind } from '../public/worker/cosmos.mjs'
 import { State } from '../public/worker/state.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { logos } from '../public/worker/cosmos.mjs'
@@ -80,7 +80,7 @@ describe('Logos Singleton', () => {
 
     it('can create world mind with logos as parent', () => {
       const logos = DB.get_logos_mind()
-      const world = new Mind(logos, 'world')
+      const world = new TemporalMind(logos, 'world')
 
       expect(world.parent).to.equal(logos)
       expect(world.label).to.equal('world')
@@ -89,7 +89,7 @@ describe('Logos Singleton', () => {
     it('can create world state with logos_state as ground', () => {
       const logos = DB.get_logos_mind()
       const logos_state = DB.get_logos_state()
-      const world_mind = new Mind(logos, 'world')
+      const world_mind = new TemporalMind(logos, 'world')
       const world_state = new State(world_mind, logos_state, null, {tt: 100})
 
       expect(world_state.ground_state).to.equal(logos_state)
@@ -97,9 +97,9 @@ describe('Logos Singleton', () => {
     })
   })
 
-  describe('Mind.create_world() helper', () => {
+  describe('TemporalMind.create_world() helper', () => {
     it('creates world mind with logos as parent', () => {
-      const world = Mind.create_world()
+      const world = TemporalMind.create_world()
 
       expect(world).to.be.instanceof(Mind)
       expect(world.label).to.equal('world')
@@ -107,7 +107,7 @@ describe('Logos Singleton', () => {
     })
 
     it('accepts custom label', () => {
-      const dream = Mind.create_world('dream')
+      const dream = TemporalMind.create_world('dream')
 
       expect(dream.label).to.equal('dream')
       expect(dream.parent).to.equal(DB.get_logos_mind())
@@ -122,7 +122,7 @@ describe('Logos Singleton', () => {
 
     it('works with shared belief as ground_belief', () => {
       // Create world context
-      const world_mind = Mind.create_world()
+      const world_mind = TemporalMind.create_world()
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
       // Create a shared belief (template) scoped to world with timed state

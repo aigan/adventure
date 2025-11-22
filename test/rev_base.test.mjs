@@ -12,7 +12,7 @@ import { expect } from 'chai'
 import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
-import { Mind, logos } from '../public/worker/cosmos.mjs'
+import { Mind, TemporalMind, logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 describe('State.rev_base() and UnionState.rev_base()', () => {
@@ -136,7 +136,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
   describe('UnionState.rev_base() - Basic Interface', () => {
     it('returns array (polymorphic with State)', () => {
       // Setup world with Mind composition
-      const world = Mind.create_world()
+      const world = TemporalMind.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -186,7 +186,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
     })
 
     it('filters out null/undefined next states from components', () => {
-      const world = Mind.create_world()
+      const world = TemporalMind.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_shared_from_template({
@@ -248,7 +248,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
     })
 
     it('can be used interchangeably in queue-based traversal', () => {
-      const world = Mind.create_world()
+      const world = TemporalMind.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -372,7 +372,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
     })
 
     it('UnionState.rev_base() returns array from multiple components', () => {
-      const world = Mind.create_world()
+      const world = TemporalMind.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
@@ -525,7 +525,7 @@ describe('State.rev_base() and UnionState.rev_base()', () => {
     })
 
     it('handles nested UnionState (UnionState containing UnionState components)', () => {
-      const world = Mind.create_world()
+      const world = TemporalMind.create_world()
       const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({

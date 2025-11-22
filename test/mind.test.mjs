@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, State, Belief, Archetype, Traittype, save_mind, load, logos, logos_state } from '../public/worker/cosmos.mjs';
+import { Mind, TemporalMind, State, Belief, Archetype, Traittype, save_mind, load, logos, logos_state } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { stdTypes, Thing, createStateInNewMind } from './helpers.mjs';
 
@@ -9,13 +9,13 @@ describe('Mind', () => {
   });
 
   it('creates mind with unique ID', () => {
-    const mind = new Mind(logos(), 'test_mind');
+    const mind = new TemporalMind(logos(), 'test_mind');
     expect(mind._id).to.be.a('number');
     expect(mind.label).to.equal('test_mind');
   });
 
   it('registers mind by id and label', () => {
-    const mind = new Mind(logos(), 'registered');
+    const mind = new TemporalMind(logos(), 'registered');
     expect(Mind.get_by_id(mind._id)).to.equal(mind);
     expect(Mind.get_by_label('registered')).to.equal(mind);
   });
@@ -87,7 +87,7 @@ describe('Mind', () => {
     });
 
     it('should return empty iterable for empty mind', () => {
-      const mind = new Mind(logos(), 'test');
+      const mind = new TemporalMind(logos(), 'test');
       expect([...mind.states_at_tt(100)]).to.deep.equal([]);
     });
   });
@@ -106,7 +106,7 @@ describe('Mind', () => {
     });
 
     it('should create Mind from plain object template (learn spec)', () => {
-      const world_mind = new Mind(logos(), 'world');
+      const world_mind = new TemporalMind(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       // Create a belief that can be learned about
@@ -136,7 +136,7 @@ describe('Mind', () => {
     });
 
     it('should create Mind from explicit template with _type field', () => {
-      const world_mind = new Mind(logos(), 'world');
+      const world_mind = new TemporalMind(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const workshop_belief = world_state.add_belief_from_template({
@@ -164,7 +164,7 @@ describe('Mind', () => {
     });
 
     it('should return Mind instance as-is (not a template)', () => {
-      const world_mind = new Mind(logos(), 'world');
+      const world_mind = new TemporalMind(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const npc_belief = world_state.add_belief_from_template({
@@ -172,7 +172,7 @@ describe('Mind', () => {
       });
       world_state.lock();
 
-      const existing_mind = new Mind(world_mind, 'existing');
+      const existing_mind = new TemporalMind(world_mind, 'existing');
 
       const mind_traittype = Traittype.get_by_label('mind');
       const result = Mind.resolve_trait_value_from_template(mind_traittype, npc_belief, existing_mind);
@@ -181,7 +181,7 @@ describe('Mind', () => {
     });
 
     it('should return null as-is', () => {
-      const world_mind = new Mind(logos(), 'world');
+      const world_mind = new TemporalMind(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const npc_belief = world_state.add_belief_from_template({
@@ -196,7 +196,7 @@ describe('Mind', () => {
     });
 
     it('should return undefined as-is', () => {
-      const world_mind = new Mind(logos(), 'world');
+      const world_mind = new TemporalMind(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const npc_belief = world_state.add_belief_from_template({
@@ -224,7 +224,7 @@ describe('Mind', () => {
 
   describe('mind.state property', () => {
     it('tracks unlocked state after create_from_template', () => {
-      const world_mind = new Mind(logos(), 'world');
+      const world_mind = new TemporalMind(logos(), 'world');
       const world_state = world_mind.create_state(logos_state(), {tt: 1});
 
       // Just use empty trait spec (no learning needed for this test)
@@ -242,7 +242,7 @@ describe('Mind', () => {
     });
 
     it('clears state property after locking', () => {
-      const world_mind = new Mind(logos(), 'world');
+      const world_mind = new TemporalMind(logos(), 'world');
       const world_state = world_mind.create_state(logos_state(), {tt: 1});
 
       // Just use empty trait spec
@@ -264,7 +264,7 @@ describe('Mind', () => {
     });
 
     it('tracks most recent unlocked state when multiple states exist', () => {
-      const mind = new Mind(logos(), 'test');
+      const mind = new TemporalMind(logos(), 'test');
 
       // Create first state
       const state1 = mind.create_state(logos_state(), {tt: 100});
@@ -287,7 +287,7 @@ describe('Mind', () => {
     });
 
     it('is null for new mind with no states', () => {
-      const mind = new Mind(logos(), 'test');
+      const mind = new TemporalMind(logos(), 'test');
       expect(mind.state).to.be.null;
     });
   });

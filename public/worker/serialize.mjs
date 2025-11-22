@@ -39,7 +39,7 @@ export function deserialize_reference(value) {
       return state
     }
 
-    if (value._type === 'Mind') {
+    if (value._type === 'Mind' || value._type === 'TemporalMind' || value._type === 'Logos' || value._type === 'Eidos') {
       const mind = DB.get_mind_by_id(value._id)
       if (!mind) {
         throw new Error(`Cannot resolve mind reference ${value._id} in trait`)
@@ -142,7 +142,11 @@ export function load(json_string) {
   let result
   switch (data._type) {
     case 'Mind':
+    case 'TemporalMind':
+    case 'Logos':
+    case 'Eidos':
       // When loading root mind, parent should be logos (or null only for logos itself)
+      // Mind.from_json handles polymorphic dispatch based on _type
       result = Mind.from_json(/** @type {MindJSON} */ (data),  logos())
       break
     case 'Belief':

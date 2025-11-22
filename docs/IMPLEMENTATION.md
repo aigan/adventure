@@ -176,10 +176,16 @@ All current indexes are necessary and non-redundant - each serves distinct query
 
 **Core Data Structures**:
 
-**Mind** - Container for beliefs representing an entity's knowledge/perspective
+**Mind** - Abstract base class for belief containers
+- **Hierarchy**:
+  - `Mind` (abstract) - Base class, cannot be instantiated directly
+  - `Logos` (singleton) - Primordial root mind with no parent
+  - `Eidos` (singleton) - Realm of forms and shared beliefs (parent: Logos)
+  - `TemporalMind` - Time-aware minds for entities (worlds, NPCs, players)
 - Nested hierarchy: world_mind contains npc_minds for theory of mind
 - States track belief evolution over time
 - **Key design**: Beliefs stored globally, not in minds (enables cross-mind queries)
+- **Temporal methods**: `states_at_tt()`, `create_world()` only available on `TemporalMind`
 
 **State** - Immutable snapshot of beliefs at specific time/tick
 - Differential updates: tracks `insert`, `remove` operations via `base` chain
@@ -236,10 +242,11 @@ state.tick_with_traits(belief, vt, {trait: value})
 ```
 
 **Temporal Querying:**
-- `mind.states_at_tt(tt)` - Find states that exist at given transaction time
+- `temporal_mind.states_at_tt(tt)` - Find states that exist at given transaction time
+  - Available only on `TemporalMind` (not Logos or Eidos)
   - Filters by `state.tt <= tt`
   - Returns outermost states on each branch
-  - Common usage: `mind.states_at_tt(ground_state.vt)` due to fork invariant
+  - Common usage: `temporal_mind.states_at_tt(ground_state.vt)` due to fork invariant
 
 **Temporal Reasoning Patterns:**
 - **Present thinking**: `state.vt = state.tt` (default)
