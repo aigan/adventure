@@ -40,7 +40,7 @@ describe('Locking Constraints', () => {
         bases: ['Person']
       })
 
-      player.lock()  // Lock the self belief
+      player.lock(world_state)  // Lock the self belief
 
       // world_state is still unlocked, but player is locked
       const player_mind = new Materia(world_mind, 'player_mind')
@@ -94,7 +94,7 @@ describe('Locking Constraints', () => {
       expect(player_states[0].locked).to.be.true  // Already locked
 
       // Lock the player belief - cascade should be no-op since state already locked
-      player.lock()
+      player.lock(world_state)
 
       // Verify both are locked
       expect(player.locked).to.be.true
@@ -151,7 +151,7 @@ describe('Locking Constraints', () => {
       const base_states = [...base_mind._states]
 
       // Lock the base belief - this cascades to its mind states
-      base_player.lock()
+      base_player.lock(world_state)
       expect(base_player.locked).to.be.true
       expect(base_states[0].locked).to.be.true
 
@@ -166,7 +166,7 @@ describe('Locking Constraints', () => {
       expect(versioned_player._bases.has(base_player)).to.be.true
 
       // Lock the versioned belief
-      versioned_player.lock()
+      versioned_player.lock(world_state)
 
       // Verify: the inherited Mind's states were already locked by base_player.lock()
       // (no additional cascade needed, and none should happen)

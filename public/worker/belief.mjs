@@ -95,7 +95,8 @@ export class Belief {
     this._cache = new Map()
     /** @type {State} */
     this.origin_state = state
-    // TODO: add this._cached_all = false
+    /** @type {boolean} - true when all inherited traits are cached */
+    this._cached_all = false
 
     DB.register_belief_by_id(this)
     DB.register_belief_by_subject(this)
@@ -332,9 +333,9 @@ export class Belief {
    * Uses skip list to efficiently traverse only states with relevant changes
    * @param {State} state - State to query
    * @param {Traittype} traittype - Traittype to find reverse references for
-   * @returns {Belief[]} Beliefs in state that reference this belief's subject via traittype
+   * @yields {Belief} Beliefs in state that reference this belief's subject via traittype
    */
-  rev_trait(state, traittype) { // FIXME: make it a generator
+  *rev_trait(state, traittype) {
     assert(state instanceof State, 'rev_trait requires State', {belief_id: this._id, traittype: traittype?.label})
     assert(traittype instanceof Traittype, 'rev_trait requires Traittype', {belief_id: this._id, traittype})
 
@@ -342,7 +343,7 @@ export class Belief {
 
     // FIXME: Update the trait indexes here instead of on modify
     const seen = new Set()
-    const results = new Set()
+    const yielded = new Set()
 
     // Walk skip list - only visit states with changes for this (subject, traittype)
     // Use queue to handle Convergence's multiple component_states
@@ -358,13 +359,14 @@ export class Belief {
         }
       }
 
-      // Add all additions (not in seen) to results
+      // Yield additions (not deleted, not already yielded)
       const add_beliefs = current._rev_add.get(this.subject)?.get(traittype)
       if (add_beliefs) {
         for (const belief of add_beliefs) {
-          if (!seen.has(belief._id)) {
-            results.add(belief)
-          }
+          if (seen.has(belief._id)) continue
+          if (yielded.has(belief._id)) continue
+          yielded.add(belief._id)
+          yield belief
         }
       }
 
@@ -372,8 +374,6 @@ export class Belief {
       const next_states = current.rev_base(this.subject, traittype)
       queue.push(...next_states)
     }
-
-    return [...results]
   }
 
   /**
@@ -450,36 +450,51 @@ export class Belief {
       yield [traittype, value]
       yielded.add(traittype)
     }
-    // TODO: return if this._cached_all === true
+    if (this._cached_all) return
 
     // Walk bases chain for inherited traits
     const queue = [...this._bases]
     const seen = new Set()
 
     while (queue.length > 0) {
-      // FIXME: Could potentially short-circuit here if base._cache is fully populated
-      // (when base.locked and cache contains all inherited traits from deeper bases)
       const base = queue.shift()
       if (!base || seen.has(base)) continue
       seen.add(base)
 
+      // Yield base's own traits
       for (const [traittype, trait_value] of base.get_trait_entries()) {
-        // Polymorphic interface - both Archetype and Belief yield [Traittype, value]
-        if (!yielded.has(traittype)) {
-          let value = trait_value
-          const derived_value = traittype.get_derived_value(this)
-          if (derived_value !== undefined) value = derived_value
-          if (this.locked) this._set_cache(traittype, value)
+        if (yielded.has(traittype)) continue
 
-          yield [traittype, value]
-          yielded.add(traittype)
-        }
+        let value = trait_value
+        const derived_value = traittype.get_derived_value(this)
+        if (derived_value !== undefined) value = derived_value
+        if (this.locked) this._set_cache(traittype, value)
+
+        yield [traittype, value]
+        yielded.add(traittype)
       }
 
-      queue.push(...base._bases)
+      // If base belief has fully cached traits, use its cache instead of walking deeper
+      if (!(base instanceof Belief && base._cached_all)) {
+        queue.push(...base._bases)
+        continue
+      }
+
+      // Base has complete cache - iterate it instead of walking base._bases
+      for (const [traittype, cached_value] of base._cache) {
+        if (yielded.has(traittype)) continue
+
+        let value = cached_value
+        const derived_value = traittype.get_derived_value(this)
+        if (derived_value !== undefined) value = derived_value
+        if (this.locked) this._set_cache(traittype, value)
+
+        yield [traittype, value]
+        yielded.add(traittype)
+      }
     }
 
-    // TODO: this._cached_all = true
+    if (this.locked) this._cached_all = true
   }
 
   /**
@@ -601,9 +616,11 @@ export class Belief {
    * @param {State} state - State context being locked
    */
   lock(state) {
-    this._locked = true
+    assert(state._insert.includes(this),
+      'Cannot lock belief not in state._insert',
+      {belief_id: this._id, label: this.get_label(), state_id: state._id})
 
-    // FIXME: check that the belief exists in the state.insert
+    this._locked = true
 
     // Cascade to child mind states
     // Note: Only checks _traits (directly set on this belief), not inherited traits.
@@ -809,6 +826,7 @@ export class Belief {
     belief.in_mind = mind
     belief._locked = false
     belief._cache = new Map()
+    belief._cached_all = false
 
     // Resolve 'bases' (archetype labels or belief IDs)
     belief._bases = new Set()

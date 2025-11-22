@@ -299,7 +299,7 @@ describe('sysdesig', () => {
         hammer: { bases: ['PortableObject'] }
       })
       const hammer = get_first_belief_by_label('hammer')
-      hammer.lock()
+      hammer.lock(state)
       const result = hammer.sysdesig(state)
 
       expect(result).to.include('🔒')

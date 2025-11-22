@@ -81,7 +81,7 @@ describe('Convergence + rev_trait() Integration', () => {
 
       // Verify rev_trait traverses Convergence component_states
       const about_tt = Traittype.get_by_label('@about')
-      const beliefs_about_village = village.rev_trait(union_state, about_tt)
+      const beliefs_about_village = [...village.rev_trait(union_state, about_tt)]
 
       // Expected: Should find BOTH villager_knowledge and blacksmith_knowledge
       expect(beliefs_about_village).to.have.lengthOf(2,
@@ -132,7 +132,7 @@ describe('Convergence + rev_trait() Integration', () => {
 
       // Query: Should find beliefs from ALL components
       const about_tt = Traittype.get_by_label('@about')
-      const beliefs_about_tavern = tavern.rev_trait(union_state, about_tt)
+      const beliefs_about_tavern = [...tavern.rev_trait(union_state, about_tt)]
 
       expect(beliefs_about_tavern).to.have.lengthOf(3,
         'Should find beliefs from all 3 Convergence components')
@@ -206,7 +206,7 @@ describe('Convergence + rev_trait() Integration', () => {
 
       // Query from nested Convergence
       const about_tt = Traittype.get_by_label('@about')
-      const beliefs_about_workshop = workshop.rev_trait(union_state2, about_tt)
+      const beliefs_about_workshop = [...workshop.rev_trait(union_state2, about_tt)]
 
       // Should find all 3 beliefs through nested Convergence traversal
       expect(beliefs_about_workshop).to.have.lengthOf(3,
@@ -255,7 +255,7 @@ describe('Convergence + rev_trait() Integration', () => {
 
       // Query from state3 - should traverse back through Convergence
       const about_tt = Traittype.get_by_label('@about')
-      const beliefs_about_room = room.rev_trait(state3, about_tt)
+      const beliefs_about_room = [...room.rev_trait(state3, about_tt)]
 
       expect(beliefs_about_room).to.have.lengthOf(1,
         'Should traverse through Convergence in middle of chain')
@@ -329,8 +329,8 @@ describe('Convergence + rev_trait() Integration', () => {
 
       // Query: Should find beliefs from both components
       const inventory_tt = Traittype.get_by_label('inventory')
-      const who_has_sword = sword.rev_trait(union_state, inventory_tt)
-      const who_has_shield = shield.rev_trait(union_state, inventory_tt)
+      const who_has_sword = [...sword.rev_trait(union_state, inventory_tt)]
+      const who_has_shield = [...shield.rev_trait(union_state, inventory_tt)]
 
       expect(who_has_sword).to.have.lengthOf(1,
         'Should find warrior_self from Convergence component')
@@ -379,7 +379,7 @@ describe('Convergence + rev_trait() Integration', () => {
       // Query with performance timing
       const about_tt = Traittype.get_by_label('@about')
       const start = Date.now()
-      const beliefs = location.rev_trait(union_state, about_tt)
+      const beliefs = [...location.rev_trait(union_state, about_tt)]
       const duration = Date.now() - start
 
       expect(beliefs).to.have.lengthOf(20,

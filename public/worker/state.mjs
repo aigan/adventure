@@ -594,7 +594,7 @@ export class State {
       about_belief = source_belief.subject.get_shared_belief_by_state(query_state)
     }
 
-    const beliefs_about_subject = about_belief?.rev_trait(this, about_traittype) ?? []
+    const beliefs_about_subject = about_belief ? [...about_belief.rev_trait(this, about_traittype)] : []
 
     // TODO: Sort by confidence (for now just return first 3)
     // TODO: Limit to explicit knowledge beliefs (not observation events, etc.)

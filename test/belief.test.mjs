@@ -676,6 +676,7 @@ describe('Belief', () => {
       const seasonal_v2 = new Belief(state_200, seasonal_v1.subject, [seasonal_v1]);
       const bonus_traittype = Traittype.get_by_label('bonus');
       seasonal_v2.add_trait(bonus_traittype, 10);
+      state_200.insert_beliefs(seasonal_v2);
       seasonal_v2.lock(state_200);
 
       // Query at timestamp 150 -> should find v1
@@ -1151,6 +1152,59 @@ describe('Belief', () => {
       const view2 = player.to_inspect_view(world_state);
       expect(view2.traits.mind).to.not.be.null;
       expect(view2.traits.mind._ref).to.equal(view1.traits.mind._ref);
+    });
+
+    it('uses parent belief cache when _cached_all is true', () => {
+      // Create a 3-level belief chain: grandparent -> parent -> child
+      const world_state = createMindWithBeliefs('world', {
+        grandparent: {
+          bases: ['Person'],
+          traits: {
+            mind: {}
+          }
+        }
+      });
+
+      const grandparent = get_first_belief_by_label('grandparent');
+
+      // Lock grandparent and iterate all its traits to populate _cached_all
+      grandparent.lock(world_state);
+      const gp_traits = [...grandparent.get_defined_traits()];
+      expect(grandparent._cached_all).to.be.true;
+      expect(grandparent._cache.size).to.be.greaterThan(0);
+
+      // Create parent with grandparent as base
+      const parent = Belief.from_template(world_state, {
+        bases: [grandparent],
+        label: 'parent'
+      });
+      world_state.insert_beliefs(parent);
+
+      // Lock parent and iterate - should use grandparent's cache
+      parent.lock(world_state);
+      const parent_traits = [...parent.get_defined_traits()];
+      expect(parent._cached_all).to.be.true;
+
+      // Parent should have same traits as grandparent (inherited)
+      const gp_trait_labels = gp_traits.map(([tt]) => tt.label).sort();
+      const parent_trait_labels = parent_traits.map(([tt]) => tt.label).sort();
+      expect(parent_trait_labels).to.deep.equal(gp_trait_labels);
+
+      // Create child with parent as base
+      const child = Belief.from_template(world_state, {
+        bases: [parent],
+        label: 'child'
+      });
+      world_state.insert_beliefs(child);
+
+      // Lock child and iterate - should use parent's cache (which covers grandparent too)
+      child.lock(world_state);
+      const child_traits = [...child.get_defined_traits()];
+      expect(child._cached_all).to.be.true;
+
+      // Child should have same traits
+      const child_trait_labels = child_traits.map(([tt]) => tt.label).sort();
+      expect(child_trait_labels).to.deep.equal(gp_trait_labels);
     });
   });
 

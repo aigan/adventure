@@ -218,7 +218,7 @@ describe('Integration', () => {
 
       const workshop = state.get_belief_by_label('workshop');
       const about_traittype = Traittype.get_by_label('@about');
-      const knowledge_about_workshop = workshop.rev_trait(villager_mind_state, about_traittype);
+      const knowledge_about_workshop = [...workshop.rev_trait(villager_mind_state, about_traittype)];
 
       // Villager mind should have exactly one belief about workshop
       expect(knowledge_about_workshop.length).to.equal(1);
@@ -303,9 +303,8 @@ describe('Integration', () => {
 
       // Query for beliefs about workshop in NPC's mind - should be empty
       const about_traittype = Traittype.get_by_label('@about');
-      const beliefs_about_workshop = workshop.rev_trait(npc_state, about_traittype);
+      const beliefs_about_workshop = [...workshop.rev_trait(npc_state, about_traittype)];
 
-      expect(beliefs_about_workshop).to.be.an('array');
       expect(beliefs_about_workshop.length).to.equal(0);
     });
 
@@ -389,7 +388,7 @@ describe('Integration', () => {
 
       // At tt=1, should have 1 belief about hammer (location only)
       const about_traittype = Traittype.get_by_label('@about');
-      let beliefs_about_hammer = hammer.rev_trait(state1, about_traittype);
+      let beliefs_about_hammer = [...hammer.rev_trait(state1, about_traittype)];
       expect(beliefs_about_hammer.length).to.equal(1);
 
       const knowledge1 = beliefs_about_hammer[0];
@@ -402,7 +401,7 @@ describe('Integration', () => {
       state2.lock();
 
       // Should still have 1 belief (versioned with new trait)
-      beliefs_about_hammer = hammer.rev_trait(state2, about_traittype);
+      beliefs_about_hammer = [...hammer.rev_trait(state2, about_traittype)];
       expect(beliefs_about_hammer.length).to.equal(1);
 
       const knowledge2 = beliefs_about_hammer[0];
@@ -415,7 +414,7 @@ describe('Integration', () => {
       state3.lock();
 
       // Should still have 1 belief (further versioned)
-      beliefs_about_hammer = hammer.rev_trait(state3, about_traittype);
+      beliefs_about_hammer = [...hammer.rev_trait(state3, about_traittype)];
       expect(beliefs_about_hammer.length).to.equal(1);
 
       const knowledge3 = beliefs_about_hammer[0];
@@ -509,7 +508,7 @@ describe('Integration', () => {
 
       // Bob's mind should find knowledge about tavern (inherited from prototype)
       const about_traittype = Traittype.get_by_label('@about');
-      const beliefs_about_tavern = tavern.rev_trait(bob_state, about_traittype);
+      const beliefs_about_tavern = [...tavern.rev_trait(bob_state, about_traittype)];
 
       expect(beliefs_about_tavern.length).to.be.at.least(1);
       const knowledge = beliefs_about_tavern[0];

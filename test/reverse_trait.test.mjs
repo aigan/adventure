@@ -55,7 +55,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state.lock()
 
       // Query for beliefs with location trait pointing to this room
-      const referrers = room.rev_trait(state, location_traittype)
+      const referrers = [...room.rev_trait(state, location_traittype)]
 
       assert.isArray(referrers)
       assert.lengthOf(referrers, 0)
@@ -82,7 +82,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state.lock()
 
       // Query: who is in the tavern?
-      const occupants = room.rev_trait(state, location_traittype)
+      const occupants = [...room.rev_trait(state, location_traittype)]
 
       assert.lengthOf(occupants, 1)
       assert.strictEqual(occupants[0], npc)
@@ -114,7 +114,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state.lock()
 
       // Query: who is in the marketplace?
-      const occupants = room.rev_trait(state, location_traittype)
+      const occupants = [...room.rev_trait(state, location_traittype)]
 
       assert.lengthOf(occupants, 3)
       assert.includeMembers(occupants, [npc1, npc2, npc3])
@@ -136,7 +136,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
       state.lock()
 
-      const occupants = room.rev_trait(state, location_traittype)
+      const occupants = [...room.rev_trait(state, location_traittype)]
       assert.lengthOf(occupants, 1)
       assert.strictEqual(occupants[0], npc)
     })
@@ -164,12 +164,12 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state2.lock()
 
       // Query from state2 should see both NPCs
-      const occupants = room.rev_trait(state2, location_traittype)
+      const occupants = [...room.rev_trait(state2, location_traittype)]
       assert.lengthOf(occupants, 2)
       assert.includeMembers(occupants, [npc1, npc2])
 
       // Query from state1 should see only npc1
-      const occupants1 = room.rev_trait(state1, location_traittype)
+      const occupants1 = [...room.rev_trait(state1, location_traittype)]
       assert.lengthOf(occupants1, 1)
       assert.strictEqual(occupants1[0], npc1)
     })
@@ -204,7 +204,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       }
 
       // Query should find all 3 NPCs despite 10-state chain
-      const occupants = room.rev_trait(state, location_traittype)
+      const occupants = [...room.rev_trait(state, location_traittype)]
       assert.lengthOf(occupants, 3)
       assert.includeMembers(occupants, npcs)
     })
@@ -236,7 +236,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state.lock()
       }
 
-      const occupants = room.rev_trait(state, location_traittype)
+      const occupants = [...room.rev_trait(state, location_traittype)]
       assert.lengthOf(occupants, 3)
       assert.includeMembers(occupants, npcs)
     })
@@ -269,16 +269,16 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state2.lock()
 
       // Kitchen should have no occupants in state2
-      const kitchen_occupants = room1.rev_trait(state2, location_traittype)
+      const kitchen_occupants = [...room1.rev_trait(state2, location_traittype)]
       assert.lengthOf(kitchen_occupants, 0)
 
       // Bedroom should have the NPC in state2
-      const bedroom_occupants = room2.rev_trait(state2, location_traittype)
+      const bedroom_occupants = [...room2.rev_trait(state2, location_traittype)]
       assert.lengthOf(bedroom_occupants, 1)
       assert.strictEqual(bedroom_occupants[0], npc2)
 
       // Kitchen should still have occupant in state1
-      const kitchen_occupants_old = room1.rev_trait(state1, location_traittype)
+      const kitchen_occupants_old = [...room1.rev_trait(state1, location_traittype)]
       assert.lengthOf(kitchen_occupants_old, 1)
     })
 
@@ -315,14 +315,14 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state3.lock()
 
       // State 1: King present
-      assert.lengthOf(room.rev_trait(state1, location_traittype), 1)
+      assert.lengthOf([...room.rev_trait(state1, location_traittype)], 1)
 
       // State 2: King absent
-      assert.lengthOf(room.rev_trait(state2, location_traittype), 0)
+      assert.lengthOf([...room.rev_trait(state2, location_traittype)], 0)
 
       // State 3: King returns
-      assert.lengthOf(room.rev_trait(state3, location_traittype), 1)
-      assert.strictEqual(room.rev_trait(state3, location_traittype)[0], npc3)
+      assert.lengthOf([...room.rev_trait(state3, location_traittype)], 1)
+      assert.strictEqual([...room.rev_trait(state3, location_traittype)][0], npc3)
     })
   })
 
@@ -414,11 +414,11 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state2.lock()
 
       // Each room should only see its own occupant
-      assert.lengthOf(room1.rev_trait(state2, location_traittype), 1)
-      assert.strictEqual(room1.rev_trait(state2, location_traittype)[0], npc)
+      assert.lengthOf([...room1.rev_trait(state2, location_traittype)], 1)
+      assert.strictEqual([...room1.rev_trait(state2, location_traittype)][0], npc)
 
-      assert.lengthOf(room2.rev_trait(state2, location_traittype), 1)
-      assert.strictEqual(room2.rev_trait(state2, location_traittype)[0], npc2)
+      assert.lengthOf([...room2.rev_trait(state2, location_traittype)], 1)
+      assert.strictEqual([...room2.rev_trait(state2, location_traittype)][0], npc2)
     })
   })
 
@@ -435,7 +435,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
       state.lock()
 
-      const result = room.rev_trait(state, unused_traittype)
+      const result = [...room.rev_trait(state, unused_traittype)]
       assert.isArray(result)
       assert.lengthOf(result, 0)
     })
@@ -450,7 +450,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
       state.lock()
 
-      const result = room.rev_trait(state, location_traittype)
+      const result = [...room.rev_trait(state, location_traittype)]
       assert.lengthOf(result, 0)
     })
 
@@ -478,7 +478,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state2.lock()
 
       // Should only return npc2 (current version), not duplicates
-      const occupants = room.rev_trait(state2, location_traittype)
+      const occupants = [...room.rev_trait(state2, location_traittype)]
       assert.lengthOf(occupants, 1)
       assert.strictEqual(occupants[0], npc2)
     })
@@ -518,12 +518,12 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state.lock()
 
       // Container query should find items inside it
-      const contents = container.rev_trait(state, container_traittype)
+      const contents = [...container.rev_trait(state, container_traittype)]
       assert.lengthOf(contents, 2)
       assert.includeMembers(contents, [item1, item2])
 
       // Room query should find only item with location
-      const room_contents = room.rev_trait(state, location_traittype)
+      const room_contents = [...room.rev_trait(state, location_traittype)]
       assert.lengthOf(room_contents, 1)
       assert.strictEqual(room_contents[0], item1)
     })
@@ -544,13 +544,13 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
 
       // Query on unlocked state
-      const occupants_unlocked = room.rev_trait(state1, location_traittype)
+      const occupants_unlocked = [...room.rev_trait(state1, location_traittype)]
       assert.lengthOf(occupants_unlocked, 1)
 
       state1.lock()
 
       // Query on locked state
-      const occupants_locked = room.rev_trait(state1, location_traittype)
+      const occupants_locked = [...room.rev_trait(state1, location_traittype)]
       assert.lengthOf(occupants_locked, 1)
       assert.strictEqual(occupants_locked[0], npc)
     })
@@ -570,7 +570,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       // name trait is string type, should not be indexed
       // Verify rev_trait doesn't crash and returns empty
-      const result = npc.rev_trait(state, name_traittype)
+      const result = [...npc.rev_trait(state, name_traittype)]
       assert.isArray(result)
     })
   })
@@ -599,7 +599,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
       state.lock()
 
-      const people_in_tavern = tavern.rev_trait(state, location_traittype)
+      const people_in_tavern = [...tavern.rev_trait(state, location_traittype)]
       assert.lengthOf(people_in_tavern, 3)
       assert.includeMembers(people_in_tavern, [bartender, patron1, patron2])
     })
@@ -627,7 +627,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
       state.lock()
 
-      const inventory = backpack.rev_trait(state, container_traittype)
+      const inventory = [...backpack.rev_trait(state, container_traittype)]
       assert.lengthOf(inventory, 3)
       assert.includeMembers(inventory, [sword, potion, rope])
     })
@@ -682,7 +682,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       // Query with performance timing
       const start = Date.now()
-      const occupants = location.rev_trait(state, location_traittype)
+      const occupants = [...location.rev_trait(state, location_traittype)]
       const duration = Date.now() - start
 
       // Verify correctness
@@ -739,7 +739,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       // Verify each branch sees exactly 3 NPCs (2 root + 1 own)
       for (let i = 0; i < 10; i++) {
         const { state: branch, npc } = branches[i]
-        const occupants = plaza.rev_trait(branch, location_traittype)
+        const occupants = [...plaza.rev_trait(branch, location_traittype)]
 
         assert.lengthOf(occupants, 3,
           `Branch ${i} should see 2 root + 1 own NPC`)
@@ -756,7 +756,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       }
 
       // Root state should see only 2 NPCs
-      const root_occupants = plaza.rev_trait(root_state, location_traittype)
+      const root_occupants = [...plaza.rev_trait(root_state, location_traittype)]
       assert.lengthOf(root_occupants, 2,
         'Root state should see only its own 2 NPCs')
     })
@@ -812,7 +812,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         assert.strictEqual(chest_location, 'warehouse', 'chest should inherit warehouse location STRING from Container archetype (not Subject)')
 
         // Test: Does warehouse.rev_trait() find chest?
-        const items_in_warehouse = warehouse.rev_trait(state, location_tt)
+        const items_in_warehouse = [...warehouse.rev_trait(state, location_tt)]
 
         // Archetype defaults are NOT resolved to Subjects (they remain as string labels)
         // Therefore warehouse.subject is never added to reverse index
@@ -881,7 +881,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         assert.isFalse(knight._traits.has(inventory_tt), 'knight should NOT have inventory in own _traits (inherited only)')
 
         // Test: Does sword.rev_trait() find knight even though knight._traits doesn't have inventory?
-        const who_has_sword = sword.rev_trait(state, inventory_tt)
+        const who_has_sword = [...sword.rev_trait(state, inventory_tt)]
 
         assert.include(who_has_sword, knight, 'knight should appear in sword.rev_trait() even though inventory is inherited, not in _traits')
       })
@@ -934,7 +934,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         assert.isFalse(npc_v2._traits.has(location_tt), 'npc_v2 should NOT have location in own _traits (inherited only)')
 
         // Test: Does tavern.rev_trait() find npc_v2 even though npc_v2._traits doesn't have location?
-        const who_is_in_tavern = tavern.rev_trait(state2, location_tt)
+        const who_is_in_tavern = [...tavern.rev_trait(state2, location_tt)]
 
         // Both v1 and v2 should appear (v2 inherits the reference)
         assert.include(who_is_in_tavern, npc_v1, 'npc_v1 should appear (explicit location)')
@@ -1000,8 +1000,8 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         assert.lengthOf(knight_inventory, 2, 'knight._traits should have 2 items (composed)')
 
         // Both items should appear in rev_trait
-        const who_has_sword = sword.rev_trait(state, inventory_tt)
-        const who_has_shield = shield.rev_trait(state, inventory_tt)
+        const who_has_sword = [...sword.rev_trait(state, inventory_tt)]
+        const who_has_shield = [...shield.rev_trait(state, inventory_tt)]
 
         assert.include(who_has_sword, knight, 'sword should appear (composed into _traits)')
         assert.include(who_has_shield, knight, 'shield should appear (explicit)')
@@ -1047,8 +1047,8 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state.lock()
 
         // Each child should appear in rev_trait
-        const alice_parents = alice.rev_trait(state, children_tt)
-        const bob_parents = bob.rev_trait(state, children_tt)
+        const alice_parents = [...alice.rev_trait(state, children_tt)]
+        const bob_parents = [...bob.rev_trait(state, children_tt)]
 
         assert.include(alice_parents, family, 'alice should appear in family.children reverse lookup')
         assert.include(bob_parents, family, 'bob should appear in family.children reverse lookup')
@@ -1098,9 +1098,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state.lock()
 
         // All witnesses should appear in crime.witnesses reverse lookup
-        const alice_witnessed = alice.rev_trait(state, witnesses_tt)
-        const bob_witnessed = bob.rev_trait(state, witnesses_tt)
-        const charlie_witnessed = charlie.rev_trait(state, witnesses_tt)
+        const alice_witnessed = [...alice.rev_trait(state, witnesses_tt)]
+        const bob_witnessed = [...bob.rev_trait(state, witnesses_tt)]
+        const charlie_witnessed = [...charlie.rev_trait(state, witnesses_tt)]
 
         assert.include(alice_witnessed, crime, 'alice should appear in rev_trait for witnesses')
         assert.include(bob_witnessed, crime, 'bob should appear in rev_trait for witnesses')
@@ -1175,17 +1175,17 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state3.lock()
 
         // Verify state 2: all three should be found
-        const bob_at_state2 = bob.rev_trait(state2, witnesses_tt)
+        const bob_at_state2 = [...bob.rev_trait(state2, witnesses_tt)]
         assert.include(bob_at_state2, crime_v2, 'bob should appear in state2 witnesses')
 
         // Verify state 3: bob should NOT be found (removed via replace_beliefs)
-        const bob_at_state3 = bob.rev_trait(state3, witnesses_tt)
+        const bob_at_state3 = [...bob.rev_trait(state3, witnesses_tt)]
         const has_crime = bob_at_state3.some(b => b.subject.sid === crime_v1.subject.sid)
         assert.isFalse(has_crime, 'bob should NOT appear in state3 witnesses after removal')
 
         // Alice and charlie should still be found in state3
-        const alice_at_state3 = alice.rev_trait(state3, witnesses_tt)
-        const charlie_at_state3 = charlie.rev_trait(state3, witnesses_tt)
+        const alice_at_state3 = [...alice.rev_trait(state3, witnesses_tt)]
+        const charlie_at_state3 = [...charlie.rev_trait(state3, witnesses_tt)]
         assert.include(alice_at_state3, crime_v3, 'alice should still appear in state3')
         assert.include(charlie_at_state3, crime_v3, 'charlie should appear in state3')
       })
@@ -1268,23 +1268,23 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state3.lock()
 
         // Sword should appear in all states (inherited)
-        const sword_at_state1 = sword.rev_trait(state1, inventory_tt)
-        const sword_at_state2 = sword.rev_trait(state2, inventory_tt)
-        const sword_at_state3 = sword.rev_trait(state3, inventory_tt)
+        const sword_at_state1 = [...sword.rev_trait(state1, inventory_tt)]
+        const sword_at_state2 = [...sword.rev_trait(state2, inventory_tt)]
+        const sword_at_state3 = [...sword.rev_trait(state3, inventory_tt)]
 
         assert.include(sword_at_state1, knight_v1, 'sword should appear in state1 (inherited)')
         assert.include(sword_at_state2, knight_v2, 'sword should appear in state2 (still inherited)')
         assert.include(sword_at_state3, knight_v3, 'sword should appear in state3 (still inherited)')
 
         // Shield should appear in state2 and state3
-        const shield_at_state2 = shield.rev_trait(state2, inventory_tt)
-        const shield_at_state3 = shield.rev_trait(state3, inventory_tt)
+        const shield_at_state2 = [...shield.rev_trait(state2, inventory_tt)]
+        const shield_at_state3 = [...shield.rev_trait(state3, inventory_tt)]
 
         assert.include(shield_at_state2, knight_v2, 'shield should appear in state2 (added)')
         assert.include(shield_at_state3, knight_v3, 'shield should appear in state3 (retained)')
 
         // Helmet should only appear in state3
-        const helmet_at_state3 = helmet.rev_trait(state3, inventory_tt)
+        const helmet_at_state3 = [...helmet.rev_trait(state3, inventory_tt)]
         assert.include(helmet_at_state3, knight_v3, 'helmet should appear in state3 (added)')
       })
     })
@@ -1340,7 +1340,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         const inventory_tt = Traittype.get_by_label('inventory')
 
         // pacifist should NOT appear in sword.rev_trait (null blocked it)
-        const who_has_sword = sword.rev_trait(state, inventory_tt)
+        const who_has_sword = [...sword.rev_trait(state, inventory_tt)]
 
         assert.notInclude(who_has_sword, pacifist, 'null should block composition - pacifist should not have sword')
 
@@ -1403,7 +1403,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         assert.lengthOf(student_inventory, 1, 'empty array should compose with inherited values')
 
         // Student should appear in sword.rev_trait
-        const who_has_sword = sword.rev_trait(state, inventory_tt)
+        const who_has_sword = [...sword.rev_trait(state, inventory_tt)]
         assert.include(who_has_sword, student, 'empty array should compose - student should have inherited sword')
       })
     })
@@ -1445,7 +1445,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
         // Query: what beliefs reference GenericSword?
         const prototype_traittype = Traittype.get_by_label('prototype')
-        const instances = generic_weapon.rev_trait(world_state, prototype_traittype)
+        const instances = [...generic_weapon.rev_trait(world_state, prototype_traittype)]
 
         assert.lengthOf(instances, 1)
         assert.strictEqual(instances[0], player_sword)
@@ -1475,7 +1475,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state.lock()
 
         // Query should find itself
-        const children = entity.rev_trait(state, parent_traittype)
+        const children = [...entity.rev_trait(state, parent_traittype)]
 
         assert.lengthOf(children, 1)
         assert.strictEqual(children[0], entity)
@@ -1524,12 +1524,12 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         const location_traittype = Traittype.get_by_label('location')
 
         // Query from mind_a should only see npc_a
-        const occupants_a = shared_room.rev_trait(state_a, location_traittype)
+        const occupants_a = [...shared_room.rev_trait(state_a, location_traittype)]
         assert.lengthOf(occupants_a, 1)
         assert.strictEqual(occupants_a[0], npc_a)
 
         // Query from mind_b should only see npc_b
-        const occupants_b = shared_room.rev_trait(state_b, location_traittype)
+        const occupants_b = [...shared_room.rev_trait(state_b, location_traittype)]
         assert.lengthOf(occupants_b, 1)
         assert.strictEqual(occupants_b[0], npc_b)
       })
