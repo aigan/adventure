@@ -208,6 +208,7 @@ After implementing a feature, verify:
 - ✗ **Iterating over DB registries** - use indexed lookups instead
 - ✗ **Workarounds for missing lookups** - ask about design changes instead
 - ✗ **Accessing beliefs without state context** - means the design needs clarification
+- ✗ **Circular dependency hacks** (`Object.setPrototypeOf`, setup callbacks) - see [CIRCULAR_DEPENDENCIES.md](CIRCULAR_DEPENDENCIES.md)
 
 ## ESLint Configuration
 
@@ -223,5 +224,6 @@ Run: `npx eslint .` or `npx eslint <file>`
 ## References
 
 - [IMPLEMENTATION.md](IMPLEMENTATION.md) - System design and patterns
+- [CIRCULAR_DEPENDENCIES.md](CIRCULAR_DEPENDENCIES.md) - Module dependency patterns
 - [test/.CONTEXT.md](../test/.CONTEXT.md) - Testing conventions
 - ESLint config: `eslint.config.mjs`
