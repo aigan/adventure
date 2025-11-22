@@ -223,10 +223,6 @@ export class Belief {
    */
   add_trait(traittype, data) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
-
-    // Invalidate cache when trait is added/changed
-    this._cache.clear() // FIXME: Not needed if only using cache on locked. IF we want to use this, it should be moved to _set_trait()
-
     assert(this.can_have_trait(traittype), `Belief can't have trait ${traittype.label}`, {label: traittype.label, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
 
     if (debug()) {

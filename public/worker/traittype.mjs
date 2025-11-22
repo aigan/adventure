@@ -59,20 +59,35 @@ import { deserialize_reference } from './serialize.mjs'
  * @property {object|null} constraints - Validation constraints (min, max)
  */
 
-export class Traittype {
-  /** @type {Record<string, NumberConstructor|StringConstructor|BooleanConstructor>} */
-  static literal_type_map = {
-    'number': Number,
-    'string': String,
-    'boolean': Boolean,
+/**
+ * Create handler for literal types (string, number, boolean)
+ * @param {string} expected_type
+ * @returns {{resolve_trait_value_from_template: Function}}
+ */
+const literal_handler = (expected_type) => ({
+  /** @param {Traittype} traittype @param {any} _belief @param {any} data */
+  resolve_trait_value_from_template(traittype, _belief, data) {
+    if (data === null) return null
+    if (typeof data !== expected_type) {
+      throw new Error(`Expected ${expected_type} for trait '${traittype.label}', got ${typeof data}`)
+    }
+    if (traittype.values && !traittype.values.includes(data)) {
+      throw new Error(`Invalid value '${data}' for trait '${traittype.label}'. Must be one of: ${traittype.values.join(', ')}`)
+    }
+    return data
   }
+})
 
-  /** @type {Record<string, Function>} */
+export class Traittype {
+  /** @type {Record<string, any>} */
   static type_class_by_name = {
     'Mind': Mind,
     'State': State,
     'Belief': Belief,
-    'Subject': Subject
+    'Subject': Subject,
+    'string': literal_handler('string'),
+    'number': literal_handler('number'),
+    'boolean': literal_handler('boolean'),
   }
 
   /**
@@ -155,9 +170,8 @@ export class Traittype {
       }
     }
 
-    // Construct template resolver once during initialization
-    // This method is built once here and reused for all template resolutions
-    this.resolve_trait_value_from_template = this._build_trait_value_from_template_resolver()
+    // Construct template converter once during initialization
+    this.resolve_trait_value_from_template = this._build_trait_value_from_template()
   }
 
   /**
@@ -259,80 +273,45 @@ export class Traittype {
   }
 
   /**
-   * Build resolver function for converting template data to trait values
-   * Handles type class delegation and container/constraint resolution
+   * Build function to convert template data to trait values
    * @returns {Function}
    */
-  _build_trait_value_from_template_resolver() {
-    // Build single-item resolver based on data_type
-    let item_resolver;
+  _build_trait_value_from_template() {
+    // Check type_class_by_name at construction time (includes Mind, State, literals)
+    const type_class = /** @type {any} */ (Traittype.type_class_by_name[this.data_type])
 
-    // Type class (Mind, State, Belief, Subject)
-    const type_class = /** @type {any} */ (Traittype.type_class_by_name[this.data_type] ?? null)
+    let convert
     if (type_class?.resolve_trait_value_from_template) {
-      item_resolver = (/** @type {Belief} */ belief, /** @type {any} */ data, /** @type {any} */ options = {}) =>
-        type_class.resolve_trait_value_from_template(this, belief, data, options)
-    }
-    // Literal type (string, number, boolean) with optional enum validation
-    else if (Traittype.literal_type_map[this.data_type]) {
-      const expected_type = this.data_type
-      const allowed_values = this.values  // Capture in closure for enum validation
-      item_resolver = (/** @type {Belief} */ belief, /** @type {any} */ data) => {
-        if (data === null) return null  // Allow explicit null to block composition
-        if (typeof data !== expected_type) {
-          throw new Error(`Expected ${expected_type} for trait '${this.label}', got ${typeof data}`)
-        }
-
-        // Enum validation if values are specified
-        if (allowed_values && !allowed_values.includes(data)) {
-          throw new Error(`Invalid value '${data}' for trait '${this.label}'. Must be one of: ${allowed_values.join(', ')}`)
-        }
-
-        return data
-      }
-    }
-    // Archetype or other - check archetype at runtime (lightweight map lookup)
-    else {
-      item_resolver = (/** @type {Belief} */ belief, /** @type {any} */ data) => {
-        if (data === null) return null  // Allow explicit null to block composition
-        // Runtime archetype lookup (handles registration order and late additions)
-        const archetype = Archetype.get_by_label(this.data_type)
-        if (archetype) {
+      convert = (/** @type {Belief} */ belief, /** @type {any} */ data, /** @type {any} */ opts = {}) =>
+        type_class.resolve_trait_value_from_template(this, belief, data, opts)
+    } else {
+      // Archetype lookup must happen at runtime (archetypes registered after traittypes)
+      convert = (/** @type {Belief} */ belief, /** @type {any} */ data) => {
+        if (Archetype.get_by_label(this.data_type)) {
           return Archetype.resolve_trait_value_from_template(this, belief, data)
         }
-        // Fallback for unrecognized types - pass through as-is
-        // Caller is responsible for passing correct type
-        return data
+        return data  // passthrough for unknown types
       }
     }
 
-    // Wrap in array container handler if needed
-    if (this.container === Array) {
-      return (/** @type {Belief} */ belief, /** @type {any} */ data) => {
-        // Allow null to explicitly clear inherited array values
-        if (data === null) {
-          return null
-        }
-
-        if (!Array.isArray(data)) {
-          throw new Error(`Expected array for trait '${this.label}', got ${typeof data}`)
-        }
-
-        if (this.constraints?.min != null && data.length < this.constraints.min) {
-          throw new Error(`Array for trait '${this.label}' has length ${data.length}, min is ${this.constraints.min}`)
-        }
-
-        if (this.constraints?.max != null && data.length > this.constraints.max) {
-          throw new Error(`Array for trait '${this.label}' has length ${data.length}, max is ${this.constraints.max}`)
-        }
-
-        // Resolve each item using the item resolver
-        return data.map(item => item_resolver(belief, item))
-      }
+    if (this.container !== Array) {
+      return convert
     }
 
-    // No container - return single item resolver
-    return item_resolver
+    // Array container: validate then map
+    return (/** @type {Belief} */ belief, /** @type {any} */ data) => {
+      if (data === null) return null
+      if (!Array.isArray(data)) {
+        throw new Error(`Expected array for trait '${this.label}', got ${typeof data}`)
+      }
+      if (this.constraints?.min != null && data.length < this.constraints.min) {
+        throw new Error(`Array for trait '${this.label}' has length ${data.length}, min is ${this.constraints.min}`)
+      }
+      if (this.constraints?.max != null && data.length > this.constraints.max) {
+        throw new Error(`Array for trait '${this.label}' has length ${data.length}, max is ${this.constraints.max}`)
+      }
+      return data.map(v => convert(belief, v))
+    }
   }
 
   /**

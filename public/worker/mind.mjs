@@ -188,8 +188,7 @@ export class Mind {
   }
 
   /**
-   * Get parent mind (never null - all Minds descend from Logos) // FIXME
-   * Note: Logos overrides this to return null
+   * Get parent mind (null only for Logos)
    * @returns {Mind|null}
    */
   get parent() {
