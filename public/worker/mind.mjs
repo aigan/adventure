@@ -452,6 +452,7 @@ export class Mind {
    * @returns {Mind|*} Resolved Mind instance or data as-is
    */
   static resolve_trait_value_from_template(traittype, belief, data, {about_state} = {}) {
+    if (data === null) return null  // Allow explicit null to block composition
     assert(belief.is_shared || belief.origin_state instanceof State, "belief must have origin_state", {belief})
     const creator_state = /** @type {State} */ (belief.origin_state)
 

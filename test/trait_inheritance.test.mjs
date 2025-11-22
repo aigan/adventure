@@ -707,12 +707,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         )
       })
 
-      // NOTE: These tests are currently SKIPPED because passing explicit null in
-      // trait templates is not supported - Traittype validation rejects it.
-      // To test null distinction, you'd need to set _traits.set() directly at a lower level.
-      // This is documented as a known limitation.
-
-      it.skip('explicit null in _traits is distinguishable', () => {
+      it('explicit null in _traits is distinguishable', () => {
         const state = createStateInNewMind('test')
 
         const with_null = state.add_belief_from_template({
@@ -743,7 +738,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         expect(without_has).to.be.false   // Absent trait is not in _traits
       })
 
-      it.skip('get_defined_traits includes explicit null but not undefined', () => {
+      it('get_defined_traits includes explicit null but not undefined', () => {
         const state = createStateInNewMind('test')
 
         const obj = state.add_belief_from_template({

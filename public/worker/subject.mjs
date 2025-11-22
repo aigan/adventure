@@ -238,6 +238,7 @@ export class Subject {
    * @returns {*} Resolved Subject
    */
   static resolve_trait_value_from_template(traittype, belief, data) {
+    if (data === null) return null  // Allow explicit null to block composition
     const { subject } = Subject._lookup_belief_from_template(traittype, belief, data)
     return subject
   }
