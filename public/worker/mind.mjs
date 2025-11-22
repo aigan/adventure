@@ -27,8 +27,6 @@ import { State } from './state.mjs'
 import * as Cosmos from './cosmos.mjs'
 import { Belief } from './belief.mjs'
 import { Traittype } from './traittype.mjs'
-// REMOVED: import { Timeless } from './timeless.mjs' - breaks circular dependency
-// Use duck typing instead: ground_state.vt === null to detect timeless states
 
 /**
  * @typedef {import('./belief.mjs').BeliefJSON} BeliefJSON
@@ -65,6 +63,8 @@ import { Traittype } from './traittype.mjs'
 export class Mind {
   /** @type {string} - Type discriminator for polymorphism */
   _type = 'Mind'
+  /** @type {string} - Base class identifier */
+  _kind = 'Mind'
   /** @type {number} - Unique identifier */
   _id = 0
   /** @type {Mind|null} - Parent mind */
@@ -161,6 +161,7 @@ export class Mind {
    * @param {number|null} [id] - ID for deserialization (null = generate new)
    */
   _init_properties(parent_mind, label, self, id = null) {
+    this._kind = 'Mind'  // Base class identifier (same for all Mind subclasses)
     this._id = /** @type {number} */ (id ?? next_id())  // Use provided ID or generate new one
 
     /** @type {Mind|null} - Internal storage, use getter/setter to access */

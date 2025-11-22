@@ -27,7 +27,6 @@ import * as Cosmos from './cosmos.mjs'
 import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
 import { Serialize } from './serialize.mjs'
-// REMOVED: import { Timeless } from './timeless.mjs' - breaks circular dependency
 import { Traittype } from './traittype.mjs'
 
 /**
@@ -68,6 +67,8 @@ export class State {
   // Property declarations for TypeScript
   /** @type {string} - Type discriminator for polymorphism */
   _type = 'State'
+  /** @type {string} - Base class identifier */
+  _kind = 'State'
 
   /** @type {number} */ _id = 0
   /** @type {Mind} */ in_mind = /** @type {Mind} */ ({})
@@ -111,14 +112,10 @@ export class State {
 
     // Allow null ground_state for Timeless (Logos bootstrap)
     if (ground_state !== null) {
-      // Use _type property instead of instanceof (breaks circular dependency!)
       assert(
-        ground_state._type === 'State' ||
-        ground_state._type === 'Temporal' ||
-        ground_state._type === 'Timeless' ||
-        ground_state._type === 'Convergence',
+        ground_state._kind === 'State',
         'ground_state must be a State',
-        { ground_type: ground_state?._type }
+        { ground_kind: ground_state?._kind, ground_type: ground_state?._type }
       )
 
       assert(
@@ -178,6 +175,7 @@ export class State {
    */
   _init_properties(in_mind, ground_state, base, tt, vt, self, about_state, id = null) {
     // Initialize ALL properties
+    this._kind = 'State'  // Base class identifier (same for all State subclasses)
     this._id = id ?? next_id()  // Use provided ID or generate new one
     this.in_mind = in_mind
     this.base = base
@@ -918,6 +916,88 @@ export class State {
     }
   }
 
+  // ========================================================================
+  // JSON Loading Helpers - Used by from_json in State and subclasses
+  // ========================================================================
+
+  /**
+   * Load references from JSON data (ID → object lookup)
+   * @param {Mind} mind - Mind context for resolution
+   * @param {StateJSON} data - JSON data
+   * @returns {{in_mind: Mind, base: State|null, ground_state: State|null, self: Subject|null, about_state: State|null}}
+   */
+  static _load_refs_from_json(mind, data) {
+    // Load in_mind
+    let in_mind = mind
+    if (data.in_mind != null) {
+      const found = DB.get_mind_by_id(data.in_mind)
+      if (!found) throw new Error(`Cannot load in_mind ${data.in_mind} for state ${data._id}`)
+      in_mind = found
+    }
+
+    // Load base
+    let base = null
+    if (data.base != null) {
+      base = DB.get_state_by_id(data.base)
+      if (!base) throw new Error(`Cannot load base ${data.base} for state ${data._id}`)
+    }
+
+    // Load ground_state
+    let ground_state = null
+    if (data.ground_state != null) {
+      ground_state = DB.get_state_by_id(data.ground_state)
+      if (!ground_state) throw new Error(`Cannot load ground_state ${data.ground_state} for state ${data._id}`)
+    }
+
+    // Load self
+    let self = null
+    if (data.self != null) {
+      self = DB.get_or_create_subject(mind.parent, data.self)
+    }
+
+    // Load about_state
+    let about_state = null
+    if (data.about_state != null) {
+      about_state = DB.get_state_by_id(data.about_state)
+      if (!about_state) throw new Error(`Cannot load about_state ${data.about_state} for state ${data._id}`)
+    }
+
+    return { in_mind, base, ground_state, self, about_state }
+  }
+
+  /**
+   * Load insert beliefs from JSON data
+   * @param {StateJSON} data - JSON data with insert array
+   */
+  _load_insert_from_json(data) {
+    for (const belief_id of data.insert) {
+      const belief = DB.get_belief_by_id(belief_id)
+      if (!belief) throw new Error(`Cannot load insert belief ${belief_id} for state ${data._id}`)
+      this._insert.push(belief)
+    }
+  }
+
+  /**
+   * Load remove beliefs from JSON data
+   * @param {StateJSON} data - JSON data with remove array
+   */
+  _load_remove_from_json(data) {
+    for (const belief_id of data.remove) {
+      const belief = DB.get_belief_by_id(belief_id)
+      if (!belief) throw new Error(`Cannot load remove belief ${belief_id} for state ${data._id}`)
+      this._remove.push(belief)
+    }
+  }
+
+  /**
+   * Link this state to its base's branches array
+   */
+  _link_base() {
+    if (this.base) {
+      this.base._branches.push(this)
+    }
+  }
+
   /**
    * Create State from JSON data (fully materialized)
    * @param {Mind} mind - Mind this state belongs to (or context for resolution)
@@ -936,85 +1016,17 @@ export class State {
       return Cosmos.Temporal.from_json(mind, data)
     }
 
-    // Resolve in_mind reference (if present in data, otherwise use parameter)
-    let resolved_mind = mind
-    if (data.in_mind != null) {
-      const found_mind = DB.get_mind_by_id(data.in_mind)
-      if (!found_mind) {
-        throw new Error(`Cannot resolve in_mind ${data.in_mind} for state ${data._id}`)
-      }
-      resolved_mind = found_mind
-    }
-
-    // Resolve base reference
-    let base = null
-    if (data.base != null) {
-      base = DB.get_state_by_id(data.base)
-      if (!base) {
-        throw new Error(`Cannot resolve base state ${data.base} for state ${data._id}`)
-      }
-    }
-
-    // Resolve ground_state reference (can be null for Timeless)
-    let ground_state = null
-    if (data.ground_state != null) {
-      ground_state = DB.get_state_by_id(data.ground_state)
-      if (!ground_state) {
-        throw new Error(`Cannot resolve ground_state ${data.ground_state} for state ${data._id}`)
-      }
-    }
-
-    // Resolve self reference
-    let self = null
-    if (data.self != null) {
-      const ground_mind = mind.parent
-      self = DB.get_or_create_subject(ground_mind, data.self)
-    }
-
-    // Resolve about_state reference
-    let about_state = null
-    if (data.about_state != null) {
-      about_state = DB.get_state_by_id(data.about_state)
-      if (!about_state) {
-        throw new Error(`Cannot resolve about_state ${data.about_state} for state ${data._id}`)
-      }
-    }
-
-    // Create instance using Object.create (bypasses constructor)
+    // Load references and create instance
+    const refs = State._load_refs_from_json(mind, data)
     const state = Object.create(State.prototype)
-
-    // Set _type (class field initializers don't run with Object.create)
     state._type = 'State'
 
-    // Use shared initialization with deserialized ID
-    const vt = data.vt ?? data.tt  // Default vt to tt for backward compatibility
-    state._init_properties(resolved_mind, ground_state, base, data.tt, vt, self, about_state, data._id)
-
-    // Restore insert/remove arrays
-    for (const belief_id of data.insert) {
-      const belief = DB.get_belief_by_id(belief_id)
-      if (!belief) {
-        throw new Error(`Cannot resolve insert belief ${belief_id} for state ${data._id}`)
-      }
-      state._insert.push(belief)
-    }
-
-    for (const belief_id of data.remove) {
-      const belief = DB.get_belief_by_id(belief_id)
-      if (!belief) {
-        throw new Error(`Cannot resolve remove belief ${belief_id} for state ${data._id}`)
-      }
-      state._remove.push(belief)
-    }
-
-    // Update branches
-    if (base) {
-      base._branches.push(state)
-    }
+    const vt = data.vt ?? data.tt
+    state._init_properties(refs.in_mind, refs.ground_state, refs.base, data.tt, vt, refs.self, refs.about_state, data._id)
+    state._load_insert_from_json(data)
+    state._load_remove_from_json(data)
+    state._link_base()
 
     return state
   }
 }
-
-// NOTE: Timeless now uses clean extends State inheritance
-// Removed _setup_timeless_inheritance hack - no longer needed

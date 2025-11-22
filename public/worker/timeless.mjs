@@ -9,7 +9,7 @@
  * - ground_state can be null (for Logos) or parent's origin_state
  */
 
-import { State } from './state.mjs'  // ✅ No circular dependency!
+import { State } from './state.mjs'
 import * as DB from './db.mjs'
 
 /**
@@ -23,7 +23,7 @@ import * as DB from './db.mjs'
 /**
  * Timeless state - exists outside normal temporal flow
  */
-export class Timeless extends State {  // ✅ Clean extends!
+export class Timeless extends State {
   /**
    * Override type discriminator
    * @type {string}
@@ -54,54 +54,17 @@ export class Timeless extends State {  // ✅ Clean extends!
    * @returns {Timeless}
    */
   static from_json(mind, data) {
-    // Resolve references
-    const resolved_mind = data.in_mind ? DB.get_mind_by_id(data.in_mind) : mind
-    if (!resolved_mind) {
-      throw new Error(`Cannot resolve in_mind ${data.in_mind} for timeless state ${data._id}`)
-    }
+    const refs = State._load_refs_from_json(mind, data)
+    const state = Object.create(Timeless.prototype)
+    state._type = 'Timeless'
 
-    const ground_state = data.ground_state ? DB.get_state_by_id(data.ground_state) : null
-    // Note: ground_state can be null for Logos bootstrap
+    // Timeless: base=null, tt=null, vt=null, about_state=null
+    state._init_properties(refs.in_mind, refs.ground_state, null, null, null, refs.self, null, data._id)
+    state._load_insert_from_json(data)
+    state._load_remove_from_json(data)
+    // No _link_base() needed - Timeless has no base chain
 
-    const self = data.self ? DB.get_or_create_subject(mind.parent, data.self) : null
-
-    // Create instance using Object.create (bypasses constructor)
-    const timeless = Object.create(Timeless.prototype)
-
-    // Set _type (class field initializers don't run with Object.create)
-    timeless._type = 'Timeless'
-
-    // Use inherited _init_properties from State with deserialized ID
-    timeless._init_properties(
-      resolved_mind,
-      ground_state,
-      null,        // base is always null for timeless
-      null,        // tt is always null for timeless
-      null,        // vt is always null for timeless
-      self,
-      null,        // about_state
-      data._id     // Use deserialized ID
-    )
-
-    // Restore insert beliefs
-    for (const belief_id of data.insert) {
-      const belief = DB.get_belief_by_id(belief_id)
-      if (!belief) {
-        throw new Error(`Cannot resolve insert belief ${belief_id} for timeless state ${data._id}`)
-      }
-      timeless._insert.push(belief)
-    }
-
-    // Restore remove beliefs
-    for (const belief_id of data.remove) {
-      const belief = DB.get_belief_by_id(belief_id)
-      if (!belief) {
-        throw new Error(`Cannot resolve remove belief ${belief_id} for timeless state ${data._id}`)
-      }
-      timeless._remove.push(belief)
-    }
-
-    return timeless
+    return state
   }
 
   /**
@@ -124,8 +87,3 @@ export class Timeless extends State {  // ✅ Clean extends!
     }
   }
 }
-
-// ✅ NO MORE _init() method - use inherited constructor
-// ✅ NO MORE _setup_timeless_inheritance() callback
-// ✅ NO MORE Object.setPrototypeOf hack
-// ✅ Clean extends State with proper super() call

@@ -105,10 +105,6 @@ export class Logos extends Mind {
   }
 }
 
-// ✅ NO MORE Object.setPrototypeOf hack!
-// ✅ Logos now properly extends Mind
-// ✅ All Mind methods inherited cleanly
-
 /**
  * Access Logos singleton - the primordial mind
  * Logos is the ONE mind with parent=null, all other minds descend from Logos

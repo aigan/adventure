@@ -11,6 +11,12 @@ import * as DB from './db.mjs'
  * @typedef {import('./state.mjs').StateJSON} StateJSON
  */
 
+/** @type {Record<string, string>} - Map _type to _kind for deserialization */
+const TYPE_TO_KIND = {
+  State: 'State', Temporal: 'State', Timeless: 'State', Convergence: 'State',
+  Mind: 'Mind', Materia: 'Mind', Logos: 'Mind', Eidos: 'Mind',
+}
+
 /**
  * Deserialize reference object from JSON ({_type, _id} format)
  * Handles nested Mind/State/Belief references
@@ -31,7 +37,9 @@ export function deserialize_reference(value) {
       return belief
     }
 
-    if (value._type === 'State' || value._type === 'Temporal' || value._type === 'Timeless' || value._type === 'Convergence') {
+    const kind = TYPE_TO_KIND[value._type]
+
+    if (kind === 'State') {
       const state = DB.get_state_by_id(value._id)
       if (!state) {
         throw new Error(`Cannot resolve state reference ${value._id} in trait`)
@@ -39,7 +47,7 @@ export function deserialize_reference(value) {
       return state
     }
 
-    if (value._type === 'Mind' || value._type === 'Materia' || value._type === 'Logos' || value._type === 'Eidos') {
+    if (kind === 'Mind') {
       const mind = DB.get_mind_by_id(value._id)
       if (!mind) {
         throw new Error(`Cannot resolve mind reference ${value._id} in trait`)

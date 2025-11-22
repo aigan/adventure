@@ -205,64 +205,35 @@ export class Convergence extends State {
 
   /**
    * Deserialize from JSON
-   * @param {Mind} _mind - Mind context (unused, for signature compatibility with State)
+   * @param {Mind} mind - Mind context for resolution
    * @param {StateJSON} data
    * @returns {Convergence}
    */
-  static from_json(_mind, data) {
+  static from_json(mind, data) {
     assert(data._type === 'Convergence', 'data._type must be Convergence')
     assert(Array.isArray(data.component_states), 'data.component_states must be an array')
 
-    // Look up mind from data
-    const mind = DB.get_mind_by_id(data.in_mind)
-    assert(mind, `Mind ${data.in_mind} not found`)
+    const refs = State._load_refs_from_json(mind, data)
+    const state = Object.create(Convergence.prototype)
+    state._type = 'Convergence'
 
-    // Resolve component_states from IDs
-    const component_states = data.component_states.map((id) => {
-      const state = DB.get_state_by_id(id)
-      assert(state, `Component state ${id} not found`)
-      return state
-    })
-
-    // Resolve ground_state
-    const ground_state = data.ground_state ? DB.get_state_by_id(data.ground_state) : null
-    assert(ground_state, `Ground state ${data.ground_state} not found`)
-
-    // Resolve self
-    const self = data.self ? DB.get_or_create_subject(mind.parent, data.self) : null
-
-    // Resolve about_state
-    const about_state = data.about_state ? DB.get_state_by_id(data.about_state) : null
-
-    // Create instance using Object.create (bypasses constructor)
-    const convergence = Object.create(Convergence.prototype)
-
-    // Set _type (class field initializers don't run with Object.create)
-    convergence._type = 'Convergence'
-
-    // Use inherited _init_properties from State with deserialized ID
     const vt = data.vt ?? data.tt
-    convergence._init_properties(mind, ground_state, null, data.tt, vt, self, about_state, data._id)
+    state._init_properties(refs.in_mind, refs.ground_state, null, data.tt, vt, refs.self, refs.about_state, data._id)
 
-    // Set Convergence-specific properties
-    convergence.component_states = Object.freeze(component_states)
-    convergence.is_union = true
+    // Convergence-specific: resolve and set component_states
+    const component_states = data.component_states.map((id) => {
+      const component = DB.get_state_by_id(id)
+      assert(component, `Component state ${id} not found`)
+      return component
+    })
+    state.component_states = Object.freeze(component_states)
+    state.is_union = true
 
-    // Resolve insert beliefs
-    for (const belief_id of data.insert) {
-      const belief = DB.get_belief_by_id(belief_id)
-      assert(belief, `Belief ${belief_id} not found`)
-      convergence._insert.push(belief)
-    }
+    state._load_insert_from_json(data)
+    state._load_remove_from_json(data)
+    // No _link_base() needed - Convergence doesn't use base chain
 
-    // Resolve remove beliefs
-    for (const belief_id of data.remove) {
-      const belief = DB.get_belief_by_id(belief_id)
-      assert(belief, `Belief ${belief_id} not found`)
-      convergence._remove.push(belief)
-    }
-
-    return convergence
+    return state
   }
 
   /**

@@ -33,32 +33,40 @@ export function init_world() {
 export const world_state = new Cosmos.Materia(...)  // May fail if Materia not loaded yet
 ```
 
-## The `_type` Property Pattern
+## The `_type` and `_kind` Properties
 
-Every class has a `_type` string property for runtime type discrimination:
+Every class has two string properties for runtime type discrimination:
+
+- **`_type`** - The specific/concrete class: `'Temporal'`, `'Timeless'`, `'Materia'`, `'Logos'`
+- **`_kind`** - The base class family: `'State'`, `'Mind'`
 
 ```javascript
 export class State {
   _type = 'State'
+  _kind = 'State'
 }
 
 export class Temporal extends State {
-  _type = 'Temporal'  // Override parent
+  _type = 'Temporal'  // Override - specific type
+  // _kind = 'State'  // Inherited - same family
 }
 ```
 
-**Use `_type` instead of `instanceof` when crossing module boundaries:**
+**Use `_kind` to check "is this any State?" and `_type` for specific types:**
 
 ```javascript
 // ❌ BAD - Requires importing Timeless, may create circular dep
 import { Timeless } from './timeless.mjs'
 if (state instanceof Timeless) { ... }
 
-// ✅ GOOD - No import needed
-if (state._type === 'Timeless') { ... }
+// ❌ UGLY - Listing all subtypes is error-prone
+if (state._type === 'State' || state._type === 'Temporal' || state._type === 'Timeless') { ... }
 
-// ✅ GOOD - Check multiple types
-if (state._type === 'Temporal' || state._type === 'Timeless') { ... }
+// ✅ GOOD - Check base class family
+if (state._kind === 'State') { ... }
+
+// ✅ GOOD - Check specific type
+if (state._type === 'Timeless') { ... }
 ```
 
 **When `instanceof` IS okay:**
