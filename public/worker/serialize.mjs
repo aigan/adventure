@@ -31,7 +31,7 @@ export function deserialize_reference(value) {
       return belief
     }
 
-    if (value._type === 'State') {
+    if (value._type === 'State' || value._type === 'Temporal' || value._type === 'Timeless' || value._type === 'UnionState') {
       const state = DB.get_state_by_id(value._id)
       if (!state) {
         throw new Error(`Cannot resolve state reference ${value._id} in trait`)
@@ -152,6 +152,9 @@ export function load(json_string) {
     case 'Belief':
       throw new Error('Loading individual Belief not yet implemented')
     case 'State':
+    case 'Temporal':
+    case 'Timeless':
+    case 'UnionState':
       throw new Error('Loading individual State not yet implemented')
     default:
       throw new Error(`Unknown _type: ${data._type}`)

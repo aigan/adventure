@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Temporal, Belief, Subject, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
 import * as Cosmos from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupMinimalArchetypes, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
@@ -450,7 +450,7 @@ describe('State', () => {
       });
 
       // Create state with self
-      const state = new State(
+      const state = new Temporal(
         mind,
         logos().origin_state,
         null,
@@ -468,7 +468,7 @@ describe('State', () => {
         bases: ['Actor']
       });
 
-      const state1 = new State(mind, logos().origin_state, null, {tt: 2, self: body.subject});
+      const state1 = new Temporal(mind, logos().origin_state, null, {tt: 2, self: body.subject});
       state1.lock();
 
       const state2 = state1.branch_state(logos().origin_state, 3);
@@ -485,7 +485,7 @@ describe('State', () => {
         bases: ['Actor']
       });
 
-      const state1 = new State(mind, logos().origin_state, null, {tt: 2, self: body.subject});
+      const state1 = new Temporal(mind, logos().origin_state, null, {tt: 2, self: body.subject});
       state1.lock();
       const state2 = state1.branch_state(logos().origin_state, 2);
 
@@ -501,7 +501,7 @@ describe('State', () => {
         bases: ['Actor']
       });
 
-      const state = new State(mind, logos().origin_state, null, {tt: 2, self: body.subject});
+      const state = new Temporal(mind, logos().origin_state, null, {tt: 2, self: body.subject});
 
       const json = state.toJSON();
       expect(json.self).to.equal(body.subject.sid);

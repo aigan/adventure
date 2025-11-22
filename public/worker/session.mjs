@@ -74,7 +74,8 @@ export class Session {
   }
 
   async load_world() {
-    const {world_state, player_body} = await import("./world.mjs")
+    const { init_world } = await import("./world.mjs")
+    const { world_state, player_body } = init_world()
     this.world = world_state.in_mind
     this._state = world_state
     this.player = player_body

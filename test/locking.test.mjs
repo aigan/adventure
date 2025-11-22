@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { Mind, Materia, State, Belief, Traittype, logos } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, State, Temporal, Belief, Traittype, logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { setupStandardArchetypes } from './helpers.mjs'
 
@@ -47,7 +47,7 @@ describe('Locking Constraints', () => {
 
       // Use State constructor directly to pass self parameter
       expect(() => {
-        new State(player_mind, world_state, null, {self: player.subject})
+        new Temporal(player_mind, world_state, null, {self: player.subject})
       }).to.throw('Cannot create state for locked self')
     })
 

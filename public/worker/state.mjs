@@ -36,7 +36,7 @@ import { Traittype } from './traittype.mjs'
 
 /**
  * @typedef {object} StateJSON
- * @property {string} _type - "State", "Timeless", or "UnionState"
+ * @property {string} _type - "State", "Temporal", "Timeless", or "UnionState"
  * @property {number} _id - State identifier
  * @property {number|null} tt - State transaction time/tick (null for timeless states like logos)
  * @property {number|null} vt - State valid time (null for timeless states like logos)
@@ -98,6 +98,15 @@ export class State {
    * @param {boolean} [options.derivation] - True if this state is a derivation (computed view, non-mutating)
    */
   constructor(mind, ground_state, base=null, {tt: tt_option, vt, self, about_state, derivation} = {}) {
+    // Prevent direct instantiation - State is abstract
+    // Only allow construction through subclasses (Temporal, Timeless, UnionState)
+    if (new.target === State) {
+      throw new Error(
+        'Cannot instantiate State directly - use Temporal for temporal states, ' +
+        'Timeless for timeless states, or UnionState for compositions'
+      )
+    }
+
     assert(base === null || base.locked, 'Cannot create state from unlocked base state')
 
     // Allow null ground_state for Timeless (Logos bootstrap)
@@ -105,6 +114,7 @@ export class State {
       // Use _type property instead of instanceof (breaks circular dependency!)
       assert(
         ground_state._type === 'State' ||
+        ground_state._type === 'Temporal' ||
         ground_state._type === 'Timeless' ||
         ground_state._type === 'UnionState',
         'ground_state must be a State',
@@ -409,7 +419,7 @@ export class State {
 
     // self is inherited from this.self via base.self in constructor (no need to pass explicitly)
 
-    const state = new State(this.in_mind, ground_state, this, options)
+    const state = new Cosmos.Temporal(this.in_mind, ground_state, this, options)
 
     // Validate time doesn't go backwards (skip check for timeless states)
     if (state.tt != null && this.tt != null) {
@@ -921,6 +931,9 @@ export class State {
     }
     if (data._type === 'Timeless') {
       return Cosmos.Timeless.from_json(mind, data)
+    }
+    if (data._type === 'Temporal') {
+      return Cosmos.Temporal.from_json(mind, data)
     }
 
     // Resolve in_mind reference (if present in data, otherwise use parameter)

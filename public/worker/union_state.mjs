@@ -26,7 +26,7 @@ import { State } from './state.mjs'
  */
 
 /**
- * UnionState for multi-parent composition
+ * UnionState for multi-parent composition // TODO: rename to Convergence
  */
 export class UnionState extends State {
   /** @type {ReadonlyArray<State>} */

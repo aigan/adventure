@@ -275,7 +275,7 @@ export class Mind {
    * @returns {State}
    */
   create_state(ground_state, options = {}) {
-    const state = new State(this, ground_state, null, options)
+    const state = new Cosmos.Temporal(this, ground_state, null, options)
 
     // Track first state as origin
     if (this.origin_state === null) {
@@ -552,8 +552,8 @@ export class Mind {
       throw new Error('No existing state found for versioning')
     }
 
-    // Fork invariant: child.tt = parent_state.vt (handled by State constructor)
-    return new State(
+    // Fork invariant: child.tt = parent_state.vt (handled by Temporal constructor)
+    return new Cosmos.Temporal(
       this,
       ground_state,
       latest ?? null,               // Inherit from latest or null for initial

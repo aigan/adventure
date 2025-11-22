@@ -217,8 +217,8 @@ export class Materia extends Mind {
         }
       )
     } else {
-      // Single or no base - use regular State
-      state = new State(
+      // Single or no base - use regular Temporal state
+      state = new Cosmos.Temporal(
         entity_mind,
         ground_state,             // ground_state (where body exists)
         base_mind_state ?? null,  // base state for knowledge inheritance

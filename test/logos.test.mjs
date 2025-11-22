@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import * as DB from '../public/worker/db.mjs'
-import { Mind, Materia } from '../public/worker/cosmos.mjs'
-import { State } from '../public/worker/state.mjs'
+import { Mind, Materia, State } from '../public/worker/cosmos.mjs'
+import { Temporal } from '../public/worker/temporal.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { logos } from '../public/worker/cosmos.mjs'
 import { setupStandardArchetypes } from './helpers.mjs'
@@ -90,7 +90,7 @@ describe('Logos Singleton', () => {
       const logos = DB.get_logos_mind()
       const logos_state = DB.get_logos_state()
       const world_mind = new Materia(logos, 'world')
-      const world_state = new State(world_mind, logos_state, null, {tt: 100})
+      const world_state = new Temporal(world_mind, logos_state, null, {tt: 100})
 
       expect(world_state.ground_state).to.equal(logos_state)
       expect(world_state.in_mind).to.equal(world_mind)

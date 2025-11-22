@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { Mind, Materia, State, Belief, Traittype, logos } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, State, Temporal, Belief, Traittype, logos } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 
@@ -212,7 +212,7 @@ describe('Temporal Reasoning', () => {
 
     it('vt can be set explicitly via State constructor', () => {
       const mind = new Materia(logos(), 'world')
-      const state = new State(mind, logos().origin_state, null, {tt: 50, vt: 75})
+      const state = new Temporal(mind, logos().origin_state, null, {tt: 50, vt: 75})
 
       expect(state.tt).to.equal(50)
       expect(state.vt).to.equal(75)
@@ -232,7 +232,7 @@ describe('Temporal Reasoning', () => {
 
     it('vt can differ from tt (past)', () => {
       const mind = new Materia(logos(), 'world')
-      const state = new State(mind, logos().origin_state, null, {tt: 100, vt: 50})
+      const state = new Temporal(mind, logos().origin_state, null, {tt: 100, vt: 50})
 
       expect(state.tt).to.equal(100)
       expect(state.vt).to.equal(50)
@@ -241,7 +241,7 @@ describe('Temporal Reasoning', () => {
 
     it('vt can differ from tt (future)', () => {
       const mind = new Materia(logos(), 'world')
-      const state = new State(mind, logos().origin_state, null, {tt: 100, vt: 200})
+      const state = new Temporal(mind, logos().origin_state, null, {tt: 100, vt: 200})
 
       expect(state.tt).to.equal(100)
       expect(state.vt).to.equal(200)
@@ -250,13 +250,13 @@ describe('Temporal Reasoning', () => {
 
     it('vt can move freely while tt progresses forward', () => {
       const mind = new Materia(logos(), 'world')
-      const state1 = new State(mind, logos().origin_state, null, {tt: 100, vt: 50})   // vt=50
+      const state1 = new Temporal(mind, logos().origin_state, null, {tt: 100, vt: 50})   // vt=50
       state1.lock()
 
-      const state2 = new State(mind, logos().origin_state, state1, {tt: 110, vt: 200}) // vt=200
+      const state2 = new Temporal(mind, logos().origin_state, state1, {tt: 110, vt: 200}) // vt=200
       state2.lock()
 
-      const state3 = new State(mind, logos().origin_state, state2, {tt: 120, vt: 75})  // vt=75
+      const state3 = new Temporal(mind, logos().origin_state, state2, {tt: 120, vt: 75})  // vt=75
 
       // TT progresses forward
       expect(state1.tt).to.equal(100)
@@ -337,9 +337,9 @@ describe('Temporal Reasoning', () => {
       const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Create memory states at different vt (using unlocked belief to avoid self lock error)
-      const memory1 = new State(npc_mind, world_state, null, {vt: 100})
-      const memory2 = new State(npc_mind, world_state, null, {vt: 150})
-      const memory3 = new State(npc_mind, world_state, null, {vt: 200})
+      const memory1 = new Temporal(npc_mind, world_state, null, {vt: 100})
+      const memory2 = new Temporal(npc_mind, world_state, null, {vt: 150})
+      const memory3 = new Temporal(npc_mind, world_state, null, {vt: 200})
 
       // All created at same tt, thinking about different past moments
       expect(memory1.tt).to.equal(300)
@@ -407,9 +407,9 @@ describe('Temporal Reasoning', () => {
       const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Create plan states for different futures (using unlocked belief to avoid self lock error)
-      const plan1 = new State(npc_mind, world_state, null, {vt: 150})
-      const plan2 = new State(npc_mind, world_state, null, {vt: 200})
-      const plan3 = new State(npc_mind, world_state, null, {vt: 300})
+      const plan1 = new Temporal(npc_mind, world_state, null, {vt: 150})
+      const plan2 = new Temporal(npc_mind, world_state, null, {vt: 200})
+      const plan3 = new Temporal(npc_mind, world_state, null, {vt: 300})
 
       // All created at same tt, planning different futures
       expect(plan1.tt).to.equal(100)
@@ -559,8 +559,8 @@ describe('Temporal Reasoning', () => {
 
       // Create multiple states at same tt (different possibilities)
       // Use null self to avoid locked belief error
-      const possibility_a = new State(npc_mind, world_state, null, {vt: 100})
-      const possibility_b = new State(npc_mind, world_state, null, {vt: 100})
+      const possibility_a = new Temporal(npc_mind, world_state, null, {vt: 100})
+      const possibility_b = new Temporal(npc_mind, world_state, null, {vt: 100})
 
       // Both at same tt, same ground_state, same vt
       expect(possibility_a.tt).to.equal(100)
@@ -600,7 +600,7 @@ describe('Temporal Reasoning', () => {
       const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Possibility A: NPC believes hammer is in workshop
-      const poss_a = new State(npc_mind, world_state, null, {vt: 100})
+      const poss_a = new Temporal(npc_mind, world_state, null, {vt: 100})
       const workshop_a = poss_a.add_belief_from_template({
         label: 'workshop',
         bases: ['Location']
@@ -615,7 +615,7 @@ describe('Temporal Reasoning', () => {
       })
 
       // Possibility B: NPC believes hammer is in shed
-      const poss_b = new State(npc_mind, world_state, null, {vt: 100})
+      const poss_b = new Temporal(npc_mind, world_state, null, {vt: 100})
       const shed_b = poss_b.add_belief_from_template({
         label: 'shed',
         bases: ['Location']
@@ -646,8 +646,8 @@ describe('Temporal Reasoning', () => {
       const npc_mind = new Materia(world_mind, 'npc')
 
       // Same vt=100, but different ground_states
-      const state_a = new State(npc_mind, world_state1, null, {vt: 100})
-      const state_b = new State(npc_mind, world_state2, null, {vt: 100})
+      const state_a = new Temporal(npc_mind, world_state1, null, {vt: 100})
+      const state_b = new Temporal(npc_mind, world_state2, null, {vt: 100})
 
       // Different ground_states means versioning in parent timeline
       // tt comes from ground_state.vt (fork invariant), so different ground_states → different tt
