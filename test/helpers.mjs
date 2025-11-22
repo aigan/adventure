@@ -43,7 +43,6 @@ export function createMindWithBeliefs(label, beliefs = {}, parent_mind = logos()
 /**
  * Standard trait types used in most tests
  * Spread this into your test's traittype definition
- *
  * @example
  * import { stdTypes, Thing } from './helpers.mjs';
  *
@@ -211,7 +210,6 @@ export function setupMinimalArchetypes() {
  *
  * Use state.get_belief_by_label(label) instead for deterministic lookups within
  * a specific state context.
- *
  * @param {string} label
  * @returns {Belief|null}
  */

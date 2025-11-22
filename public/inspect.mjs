@@ -291,6 +291,26 @@ function render_entity(a, target){
     hout += `</dl></dd>`;
   }
 
+  // Display reverse traits (beliefs referencing this one)
+  const rev_traits = a.entity.data.rev_traits;
+  if (rev_traits && Object.keys(rev_traits).length > 0) {
+    hout += `<dt>Reverse Traits</dt><dd><dl>`;
+    for (const [trait, refs] of Object.entries(rev_traits)) {
+      const items = /** @type {any[]} */ (refs).map(item => {
+        const label_text = item.label ? ` (${item.label})` : '';
+        const link = state_id
+          ? `?belief=${item._ref}&state=${state_id}`
+          : `?belief=${item._ref}`;
+        const mind_prefix = (item.mind_id && item.mind_id !== belief_mind_id)
+          ? `${item.mind_label || 'Mind #' + item.mind_id}: `
+          : '';
+        return `<a href="${link}">${mind_prefix}#${item._ref}${label_text}</a>`;
+      });
+      hout += `<dt>${trait}</dt><dd>${items.join(', ')}</dd>`;
+    }
+    hout += `</dl></dd>`;
+  }
+
   hout += "</dl>";
 
   // Display raw JSON for debugging

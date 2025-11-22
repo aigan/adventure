@@ -65,7 +65,11 @@ import { deserialize_reference } from './serialize.mjs'
  * @returns {{resolve_trait_value_from_template: Function}}
  */
 const literal_handler = (expected_type) => ({
-  /** @param {Traittype} traittype @param {any} _belief @param {any} data */
+  /**
+   * @param {Traittype} traittype @param {any} _belief @param {any} data
+   * @param _belief
+   * @param data
+   */
   resolve_trait_value_from_template(traittype, _belief, data) {
     if (data === null) return null
     if (typeof data !== expected_type) {

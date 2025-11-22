@@ -178,7 +178,10 @@ export function load(json_string) {
  * @param {MindJSON|BeliefJSON|StateJSON} data
  */
 function update_id_sequence_from_data(data) {
-  /** @param {any} obj @param {number} [max] @returns {number} */
+  /**
+   * @param {any} obj @param {number} [max] @returns {number}
+   * @param max
+   */
   const find_max_id = (obj, max = 0) => {
     if (!obj || typeof obj !== 'object') return max
 

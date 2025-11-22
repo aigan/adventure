@@ -50,7 +50,7 @@ Message.register({
     // console.log('appending', typeof textarr, textarr);
     assert(el_main, 'main element not found')
     const p = document.createElement('p');
-    let htmlparts = [];
+    const htmlparts = [];
     const main = Locus.main;
     for( const part of textarr ){
       // log('part', part);
@@ -76,7 +76,7 @@ Message.register({
 
     }
 
-    let text = htmlparts.join("\n");
+    const text = htmlparts.join("\n");
     p.innerHTML = text.replace(/\n/g,'<br>');
     el_main.appendChild(p);
     Locus.register( main, p );
@@ -327,7 +327,7 @@ export const Locus = {
 /** @type {ReturnType<typeof setTimeout>|null} */
 let delayedFocus = null;
 /** @type {ReturnType<typeof setTimeout>|null} */
-let delayedClick = null;
+const delayedClick = null;
 document.addEventListener('focusin', e=>{
   if( Locus.lock ) return;
   const target = /** @type {HTMLElement} */ (e.target)

@@ -46,10 +46,9 @@ function parse_log_args(args) {
  * Log function that respects NODE_ENV
  *
  * Usage:
- *   log('message', obj)           // No state - objects as-is
- *   log([state], 'msg', obj)      // Auto-dump objects with state
- *   log([state, ...], 'msg', obj) // Config array (state + future options)
- *
+ * log('message', obj)           // No state - objects as-is
+ * log([state], 'msg', obj)      // Auto-dump objects with state
+ * log([state, ...], 'msg', obj) // Config array (state + future options)
  * @param {...any} args - Arguments to log (first can be config array)
  */
 export function log(...args) {
@@ -71,10 +70,9 @@ export function log(...args) {
  * When called with no args, returns true if debug is enabled
  *
  * Usage:
- *   debug('message', obj)           // No state - objects as-is
- *   debug([state], 'msg', obj)      // Auto-dump objects with state
- *   debug([state, ...], 'msg', obj) // Config array (state + future options)
- *
+ * debug('message', obj)           // No state - objects as-is
+ * debug([state], 'msg', obj)      // Auto-dump objects with state
+ * debug([state, ...], 'msg', obj) // Config array (state + future options)
  * @param {...any} args - Arguments to log (first can be config array)
  * @returns {boolean} True if debug is enabled
  */

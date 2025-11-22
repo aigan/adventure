@@ -11,6 +11,7 @@
 
 import { log } from "./debug.mjs"
 import { Subject } from "./subject.mjs"
+import {Traittype} from "./traittype.mjs"
 
 /**
  * @typedef {import('./belief.mjs').Belief} Belief
@@ -41,10 +42,21 @@ export async function ensure_init() {
 
 /**
  * Handle look action
+ * @param {State} state - State context
  * @param {any} context
  */
-export function do_look(context) {
-  log('looking', context)
+export function do_look(state, context) {
+
+  const subj = context.subject
+  const target = subj.get_belief_by_state(state)
+  const location_traittype = Traittype.get_by_label('location')
+  const content = target.rev_trait(state, location_traittype)
+
+
+  log([state], 'looking', target)
+  for (const item of content) {
+    log([state], '*', item)
+  }
 }
 
 /**

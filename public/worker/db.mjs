@@ -133,7 +133,7 @@ const subject_by_sid = new Map()
 // ============================================================================
 
 /**
- * @internal - For testing and debugging only
+ * @internal
  * @returns {object} Internal registry state
  */
 export function _reflect() {

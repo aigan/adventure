@@ -377,6 +377,68 @@ export class Belief {
   }
 
   /**
+   * Iterate over all reverse trait references (beliefs referencing this subject)
+   * Corresponds to get_defined_traits() - includes traittypes even when all beliefs are deleted
+   * @param {State} state - State to query
+   * @yields {[Traittype, Belief]} [traittype, belief] pairs for all referencing beliefs
+   */
+  *rev_defined_traits(state) {
+    assert(state instanceof State, 'rev_defined_traits requires State', {belief_id: this._id})
+
+    const yielded_traittypes = new Set()
+    const queue = [state]
+    const visited_states = new Set()
+
+    while (queue.length > 0) {
+      const current = /** @type {State} */ (queue.shift())
+      if (visited_states.has(current._id)) continue
+      visited_states.add(current._id)
+
+      // Collect traittypes from both add and del maps for this state
+      const traittypes_here = new Set()
+
+      const add_map = current._rev_add.get(this.subject)
+      if (add_map) {
+        for (const traittype of add_map.keys()) {
+          traittypes_here.add(traittype)
+        }
+      }
+
+      const del_map = current._rev_del.get(this.subject)
+      if (del_map) {
+        for (const traittype of del_map.keys()) {
+          traittypes_here.add(traittype)
+        }
+      }
+
+      // Yield beliefs for new traittypes (rev_trait walks full state chain)
+      for (const traittype of traittypes_here) {
+        if (yielded_traittypes.has(traittype)) continue
+        yielded_traittypes.add(traittype)
+
+        for (const belief of this.rev_trait(state, traittype)) {
+          yield [traittype, belief]
+        }
+      }
+
+      // Walk to base state
+      if (current.base) queue.push(current.base)
+    }
+  }
+
+  /**
+   * Iterate over reverse trait references with non-null values
+   * Corresponds to get_traits() - excludes traittypes where all beliefs were deleted
+   * @param {State} state - State to query
+   * @yields {[Traittype, Belief]} [traittype, belief] pairs for all referencing beliefs
+   */
+  *rev_traits(state) {
+    for (const pair of this.rev_defined_traits(state)) {
+      yield pair
+    }
+  }
+
+  /**
    * Collect trait values from all direct bases for composition
    * Called by Traittype.get_derived_value() for composable traits
    * Collects ONE value per direct base (stops at first found in each base's chain)
@@ -585,7 +647,6 @@ export class Belief {
    * Prototypes are inheritance templates: Archetypes (global) and shared Beliefs (cultural knowledge).
    * Unlike observable beliefs in states, prototypes have no ownership (in_mind = null) and exist
    * only for inheritance via bases. They cannot be learned about, only inherited from.
-   *
    * @param {Set<Belief|Archetype>} [seen]
    * @returns {Generator<{label: string, type: 'Archetype'|'Belief'}>}
    */

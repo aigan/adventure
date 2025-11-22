@@ -254,7 +254,7 @@ describe('inspect.mjs', () => {
           data: {
             data: {
               _id: 70,
-              traits: {}, label: 'tagged_item',
+              label: 'tagged_item',
               traits: {
                 tags: ['urgent', 'review', 'pending']
               }
@@ -278,7 +278,7 @@ describe('inspect.mjs', () => {
           data: {
             data: {
               _id: 71,
-              traits: {}, label: 'inventory',
+              label: 'inventory',
               traits: {
                 items: [
                   { _ref: 201, _type: 'Belief', label: 'sword' },
@@ -313,7 +313,7 @@ describe('inspect.mjs', () => {
           data: {
             data: {
               _id: 72,
-              traits: {}, label: 'npc_with_multiple_states',
+              label: 'npc_with_multiple_states',
               traits: {
                 state_history: [
                   { _ref: 301, _type: 'State' },

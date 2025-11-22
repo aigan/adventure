@@ -4,7 +4,6 @@
  * Manages the current game session including world state, player perspective,
  * and game-facing operations. This is the boundary between the internal data
  * model and the game interface (text, 3D, UI, etc).
- *
  * @typedef {import('./mind.mjs').Mind} Mind
  * @typedef {import('./state.mjs').State} State
  * @typedef {import('./belief.mjs').Belief} Belief
@@ -104,6 +103,12 @@ export class Session {
     const location_traittype = Traittype.get_by_label('location')
     assert(location_traittype, "Traittype 'location' not found in registry")
     const loc = this.player.get_trait(st, location_traittype)
+
+    narrator.do_look(st, {
+      subject: loc,
+    })
+
+    /*
     const obs = {
       subject: loc,
       known_as: narrator.desig(st, loc),
@@ -115,11 +120,12 @@ export class Session {
           label: `Look around`,
         },
       ],
-    }
-
+      }
     const lines = []
     lines.push(narrator.tt`You are in ${obs}.`)
     postMessage(['main_add', ...lines])
+    */
+
     return true
   }
 }

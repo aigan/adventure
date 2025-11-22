@@ -16,7 +16,7 @@ export function cssP(url){
   // }
 
   return LOADING[url] = new Promise(function(resolve,reject){
-    let link = document.createElement('link');
+    const link = document.createElement('link');
     link.rel  = 'stylesheet';
     link.type = 'text/css';
     link.setAttribute('href', url);

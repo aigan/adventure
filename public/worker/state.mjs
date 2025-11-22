@@ -680,7 +680,6 @@ export class State {
    * The core state is the mind's primary operational state: synchronized with
    * this ground state (tt = this.vt), used as the starting point for belief
    * allocation and tree walks.
-   *
    * @param {Belief} host - Entity with mind trait (e.g., player, NPC)
    * @returns {State} The core mind state
    * @throws {Error} If host has no mind, or if no state or multiple states found
@@ -740,7 +739,6 @@ export class State {
    * Get an active (unlocked) state for a host entity
    * Like get_core_state_by_host(), but ensures the returned state is unlocked.
    * If the core state is locked, branches it forward to create a new unlocked state.
-   *
    * @param {Belief} host - Entity with mind trait (e.g., player, NPC)
    * @returns {State} An unlocked state in the host's mind
    */
@@ -760,7 +758,6 @@ export class State {
    *
    * Filters traits to only those matching the specified sensory modalities.
    * Traits with exposure: 'internal' are never included (not physically observable).
-   *
    * @param {Belief} belief - Belief to get observable traits from
    * @param {string[]} modalities - Exposure types to include (e.g., ['visual', 'spatial'])
    * @returns {Traittype[]} Array of Traittypes with matching exposure
@@ -795,7 +792,6 @@ export class State {
    * Models observation: NPCs forming inner knowledge about entities in the outer world.
    * The source_belief must exist in ground_state (observable entities with ownership).
    * Shared beliefs (prototypes) cannot be learned about - they exist only for inheritance.
-   *
    * @param {Belief} source_belief - Belief from parent mind to learn about (must be in ground_state)
    * @param {Object} [options] - Learning options
    * @param {string[]} [options.traits] - Specific traits to copy (overrides modalities)

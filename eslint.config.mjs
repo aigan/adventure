@@ -9,6 +9,8 @@ export default [
       ".claude/**",
       "docs/**",
       "lab/**",
+      "tmp/**",
+      "refactor-examples/**",
       "public/vendor/**",
       "public/lab/**",
       "dist/**",
@@ -54,9 +56,27 @@ export default [
     }
   },
   {
+    files: ["public/*.mjs", "public/lib/*.mjs"],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,  // For process in debug.mjs
+      },
+    }
+  },
+  {
     files: ["test/**/*.mjs"],
     languageOptions: {
-      globals: globals.mocha,
+      globals: {
+        ...globals.mocha,
+        ...globals.node,
+      },
+    }
+  },
+  {
+    files: ["tools/**/*.mjs"],
+    languageOptions: {
+      globals: globals.node,
     }
   }
 ];

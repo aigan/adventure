@@ -171,7 +171,6 @@ export class Subject {
    * Current: O(n²) over all belief versions - doesn't scale to millions of versions per subject
    * Future approach: Walk from branch tips or given starting belief
    * Future: Event saving with time/space-based archival for billions of belief versions
-   *
    * @param {number} tt - Transaction time to query at
    * @yields {Belief} Outermost beliefs on each branch at tt
    */
