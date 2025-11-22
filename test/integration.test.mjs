@@ -120,7 +120,7 @@ describe('Integration', () => {
       expect(player).to.exist;
 
       // Verify player inherits from Villager prototype
-      expect([...player.get_prototypes()].map(p => p.label)).to.include('Villager');
+      expect([...player.get_prototypes()].map(p => p instanceof Archetype ? p.label : p.get_label())).to.include('Villager');
 
       // Verify player has archetypes from Person (Mental, ObjectPhysical)
       expect([...player.get_archetypes()].map(a => a.label)).to.include('Mental');

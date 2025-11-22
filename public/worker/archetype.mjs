@@ -189,6 +189,22 @@ export class Archetype {
   }
 
   /**
+   * Create prototype reference for inspect UI
+   * @returns {{label: string, type: 'Archetype'}}
+   */
+  to_inspect_prototype() {
+    return {label: this.label, type: 'Archetype'}
+  }
+
+  /**
+   * Create base reference for inspect UI
+   * @returns {{label: string}}
+   */
+  to_inspect_base() {
+    return {label: this.label}
+  }
+
+  /**
    * System designation - compact debug string
    * @returns {string}
    */

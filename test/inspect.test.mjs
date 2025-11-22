@@ -233,9 +233,11 @@ describe('inspect.mjs', () => {
             }
           }
         },
+        state_id: 5,
         bases: [
           { id: 10, label: 'BaseType' },
-          { id: 11 }
+          { id: 11, label: null },
+          { label: 'Thing' }  // Archetype - no id
         ]
       };
 
@@ -243,9 +245,10 @@ describe('inspect.mjs', () => {
 
       const html = mockTarget.innerHTML;
       expect(html).to.include('<dt>Bases</dt>');
-      expect(html).to.include('href="?entity&id=10"');
+      expect(html).to.include('href="?belief=10&state=5"');
       expect(html).to.include('(BaseType)');
-      expect(html).to.include('href="?entity&id=11"');
+      expect(html).to.include('href="?belief=11&state=5"');
+      expect(html).to.include('Thing');  // Archetype displayed as text
     });
 
     it('renders array trait with string values', () => {

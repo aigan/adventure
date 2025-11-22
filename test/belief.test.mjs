@@ -31,7 +31,7 @@ describe('Belief', () => {
       });
 
       const inspected = ball_v2.to_inspect_view(state);
-      expect(inspected.bases).to.include(ball._id);
+      expect(inspected.bases.some(b => b.id === ball._id)).to.be.true;
       expect(inspected.traits.color).to.equal('blue');
 
       // Should still have location from base
@@ -54,7 +54,7 @@ describe('Belief', () => {
 
       const inspected = hammer_v2.to_inspect_view(state);
       // hammer_v2 doesn't directly have archetypes in bases, inherits from base belief
-      expect(inspected.bases).to.include(hammer._id);
+      expect(inspected.bases.some(b => b.id === hammer._id)).to.be.true;
 
       // But get_archetypes should walk to base
       const archetype_labels = [...hammer_v2.get_archetypes()].map(a => a.label);

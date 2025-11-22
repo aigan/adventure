@@ -354,7 +354,8 @@ describe('Channel Message Handlers', () => {
       expect(messages).to.have.lengthOf(1);
       expect(messages[0].bases).to.be.an('array');
       expect(messages[0].bases.some(b => b.label === 'PortableObject')).to.be.true;
-      expect(messages[0].bases.some(b => b.type === 'Archetype')).to.be.true;
+      // Archetypes have no id field
+      expect(messages[0].bases.some(b => b.label === 'PortableObject' && !b.id)).to.be.true;
     });
 
     it('returns mind trait correctly for Person with mind', () => {

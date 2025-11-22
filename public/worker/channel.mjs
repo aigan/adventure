@@ -79,20 +79,20 @@ export const dispatch = {
 			})
 		}
 
-		const state_info = /** @type {{id: number, tt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
+		const state_info = /** @type {{id: number, tt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
 			id: state._id,
 			tt: state.tt,
 			mind_id: state.in_mind._id,
 			mind_label: state.in_mind.label,
 			self_label: state.in_mind.self?.get_label(),
 			base_id: state.base?._id ?? null,
+			branch_ids: state.get_branches().map(b => b._id),
 			beliefs: data,
 		})
 		// Only include locked field if unlocked (to highlight mutable state)
 		if (!state.locked) {
 			state_info.locked = false
 		}
-    //log('response', state_info)
 
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "world_entity_list",
@@ -120,13 +120,14 @@ export const dispatch = {
 			})
 		}
 
-		const state_info = /** @type {{id: number, tt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
+		const state_info = /** @type {{id: number, tt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
 			id: state_obj._id,
 			tt: state_obj.tt,
 			mind_id: state_obj.in_mind._id,
 			mind_label: state_obj.in_mind.label,
 			self_label: state_obj.in_mind.self?.get_label(),
 			base_id: state_obj.base?._id ?? null,
+			branch_ids: state_obj.get_branches().map(b => b._id),
 			beliefs: data,
 		})
 		// Only include locked field if unlocked (to highlight mutable state)
@@ -183,11 +184,7 @@ export const dispatch = {
 			},
 			desig: belief_obj.sysdesig(state),
 			mind: belief_obj.in_mind ? {id: belief_obj.in_mind._id, label: belief_obj.in_mind.label} : null,
-			bases: [...belief_obj._bases].map(b => ({
-				id: b instanceof Belief ? b._id : null,
-				label: b instanceof Belief ? b.get_label() : b.label,
-				type: b instanceof Archetype ? 'Archetype' : 'Belief'
-			})),
+			bases: [...belief_obj._bases].map(b => b.to_inspect_base()),
 		};
 
 		//log('response', response)
@@ -222,11 +219,7 @@ export const dispatch = {
 			},
 			desig: belief.sysdesig(session.state),
 			mind: belief.in_mind ? {id: belief.in_mind._id, label: belief.in_mind.label} : null,
-			bases: [...belief._bases].map(b => ({
-				id: b instanceof Belief ? b._id : null,
-				label: b instanceof Belief ? b.get_label() : b.label,
-				type: b instanceof Archetype ? 'Archetype' : 'Belief'
-			})),
+			bases: [...belief._bases].map(b => b.to_inspect_base()),
 		})
 	},
 }

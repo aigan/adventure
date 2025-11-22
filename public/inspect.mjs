@@ -89,9 +89,13 @@ const dispatch = {
    * @param {any} dat
    */
   world_entity_list(dat){
-    const state_nav = dat.state.base_id
-      ? `<a href="?state=${dat.state.base_id}">← Previous State</a>`
+    const prev_nav = dat.state.base_id
+      ? `<a href="?state=${dat.state.base_id}">← Previous</a>`
       : '';
+    const next_nav = dat.state.branch_ids?.length > 0
+      ? dat.state.branch_ids.map((/** @type {number} */ id) => `<a href="?state=${id}">#${id} →</a>`).join(' ')
+      : '';
+    const state_nav = [prev_nav, next_nav].filter(Boolean).join(' | ');
 
     const mind_prefix = dat.state.mind_label || dat.state.self_label || `Mind #${dat.state.mind_id}`;
     const mutable_indicator = dat.state.locked === false ? ' <span style="color: orange; font-weight: bold;">[MUTABLE]</span>' : '';
@@ -120,7 +124,8 @@ const dispatch = {
     render({
       header: `${mind_prefix}: ${dat.desig}`,
       entity: dat,
-      state_id: dat.state_id,  // Use state_id from server response
+      state_id: dat.state_id,
+      bases: dat.bases,
     });
   },
   /**
@@ -241,15 +246,25 @@ function render_entity(a, target){
 
   // Display prototypes (Archetypes and shared Beliefs with labels)
   if (belief_data.prototypes?.length > 0) {
-    const prototype_labels = belief_data.prototypes.map(/** @param {any} p */ (p) => p.label).join(', ');
-    hout += `<dt>Prototypes</dt><dd>${prototype_labels}</dd>`;
+    const prototype_items = belief_data.prototypes.map(/** @param {any} p */ (p) => {
+      if (p.type === 'Belief' && p.id && state_id) {
+        return `<a href="?belief=${p.id}&state=${state_id}">${p.label}</a>`;
+      }
+      return p.label;
+    }).join(', ');
+    hout += `<dt>Prototypes</dt><dd>${prototype_items}</dd>`;
   }
 
   // Display bases
   if (a.bases?.length > 0) {
     hout += `<dt>Bases</dt><dd>`;
     for (const base of a.bases) {
-      hout += `<a href="?entity&id=${base.id}">#${base.id}${base.label ? ' (' + base.label + ')' : ''}</a> `;
+      if (base.id && state_id) {
+        hout += `<a href="?belief=${base.id}&state=${state_id}">#${base.id}${base.label ? ' (' + base.label + ')' : ''}</a> `;
+      } else {
+        // Archetype (no id) - just display label
+        hout += `${base.label} `;
+      }
     }
     hout += `</dd>`;
   }

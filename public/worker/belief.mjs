@@ -648,27 +648,21 @@ export class Belief {
    * Unlike observable beliefs in states, prototypes have no ownership (in_mind = null) and exist
    * only for inheritance via bases. They cannot be learned about, only inherited from.
    * @param {Set<Belief|Archetype>} [seen]
-   * @returns {Generator<{label: string, type: 'Archetype'|'Belief'}>}
+   * @returns {Generator<Belief|Archetype>}
    */
   *get_prototypes(seen = new Set()) {
     /** @type {(Belief|Archetype)[]} */ const bases = [this]
     while (bases.length > 0) {
       const base = bases.shift()
       if (!base || seen.has(base)) continue
+      seen.add(base)
 
       if (base instanceof Archetype) {
-        seen.add(base)
-        yield {label: base.label, type: 'Archetype'}
-        bases.push(...base._bases)
-      } else {
-        seen.add(base)
-        // Only include shared beliefs (prototypes) with labels
-        const label = base.get_label()
-        if (base.is_shared && label !== null) {
-          yield {label, type: 'Belief'}
-        }
-        bases.push(...base._bases)
+        yield base
+      } else if (base.is_shared && base.get_label() !== null) {
+        yield base
       }
+      bases.push(...base._bases)
     }
   }
 
@@ -805,9 +799,25 @@ export class Belief {
   }
 
   /**
+   * Create prototype reference for inspect UI
+   * @returns {{label: string|null, type: 'Belief', id: number}}
+   */
+  to_inspect_prototype() {
+    return {label: this.get_label(), type: 'Belief', id: this._id}
+  }
+
+  /**
+   * Create base reference for inspect UI
+   * @returns {{label: string|null, id: number}}
+   */
+  to_inspect_base() {
+    return {label: this.get_label(), id: this._id}
+  }
+
+  /**
    * Create shallow inspection view of this belief for the inspect UI
    * @param {State} state - State context for resolving trait sids
-   * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string, type: string}>, bases: (string|number)[], traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean}} Shallow representation with references, including mind context and what this knowledge is about (for cross-mind knowledge beliefs)
+   * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string|null, type: string, id?: number}>, bases: Array<{label: string|null, id?: number}>, traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean}} Shallow representation with references, including mind context and what this knowledge is about (for cross-mind knowledge beliefs)
    */
   to_inspect_view(state) {
     assert(state instanceof State, "should be State", state);
@@ -818,13 +828,13 @@ export class Belief {
       traits_obj[traittype.label] = traittype.to_inspect_view(state, v)
     }
 
-    const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string, type: string}>, bases: (string|number)[], traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean}} */ ({
+    const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string|null, type: string, id?: number}>, bases: Array<{label: string|null, id?: number}>, traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean}} */ ({
       _type: 'Belief',
       _id: this._id,
       label: this.get_label(),
       archetypes: [...this.get_archetypes()].map(a => a.label),
-      prototypes: [...this.get_prototypes()],
-      bases: [...this._bases].map(b => b instanceof Archetype ? b.label : b._id),
+      prototypes: [...this.get_prototypes()].map(p => p.to_inspect_prototype()),
+      bases: [...this._bases].map(b => b.to_inspect_base()),
       traits: traits_obj
     })
 
