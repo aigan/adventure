@@ -124,7 +124,7 @@ addEventListener('message', async e =>{
     if (data.target) data.target = Subject.get_by_sid(data.target)
   }
 
-  log('dispatch', cmd, data);
+  //log('dispatch', cmd, data);
   const res = await dispatch[cmd](data);
   /** @type {AckMessage} */
   const ackMsg = ['ack', ackid, res];

@@ -252,7 +252,7 @@ export async function init_channel(session_param) {
 		const msg = dat.msg
 		if( !msg ) return console.error("Got confused message", dat)
 		if( !dispatch[msg] ) return console.error('Message confused:', dat )
-		log("message", dat)
+		//log("message", dat)
 		if( dat.server_id !== server_id && dat.msg !== "connect" )
 			return console.error('Server mismatch', dat)
 		dispatch[msg](dat)

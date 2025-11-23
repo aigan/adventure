@@ -101,7 +101,7 @@ All messages between client and worker use array format for consistency.
 **Example Flow:**
 1. Worker creates observation with Subject instances
 2. `narrator.bake_narration(obs)` converts to SubjectData format
-3. `narrator.tt\`...\`` creates TemplateTagResult with embedded SubjectData
+3. `narrator.say\`...\`` creates TemplateTagResult with embedded SubjectData
 4. Worker sends via `postMessage(['main_add', templateResult])`
 5. GUI renders with clickable subjects
 6. User clicks action → GUI sends `['look', {do:'look', ...}, ackid]`

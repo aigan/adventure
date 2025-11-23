@@ -160,7 +160,7 @@ export class Session {
       ],
       }
     const lines = []
-    lines.push(narrator.tt`You are in ${obs}.`)
+    lines.push(narrator.say`You are in ${obs}.`)
     postMessage(['main_add', ...lines])
 
     return true

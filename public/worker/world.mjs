@@ -181,7 +181,7 @@ export function init_world() {
       bases: ['Person'],
       traits: {
         mind: {
-          hammer: ['color'],
+//          hammer: ['color'],
         },
         location: 'workshop',
       },
@@ -189,16 +189,17 @@ export function init_world() {
   })
 
   state.lock();
-  state = state.branch_state(Cosmos.logos_state(), 2)
-
   const person1 = state.get_belief_by_label('person1');
+
+  /*
+  state = state.branch_state(Cosmos.logos_state(), 2)
   assert(person1, 'person1 belief not found')
   const person1_state = state.get_active_state_by_host(person1)
   const hammer = state.get_belief_by_label('hammer')
   assert(hammer, 'hammer belief not found')
   person1_state.learn_about(hammer)
-
   state.lock();
+  */
 
   return { world_state: state, avatar: person1 }
 }

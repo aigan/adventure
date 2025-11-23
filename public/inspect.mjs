@@ -133,23 +133,12 @@ const dispatch = {
   },
   /**
    * Handle notification that states have changed (debounced from worker)
-   * @param {any} dat
+   * @param {any} _dat
    */
-  states_changed(dat){
-    const changed_ids = new Set(dat.state_ids)
-    // Check if the current view involves any of the changed states
-    if (query?.state_id && changed_ids.has(Number(query.state_id))) {
-      // Re-run the current query to refresh the view
-      log('State changed, refreshing view for state', query.state_id)
-      assert(channel, 'channel not initialized')
-      channel.postMessage({
-        ...query,
-        client_id,
-        server_id,
-      })
-    } else if (query?.state && changed_ids.has(Number(query.state))) {
-      // Handle query_state case
-      log('State changed, refreshing view for state', query.state)
+  states_changed(_dat){
+    // Always refresh the current view when any state changes
+    if (query?.msg) {
+      log('States changed, refreshing view')
       assert(channel, 'channel not initialized')
       channel.postMessage({
         ...query,

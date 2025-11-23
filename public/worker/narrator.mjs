@@ -46,20 +46,18 @@ export async function ensure_init() {
  */
 export function do_look_in_location(context) {
   const session = context.session;
-  const state = session.state;
-  const player = session.avatar;
+  const ext = session.state;
+  const target = context.subject.get_belief_by_state(ext)
+  const content = target.rev_trait(ext, T.location)
+  const pov = ext.get_active_state_by_host(session.avatar)
 
-  const target = context.subject.get_belief_by_state(state)
-  const content = target.rev_trait(state, T.location)
-
-  // Get player's mind state
-  const player_state = state.get_active_state_by_host(player)
-
-  log([state], 'looking at', target)
+  const seen = [];
   for (const item of content) {
-    log([state], '  seeing', item)
-    player_state.learn_about(item)
+    pov.learn_about(item)
+    seen.push(desig(ext,item))
   }
+
+  postMessage(['main_add', say`You see ${seen.join(", ")}.`])
 }
 
 /**
@@ -89,13 +87,20 @@ export function desig(state, entity) {
  * @param {...Object} val_in - Observation objects to format
  * @returns {{strings: TemplateStringsArray, values: SubjectData[]}} Formatted message
  */
-export function tt( strings, ...val_in){
+export function say( strings, ...val_in){
+  //log('say with', strings)
+  const baked = [strings[0]]
   const values = []
-  for( const obs of val_in ){
-    if( !obs ) continue
-    values.push( bake_narration( obs ) )
+  for (let i = 0; i < val_in.length; i++) {
+    const obs = val_in[i]
+    if (!obs || typeof obs === 'string') {
+      baked[baked.length - 1] += (obs || '') + strings[i + 1]
+    } else {
+      values.push(bake_narration(obs))
+      baked.push(strings[i + 1])
+    }
   }
-  return {strings,values}
+  return {strings: baked, values}
 }
 
 /**

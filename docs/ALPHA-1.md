@@ -19,7 +19,6 @@ Build a text-based investigation game where player finds a missing hammer throug
 ## Development Stages
 
 #### Stage 1: Core Belief Structure ✓
-**Status**: Implemented
 
 - Basic belief nodes with archetype property
 - Single world_mind container
@@ -33,22 +32,29 @@ Build a text-based investigation game where player finds a missing hammer throug
 
 **Test**: Player observes hammer, hammer belief created in player_mind
 
-#### Stage 2: Descriptors
-**Status**: Planned
+#### Stage 2: Descriptors & Identity
 
 - Objects have multiple descriptors: `hammer_1: [black, heavy, worn]`
 - Observations copy descriptors into perceived objects
-- Menu command: "EXAMINE [object]" for detailed descriptors
+- Multiple similar objects distinguished by descriptors
+- Recognition: seeing same object twice updates belief, not creates duplicate
+- Identity uncertainty when descriptors match exactly
 
-**Test**: Player can observe and recall properties
+**Tests**:
+- 2.1 Multiple distinct objects: player has separate beliefs, distinguishes by color
+- 2.2 Similar objects: both black hammers, distinguished by size (large vs small)
+- 2.3 Recognition: observe same hammer twice → one belief updated, not two
+- 2.4 Identity uncertainty: two black hammers → two beliefs or ambiguous (design TBD)
+- 2.5 Query by descriptor: "black hammer" returns all matches
 
 **Implementation notes**:
 - Descriptor trait type (array of strings)
 - Descriptor inheritance through archetype chain
 - Observation system copies descriptors to player mind
+- Recognition uses `@about` linking to world entity
+- Query system for finding beliefs by descriptor match
 
 #### Stage 3: Multiple Similar Objects
-**Status**: Planned
 
 - Setup: `hammer_1: [black, large]`, `hammer_2: [black, small]`, `hammer_3: [blue, small]`
 - Menu command: "ASK [npc] ABOUT [descriptor] [type]"
@@ -63,7 +69,6 @@ Build a text-based investigation game where player finds a missing hammer throug
 - Dialog system for disambiguation prompts
 
 #### Stage 4: Location Constraints
-**Status**: Planned
 
 - Objects have location property
 - Menu command: "GO TO [location]" (takes 10 minutes game time)
@@ -77,10 +82,11 @@ Build a text-based investigation game where player finds a missing hammer throug
 - Location trait type (Belief reference to Location archetype)
 - Time advancement system (simple tick counter)
 - Query system for "what's in this location"
-- Empty observation recording (important for alibis)
+- Observation events (`Event_perception`) with observer, target, location
+- Empty observation recording: `{Event_perception, observer, target: null, location}` (important for alibis)
+- `@source` on beliefs pointing to observation event
 
 #### Stage 5: NPC Location Beliefs
-**Status**: Planned
 
 - NPCs have mind containers with observations
 - NPCs can have beliefs about object locations
@@ -97,7 +103,6 @@ Build a text-based investigation game where player finds a missing hammer throug
 - Dialog variations based on conflict detection
 
 #### Stage 6: Time Points
-**Status**: Planned
 
 - Add temporal property to observations
 - Simple time: morning, noon, afternoon, evening
@@ -114,7 +119,6 @@ Build a text-based investigation game where player finds a missing hammer throug
 - Time display in UI
 
 #### Stage 7: Object Movement Events
-**Status**: Planned
 
 - New archetype: Event_movement
 - Movement events: `{archetype: Event_movement, actor: npc_1, target: hammer_1, from: workshop, to: forge, time: noon}`
@@ -130,7 +134,6 @@ Build a text-based investigation game where player finds a missing hammer throug
 - Location update propagation
 
 #### Stage 8: Temporal NPC Observations
-**Status**: Planned
 
 - Menu command: "ASK [npc] WHEN SAW [object]"
 - NPCs report observations with time: "Saw hammer this morning in workshop"
@@ -145,7 +148,6 @@ Build a text-based investigation game where player finds a missing hammer throug
 - Missing object detection (expected but not observed)
 
 #### Stage 9: Actor-Event Observations
-**Status**: Planned
 
 - NPCs can observe WHO did something
 - Menu command: "ASK [npc] WHO TOOK [object]"
@@ -161,7 +163,6 @@ Build a text-based investigation game where player finds a missing hammer throug
 - Deception system (facade minds)
 
 #### Stage 10: Thread Connections
-**Status**: Planned
 
 - System prefers resolution using existing elements
 - Priority: 1) Connect to known NPCs, 2) Reuse seen objects, 3) Create new only if needed
@@ -199,8 +200,7 @@ Build a text-based investigation game where player finds a missing hammer throug
 - [ ] Evidence naturally narrows down suspects
 - [ ] No contradictions in final resolution
 
-### Template-Driven Story
-**Status**: Future feature, not in Alpha 1
+### Template-Driven Story (Future)
 
 After Alpha 1, extend system with template-driven story generation using the constraint satisfaction foundation.
 
