@@ -19,7 +19,7 @@ const world_module = await import('../public/worker/world.mjs')
 console.log('\n✓ World module loaded successfully')
 console.log('✓ Calling init_world()...')
 
-const { world_state: state, player_body: player } = world_module.init_world()
+const { world_state: state, avatar: player } = world_module.init_world()
 
 console.log('\nWorld state:', state ? '✓ Available' : '✗ Missing')
 console.log('Player:', player ? '✓ Available' : '✗ Missing')
@@ -178,21 +178,21 @@ for (const b of beliefs_after) {
 // DIAGNOSTIC: Player Subject Inspection
 // ============================================================================
 console.log('\n' + '='.repeat(80))
-console.log('DIAGNOSTIC: Player Subject Inspection')
+console.log('DIAGNOSTIC: Person1 Subject Inspection')
 console.log('='.repeat(80))
 
-const player_belief = [...state.get_beliefs()].find(b => b.get_label() === 'player')
-if (player_belief) {
-  console.log('\nCalling player.subject.to_inspect_view(state)...\n')
+const person1_belief = [...state.get_beliefs()].find(b => b.get_label() === 'person1')
+if (person1_belief) {
+  console.log('\nCalling person1.subject.to_inspect_view(state)...\n')
   try {
-    const inspect_view = player_belief.subject.to_inspect_view(state)
+    const inspect_view = person1_belief.subject.to_inspect_view(state)
     console.log(JSON.stringify(inspect_view, null, 2))
   } catch (e) {
     console.log('ERROR:', e.message)
     console.log('Stack:', e.stack)
   }
 } else {
-  console.log('Player belief not found')
+  console.log('Person1 belief not found')
 }
 
 // ============================================================================

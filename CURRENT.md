@@ -17,7 +17,7 @@
   - Foundation for LOOK command and NPC perception
 - [ ] **Message Enrichment** - Resolve subject IDs to Belief instances before handlers execute ([plan](docs/plans/message-enrichment.md))
   - Convert GUI's subject IDs (sids) to Belief instances with state context
-  - Default actor to `session.player` if not specified
+  - Default actor to `session.avatar` if not specified
   - Provide session, state, and resolved beliefs to handlers
   - Adapts old system's enrichment pattern for immutable architecture
   - **Prerequisite**: Action handlers must be implemented first

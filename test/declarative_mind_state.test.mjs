@@ -57,20 +57,20 @@ describe('Mind Trait', () => {
       traits: {location: main_area.subject,}, label: 'workshop',
     });
 
-    const player_body = world_state.add_belief_from_template({
+    const avatar = world_state.add_belief_from_template({
             bases: ['Person'],
-      traits: {location: workshop.subject,}, label: 'player_body',
+      traits: {location: workshop.subject,}, label: 'avatar',
     });
 
     // Create player with mind trait (before locking state)
     // Use same sid to maintain subject identity through versioning
     const player = Belief.from_template(world_state, {
-      sid: player_body.subject.sid,
-      bases: [player_body],
+      sid: avatar.subject.sid,
+      bases: [avatar],
       traits: {
         mind: {
           workshop: ['location'],
-          player_body: ['location']
+          avatar: ['location']
         }
       }
     });
@@ -81,8 +81,8 @@ describe('Mind Trait', () => {
     // Verify mind trait returns Mind instance
     const player_mind = player._traits.get(Traittype.get_by_label('mind'));
     expect(player_mind).to.be.instanceOf(Mind);
-    // Mind label may be inherited from subject label ('player_body') when using same sid
-    expect(player_mind.label).to.satisfy(l => l === null || l === 'player_body');
+    // Mind label may be inherited from subject label ('avatar') when using same sid
+    expect(player_mind.label).to.satisfy(l => l === null || l === 'avatar');
 
     // Verify mind has exactly one state
     const states = [...player_mind._states];
@@ -103,7 +103,7 @@ describe('Mind Trait', () => {
     expect(workshop_belief).to.exist;
     expect(workshop_belief._traits.has(Traittype.get_by_label('location'))).to.be.true;
 
-    // Find player belief (player replaces player_body with same subject)
+    // Find player belief (player replaces avatar with same subject)
     const player_belief = beliefs.find(b => b.get_about(state) === player);
     expect(player_belief).to.exist;
     const location_traittype = Traittype.get_by_label('location');

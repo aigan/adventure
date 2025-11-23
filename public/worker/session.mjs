@@ -23,16 +23,16 @@ export class Session {
   /**
    * @param {Mind} [world_mind] - Optional world mind (for tests)
    * @param {State} [initial_state] - Optional initial state (for tests)
-   * @param {Belief} [player] - Optional player belief (for tests)
+   * @param {Belief} [avatar] - Optional avatar belief (for tests)
    */
-  constructor(world_mind, initial_state, player) {
+  constructor(world_mind, initial_state, avatar) {
     // Support both constructor injection (tests) and async loading (production)
     /** @type {Mind|undefined} */
     this.world = undefined
     /** @type {State|undefined} */
     this._state = undefined
     /** @type {Belief|null|undefined} */
-    this.player = undefined
+    this.avatar = undefined
     /** @type {BroadcastChannel|null} */
     this._channel = null
     /** @type {Set<number>} Dirty state IDs pending notification */
@@ -43,7 +43,7 @@ export class Session {
     if (world_mind) {
       this.world = world_mind
       this._state = initial_state
-      this.player = player
+      this.avatar = avatar
     }
 
     // Listen for state mutation events (only in worker context)
@@ -113,10 +113,10 @@ export class Session {
 
   async load_world() {
     const { init_world } = await import("./world.mjs")
-    const { world_state, player_body } = init_world()
+    const { world_state, avatar } = init_world()
     this.world = world_state.in_mind
     this._state = world_state
-    this.player = player_body
+    this.avatar = avatar
   }
 
   async establish_channel() {
@@ -132,14 +132,14 @@ export class Session {
     const narrator = await import("./narrator.mjs")
     await narrator.ensure_init()
 
-    assert(this.player, 'player not loaded')
+    assert(this.avatar, 'avatar not loaded')
     assert(this.state, 'state not loaded')
 
     postMessage(['header_set', `Waking up`])
 
-    const pl = this.player.subject
+    const pl = this.avatar.subject
     const st = this.state
-    const loc = this.player.get_trait(st, T.location)
+    const loc = this.avatar.get_trait(st, T.location)
 
     /*
     narrator.do_look_in_location(st, {
@@ -153,7 +153,7 @@ export class Session {
       known_as: narrator.desig(st, loc),
       actions: [
         {
-          do: 'look',
+          do: 'look_in_location',
           subject: loc.sid,
           label: `Look around`,
         },

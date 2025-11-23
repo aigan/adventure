@@ -521,8 +521,8 @@ describe('State', () => {
       const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
-      const player_body = Belief.from_template(world_state, {
-        traits: {}, label: 'player_body',
+      const avatar = Belief.from_template(world_state, {
+        traits: {}, label: 'avatar',
         bases: ['Actor']
       });
 

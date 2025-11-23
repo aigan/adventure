@@ -103,7 +103,7 @@ DB.register(traittypes, archetypes, prototypes_1)
 /**
  * Initialize the game world
  * Called after all modules are loaded to avoid circular dependency issues
- * @returns {{world_state: Cosmos.State, player_body: Cosmos.Belief}}
+ * @returns {{world_state: Cosmos.State, avatar: Cosmos.Belief}}
  */
 export function init_world() {
   // Create world mind and initial state
@@ -177,8 +177,7 @@ export function init_world() {
   });
 
   state.add_beliefs_from_template({
-    // Player with multi-base: should compose mind AND inventory from both Villager and Blacksmith
-    player: {
+    person1: {
       bases: ['Person'],
       traits: {
         mind: {
@@ -192,14 +191,14 @@ export function init_world() {
   state.lock();
   state = state.branch_state(Cosmos.logos_state(), 2)
 
-  const player = state.get_belief_by_label('player');
-  assert(player, 'player belief not found')
-  const player_state = state.get_active_state_by_host(player)
+  const person1 = state.get_belief_by_label('person1');
+  assert(person1, 'person1 belief not found')
+  const person1_state = state.get_active_state_by_host(person1)
   const hammer = state.get_belief_by_label('hammer')
   assert(hammer, 'hammer belief not found')
-  player_state.learn_about(hammer)
+  person1_state.learn_about(hammer)
 
   state.lock();
 
-  return { world_state: state, player_body: player }
+  return { world_state: state, avatar: person1 }
 }

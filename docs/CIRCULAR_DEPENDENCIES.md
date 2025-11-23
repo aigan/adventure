@@ -26,7 +26,7 @@ DB.register(traittypes, archetypes, prototypes)
 export function init_world() {
   const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
   // ... construct objects here
-  return { world_state, player_body }
+  return { world_state, avatar }
 }
 
 // ❌ BAD - Construction at module level
@@ -100,13 +100,13 @@ export function init_world() {
   const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
   let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
   // ... build world ...
-  return { world_state: state, player_body: player }
+  return { world_state: state, avatar: player }
 }
 
 // Caller (session.mjs)
 async load_world() {
   const { init_world } = await import("./world.mjs")
-  const { world_state, player_body } = init_world()  // Construction at runtime
+  const { world_state, avatar } = init_world()  // Construction at runtime
 }
 ```
 

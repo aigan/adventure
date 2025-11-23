@@ -37,7 +37,7 @@ export async function ensure_init() {
   _initialized = true
 
   const {handler_register} = await import("./worker.mjs")
-  handler_register('look', do_look_in_location)
+  handler_register('look_in_location', do_look_in_location)
 }
 
 /**
@@ -47,7 +47,7 @@ export async function ensure_init() {
 export function do_look_in_location(context) {
   const session = context.session;
   const state = session.state;
-  const player = session.player;
+  const player = session.avatar;
 
   const target = context.subject.get_belief_by_state(state)
   const content = target.rev_trait(state, T.location)

@@ -33,7 +33,7 @@ const mind_by_id = new Map()
 
 /**
  * Label-based mind lookup
- * Query: O(1) lookup by human-readable label (e.g., "world", "player", "npc_guard_1")
+ * Query: O(1) lookup by human-readable label (e.g., "world", "person1", "person2")
  * Maintained by: register_mind()
  * Scale: Essential - frequently used for named mind access (world_mind, player_mind, NPCs)
  * @type {Map<string, Mind>}

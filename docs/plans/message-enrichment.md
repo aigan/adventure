@@ -94,7 +94,7 @@ Clean and simple because enrichment already resolved everything.
 | Old System | New System |
 |------------|------------|
 | Global `world` variable | Session instance |
-| `world.Adventure.player` | `session.player` |
+| `world.Adventure.player` | `session.avatar` |
 | `entity._world` property | `state.in_mind` |
 | `world.get_entity_current(id)` | `subject.get_belief_by_state(state)` |
 | Entity IDs | Subject IDs (sids) |
@@ -162,9 +162,9 @@ function resolve_action_context(data) {
       throw new Error(`Subject not found: ${data.subject}`);
     }
     context.actor = actor_subject.get_belief_by_state(state);
-  } else if (session.player) {
-    // Default to player if no actor specified
-    context.actor = session.player;
+  } else if (session.avatar) {
+    // Default to avatar if no actor specified
+    context.actor = session.avatar;
   }
 
   // Resolve target
@@ -393,7 +393,7 @@ export function do_look(data) {
   const target_subject = Subject.get_by_sid(data.target);
   const target = target_subject.get_belief_by_state(state);
 
-  const actor = session.player;
+  const actor = session.avatar;
 
   // ... rest of handler
 }
@@ -423,7 +423,7 @@ class ActionContext {
         const subject = Subject.get_by_sid(this._data.subject);
         this._cache.actor = subject.get_belief_by_state(this.state);
       } else {
-        this._cache.actor = this._session.player;
+        this._cache.actor = this._session.avatar;
       }
     }
     return this._cache.actor;
@@ -479,7 +479,7 @@ describe('resolve_action_context', () => {
 
   it('defaults actor to player', () => {
     const context = resolve_action_context({target: 123});
-    expect(context.actor).toBe(session.player);
+    expect(context.actor).toBe(session.avatar);
   });
 
   it('throws on missing subject', () => {
