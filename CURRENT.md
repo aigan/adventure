@@ -2,7 +2,21 @@
 
 ## Active Plan
 
-**No active plan** - Ready for next task from backlog
+**Observation Events** - Implement observation event creation with hierarchical traits ([plan](docs/plans/observation-events.md))
+
+Stage 2 of Alpha 1 requires compositional object matching. Observation events capture **what was perceived** (hierarchical traits) separately from **what entity it was** (resolved identity).
+
+### Current Phase: Pre-work
+
+- [ ] Update `docs/notes/observation_recognition_spec.md` examples to match codebase syntax
+- [ ] Resolve design decisions (Event archetype structure, observer trait type, etc.)
+
+### Next Phases
+
+- Phase 1: Schema Setup (traittypes + archetypes)
+- Phase 2: Observation Creation (helper function + tests)
+- Phase 3: Recognition (`recognize_by_traits()` method)
+- Phase 4: Integration with `learn_about()`
 
 ---
 
@@ -15,13 +29,6 @@
   - Minds observe entities from parent mind, creating beliefs in own mind
   - Supports misidentification, context-dependent recognition, belief updates
   - Foundation for LOOK command and NPC perception
-- [ ] **Message Enrichment** - Resolve subject IDs to Belief instances before handlers execute ([plan](docs/plans/message-enrichment.md))
-  - Convert GUI's subject IDs (sids) to Belief instances with state context
-  - Default actor to `session.avatar` if not specified
-  - Provide session, state, and resolved beliefs to handlers
-  - Adapts old system's enrichment pattern for immutable architecture
-  - **Prerequisite**: Action handlers must be implemented first
-  - Makes handlers clean: `handler({actor: Belief, target: Belief, state: State})`
 - [ ] **Lazy Version Propagation with Group Minds** - Enable efficient shared belief updates ([plan](docs/plans/lazy-version-propagation.md))
   - NPCs reference sibling group_mind states as bases
   - Cultural knowledge updates create new group_mind states

@@ -1,7 +1,7 @@
 /* global process */
 
 // @ts-ignore - process may not exist in browser context
-const is_test = typeof process !== 'undefined' && process.env.NODE_ENV === 'test'
+export const is_test = typeof process !== 'undefined' && process.env.NODE_ENV === 'test'
 
 // In browser: always enable (Chrome console has its own filtering)
 // In Node.js: check DEBUG/LOG_LEVEL env vars

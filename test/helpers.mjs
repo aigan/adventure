@@ -8,6 +8,83 @@
 import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load, logos, logos_state } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 
+// Browser API mocks for Node.js test environment
+
+/**
+ * Mock BroadcastChannel for tests
+ */
+export class MockBroadcastChannel {
+  constructor(name) {
+    this.name = name
+    this.onmessage = null
+    this.messages = []
+  }
+  postMessage(data) {
+    this.messages.push(data)
+  }
+  close() {}
+}
+
+/**
+ * Create mock indexedDB for tests
+ * @returns {object} Mock indexedDB object
+ */
+export function createMockIndexedDB() {
+  let counter = 0
+  return {
+    open: () => {
+      const request = {
+        onupgradeneeded: null,
+        onsuccess: null,
+        result: null
+      }
+      setTimeout(() => {
+        const mockDB = {
+          createObjectStore: () => {},
+          transaction: () => ({
+            objectStore: () => ({
+              get: () => {
+                const getRequest = {
+                  onsuccess: null,
+                  result: counter
+                }
+                setTimeout(() => {
+                  if (getRequest.onsuccess) getRequest.onsuccess()
+                }, 0)
+                return getRequest
+              },
+              put: (value) => {
+                counter = value
+              }
+            })
+          })
+        }
+        request.result = mockDB
+        if (request.onsuccess) request.onsuccess({ target: request })
+      }, 0)
+      return request
+    }
+  }
+}
+
+/**
+ * Setup browser API mocks (BroadcastChannel, indexedDB)
+ * Call in before() hook for tests that need channel/session functionality
+ */
+export function setupBrowserMocks() {
+  global.BroadcastChannel = MockBroadcastChannel
+  global.indexedDB = createMockIndexedDB()
+}
+
+/**
+ * Cleanup browser API mocks
+ * Call in after() hook
+ */
+export function cleanupBrowserMocks() {
+  delete global.BroadcastChannel
+  delete global.indexedDB
+}
+
 /**
  * Helper to create a state in a new test mind
  * @param {string} label - Mind label (defaults to 'test')

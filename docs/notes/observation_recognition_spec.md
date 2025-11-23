@@ -726,6 +726,213 @@ player_belief_hammer: {
 7. **Misidentification is normal state** that gets corrected through story progression
 8. **Observation and resulting belief are separate** allowing independent memory decay
 
+## Compositional Observations (Stage 2)
+
+### Overview
+
+Objects have compositional structure - a hammer has a head and handle, each with their own traits. Observations must capture this hierarchical structure to enable proper matching.
+
+### Observation Structure
+
+Observations capture **what was perceived**, not **what entity it was**:
+
+```javascript
+// Observation event with hierarchical observed traits
+obs_1: {
+  archetype: 'Event_perception',
+  observer: player_1,
+  observed_traits: {
+    archetype: 'Hammer',           // recognized type
+    head: {
+      color: 'black',              // saw head color
+      material: 'iron'             // saw head material
+    },
+    handle: {
+      length: 'short'              // saw handle length
+      // didn't observe handle.color - not in observation
+    },
+    location: 'workshop'
+  },
+  time: 't1',
+  target: null  // resolved by recognize(), may remain null if ambiguous
+}
+```
+
+### Two-Phase Process
+
+**Phase 1: Observation Creation**
+- Perception event creates observation with `observed_traits`
+- Traits are hierarchical, matching object composition
+- Only actually perceived traits are included
+- `target` is initially null
+
+**Phase 2: Recognition (via learn_about)**
+- `recognize()` compares `observed_traits` against known beliefs
+- Traverses compositional structure for matching
+- Returns candidates ranked by match quality
+- Single match → sets `target`
+- Multiple matches → ambiguity (e.g., two black hammers)
+- No match → creates new belief with unknown identity
+
+### Matching Algorithm
+
+```javascript
+// Pseudo-code for compositional matching
+function match_score(observed_traits, belief, state) {
+  let score = 0
+  let total = 0
+
+  for (const [trait_name, observed_value] of observed_traits) {
+    total++
+
+    if (is_object(observed_value)) {
+      // Compositional trait - recurse into referenced belief
+      const ref = belief.get_trait(state, trait_name)
+      const ref_belief = state.get_belief_by_subject(ref)
+      if (ref_belief) {
+        score += match_score(observed_value, ref_belief, state)
+      }
+    } else {
+      // Leaf trait - direct comparison
+      const belief_value = belief.get_trait(state, trait_name)
+      if (belief_value === observed_value) {
+        score++
+      }
+    }
+  }
+
+  return score / total  // 0.0 to 1.0
+}
+```
+
+### Example: Two Similar Hammers
+
+```javascript
+// World state
+hammer1: {
+  head: hammer1_head,    // → {material: 'iron', color: 'black'}
+  handle: hammer1_handle // → {material: 'wood', color: 'brown', length: 'short'}
+}
+
+hammer2: {
+  head: hammer2_head,    // → {material: 'iron', color: 'black'}
+  handle: hammer2_handle // → {material: 'wood', color: 'dark_brown', length: 'long'}
+}
+
+// Observation: "saw a hammer with a black head"
+obs_partial: {
+  observed_traits: {
+    archetype: 'Hammer',
+    head: { color: 'black' }
+  }
+}
+// Result: Both hammers match → ambiguous
+
+// Observation: "saw a hammer with a short handle"
+obs_specific: {
+  observed_traits: {
+    archetype: 'Hammer',
+    handle: { length: 'short' }
+  }
+}
+// Result: Only hammer1 matches → target = hammer1
+```
+
+### Partial Observation
+
+Not all traits are observed. The observation only contains what was actually perceived:
+
+```javascript
+// Full observation (examined closely)
+obs_full: {
+  observed_traits: {
+    archetype: 'Hammer',
+    head: { material: 'iron', color: 'black' },
+    handle: { material: 'wood', color: 'brown', length: 'short' }
+  }
+}
+
+// Partial observation (glanced from distance)
+obs_partial: {
+  observed_traits: {
+    archetype: 'Hammer',
+    handle: { length: 'short' }  // only noticed handle length
+  }
+}
+
+// Very partial (just saw something)
+obs_minimal: {
+  observed_traits: {
+    archetype: 'PortableObject'  // couldn't even tell it was a hammer
+  }
+}
+```
+
+### Integration with learn_about
+
+The `learn_about` flow becomes:
+
+1. **Create observation** with `observed_traits`
+2. **Call recognize()** to find matching beliefs
+3. **If single match**: Update existing belief, set observation.target
+4. **If multiple matches**: Create belief with @about = null (ambiguous)
+5. **If no match**: Create new belief with new @subject
+
+```javascript
+state.learn_about(observation) {
+  const candidates = this.recognize(observation.observed_traits)
+
+  if (candidates.length === 1) {
+    // Definite match
+    observation.target = candidates[0].subject
+    this.integrate(observation, candidates[0])
+  } else if (candidates.length > 1) {
+    // Ambiguous - create belief without resolved identity
+    const new_belief = this.create_belief_from_observation(observation)
+    new_belief.set_trait('@about', null)  // unknown identity
+    new_belief.set_trait('@candidates', candidates.map(c => c.subject))
+  } else {
+    // New entity
+    const new_belief = this.create_belief_from_observation(observation)
+    // @about could be set to world entity if known, or null
+  }
+}
+```
+
+### Difference Detection
+
+For debugging and story generation, detect what differs between beliefs:
+
+```javascript
+function get_differences(belief_a, belief_b, state) {
+  const diffs = {}
+
+  // Compare all traits from both beliefs
+  for (const traittype of get_all_traittypes(belief_a, belief_b)) {
+    const val_a = belief_a.get_trait(state, traittype)
+    const val_b = belief_b.get_trait(state, traittype)
+
+    if (is_subject(val_a) && is_subject(val_b)) {
+      // Compositional - recurse
+      const ref_a = state.get_belief_by_subject(val_a)
+      const ref_b = state.get_belief_by_subject(val_b)
+      const sub_diffs = get_differences(ref_a, ref_b, state)
+      if (Object.keys(sub_diffs).length > 0) {
+        diffs[traittype.label] = sub_diffs
+      }
+    } else if (val_a !== val_b) {
+      diffs[traittype.label] = [val_a, val_b]
+    }
+  }
+
+  return diffs
+}
+
+// Example result:
+get_differences(hammer1, hammer2, state)
+// → { handle: { color: ['brown', 'dark_brown'], length: ['short', 'long'] } }
+```
+
 ## Future Extensions
 
 - **Probability distributions** on @about (60% Bob, 30% Tom, 10% stranger)

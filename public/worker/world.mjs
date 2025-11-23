@@ -45,6 +45,23 @@ const traittypes = {
     type: 'string',
     exposure: 'visual'  // Observable by looking
   },
+  material: {
+    type: 'string',
+    exposure: 'visual'
+  },
+  length: {
+    type: 'string',
+    values: ['short', 'medium', 'long'],
+    exposure: 'visual'
+  },
+  head: {
+    type: 'HammerHead',
+    exposure: 'visual'
+  },
+  handle: {
+    type: 'HammerHandle',
+    exposure: 'visual'
+  },
   name: 'string',
   inventory: {
     type: 'PortableObject',
@@ -84,6 +101,18 @@ const archetypes = {
   },
   PortableObject: {
     bases: ['ObjectPhysical'],
+  },
+  HammerHead: {
+    bases: ['ObjectPhysical'],
+    traits: { material: null, color: null }
+  },
+  HammerHandle: {
+    bases: ['ObjectPhysical'],
+    traits: { material: null, color: null, length: null }
+  },
+  Hammer: {
+    bases: ['PortableObject'],
+    traits: { head: null, handle: null }
   },
   Person: {
     bases: ['ObjectPhysical', 'Mental'],
@@ -127,12 +156,32 @@ export function init_world() {
       traits: {location: 'village'}
     },
 
-    hammer: {
-      bases: ['PortableObject'],
-      traits: {
-        location: 'workshop',
-        color: 'blue',
-      },
+    // Hammer 1: short brown handle
+    hammer1_head: {
+      bases: ['HammerHead'],
+      traits: { material: 'iron', color: 'black' }
+    },
+    hammer1_handle: {
+      bases: ['HammerHandle'],
+      traits: { material: 'wood', color: 'brown', length: 'short' }
+    },
+    hammer1: {
+      bases: ['Hammer'],
+      traits: { head: 'hammer1_head', handle: 'hammer1_handle', location: 'workshop' }
+    },
+
+    // Hammer 2: long dark handle
+    hammer2_head: {
+      bases: ['HammerHead'],
+      traits: { material: 'iron', color: 'black' }
+    },
+    hammer2_handle: {
+      bases: ['HammerHandle'],
+      traits: { material: 'wood', color: 'dark_brown', length: 'long' }
+    },
+    hammer2: {
+      bases: ['Hammer'],
+      traits: { head: 'hammer2_head', handle: 'hammer2_handle', location: 'workshop' }
     }
   })
 

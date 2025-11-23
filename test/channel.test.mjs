@@ -1,64 +1,14 @@
 import { expect } from 'chai';
 import { Mind, Materia, State, Belief, Archetype, Traittype, Session, save_mind, load , logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { stdTypes, Thing } from './helpers.mjs';
+import { stdTypes, Thing, setupBrowserMocks, cleanupBrowserMocks, MockBroadcastChannel } from './helpers.mjs';
 
-// Mock BroadcastChannel
-class MockBroadcastChannel {
-  constructor(name) {
-    this.name = name;
-    this.onmessage = null;
-    this.messages = [];
-  }
-  postMessage(data) {
-    this.messages.push(data);
-  }
-}
-global.BroadcastChannel = MockBroadcastChannel;
-
-// Mock indexedDB
-let mockCounter = 0;
-global.indexedDB = {
-  open: () => {
-    const request = {
-      onupgradeneeded: null,
-      onsuccess: null,
-      result: null
-    };
-
-    // Trigger onsuccess async
-    setTimeout(() => {
-      const mockDB = {
-        transaction: () => ({
-          objectStore: () => ({
-            get: (label) => {
-              const getRequest = {
-                onsuccess: null,
-                result: mockCounter
-              };
-              setTimeout(() => {
-                if (getRequest.onsuccess) getRequest.onsuccess();
-              }, 0);
-              return getRequest;
-            },
-            put: (value, label) => {
-              mockCounter = value;
-            }
-          })
-        })
-      };
-      request.result = mockDB;
-      if (request.onsuccess) request.onsuccess({ target: request });
-    }, 0);
-
-    return request;
-  }
-};
-
+// Set up browser mocks at module load time
+setupBrowserMocks();
 
 describe('Channel Message Handlers', () => {
   beforeEach(() => {
-    mockCounter = 0; // Reset sequence counter
+    setupBrowserMocks(); // Reset mocks (including sequence counter)
     DB.reset_registries();
     const traittypes = {
       ...stdTypes,

@@ -9,7 +9,7 @@
  * @typedef {import('./belief.mjs').Belief} Belief
  */
 
-import { log, assert } from "./debug.mjs"
+import { log, assert, is_test } from "./debug.mjs"
 import { Traittype, T } from "./traittype.mjs"
 
 /**

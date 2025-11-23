@@ -5,13 +5,17 @@
 
 import { expect } from 'chai';
 import * as DB from '../public/worker/db.mjs';
+import { setupBrowserMocks, cleanupBrowserMocks } from './helpers.mjs';
 
 describe('Worker Dispatch (Real Implementation)', () => {
   let postedMessages;
   let messageHandler;
 
   before(async () => {
-    // Set up mocks BEFORE importing worker.mjs
+    // Set up browser API mocks (BroadcastChannel, indexedDB)
+    setupBrowserMocks();
+
+    // Set up worker mocks BEFORE importing worker.mjs
     global.postMessage = (data) => {
       if (postedMessages) {
         postedMessages.push(data);
@@ -40,6 +44,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
     delete global.postMessage;
     delete global.addEventListener;
     delete global.self;
+    cleanupBrowserMocks();
   });
 
   describe('Built-in handlers', () => {

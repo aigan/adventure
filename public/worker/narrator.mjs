@@ -85,7 +85,7 @@ export function desig(state, entity) {
  * Template tag for formatting messages with observations
  * @param {TemplateStringsArray} strings - Template literal strings
  * @param {...Object} val_in - Observation objects to format
- * @returns {{strings: TemplateStringsArray, values: SubjectData[]}} Formatted message
+ * @returns {{strings: string[], values: SubjectData[]}} Formatted message
  */
 export function say( strings, ...val_in){
   //log('say with', strings)

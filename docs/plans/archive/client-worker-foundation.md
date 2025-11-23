@@ -115,7 +115,7 @@ Applying the documentation insights.
 
 ## Phase 3: Message Enrichment ⏰ NEXT (LAST PRIORITY)
 
-**File**: [message-enrichment.md](../message-enrichment.md)
+**File**: [message-enrichment.md](message-enrichment.md)
 
 **DO THIS LAST** after everything else is working.
 

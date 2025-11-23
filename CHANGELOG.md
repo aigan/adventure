@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-11-23 - v1.0.1
+
+### Alpha 1 Stage 1 Complete
+
+- **Core Belief Structure** - Beliefs, minds, observation, `@about` linking, `learn_about()` with trait exposure
+
 ## 2025-11-22
 
 ### Belief Trait Caching Optimization
