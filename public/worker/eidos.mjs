@@ -37,6 +37,8 @@ export class Eidos extends Mind {
     // Eidos is a child of Logos
     super(logos(), 'Eidos', null)
 
+    this._type = 'Eidos'
+
     // Create timeless origin state for holding shared beliefs
     // Timeless extends State via runtime prototype manipulation
     /** @type {State} */

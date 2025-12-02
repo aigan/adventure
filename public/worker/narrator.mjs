@@ -48,12 +48,18 @@ export function do_look_in_location(context) {
   const session = context.session;
   const ext = session.state;
   const target = context.subject.get_belief_by_state(ext)
-  const content = target.rev_trait(ext, T.location)
+  const content = [...target.rev_trait(ext, T.location)]
   const pov = ext.get_active_state_by_host(session.avatar)
+
+  //log([ext], ... content)
+  const perception = pov.perceive(content)
+
+  // FIXME: how does perception update existing beliefs?
+  //pov.learn_from(perception)
+  //log(perception)
 
   const seen = [];
   for (const item of content) {
-    pov.learn_about(item)
     seen.push(desig(ext,item))
   }
 
@@ -75,6 +81,8 @@ export function desig(state, entity) {
   } else {
     belief = entity
   }
+
+  //log("desig for", belief);
 
   if (!belief) return null
   const label = belief.get_label()

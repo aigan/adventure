@@ -28,6 +28,7 @@ import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
 import { Serialize } from './serialize.mjs'
 import { Traittype } from './traittype.mjs'
+import { Archetype } from './archetype.mjs'
 
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
@@ -42,7 +43,7 @@ import { Traittype } from './traittype.mjs'
  * @property {number|null} base - Base state _id (null for root states)
  * @property {number|null} ground_state - Ground state _id (null for Timeless/Logos bootstrap)
  * @property {number|null} self - Subject sid (null if no self identity)
- * @property {number|null} [about_state] - State _id this state is about (meta-level reasoning)
+ * @property {number|null} [about_state] - Alternative resolution context (Eidos→World lookups)
  * @property {number[]} insert - Belief _ids present in this state (serialized from private _insert)
  * @property {number[]} remove - Belief _ids removed in this state (serialized from private _remove)
  * @property {number} in_mind - Mind _id this state belongs to
@@ -79,7 +80,7 @@ export class State {
   /** @type {Belief[]} */ _remove = []
   /** @type {State|null} */ ground_state = null  // Null only for Timeless (Logos bootstrap)
   /** @type {Subject|null} */ self = null
-  /** @type {State|null} */ about_state = null
+  /** @type {State|null} */ about_state = null  // Alternative resolution context (Eidos→World lookups)
   /** @type {boolean} */ locked = false
   /** @type {State[]} */ _branches = []
   /** @type {Map<Subject, Belief|null>|null} */ _subject_index = null
@@ -95,7 +96,7 @@ export class State {
    * @param {number|null} [options.tt] - Transaction time (explicit for timeless states)
    * @param {number|null} [options.vt] - Valid time (defaults to tt)
    * @param {Subject|null} [options.self] - Self identity (defaults to base.self)
-   * @param {State|null} [options.about_state] - State context for belief resolution (for prototype minds)
+   * @param {State|null} [options.about_state] - Alternative resolution context (Eidos→World lookups)
    * @param {boolean} [options.derivation] - True if this state is a derivation (computed view, non-mutating)
    */
   constructor(mind, ground_state, base=null, {tt: tt_option, vt, self, about_state, derivation} = {}) {
@@ -359,7 +360,7 @@ export class State {
   /**
    * @param {Object<string, object>} beliefs - Object mapping labels to belief definitions
    * @param {object} options - Optional parameters
-   * @param {State|null} [options.about_state] - State context for belief resolution (for prototype minds)
+   * @param {State|null} [options.about_state] - Alternative resolution context (Eidos→World lookups)
    */
   add_beliefs_from_template(beliefs, {about_state=null} = {}) {
     const created_beliefs = []
@@ -648,7 +649,7 @@ export class State {
       }
 
       const new_belief = Belief.from(this, archetype_bases, {
-        '@about': DB.get_or_create_subject(source_belief.subject.ground_mind, source_belief.subject.sid),  // Shared canonical Subject
+        '@about': source_belief.subject,
         ...copied_traits
       })
 
@@ -814,7 +815,7 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
     assert(this.ground_state instanceof State, 'learn_about requires ground_state', {state_id: this._id})
 
-    // Use about_state if available, otherwise ground_state
+    // Use about_state for resolution if set (Eidos→World), otherwise ground_state
     const source_state = this.about_state ?? this.ground_state
 
     // Verify source_belief exists in source_state (either about_state or ground_state)
@@ -863,6 +864,238 @@ export class State {
     } else {
       return value  // Primitives, State, Mind pass through as-is
     }
+  }
+
+  /**
+   * Create an observation/perception event capturing what was observed
+   *
+   * Implements the categorization phase of dual-process recognition:
+   * - Fast path: Familiar entities → just store subject reference
+   * - Slow path: Unfamiliar entities → create perceived belief with traits
+   *
+   * @param {Belief[]} content - Array of world entities to perceive
+   * @param {string[]} modalities - Exposure modalities to observe (default: ['visual', 'spatial'])
+   * @returns {Belief} EventPerception belief containing perceived items
+   */
+  perceive(content, modalities = ['visual', 'spatial']) {
+    assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
+
+    const perceived_items = []
+
+    for (const world_entity of content) {
+      // FIXME: Fast path. If we already have a belief that is about the content, use that directly
+      // if the traits are the same, or as a base and modify for the current traits.
+
+      // Slow path: Unfamiliar entity - create perceived belief
+      const observed_traittypes = this.get_observable_traits(world_entity, modalities)
+      const archetype_bases = [...world_entity.get_archetypes()]  // Convert generator to array
+
+      // Get observable trait values
+      //const about_state = this.about_state ?? this.ground_state
+      const about_state = world_entity.origin_state
+
+      //log([about_state], "perceive", world_entity)
+
+      /** @type {Record<string, any>} */
+      const observed_traits = {}
+      for (const traittype of observed_traittypes) {
+        const value = world_entity.get_trait(about_state, traittype)
+        //log([about_state], "add trait", traittype.label, value)
+        if (value !== null) {
+          observed_traits[traittype.label] = value
+        }
+      }
+
+      // Create perceived belief with @about: null (unrecognized)
+      // Use Belief.from() since @about is not allowed in add_belief_from_template
+      const perceived = Belief.from(this, archetype_bases, {
+        '@about': null,
+        ...observed_traits
+      })
+
+      this.insert_beliefs(perceived)
+      perceived_items.push(perceived.subject)
+    }
+
+    // Create EventPerception holding all perceived items
+    return this.add_belief_from_template({
+      bases: ['EventPerception'],
+      traits: {
+        content: perceived_items
+      }
+    })
+  }
+
+  /**
+   * Identify a perceived belief by matching its traits against knowledge beliefs
+   *
+   * Implements the identification/recollection phase of dual-process recognition.
+   * Searches for knowledge beliefs with matching archetypes and trait values.
+   *
+   * @param {Belief} perceived_belief - Perceived belief with traits but no/unknown @about
+   * @returns {Subject[]} Array of candidate subjects (ranked by match quality)
+   */
+  identify(perceived_belief) {
+    // FIXME: validate
+    const archetypes = perceived_belief.get_archetypes()
+    const candidates = new Map()  // Use Map to deduplicate by subject
+
+    for (const archetype of archetypes) {
+      // Get knowledge beliefs with this archetype
+      const beliefs = this.get_beliefs_by_archetype(archetype)
+
+      for (const belief of beliefs) {
+        // Skip if no @about (not knowledge)
+        const about_tt = Traittype.get_by_label('@about')
+        if (!about_tt) continue
+        const about = belief.get_trait(this, about_tt)
+        if (!about) continue
+
+        // Match traits
+        const score = this.match_traits(perceived_belief, belief)
+        if (score > 0) {
+          // Only add if not already present or if score is higher
+          const key = about.sid
+          if (!candidates.has(key) || candidates.get(key).score < score) {
+            candidates.set(key, {subject: about, score})
+          }
+        }
+      }
+    }
+
+    // Sort by score (descending), return subjects only
+    return [...candidates.values()]
+      .sort((a, b) => b.score - a.score)
+      .map(c => c.subject)
+  }
+
+  /**
+   * Form knowledge from a perception event
+   *
+   * Processes EventPerception content, running identification for unrecognized items
+   * and integrating them into knowledge via learn_about().
+   *
+   * @param {Belief} perception - EventPerception belief
+   */
+  learn_from(perception) {
+    // FIXME: validate what learn_from does
+    assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
+
+    const content_tt = Traittype.get_by_label('content')
+    const about_tt = Traittype.get_by_label('@about')
+    if (!content_tt || !about_tt) return
+
+    const content = perception.get_trait(this, content_tt)
+
+    if (!content) return
+
+    for (const item_subject of content) {
+      const item = this.get_belief_by_subject(item_subject)
+      if (!item) {
+        // Subject not found in this state - skip
+        continue
+      }
+
+      const about = item.get_trait(this, about_tt)
+
+      if (about !== undefined) {
+        // It's a perceived belief (has @about trait)
+        if (about === null) {
+          // Unidentified - run identification
+          const candidates = this.identify(item)
+
+          if (candidates.length === 1 && this.ground_state) {
+            // Unambiguous match - learn about the identified entity
+            let world_entity = this.ground_state.get_belief_by_subject(candidates[0])
+            if (!world_entity) {
+              world_entity = candidates[0].get_shared_belief_by_state(this.ground_state)
+            }
+            assert(world_entity, 'Failed to find identified entity in ground_state', {subject: candidates[0]})
+            this.learn_about(world_entity)
+          }
+          // else: Ambiguous or no match - skip for now
+          // (Future: create uncertain knowledge, track ambiguity)
+        } else if (this.ground_state) {
+          // Already identified - learn about the identified entity
+          let world_entity = this.ground_state.get_belief_by_subject(/** @type {Subject} */ (about))
+          if (!world_entity) {
+            world_entity = /** @type {Subject} */ (about).get_shared_belief_by_state(this.ground_state)
+          }
+          assert(world_entity, 'Failed to find identified entity in ground_state', {about})
+          this.learn_about(world_entity)
+        }
+      } else if (this.ground_state) {
+        // Just a subject reference - familiar entity
+        let world_entity = this.ground_state.get_belief_by_subject(item_subject)
+        if (!world_entity) {
+          world_entity = item_subject.get_shared_belief_by_state(this.ground_state)
+        }
+        assert(world_entity, 'Failed to find familiar entity in ground_state', {subject: item_subject})
+        this.learn_about(world_entity)
+      }
+    }
+  }
+
+  /**
+   * Get all beliefs in this state with a specific archetype
+   *
+   * @param {Archetype} archetype - Archetype to match
+   * @returns {Belief[]} Beliefs with this archetype in their bases
+   */
+  get_beliefs_by_archetype(archetype) {
+    const matching_beliefs = []
+
+    // Iterate through all beliefs in this state (including base chain)
+    for (const belief of this.get_beliefs()) {
+      const archetypes = [...belief.get_archetypes()]
+      if (archetypes.some((/** @type {Archetype} */ a) => a === archetype)) {
+        matching_beliefs.push(belief)
+      }
+    }
+
+    return matching_beliefs
+  }
+
+  /**
+   * Match traits between two beliefs and return similarity score
+   *
+   * Initial simple implementation: exact match on all perceived traits = 1.0
+   * Future: partial match, hierarchical matching, weighted traits
+   *
+   * @param {Belief} perceived - Perceived belief with observed traits
+   * @param {Belief} knowledge - Knowledge belief to compare against
+   * @returns {number} Match score (0.0 = no match, 1.0 = perfect match)
+   */
+  match_traits(perceived, knowledge) {
+    // FIXME: validate
+    // Get all traits from perceived belief (except @about)
+    const perceived_traits = [...perceived.get_traits()]
+      .filter(([tt, _]) => tt.label !== '@about')
+
+    if (perceived_traits.length === 0) {
+      // No traits to match (just archetype)
+      return 0.5  // Weak match - same archetype but no discriminating traits
+    }
+
+    let matched_count = 0
+    const total_count = perceived_traits.length
+
+    for (const [traittype, perceived_value] of perceived_traits) {
+      const knowledge_value = knowledge.get_trait(this, traittype)
+
+      // Exact match check
+      if (perceived_value === knowledge_value) {
+        matched_count++
+      } else if (perceived_value instanceof Subject) {
+        // Subject reference - compare subject equality
+        if (knowledge_value instanceof Subject && perceived_value.sid === knowledge_value.sid) {
+          matched_count++
+        }
+      }
+      // TODO: Nested object matching, array matching, partial matching
+    }
+
+    return matched_count / total_count
   }
 
   /**
@@ -960,7 +1193,7 @@ export class State {
     // Load self
     let self = null
     if (data.self != null) {
-      self = DB.get_or_create_subject(mind.parent, data.self)
+      self = DB.get_or_create_subject(data.self, mind)  // mater = mind
     }
 
     // Load about_state

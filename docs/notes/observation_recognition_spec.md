@@ -26,71 +26,96 @@ Meta-traits use `@` prefix and describe properties of the belief itself, not the
 
 ### @about
 
-**Purpose:** Links belief to corresponding entity in outer mind
+**Purpose:** Links belief to corresponding entity in parent mind
 
-**Semantics:** Represents the mind's current identification (which may be incorrect)
+**Semantics:** The mind's identification of what outer entity this belief refers to. This is epistemic - it represents what the mind *believes* the identity to be, which may be incorrect or absent.
 
-**Usage:**
-- Performance optimization for routine cases (identity not in question)
-- Set immediately when recognition is clear
-- Can be wrong during misidentification
-- Absent when identity requires trait matching
-
-**Examples:**
+**Traittype definition:**
 ```javascript
-// Correctly identified
-belief_workshop: {
-  @about: world.workshop_1,
-  location_type: 'indoor'
-}
-
-// Misidentified (thinks Tom is Bob)
-belief_person: {
-  @about: world.tom,  // wrong identification
-  appearance: 'tall, bearded'  // actually Bob's traits
-}
-
-// Identity uncertain
-belief_stranger: {
-  @about: null,  // don't know who this is
-  appearance: 'hooded figure'
+'@about': {
+  type: 'Subject',
+  mind: 'parent',      // Resolve in parent mind's state
+  exposure: 'internal' // Not observable by others
 }
 ```
 
-### @subject
-
-**Purpose:** Identity of the belief through time
-
-**Semantics:** Different versions of a belief modified over time share the same subject
-
 **Usage:**
-- Links belief versions via `base` inheritance
-- Used for acquaintance (recognize subject across versions)
-- Stable identifier for belief evolution
+- Set when mind identifies the entity (recognition succeeds)
+- Can be wrong during misidentification
+- Null/absent when identity unknown or uncertain
+- Resolved via `belief.get_about(state)` method
 
 **Examples:**
 ```javascript
-// Initial belief
-belief_bob_v1: {
-  @subject: 'subject_bob_123',
-  @about: world.bob,
-  appearance: 'bearded'
-}
+// Correctly identified workshop
+const workshop_knowledge = state.add_belief_from_template({
+  bases: ['Location'],
+  traits: {
+    '@about': world_workshop.subject,  // Mind's identification
+    location_type: 'indoor'
+  }
+})
 
-// Updated belief
-belief_bob_v2: {
-  @subject: 'subject_bob_123',  // same subject
-  @about: world.bob,
-  base: belief_bob_v1,
-  appearance: 'clean_shaven'  // trait changed
-}
+// Misidentified (thinks stranger is Bob)
+const mistaken_belief = state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': world_tom.subject,  // Wrong - actually saw Bob
+    appearance: 'tall, bearded'   // Bob's traits attributed to Tom
+  }
+})
+
+// Identity uncertain (stranger in disguise)
+const stranger_belief = state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': null,  // Don't know who this is
+    appearance: 'hooded figure'
+  }
+})
+```
+
+### Subject (belief.subject)
+
+**Purpose:** Stable identity of the belief through time
+
+**Note:** This is a **property** of Belief (`belief.subject`), not a meta-trait. Documented here because it's central to identity tracking.
+
+**Semantics:** Different versions of a belief share the same Subject instance. The Subject has a stable `sid` (subject ID) that persists across versions.
+
+**Usage:**
+- `belief.subject.sid` - Stable numeric identifier
+- Versioned beliefs share same subject when created with `sid` parameter
+- Used for queries like `state.get_belief_by_subject(subject)`
+- Labels are associated with subjects, not individual belief versions
+
+**Examples:**
+```javascript
+// Initial belief - creates new subject
+const bob_v1 = state.add_belief_from_template({
+  bases: ['Person'],
+  traits: { appearance: 'bearded' },
+  label: 'bob'
+})
+// bob_v1.subject.sid = 123 (auto-assigned)
+
+// Updated belief - same subject via sid parameter
+const bob_v2 = Belief.from_template(state, {
+  sid: bob_v1.subject.sid,  // Same subject identity
+  bases: [bob_v1],          // Inherits from v1
+  traits: { appearance: 'clean_shaven' }
+})
+// bob_v2.subject.sid = 123 (same as v1)
+// bob_v2.subject === bob_v1.subject (same Subject instance)
 ```
 
 ### @acquaintance
 
 **Purpose:** Level of familiarity enabling recognition
 
-**Semantics:** Points to subject (not specific version) to indicate recognition capability
+**Important:** This trait belongs on **knowledge beliefs**, not observations. Observations are raw perceptual data; acquaintance is accumulated familiarity stored in the mind's knowledge about an entity.
+
+**Semantics:** Indicates how well the mind knows this entity, affecting recognition ability.
 
 **Values:**
 - **'intimate'** - Recognize across all contexts and personas
@@ -110,59 +135,75 @@ belief_bob_v2: {
 **Examples:**
 ```javascript
 // Deep acquaintance - would recognize anywhere
-belief_best_friend: {
-  @about: world.alice,
-  @subject: 'subject_alice_456',
-  @acquaintance: 'intimate',
-  personality: 'cheerful'
-}
+const best_friend_knowledge = state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': world_alice.subject,
+    '@acquaintance': 'intimate',
+    personality: 'cheerful'
+  }
+})
 
 // Context-limited acquaintance
-belief_blacksmith: {
-  @about: world.bob,
-  @subject: 'subject_bob_123',
-  @acquaintance: 'slight',  // only seen at forge
-  appearance_context: ['at_forge', 'leather_apron'],
-  role: 'blacksmith'
-}
+const blacksmith_knowledge = state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': world_bob.subject,
+    '@acquaintance': 'slight',  // Only seen at forge
+    role: 'blacksmith'
+  }
+})
 
-// Knowledge without acquaintance
-belief_king: {
-  @about: world.king,
-  @subject: 'subject_king_789',
-  @acquaintance: null,  // heard of, never met
-  role: 'ruler',
-  reputation: 'just'
-}
+// Knowledge without acquaintance (heard of, never met)
+const king_knowledge = state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': world_king.subject,
+    '@acquaintance': null,  // Would not recognize if seen
+    role: 'ruler',
+    reputation: 'just'
+  }
+})
 ```
 
 ### @source
 
-**Purpose:** Tracks how this belief originated
+**Purpose:** Tracks how this belief originated (provenance)
 
-**Semantics:** Points to observation event, testimony, or inference that created the belief
+**Status:** Not yet implemented. Planned for testimony chains and knowledge provenance.
+
+**Semantics:** Points to the event (observation, testimony, inference) that created or updated this belief. Enables answering "how do you know that?"
 
 **Examples:**
 ```javascript
-// From observation
-belief_hammer: {
-  @about: world.hammer_1,
-  @source: obs_workshop_tick_5,
-  color: 'black'
-}
+// Knowledge from direct observation
+const hammer_knowledge = state.add_belief_from_template({
+  bases: ['PortableObject'],
+  traits: {
+    '@about': world_hammer.subject,
+    '@source': observation_event.subject,  // Links to EventPerception
+    color: 'black'
+  }
+})
 
-// From testimony
-belief_rumor: {
-  @about: world.treasure,
-  @source: testimony_from_merchant,
-  location: 'old_mine'
-}
+// Knowledge from testimony
+const rumor_knowledge = state.add_belief_from_template({
+  bases: ['Location'],
+  traits: {
+    '@about': world_treasure.subject,
+    '@source': testimony_event.subject,  // Links to communication event
+    location_description: 'old mine'
+  }
+})
 
-// No source (pre-existing knowledge)
-belief_home: {
-  @about: world.player_house,
-  @source: null
-}
+// Pre-existing knowledge (no tracked source)
+const home_knowledge = state.add_belief_from_template({
+  bases: ['Location'],
+  traits: {
+    '@about': world_player_house.subject,
+    '@source': null  // Always known
+  }
+})
 ```
 
 ## Trait Exposure
@@ -233,27 +274,36 @@ Environmental conditions can shift prominence:
 **Examples:**
 ```javascript
 // Normal object at location
-hammer: {
-  spatial_prominence: 'exposed',
-  location: workshop,
-  color: 'black'
-}
+const hammer = state.add_belief_from_template({
+  bases: ['PortableObject'],
+  traits: {
+    spatial_prominence: 'exposed',
+    location: workshop.subject,
+    color: 'black'
+  }
+})
 
 // Hidden object
-secret_key: {
-  spatial_prominence: 'hidden',
-  location: workshop,
-  hiding_place: 'under_floorboard'
-}
+const secret_key = state.add_belief_from_template({
+  bases: ['PortableObject'],
+  traits: {
+    spatial_prominence: 'hidden',
+    location: workshop.subject,
+    hiding_place: 'under_floorboard'
+  }
+})
 
 // Attention-grabbing object
-burning_forge: {
-  spatial_prominence: 'prominent',
-  location: workshop,
-  light_level: 'bright',
-  heat_level: 'intense',
-  sound_level: 'loud'
-}
+const burning_forge = state.add_belief_from_template({
+  bases: ['Location'],  // Or a Fixture archetype
+  traits: {
+    spatial_prominence: 'prominent',
+    location: workshop.subject,
+    light_level: 'bright',
+    heat_level: 'intense',
+    sound_level: 'loud'
+  }
+})
 ```
 
 ## Observation Process
@@ -300,306 +350,338 @@ mind_states: {exposure: 'internal'} → No (never accessible via observation)
 
 ### Creating Observation
 
+Observations use a two-tier architecture separating perception from knowledge:
+
+**Tier 1: Perceived beliefs** - Raw perceptual data about what was observed
+**Tier 2: EventPerception** - The event that holds references to perceived beliefs
+
+**Archetype definitions (from world.mjs):**
 ```javascript
-// 1. Create observation event
-obs_workshop: {
-  archetype: 'Event_perception',
-  observer: player,
-  target: null,  // will point to resulting belief
-  time: current_tick,
-  @about: world_perception_event  // if world tracks this
+EventAwareness: {
+  bases: ['Thing'],
+  traits: { content: null }  // Array of Thing references
 }
 
-// 2. Create resulting belief (or update existing)
-player_belief_workshop: {
-  archetype: 'Location',
-  @about: world.workshop_1,
-  @subject: 'workshop_subject',
-  @acquaintance: 'familiar',  // if recognized
-  @source: obs_workshop,
-  // Copy accessible traits from world.workshop_1
-  location_type: 'indoor',
-  size: 'large'
+EventPerception: {
+  bases: ['EventAwareness']
 }
 
-// 3. Link observation to belief
-obs_workshop.target = player_belief_workshop
+// content traittype
+content: {
+  type: 'Thing',
+  container: Array
+}
+```
 
-// 4. Add to state
-state.tick({
-  insert: [obs_workshop, player_belief_workshop]
+**Creating a perception event:**
+```javascript
+// 1. Create perceived beliefs (what was actually seen)
+const perceived_hammer = observer_state.add_belief_from_template({
+  bases: ['PortableObject'],
+  traits: {
+    '@about': null,  // Identity not yet determined
+    color: 'black',
+    location: perceived_workshop.subject
+  }
+})
+
+const perceived_workshop = observer_state.add_belief_from_template({
+  bases: ['Location'],
+  traits: {
+    '@about': world_workshop.subject,  // Recognized location
+    location_type: 'indoor'
+  }
+})
+
+// 2. Create perception event holding references to perceived beliefs
+const perception_event = observer_state.add_belief_from_template({
+  bases: ['EventPerception'],
+  traits: {
+    '@about': world_perception_event?.subject,  // Optional world event link
+    content: [perceived_hammer.subject, perceived_workshop.subject]
+  }
 })
 ```
 
+**Three-tier knowledge architecture:**
+
+| Tier | Contains | Purpose |
+|------|----------|---------|
+| World events | Ground truth | What actually happened |
+| Perception events | EventPerception + perceived beliefs | What observer saw (evidence) |
+| Knowledge beliefs | Accumulated understanding | What observer knows/believes |
+
+**Separation of perception from knowledge:**
+- Perceived beliefs are raw observation data (no `@acquaintance`)
+- Knowledge beliefs may use perceived beliefs as bases
+- Knowledge accumulates `@acquaintance` over multiple observations
+
 ## Recognition Process
+
+Recognition determines whether a perceived entity matches existing knowledge.
 
 ### Recognition Check
 
-When observing an entity:
+When processing a perceived belief:
 
-1. **Check @about shortcut** - If `@about` already set from previous logic, use it
-2. **Check acquaintance** - Search for belief with `@acquaintance != null`
-3. **Match traits** - Compare observed traits against known entities
-4. **Evaluate context** - Is this a known context for slight acquaintance?
+1. **Match traits** - Compare perceived traits against existing knowledge beliefs
+2. **Check acquaintance** - Does existing knowledge have sufficient `@acquaintance`?
+3. **Evaluate context** - Is this a context where recognition would occur?
+4. **Set identity** - If recognized, set `@about` on perceived belief
 
 ### Decision Flow
 
 ```
-IF @about is set (from prior identification)
-  → Use that identity (might be wrong)
+FOR each perceived_belief in perception_event.content:
+  candidates = find_knowledge_matching_traits(perceived_belief)
 
-ELSE IF @acquaintance exists for this entity
-  IF acquaintance level permits recognition in this context
-    → Recognize (set @about, update existing belief)
-  ELSE
-    → Don't recognize (create new belief or leave @about null)
+  IF single candidate with sufficient @acquaintance
+    → Set perceived_belief.@about = candidate.@about
+    → Optionally update knowledge with new observations
 
-ELSE
-  → Trait matching required (story-specific logic)
+  ELSE IF multiple candidates
+    → Leave perceived_belief.@about = null (ambiguous)
+    → May create new knowledge belief with unknown identity
+
+  ELSE (no match)
+    → Create new knowledge belief
+    → Set @acquaintance = 'slight' (first encounter)
 ```
 
 ### Recognition Examples
 
 **Case 1: Familiar entity in normal context**
 ```javascript
-// Player knows Bob well
-existing_belief: {
-  @about: world.bob,
-  @acquaintance: 'familiar',
-  appearance: 'tall, bearded'
-}
+// Player's existing knowledge about Bob
+const bob_knowledge = state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': world_bob.subject,
+    '@acquaintance': 'familiar',
+    appearance: 'tall, bearded'
+  }
+})
 
-// Observes Bob at market
-// Result: Immediate recognition
-// Updates existing_belief, no new belief created
+// Perceives someone matching Bob's traits at market
+// Recognition succeeds: @acquaintance = 'familiar' allows recognition
+// Result: perceived_belief.@about = world_bob.subject
 ```
 
 **Case 2: Slight acquaintance, wrong context**
 ```javascript
 // Player only knows blacksmith at forge
-existing_belief: {
-  @about: world.bob,
-  @acquaintance: 'slight',
-  appearance_context: ['at_forge', 'leather_apron']
-}
+const blacksmith_knowledge = state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': world_bob.subject,
+    '@acquaintance': 'slight',  // Context-dependent
+    typical_location: forge.subject
+  }
+})
 
-// Observes clean-shaven man at market (actually Bob)
-// Result: Don't recognize
-// Creates new belief with @about: null or world.bob (but no recognition)
+// Perceives clean-shaven man at market (actually Bob without apron)
+// Recognition fails: 'slight' acquaintance + unfamiliar context
+// Result: perceived_belief.@about = null (doesn't recognize Bob)
 ```
 
-**Case 3: No acquaintance**
+**Case 3: No acquaintance (hearsay only)**
 ```javascript
-// Player heard of the king but never met
-existing_belief: {
-  @about: world.king,
-  @acquaintance: null,
-  role: 'ruler'
-}
+// Player heard of king but never met
+const king_hearsay = state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': world_king.subject,
+    '@acquaintance': null,  // Would not recognize if seen
+    role: 'ruler'
+  }
+})
 
-// Observes well-dressed person at castle
-// Result: No recognition
-// Creates separate belief for "well-dressed person"
+// Perceives well-dressed person at castle
+// No recognition possible: @acquaintance = null
+// Result: Creates separate belief for "well-dressed person"
+// Player doesn't connect this to what they heard about the king
 ```
 
 ## Direct Knowledge Creation
 
-For cases where observation mechanics aren't needed (initialization, testimony, game start):
+For cases where observation mechanics aren't needed (initialization, testimony, game start), use `learn_about()`:
 
 ```javascript
-Mind.prototype.create_knowledge_about(outer_entity, traits_override = {}) {
-  const belief = new Belief(this, {
-    archetypes: [...outer_entity.archetypes],
-    traits: {
-      ...copy_traits(outer_entity),
-      ...traits_override,
-      @about: outer_entity,
-      @subject: generate_subject_id(),
-      @acquaintance: null,  // or set if appropriate
-      @source: null
-    }
-  });
+// Create knowledge about world entity without full perception flow
+const hammer_knowledge = npc_state.learn_about(world_hammer, {
+  traits: ['color', 'location']  // Which traits to copy
+})
 
-  return belief;
-}
+// Or manually for more control:
+const workshop_knowledge = state.add_belief_from_template({
+  bases: ['Location'],
+  traits: {
+    '@about': world_workshop.subject,
+    '@acquaintance': 'familiar',  // Pre-existing familiarity
+    location_type: 'indoor'
+  }
+})
 ```
 
 ## Misidentification and Correction
 
 ### Misidentification State
 
+Misidentification occurs when `@about` points to wrong entity:
+
 ```javascript
-// Player mistakes Tom for Bob
-belief_mistaken: {
-  @about: world.tom,           // wrong identification
-  @subject: 'subject_mistake',
-  @acquaintance: 'familiar',   // thinks they know Tom
-  @source: obs_market_tick_10,
-  appearance: 'tall, bearded'  // actually Bob's traits
-}
+// Player mistakes stranger for Tom (actually Bob in disguise)
+const mistaken_belief = state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': world_tom.subject,  // Wrong! Actually saw Bob
+    '@acquaintance': 'familiar',  // Thinks they recognized Tom
+    appearance: 'tall, bearded'   // Bob's traits
+  }
+})
 ```
 
 ### Detection
 
 Misidentification is detected when:
-- Direct contradiction (see both "Tom" and actual Tom at once)
-- Testimony contradicts belief
+- Direct contradiction (sees both "Tom" and actual Tom simultaneously)
+- Testimony contradicts belief ("Tom was elsewhere")
 - Story template identifies inconsistency
 
 ### Correction Process
 
 1. **Create corrected belief** about actual entity
 2. **Re-attribute observations** to correct belief
-3. **Mark old belief as invalidated** or remove
-4. **Update @about** references
+3. **Mark old belief as superseded** via versioning
 
 ```javascript
-// Create belief about actual Bob
-belief_bob_corrected: {
-  @about: world.bob,
-  @subject: 'subject_bob_new',
-  @acquaintance: 'familiar',
-  appearance: 'tall, bearded',
-  @source: obs_market_tick_10  // re-attributed
-}
-
-// Invalidate mistaken belief
-belief_mistaken.invalidated = true
-belief_mistaken.corrected_by = belief_bob_corrected
+// Realize it was actually Bob - create corrected knowledge
+const corrected_belief = Belief.from_template(state, {
+  sid: mistaken_belief.subject.sid,  // Same subject (version update)
+  bases: [mistaken_belief],
+  traits: {
+    '@about': world_bob.subject,  // Corrected identification
+    '@acquaintance': 'slight'     // Now acquainted with Bob
+  }
+})
+// Previous mistaken_belief is superseded by this version
 ```
 
 ## Implementation Considerations
 
-### Performance Optimization
+### When @about is Set
 
-**Use @about for routine cases:**
-- Known locations player visits regularly
-- Familiar NPCs in expected contexts
-- Objects player has identified
+Since `@about` is the mind's identification (epistemic, not system truth):
 
-**Skip @about for story-interesting cases:**
-- Disguises and deception
-- First encounters
-- Ambiguous situations
-- Investigation scenarios
+**Set @about when:**
+- Recognition succeeds (traits match + sufficient acquaintance)
+- Direct identification (someone tells you who it is)
+- Obvious identity (only one entity matches)
+
+**Leave @about null when:**
+- First encounter with stranger
+- Ambiguous observation (multiple candidates)
+- Disguise prevents recognition
+- Insufficient acquaintance level for context
 
 ### Story Generation
 
 **Templates can query for:**
-- Mismatches in @about across minds (misidentification drama)
-- Beliefs with @acquaintance but no recent observations (reunion opportunities)
-- Multiple beliefs about same @about entity (confusion scenarios)
-- Beliefs with @acquaintance pointing to wrong @about (mistaken identity)
+- Beliefs with `@about: null` (unidentified entities - mystery hooks)
+- Multiple minds with different `@about` for same observation (conflicting identifications)
+- Beliefs with `@acquaintance` but no recent observations (reunion opportunities)
+- Wrong `@about` across time (misidentification to correct later)
 
 ### Scalability
 
-**Canonical + Instance Pattern:**
+**Knowledge versioning pattern:**
 ```javascript
-// Canonical belief (accumulated general knowledge)
-player_belief_bob_canonical: {
-  @about: world.bob,
-  @subject: 'subject_bob',
-  @acquaintance: 'familiar',
-  appearance_typical: ['tall', 'bearded'],
-  role: 'blacksmith',
-  last_observed: tick_100
-}
+// Initial knowledge (first observation)
+const bob_v1 = state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': world_bob.subject,
+    '@acquaintance': 'slight',
+    appearance: 'tall, bearded',
+    role: 'blacksmith'
+  },
+  label: 'bob'
+})
 
-// Recent instance (specific observation)
-player_belief_bob_instance_tick_100: {
-  @about: world.bob,
-  @subject: 'subject_bob',  // same subject
-  base: player_belief_bob_canonical,
-  appearance_specific: ['bandaged_hand'],  // today's detail
-  @source: obs_tick_100
-}
+// Updated knowledge (later observation with new detail)
+const bob_v2 = Belief.from_template(later_state, {
+  sid: bob_v1.subject.sid,
+  bases: [bob_v1],
+  traits: {
+    '@acquaintance': 'familiar',  // Upgraded familiarity
+    appearance_detail: 'bandaged hand'  // New observation
+  }
+})
 ```
 
-**For "what do they look like?"**
-- Use canonical belief (fast lookup)
-- Optionally include recent instance details
-
-**For recognition:**
-- Match against canonical traits (fast)
-- Fall back to instance traits if needed
+**For queries:**
+- `state.get_belief_by_subject(subject)` returns latest version
+- Trait inheritance provides accumulated knowledge
 
 ### Context Modeling
 
-**Option 1: Implicit through acquaintance level**
-- 'slight' acquaintance = context-dependent recognition
-- Let trait matching determine if context matches
-
-**Option 2: Explicit context branches**
-```javascript
-// Root canonical
-belief_bob: {
-  @about: world.bob,
-  @subject: 'subject_bob',
-  appearance_general: ['tall', 'bearded']
-}
-
-// Context-specific branch
-belief_bob_at_work: {
-  base: belief_bob,
-  appearance_context: ['leather_apron', 'soot'],
-  location_typical: 'forge'
-}
-```
+**Implicit through acquaintance level:**
+- `'slight'` acquaintance = context-dependent recognition
+- Trait matching determines if context matches
+- No need for explicit context branches in most cases
 
 ## Integration with Existing System
 
 ### Archetype Observability
 
-Archetypes are observed based on their traits:
+Perceived beliefs inherit archetypes based on observable traits:
 
 ```javascript
+// Archetype definitions with exposure
 ObjectPhysical: {
+  bases: ['Thing'],
   traits: {
-    location: null,    // exposure: 'spatial'
-    color: null        // exposure: 'visual'
+    location: null,  // exposure: 'spatial'
+    color: null      // exposure: 'visual'
   }
 }
-// → Observable when entity has spatial_prominence >= 'exposed'
 
 Mental: {
   traits: {
-    mind_states: null  // exposure: 'internal'
+    mind: null  // exposure: 'internal'
   }
 }
-// → Not directly observable, only through behavior
 ```
 
-When observing a person with both ObjectPhysical and Mental archetypes:
-- Copy ObjectPhysical archetype (has observable traits)
-- Don't copy Mental archetype (no observable traits)
-- Mental archetype can be inferred later through behavior
-
-### Trait Resolution
-
-Update Traittype.resolve() to handle @meta-traits:
-
-```javascript
-Traittype.resolve(mind, data) {
-  // Handle meta-traits (@ prefix)
-  if (this.label.startsWith('@')) {
-    // Validate and return as-is
-    return data;
-  }
-
-  // Regular trait resolution logic
-  // ...
-}
-```
+When perceiving a Person (bases: ['Actor', 'Mental']):
+- Include Actor/ObjectPhysical archetypes (have observable traits)
+- Exclude Mental archetype (no observable traits)
+- Mental aspects can be inferred later through behavior
 
 ### State Management
 
-Observations create both events and beliefs:
+Perception creates EventPerception with references to perceived beliefs:
 
 ```javascript
-state.tick({
-  insert: [observation_event, resulting_belief],
-  update: [existing_belief_if_recognized]
+// 1. Create perceived beliefs
+const perceived = observer_state.add_belief_from_template({
+  bases: ['Person'],  // Only observable archetypes
+  traits: {
+    '@about': null,  // Identity determined by recognition
+    appearance: 'tall, bearded'
+  }
 })
+
+// 2. Create perception event
+const event = observer_state.add_belief_from_template({
+  bases: ['EventPerception'],
+  traits: {
+    content: [perceived.subject]
+  }
+})
+
+// 3. Recognition sets @about if successful
+// 4. Knowledge beliefs may be created/updated separately
 ```
 
 ## Example Scenarios
@@ -607,294 +689,371 @@ state.tick({
 ### Scenario 1: First Meeting
 
 ```javascript
-// World state
-world.bob: {
-  archetype: ['Actor', 'Mental'],
-  spatial_prominence: 'exposed',
-  appearance: 'tall, bearded',
-  location: workshop
-}
+// World state: Bob at workshop
+const world_bob = world_state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    spatial_prominence: 'exposed',
+    appearance: 'tall, bearded',
+    location: workshop.subject
+  },
+  label: 'bob'
+})
 
-// Player observes
-obs_bob: {
-  archetype: 'Event_perception',
-  observer: player,
-  target: player_belief_bob,
-  time: tick_5
-}
+// Player perceives Bob (first time seeing him)
+const perceived_person = player_state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': null,  // Don't know who this is yet
+    appearance: 'tall, bearded',
+    location: perceived_workshop.subject
+  }
+})
 
-player_belief_bob: {
-  archetype: ['Actor'],  // Mental not copied
-  @about: world.bob,
-  @subject: 'subject_bob_123',
-  @acquaintance: 'slight',  // first meeting
-  @source: obs_bob,
-  appearance: 'tall, bearded',
-  location: workshop
-}
+const perception_event = player_state.add_belief_from_template({
+  bases: ['EventPerception'],
+  traits: { content: [perceived_person.subject] }
+})
+
+// Recognition: No existing knowledge matches
+// Create knowledge belief for this new person
+const bob_knowledge = player_state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': world_bob.subject,  // Identity established
+    '@acquaintance': 'slight',    // First meeting
+    appearance: 'tall, bearded'
+  },
+  label: 'bob'
+})
 ```
 
 ### Scenario 2: Recognition After Time
 
 ```javascript
-// Existing belief
-player_belief_bob: {
-  @about: world.bob,
-  @acquaintance: 'familiar',
-  appearance: 'bearded',
-  last_observed: tick_5
-}
+// Existing knowledge about Bob
+const bob_knowledge = player_state.get_belief_by_label('bob')
+// bob_knowledge has @acquaintance: 'familiar', appearance: 'bearded'
 
-// Observe Bob again at tick_50 (now clean-shaven)
-// Recognition: @acquaintance = 'familiar' allows recognition
-// Result: Update existing belief
+// Observe Bob again (now clean-shaven)
+const perceived = player_state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': null,
+    appearance: 'clean_shaven'
+  }
+})
 
-player_belief_bob_v2: {
-  base: player_belief_bob,
-  @about: world.bob,
-  @acquaintance: 'familiar',
-  appearance: 'clean_shaven',  // trait changed
-  @source: obs_tick_50,
-  last_observed: tick_50
-}
+// Recognition succeeds: @acquaintance = 'familiar' allows recognition
+// despite appearance change
+
+// Update knowledge with new observation
+const bob_v2 = Belief.from_template(player_state, {
+  sid: bob_knowledge.subject.sid,
+  bases: [bob_knowledge],
+  traits: {
+    appearance: 'clean_shaven'  // Updated trait
+  }
+})
+// perceived.@about can now be set to world_bob.subject
 ```
 
 ### Scenario 3: Disguise
 
 ```javascript
-// Bob in disguise
-world.bob: {
-  spatial_prominence: 'exposed',
-  appearance: 'hooded, concealed_face',
-  location: market
-}
+// Bob in disguise at market
+// world_bob.appearance is now 'hooded, concealed_face'
 
-// Player observation
-// Recognition check: traits don't match known Bob
-// @acquaintance level insufficient for recognition
-// Result: New belief, no connection to Bob
+// Player observes hooded figure
+const perceived_stranger = player_state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': null,  // Can't identify
+    appearance: 'hooded, mysterious'
+  }
+})
 
-player_belief_stranger: {
-  archetype: ['Actor'],
-  @about: world.bob,  // system knows
-  @subject: 'subject_stranger_456',
-  @acquaintance: null,  // don't know who this is
-  @source: obs_market,
-  appearance: 'hooded, mysterious'
-}
+// Recognition fails: traits don't match known Bob
+// @acquaintance = 'familiar' isn't enough when face is concealed
 
-// Player has two separate beliefs about Bob:
-// 1. player_belief_bob (knows him)
-// 2. player_belief_stranger (doesn't recognize as same person)
+// Player creates new knowledge (doesn't connect to Bob)
+const stranger_knowledge = player_state.add_belief_from_template({
+  bases: ['Person'],
+  traits: {
+    '@about': null,  // Identity unknown
+    '@acquaintance': null,
+    appearance: 'hooded, mysterious'
+  }
+})
+
+// Player now has two separate beliefs:
+// 1. bob_knowledge (@about: world_bob, @acquaintance: 'familiar')
+// 2. stranger_knowledge (@about: null) - actually Bob but unknown
 ```
 
 ### Scenario 4: Testimony Without Acquaintance
 
 ```javascript
 // NPC tells player about the missing hammer
-testimony_hammer: {
-  archetype: 'Event_communication',
-  speaker: npc1,
-  listener: player,
-  content: 'The hammer is missing from the workshop'
-}
+// (Testimony creates knowledge without direct observation)
 
-// Player creates belief based on testimony
-player_belief_hammer: {
-  archetype: ['PortableObject'],
-  @about: world.hammer_1,  // NPC identified it
-  @subject: 'subject_hammer_789',
-  @acquaintance: null,  // never seen it
-  @source: testimony_hammer,
-  location: 'workshop (reportedly)',
-  status: 'missing'
-}
+const hammer_hearsay = player_state.add_belief_from_template({
+  bases: ['PortableObject'],
+  traits: {
+    '@about': world_hammer.subject,  // NPC identified it
+    '@acquaintance': null,           // Never seen it
+    reported_location: workshop.subject,
+    status: 'missing'
+  }
+})
 
-// Later observes a hammer at forge
-// No recognition (no acquaintance)
-// Creates separate belief unless trait matching identifies it
+// Later: Player observes a hammer at forge
+const perceived_hammer = player_state.add_belief_from_template({
+  bases: ['PortableObject'],
+  traits: {
+    '@about': null,  // Can't identify
+    color: 'black',
+    location: forge.subject
+  }
+})
+
+// No recognition: @acquaintance = null for hammer_hearsay
+// Player doesn't connect observed hammer to the "missing" one
+// Creates separate knowledge belief
 ```
 
 ## Design Decisions Summary
 
-1. **@about represents mind's identification** (can be wrong) rather than system ground truth
-2. **@acquaintance enables recognition shortcuts** avoiding trait matching in common cases
-3. **@subject provides identity through time** for belief evolution
-4. **Trait exposure defines sensory channels** traits manifest in
-5. **Spatial prominence defines narrative presence** of entities
-6. **Recognition combines acquaintance + context + traits** with acquaintance as primary shortcut
-7. **Misidentification is normal state** that gets corrected through story progression
-8. **Observation and resulting belief are separate** allowing independent memory decay
+1. **@about is epistemic** - Represents the mind's identification (can be wrong or null), not system ground truth
+2. **@acquaintance belongs on knowledge** - Not on perceived beliefs; accumulated familiarity enables recognition
+3. **Subject is a property** - `belief.subject.sid` provides stable identity, not a meta-trait
+4. **EventPerception uses content array** - Holds Subject references to perceived beliefs
+5. **Trait exposure defines observability** - `exposure` on traittype controls what can be perceived
+6. **Recognition matches traits then checks acquaintance** - Trait matching first, acquaintance determines if recognition succeeds
+7. **Perception and knowledge are separate** - Perceived beliefs are raw data; knowledge accumulates over time
+8. **Misidentification is normal** - Wrong `@about` gets corrected through story progression
 
 ## Compositional Observations (Stage 2)
 
 ### Overview
 
-Objects have compositional structure - a hammer has a head and handle, each with their own traits. Observations must capture this hierarchical structure to enable proper matching.
+Objects have compositional structure - a hammer has a head and handle, each with their own traits. Perceived beliefs capture this hierarchical structure through belief references, enabling proper matching.
 
 ### Observation Structure
 
-Observations capture **what was perceived**, not **what entity it was**:
+Perceived beliefs use the same compositional pattern as world beliefs - compositional traits reference other beliefs:
 
 ```javascript
-// Observation event with hierarchical observed traits
-obs_1: {
-  archetype: 'Event_perception',
-  observer: player_1,
-  observed_traits: {
-    archetype: 'Hammer',           // recognized type
-    head: {
-      color: 'black',              // saw head color
-      material: 'iron'             // saw head material
-    },
-    handle: {
-      length: 'short'              // saw handle length
-      // didn't observe handle.color - not in observation
-    },
-    location: 'workshop'
-  },
-  time: 't1',
-  target: null  // resolved by recognize(), may remain null if ambiguous
-}
+// Perceiving a hammer with compositional structure
+const perceived_head = observer_state.add_belief_from_template({
+  bases: ['HammerHead'],
+  traits: {
+    color: 'black',
+    material: 'iron'
+  }
+})
+
+const perceived_handle = observer_state.add_belief_from_template({
+  bases: ['HammerHandle'],
+  traits: {
+    length: 'short'
+    // Didn't observe handle color - not in traits
+  }
+})
+
+const perceived_hammer = observer_state.add_belief_from_template({
+  bases: ['Hammer'],
+  traits: {
+    '@about': null,  // Identity to be determined
+    head: perceived_head.subject,
+    handle: perceived_handle.subject,
+    location: perceived_workshop.subject
+  }
+})
+
+// EventPerception holds the top-level perceived belief
+const perception = observer_state.add_belief_from_template({
+  bases: ['EventPerception'],
+  traits: {
+    content: [perceived_hammer.subject]
+  }
+})
 ```
 
 ### Two-Phase Process
 
-**Phase 1: Observation Creation**
-- Perception event creates observation with `observed_traits`
-- Traits are hierarchical, matching object composition
+**Phase 1: Perception**
+- Create perceived beliefs for each observed entity
+- Compositional traits reference other perceived beliefs
 - Only actually perceived traits are included
-- `target` is initially null
+- `@about` is initially null
 
-**Phase 2: Recognition (via learn_about)**
-- `recognize()` compares `observed_traits` against known beliefs
-- Traverses compositional structure for matching
-- Returns candidates ranked by match quality
-- Single match → sets `target`
-- Multiple matches → ambiguity (e.g., two black hammers)
-- No match → creates new belief with unknown identity
+**Phase 2: Recognition**
+- Compare perceived beliefs against existing knowledge
+- Traverse compositional structure for matching
+- Rank candidates by match quality
+- Single match → set `@about` on perceived belief
+- Multiple matches → leave `@about` null (ambiguous)
+- No match → create new knowledge belief
 
 ### Matching Algorithm
 
 ```javascript
 // Pseudo-code for compositional matching
-function match_score(observed_traits, belief, state) {
+function match_score(perceived, knowledge, state) {
   let score = 0
   let total = 0
 
-  for (const [trait_name, observed_value] of observed_traits) {
+  for (const traittype of get_traittypes(perceived)) {
+    const perceived_value = perceived.get_trait(state, traittype)
+    const knowledge_value = knowledge.get_trait(state, traittype)
+    if (perceived_value === undefined) continue
+
     total++
 
-    if (is_object(observed_value)) {
-      // Compositional trait - recurse into referenced belief
-      const ref = belief.get_trait(state, trait_name)
-      const ref_belief = state.get_belief_by_subject(ref)
-      if (ref_belief) {
-        score += match_score(observed_value, ref_belief, state)
+    if (perceived_value instanceof Subject) {
+      // Compositional trait - recurse into referenced beliefs
+      const perceived_ref = state.get_belief_by_subject(perceived_value)
+      const knowledge_ref = state.get_belief_by_subject(knowledge_value)
+      if (perceived_ref && knowledge_ref) {
+        score += match_score(perceived_ref, knowledge_ref, state)
       }
     } else {
       // Leaf trait - direct comparison
-      const belief_value = belief.get_trait(state, trait_name)
-      if (belief_value === observed_value) {
+      if (perceived_value === knowledge_value) {
         score++
       }
     }
   }
 
-  return score / total  // 0.0 to 1.0
+  return total > 0 ? score / total : 0  // 0.0 to 1.0
 }
 ```
 
 ### Example: Two Similar Hammers
 
 ```javascript
-// World state
-hammer1: {
-  head: hammer1_head,    // → {material: 'iron', color: 'black'}
-  handle: hammer1_handle // → {material: 'wood', color: 'brown', length: 'short'}
-}
-
-hammer2: {
-  head: hammer2_head,    // → {material: 'iron', color: 'black'}
-  handle: hammer2_handle // → {material: 'wood', color: 'dark_brown', length: 'long'}
-}
-
-// Observation: "saw a hammer with a black head"
-obs_partial: {
-  observed_traits: {
-    archetype: 'Hammer',
-    head: { color: 'black' }
+// World state: two hammers
+const hammer1 = world_state.add_belief_from_template({
+  bases: ['Hammer'],
+  traits: {
+    head: hammer1_head.subject,    // color: 'black', material: 'iron'
+    handle: hammer1_handle.subject // length: 'short', color: 'brown'
   }
-}
-// Result: Both hammers match → ambiguous
+})
 
-// Observation: "saw a hammer with a short handle"
-obs_specific: {
-  observed_traits: {
-    archetype: 'Hammer',
-    handle: { length: 'short' }
+const hammer2 = world_state.add_belief_from_template({
+  bases: ['Hammer'],
+  traits: {
+    head: hammer2_head.subject,    // color: 'black', material: 'iron'
+    handle: hammer2_handle.subject // length: 'long', color: 'dark_brown'
   }
-}
-// Result: Only hammer1 matches → target = hammer1
+})
+
+// Partial observation: "saw a hammer with a black head"
+const perceived_head = observer_state.add_belief_from_template({
+  bases: ['HammerHead'],
+  traits: { color: 'black' }
+})
+const perceived_hammer = observer_state.add_belief_from_template({
+  bases: ['Hammer'],
+  traits: { '@about': null, head: perceived_head.subject }
+})
+// Result: Both hammers match → ambiguous, @about stays null
+
+// Specific observation: "saw a hammer with a short handle"
+const perceived_handle = observer_state.add_belief_from_template({
+  bases: ['HammerHandle'],
+  traits: { length: 'short' }
+})
+const perceived_hammer2 = observer_state.add_belief_from_template({
+  bases: ['Hammer'],
+  traits: { '@about': null, handle: perceived_handle.subject }
+})
+// Result: Only hammer1 matches → @about = hammer1.subject
 ```
 
 ### Partial Observation
 
-Not all traits are observed. The observation only contains what was actually perceived:
+Not all traits are observed. Perceived beliefs only contain actually perceived traits:
 
 ```javascript
 // Full observation (examined closely)
-obs_full: {
-  observed_traits: {
-    archetype: 'Hammer',
-    head: { material: 'iron', color: 'black' },
-    handle: { material: 'wood', color: 'brown', length: 'short' }
+const full_head = state.add_belief_from_template({
+  bases: ['HammerHead'],
+  traits: { material: 'iron', color: 'black' }
+})
+const full_handle = state.add_belief_from_template({
+  bases: ['HammerHandle'],
+  traits: { material: 'wood', color: 'brown', length: 'short' }
+})
+const perceived_full = state.add_belief_from_template({
+  bases: ['Hammer'],
+  traits: {
+    '@about': null,
+    head: full_head.subject,
+    handle: full_handle.subject
   }
-}
+})
 
 // Partial observation (glanced from distance)
-obs_partial: {
-  observed_traits: {
-    archetype: 'Hammer',
-    handle: { length: 'short' }  // only noticed handle length
+const partial_handle = state.add_belief_from_template({
+  bases: ['HammerHandle'],
+  traits: { length: 'short' }  // Only noticed handle length
+})
+const perceived_partial = state.add_belief_from_template({
+  bases: ['Hammer'],
+  traits: {
+    '@about': null,
+    handle: partial_handle.subject
+    // No head trait - didn't see it clearly
   }
-}
+})
 
 // Very partial (just saw something)
-obs_minimal: {
-  observed_traits: {
-    archetype: 'PortableObject'  // couldn't even tell it was a hammer
-  }
-}
+const perceived_minimal = state.add_belief_from_template({
+  bases: ['PortableObject'],  // Couldn't even tell it was a hammer
+  traits: { '@about': null }
+})
 ```
 
-### Integration with learn_about
+### Recognition Flow
 
-The `learn_about` flow becomes:
+The recognition flow with perceived beliefs:
 
-1. **Create observation** with `observed_traits`
-2. **Call recognize()** to find matching beliefs
-3. **If single match**: Update existing belief, set observation.target
-4. **If multiple matches**: Create belief with @about = null (ambiguous)
-5. **If no match**: Create new belief with new @subject
+1. **Create perceived beliefs** for observed entities
+2. **Match against knowledge** to find candidates
+3. **If single match**: Set `@about` on perceived belief, optionally update knowledge
+4. **If multiple matches**: Leave `@about` null (ambiguous)
+5. **If no match**: Create new knowledge belief
 
 ```javascript
-state.learn_about(observation) {
-  const candidates = this.recognize(observation.observed_traits)
+function process_perception(perception_event, observer_state) {
+  for (const perceived_subject of perception_event.get_trait(state, content_tt)) {
+    const perceived = observer_state.get_belief_by_subject(perceived_subject)
+    const candidates = find_matching_knowledge(perceived, observer_state)
 
-  if (candidates.length === 1) {
-    // Definite match
-    observation.target = candidates[0].subject
-    this.integrate(observation, candidates[0])
-  } else if (candidates.length > 1) {
-    // Ambiguous - create belief without resolved identity
-    const new_belief = this.create_belief_from_observation(observation)
-    new_belief.set_trait('@about', null)  // unknown identity
-    new_belief.set_trait('@candidates', candidates.map(c => c.subject))
-  } else {
-    // New entity
-    const new_belief = this.create_belief_from_observation(observation)
-    // @about could be set to world entity if known, or null
+    if (candidates.length === 1 && has_sufficient_acquaintance(candidates[0])) {
+      // Recognition succeeds - update perceived belief's @about
+      // In practice, create new version with @about set
+      const recognized = Belief.from_template(observer_state, {
+        sid: perceived.subject.sid,
+        bases: [perceived],
+        traits: { '@about': candidates[0].get_trait(state, about_tt) }
+      })
+    } else if (candidates.length > 1) {
+      // Ambiguous - @about stays null
+      // Could store candidates for later disambiguation
+    } else {
+      // New entity - create knowledge belief
+      const new_knowledge = observer_state.add_belief_from_template({
+        bases: perceived.archetypes,
+        traits: {
+          '@about': null,  // Or world entity if determinable
+          '@acquaintance': 'slight'
+        }
+      })
+    }
   }
 }
 ```
@@ -907,12 +1066,11 @@ For debugging and story generation, detect what differs between beliefs:
 function get_differences(belief_a, belief_b, state) {
   const diffs = {}
 
-  // Compare all traits from both beliefs
   for (const traittype of get_all_traittypes(belief_a, belief_b)) {
     const val_a = belief_a.get_trait(state, traittype)
     const val_b = belief_b.get_trait(state, traittype)
 
-    if (is_subject(val_a) && is_subject(val_b)) {
+    if (val_a instanceof Subject && val_b instanceof Subject) {
       // Compositional - recurse
       const ref_a = state.get_belief_by_subject(val_a)
       const ref_b = state.get_belief_by_subject(val_b)
@@ -928,7 +1086,7 @@ function get_differences(belief_a, belief_b, state) {
   return diffs
 }
 
-// Example result:
+// Example:
 get_differences(hammer1, hammer2, state)
 // → { handle: { color: ['brown', 'dark_brown'], length: ['short', 'long'] } }
 ```

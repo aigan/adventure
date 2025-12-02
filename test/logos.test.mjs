@@ -144,7 +144,7 @@ describe('Logos Singleton', () => {
 
       // Verify mind was created correctly
       expect(mind).to.be.instanceof(Mind)
-      expect(mind.parent).to.equal(world_mind)  // Parent should be ground_mind from shared belief
+      expect(mind.parent).to.equal(world_mind)  // Parent should be from shared belief hierarchy
       expect(mind.state).to.not.be.null
       expect(mind.state.ground_state).to.equal(world_state)
     })

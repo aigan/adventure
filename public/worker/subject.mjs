@@ -1,8 +1,8 @@
 import * as DB from './db.mjs'
-import { eidos, logos } from './cosmos.mjs'
+import { logos } from './cosmos.mjs'
 import { Belief } from './belief.mjs'
 import { Archetype } from './archetype.mjs'
-import { assert, log } from './debug.mjs'
+import { assert } from './debug.mjs'
 import { next_id } from './id_sequence.mjs'
 
 /**
@@ -13,15 +13,28 @@ import { next_id } from './id_sequence.mjs'
 /**
  * Canonical identity reference for a belief subject
  * Wraps a stable sid that persists across belief versions
+ *
+ * Subject scoping via mater property:
+ *
+ * **mater**: The mind that birthed this particular instance (Latin: mother/matter)
+ * - Universals (Eidos): null (eternal forms, unborn)
+ * - Particulars (Materia): the mind where instantiated (world, NPC, etc.)
+ * - Used for: Access control - beliefs can only use subjects where mater=null OR mater=belief.in_mind
+ * - Used for: Debug output (sysdesig shows @mater when set)
+ *
+ * Example usage:
+ * - Universal prototype (GenericHammer in Eidos): mater=null
+ * - World entity (tavern in world): mater=world
+ * - NPC private belief (memory in npc): mater=npc_mind
  */
 export class Subject {
   /**
-   * @param {Mind|null} ground_mind - Parent mind context (null for truly global subjects like archetypes)
    * @param {number|null} [sid] - Subject identifier (auto-generated if not provided)
+   * @param {Mind|null} [mater] - Mind where this particular is instantiated (null for universals)
    */
-  constructor(ground_mind, sid = null) {
-    this.ground_mind = ground_mind
+  constructor(sid = null, mater = null) {
     this.sid = sid ?? next_id()
+    this.mater = mater
   }
 
   /**
@@ -53,26 +66,19 @@ export class Subject {
    * @returns {Belief|null}
    */
   get_shared_belief_by_state(state) {
-    const query_parent = state.in_mind.parent
     // For timeless states (tt=null), get all beliefs; otherwise filter by tt
     const beliefs = state.tt != null ? [...this.beliefs_at_tt(state.tt)] : [...DB.get_beliefs_by_subject(this)]
 
+    // Shared beliefs are universals (mater=null) that can be used by any belief
     const shared = beliefs.filter(b => {
       if (!b.is_shared) return false
-
-      // Check ground_mind scoping
-      const belief_ground_mind = b.subject.ground_mind
-
-      // Global: ground_mind is null or logos
-      if (belief_ground_mind === null || belief_ground_mind === logos()) return true
-
-      // Scoped: accessible if ground_mind matches query's parent
-      return belief_ground_mind === query_parent
+      // Universal subjects (mater=null) are accessible from any state
+      return b.subject.mater === null
     })
 
     assert(shared.length <= 1,
       'Multiple shared beliefs found for subject at tt',
-      {sid: this.sid, tt: state.tt, parent: query_parent?._id})
+      {sid: this.sid, tt: state.tt})
 
     return shared[0] ?? null
   }
@@ -99,11 +105,9 @@ export class Subject {
 
     parts.push(`Subject sid=${this.sid}`)
 
-    if (this.ground_mind) {
-      const mind_label = this.ground_mind.label || `Mind#${this.ground_mind._id}`
+    if (this.mater) {
+      const mind_label = this.mater.label || `Mind#${this.mater._id}`
       parts.push(`@${mind_label}`)
-    } else {
-      parts.push('@global')
     }
 
     return parts.join(' ')

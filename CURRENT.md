@@ -2,21 +2,36 @@
 
 ## Active Plan
 
-**Observation Events** - Implement observation event creation with hierarchical traits ([plan](docs/plans/observation-events.md))
+**Complete perceive/learn_from cycle** - Make observation-recognition pipeline functional
 
-Stage 2 of Alpha 1 requires compositional object matching. Observation events capture **what was perceived** (hierarchical traits) separately from **what entity it was** (resolved identity).
+Currently: Looking at room twice creates two perception events with perceived objects doubled (correct). Next steps:
 
-### Current Phase: Pre-work
+### Step 1: Implement perceive() fast path (state.mjs:886)
 
-- [ ] Update `docs/notes/observation_recognition_spec.md` examples to match codebase syntax
-- [ ] Resolve design decisions (Event archetype structure, observer trait type, etc.)
+When player already has knowledge about a world entity:
+- Check existing knowledge via `recognize(world_entity)`
+- If found + traits match: add subject reference directly to EventPerception.content
+- If found + traits differ: create perceived belief using knowledge as base
+- If not found: create new perceived belief with `@about: null` (current slow path)
 
-### Next Phases
+**Result**: Familiar entities don't create duplicate perceived beliefs
 
-- Phase 1: Schema Setup (traittypes + archetypes)
-- Phase 2: Observation Creation (helper function + tests)
-- Phase 3: Recognition (`recognize_by_traits()` method)
-- Phase 4: Integration with `learn_about()`
+**Test**: Unskip `test/observation.test.mjs` "learn_from() should handle familiar entities"
+
+### Step 2: Implement learn_from() recognition (state.mjs:1001-1014)
+
+For perceived beliefs with `@about: null`:
+- Match to world entities by comparing trait values to ground_state beliefs
+- Update `@about: null` → `@about: world_entity` (via belief versioning)
+- Handle: exact match (1 candidate), ambiguous (multiple), no match (unknown)
+
+**Result**: Unidentified perceived beliefs get linked to world entities
+
+**Test**: Unskip `test/observation.test.mjs` "learn_from() should integrate unambiguous perception"
+
+### Step 3: End-to-end validation
+
+**Test**: Unskip `test/observation.test.mjs` "end-to-end: perceive → learn_from → knowledge updated"
 
 ---
 

@@ -210,7 +210,7 @@ export class Traittype {
 
     // Handle number sids - convert to Subjects for reference types
     if (typeof value === 'number' && this.is_subject_reference) {
-      return DB.get_or_create_subject(belief.in_mind.parent, value)
+      return DB.get_or_create_subject(value, belief.in_mind)  // mater = belief's mind
     }
 
     // Primitives and literal numbers

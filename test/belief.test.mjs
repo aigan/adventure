@@ -90,7 +90,7 @@ describe('Belief', () => {
       expect(item_b.in_mind).to.not.equal(mind_a);
     });
 
-    it('currently allows referencing other mind\'s beliefs in bases', () => {
+    it('prevents referencing other mind\'s subjects (enforces isolation)', () => {
       const mind_a = new Materia(logos(), 'mind_a');
       const state_a = mind_a.create_state(logos().origin_state, {tt: 1});
       Belief.from_template(state_a, {traits: {}, bases: ['Location'], label: 'workshop'});
@@ -98,14 +98,13 @@ describe('Belief', () => {
       const mind_b = new Materia(logos(), 'mind_b');
       const state_b = mind_b.create_state(logos().origin_state, {tt: 1});
 
-      // Currently this works - mind_b can reference mind_a's belief
+      // mind_b cannot use mind_a's subject - enforces isolation
       const workshop_a = get_first_belief_by_label('workshop');
-      const item = new Belief(state_b, workshop_a.subject, [workshop_a]);
+      expect(() => {
+        new Belief(state_b, workshop_a.subject, [workshop_a]);
+      }).to.throw(/mater=null.*or.*mater=own_mind/);
 
-      // item is a version of workshop_a, so it shares the same sid and label
-      expect(item._bases.has(workshop_a)).to.be.true;
-      expect(item.subject.sid).to.equal(workshop_a.subject.sid);
-      expect(item.get_label()).to.equal('workshop');
+      // Correct approach: use learn_about() to create knowledge about external entities
     });
   });
 
@@ -847,7 +846,7 @@ describe('Belief', () => {
    * ✅ 7.7 Shared Belief Scoping (all tests)
    *   - Accessible from child minds
    *   - NOT accessible from different parent hierarchy
-   *   - Global shared beliefs (ground_mind=null)
+   *   - Global shared beliefs (shared_for_mind_with_parent=null or logos)
    */
   describe('Shared Belief Scoping', () => {
     // Matrix 7.7: Shared Belief Scoping
@@ -865,9 +864,9 @@ describe('Belief', () => {
         label: 'CityLore'
       });
       cultural_knowledge.lock(state_100);
-      cultural_knowledge.subject.ground_mind = world_mind;
+      cultural_knowledge.subject.shared_for_mind_with_parent = world_mind;
 
-      expect(cultural_knowledge.subject.ground_mind).to.equal(world_mind);
+      expect(cultural_knowledge.subject.shared_for_mind_with_parent).to.equal(world_mind);
 
       // Create child mind (NPC under world)
       const npc_mind = new Materia(world_mind, 'npc1');
@@ -883,46 +882,37 @@ describe('Belief', () => {
       expect(npc_belief._bases.has(cultural_knowledge)).to.be.true;
     });
 
-    it('shared belief NOT accessible from different parent mind hierarchy', () => {
-      // Create first parent mind (world)
+    it('particular subject (mater=mind) NOT accessible from different mind', () => {
+      // Create first mind (world) with a particular subject
       const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100});
-
-      // Create shared belief scoped to world_mind
-      const eidos = DB.get_eidos();
-      const state_100 = eidos.create_timed_state(100);
-      const world_culture = state_100.add_belief_from_template({
-        bases: ['Thing'],
+      const tavern = Belief.from_template(world_state, {
+        bases: ['Location'],
         traits: {},
-        label: 'WorldCulture'
+        label: 'WorldTavern'
       });
-      world_culture.lock(state_100);
-      world_culture.subject.ground_mind = world_mind;
 
-      // Create second parent mind (dream)
+      // Verify it's a particular (mater = world_mind)
+      expect(tavern.subject.mater).to.equal(world_mind);
+
+      // Create second mind (dream)
       const dream_mind = new Materia(logos(), 'dream');
       const dream_state = dream_mind.create_state(logos().origin_state, {tt: 100});
-      const dream_child_mind = new Materia(dream_mind, 'dreamer');
-      const dream_child_state = dream_child_mind.create_state(dream_state);
 
-      // Dream hierarchy should NOT be able to access world's shared belief
+      // Dream mind cannot use world's particular subject - enforces isolation
       expect(() => {
-        Belief.from_template(dream_child_state, {
-          bases: ['WorldCulture'],
-          traits: {},
-        label: 'dream_belief'
-        });
-      }).to.throw(/Base 'WorldCulture' not found/);
+        new Belief(dream_state, tavern.subject, [tavern]);
+      }).to.throw(/mater=null.*or.*mater=own_mind/);
     });
 
-    it('multiple parents can create different shared beliefs with same subject label', () => {
+    it('different universal beliefs accessible by label from any mind', () => {
       // Create two parent minds with states
       const world_mind = new Materia(logos(), 'world');
       const world_parent_state = world_mind.create_state(logos().origin_state, {tt: 100});
       const dream_mind = new Materia(logos(), 'dream');
       const dream_parent_state = dream_mind.create_state(logos().origin_state, {tt: 100});
 
-      // Each creates shared belief (different labels since labels must be globally unique)
+      // Create two different universal beliefs in Eidos
       const eidos = DB.get_eidos();
       const state_100 = eidos.create_timed_state(100);
       const world_tavern = state_100.add_belief_from_template({
@@ -931,7 +921,6 @@ describe('Belief', () => {
         label: 'WorldTavern'
       });
       world_tavern.lock(state_100);
-      world_tavern.subject.ground_mind = world_mind;
 
       const dream_tavern = state_100.add_belief_from_template({
         bases: ['Thing'],
@@ -939,13 +928,13 @@ describe('Belief', () => {
         label: 'DreamTavern'
       });
       dream_tavern.lock(state_100);
-      dream_tavern.subject.ground_mind = dream_mind;
 
-      expect(world_tavern.subject.ground_mind).to.equal(world_mind);
-      expect(dream_tavern.subject.ground_mind).to.equal(dream_mind);
+      // Both are universals (mater = null)
+      expect(world_tavern.subject.mater).to.be.null;
+      expect(dream_tavern.subject.mater).to.be.null;
       expect(world_tavern.subject).to.not.equal(dream_tavern.subject); // Different subjects
 
-      // World child sees world version
+      // Any mind can access either belief by label
       const world_child = new Materia(world_mind, 'world_npc');
       const world_state = world_child.create_state(world_parent_state);
       const world_belief = Belief.from_template(world_state, {
@@ -955,7 +944,6 @@ describe('Belief', () => {
       });
       expect(world_belief._bases.has(world_tavern)).to.be.true;
 
-      // Dream child sees dream version
       const dream_child = new Materia(dream_mind, 'dreamer');
       const dream_state = dream_child.create_state(dream_parent_state);
       const dream_belief = Belief.from_template(dream_state, {
@@ -966,8 +954,8 @@ describe('Belief', () => {
       expect(dream_belief._bases.has(dream_tavern)).to.be.true;
     });
 
-    it('global shared belief (ground_mind=null) accessible from any parent', () => {
-      // Create global shared belief (no scoping)
+    it('universal subject (mater=null) accessible from any mind', () => {
+      // Create universal shared belief in Eidos
       const eidos = DB.get_eidos();
       const state_100 = eidos.create_timed_state(100);
       const generic_weapon = state_100.add_belief_from_template({
@@ -977,10 +965,10 @@ describe('Belief', () => {
       });
       generic_weapon.lock(state_100);  // Test-created prototypes must be manually locked
 
-      // Eidos is child of Logos, so ground_mind should be logos
-      expect(generic_weapon.subject.ground_mind).to.equal(logos());
+      // Eidos beliefs are universals (mater = null)
+      expect(generic_weapon.subject.mater).to.be.null;
 
-      // Create two separate parent hierarchies
+      // Create two separate mind hierarchies
       const world_mind = new Materia(logos(), 'world');
       const world_parent_state = world_mind.create_state(logos().origin_state, {tt: 100});
       const world_npc = new Materia(world_mind, 'guard');
@@ -991,7 +979,7 @@ describe('Belief', () => {
       const dream_npc = new Materia(dream_mind, 'phantom');
       const dream_state = dream_npc.create_state(dream_parent_state);
 
-      // Both should be able to access the global shared belief
+      // Both should be able to access the universal belief
       const world_weapon = Belief.from_template(world_state, {
         bases: ['GenericWeapon'],
         traits: {},

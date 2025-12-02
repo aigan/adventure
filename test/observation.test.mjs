@@ -217,4 +217,625 @@ describe('observation', () => {
       expect(player_state.base.locked, 'base state should be locked').to.be.true
     })
   })
+
+  describe('EventPerception creation', () => {
+    /**
+     * Helper: Create a perceived belief in a mind state
+     * @param {State} mind_state - Observer's mind state
+     * @param {string[]} archetype_bases - Archetype bases (e.g., ['Hammer'])
+     * @param {Object} trait_values - Trait key-value pairs
+     * @param {Subject|null} about_subject - Recognized entity subject, or null if unrecognized
+     * @returns {Belief} The created perceived belief
+     */
+    function create_perceived_belief(mind_state, archetype_bases, trait_values, about_subject = null) {
+      return mind_state.add_belief_from_template({
+        bases: archetype_bases,
+        traits: {
+          '@about': about_subject,
+          ...trait_values
+        }
+      })
+    }
+
+    /**
+     * Helper: Create an EventPerception holding perceived beliefs
+     * @param {State} mind_state - Observer's mind state
+     * @param {Belief[]} perceived_beliefs - Array of perceived belief objects
+     * @returns {Belief} The created EventPerception belief
+     */
+    function create_observation(mind_state, perceived_beliefs) {
+      return mind_state.add_belief_from_template({
+        bases: ['EventPerception'],
+        traits: {
+          content: perceived_beliefs.map(b => b.subject)
+        }
+      })
+    }
+
+    it('should create perceived belief with flat traits', () => {
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      state.add_beliefs_from_template({
+        player: {
+          bases: ['Person'],
+          traits: { mind: {} }
+        }
+      })
+
+      state.lock()
+      state = state.branch_state(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const player_state = state.get_active_state_by_host(player)
+
+      // Create perceived belief with flat traits
+      const perceived = create_perceived_belief(player_state, ['PortableObject'], {
+        color: 'blue'
+      })
+
+      expect(perceived).to.exist
+
+      const color_tt = Traittype.get_by_label('color')
+      const about_tt = Traittype.get_by_label('@about')
+
+      expect(perceived.get_trait(player_state, color_tt)).to.equal('blue')
+      expect(perceived.get_trait(player_state, about_tt)).to.be.null
+
+      // Verify archetype through get_archetypes
+      const archetypes = perceived.get_archetypes()
+      expect(archetypes.some(a => a.label === 'PortableObject')).to.be.true
+    })
+
+    it('should create perceived belief with nested/compositional traits', () => {
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      // Register hammer traittypes
+      DB.register({
+        material: { type: 'string', exposure: 'visual' },
+        length: { type: 'string', exposure: 'visual' },
+        head: { type: 'HammerHead', exposure: 'visual' },
+        handle: { type: 'HammerHandle', exposure: 'visual' },
+      }, {
+        HammerHead: {
+          bases: ['ObjectPhysical'],
+          traits: { material: null, color: null }
+        },
+        HammerHandle: {
+          bases: ['ObjectPhysical'],
+          traits: { material: null, color: null, length: null }
+        },
+        Hammer: {
+          bases: ['PortableObject'],
+          traits: { head: null, handle: null }
+        },
+      }, {})
+
+      state.add_beliefs_from_template({
+        player: {
+          bases: ['Person'],
+          traits: { mind: {} }
+        }
+      })
+
+      state.lock()
+      state = state.branch_state(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const player_state = state.get_active_state_by_host(player)
+
+      // Create nested perceived beliefs (handle as separate belief)
+      const perceived_handle = create_perceived_belief(player_state, ['HammerHandle'], {
+        length: 'short',
+        color: 'brown'
+      })
+
+      const perceived_hammer = create_perceived_belief(player_state, ['Hammer'], {
+        handle: perceived_handle.subject
+      })
+
+      expect(perceived_hammer).to.exist
+      expect(perceived_handle).to.exist
+
+      const handle_tt = Traittype.get_by_label('handle')
+      const length_tt = Traittype.get_by_label('length')
+
+      const handle_ref = perceived_hammer.get_trait(player_state, handle_tt)
+      expect(handle_ref).to.equal(perceived_handle.subject)
+
+      const handle_belief = player_state.get_belief_by_subject(handle_ref)
+      expect(handle_belief.get_trait(player_state, length_tt)).to.equal('short')
+    })
+
+    it('should create EventPerception holding multiple perceived beliefs', () => {
+      // Register EventAwareness/EventPerception from world.mjs
+      DB.register({
+        content: { type: 'Thing', container: Array, exposure: 'internal' }
+      }, {
+        EventAwareness: {
+          bases: ['Thing'],
+          traits: { content: null }
+        },
+        EventPerception: {
+          bases: ['EventAwareness']
+        }
+      }, {})
+
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      state.add_beliefs_from_template({
+        player: {
+          bases: ['Person'],
+          traits: { mind: {} }
+        }
+      })
+
+      state.lock()
+      state = state.branch_state(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const player_state = state.get_active_state_by_host(player)
+
+      // Create multiple perceived beliefs
+      const perceived_hammer = create_perceived_belief(player_state, ['PortableObject'], {
+        color: 'blue'
+      })
+
+      const perceived_workshop = create_perceived_belief(player_state, ['Location'], {})
+
+      // Create EventPerception
+      const perception = create_observation(player_state, [perceived_hammer, perceived_workshop])
+
+      expect(perception).to.exist
+      expect(perception.get_archetypes().some(a => a.label === 'EventPerception')).to.be.true
+
+      const content_tt = Traittype.get_by_label('content')
+      const content = perception.get_trait(player_state, content_tt)
+
+      expect(content).to.be.an('array')
+      expect(content).to.have.lengthOf(2)
+      expect(content).to.include(perceived_hammer.subject)
+      expect(content).to.include(perceived_workshop.subject)
+    })
+
+    it('should track recognized vs unrecognized with @about', () => {
+      // Register EventAwareness/EventPerception from world.mjs
+      DB.register({
+        content: { type: 'Thing', container: Array, exposure: 'internal' }
+      }, {
+        EventAwareness: {
+          bases: ['Thing'],
+          traits: { content: null }
+        },
+        EventPerception: {
+          bases: ['EventAwareness']
+        }
+      }, {})
+
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop', color: 'blue' }
+        },
+        player: {
+          bases: ['Person'],
+          traits: { mind: {}, location: 'workshop' }
+        }
+      })
+
+      state.lock()
+      state = state.branch_state(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const hammer = get_first_belief_by_label('hammer')
+      const workshop = get_first_belief_by_label('workshop')
+      const player_state = state.get_active_state_by_host(player)
+
+      // Create perceived belief - recognized (workshop)
+      const perceived_workshop = create_perceived_belief(player_state, ['Location'], {}, workshop.subject)
+
+      // Create perceived belief - unrecognized (unknown hammer)
+      const perceived_hammer = create_perceived_belief(player_state, ['PortableObject'], {
+        color: 'blue'
+      }, null)
+
+      const about_tt = Traittype.get_by_label('@about')
+
+      // Workshop should be recognized
+      expect(perceived_workshop.get_trait(player_state, about_tt)).to.equal(workshop.subject)
+
+      // Hammer should be unrecognized
+      expect(perceived_hammer.get_trait(player_state, about_tt)).to.be.null
+
+      // Both can be in same EventPerception
+      const perception = create_observation(player_state, [perceived_workshop, perceived_hammer])
+      expect(perception).to.exist
+    })
+  })
+
+  describe('perceive(), identify(), learn_from()', () => {
+    // Note: setupStandardArchetypes() is called in outer beforeEach above
+
+    beforeEach(() => {
+      // Register EventAwareness/EventPerception
+      DB.register({
+        content: { type: 'Thing', container: Array, exposure: 'internal' }
+      }, {
+        EventAwareness: {
+          bases: ['Thing'],
+          traits: { content: null }
+        },
+        EventPerception: {
+          bases: ['EventAwareness']
+        }
+      }, {})
+    })
+
+    it('perceive() should create perceived beliefs for unfamiliar entities', () => {
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop', color: 'blue' }
+        },
+        player: {
+          bases: ['Person'],
+          traits: { mind: {}, location: 'workshop' }
+        }
+      })
+
+      state.lock()
+      state = state.branch_state(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const hammer = get_first_belief_by_label('hammer')
+      const player_state = state.get_active_state_by_host(player)
+
+      // Player doesn't know about hammer yet
+      const existing = player_state.recognize(hammer)
+      expect(existing.length).to.equal(0)
+
+      // Perceive hammer
+      const perception = player_state.perceive([hammer])
+
+      expect(perception).to.exist
+      expect(perception.get_archetypes().some(a => a.label === 'EventPerception')).to.be.true
+
+      // Check content
+      const content_tt = Traittype.get_by_label('content')
+      const content = perception.get_trait(player_state, content_tt)
+      expect(content).to.be.an('array')
+      expect(content).to.have.lengthOf(1)
+
+      // Content should be a perceived belief (not direct hammer reference)
+      const perceived_subject = content[0]
+      expect(perceived_subject).to.not.equal(hammer.subject)
+
+      // Get perceived belief
+      const perceived = player_state.get_belief_by_subject(perceived_subject)
+      const about_tt = Traittype.get_by_label('@about')
+      const about = perceived.get_trait(player_state, about_tt)
+      expect(about).to.be.null  // Unrecognized
+
+      // Should have color trait
+      const color_tt = Traittype.get_by_label('color')
+      expect(perceived.get_trait(player_state, color_tt)).to.equal('blue')
+    })
+
+    it.skip('perceive() should store subject refs for familiar entities', () => {
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop', color: 'blue' }
+        },
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: { hammer: ['color'] },  // Player knows hammer
+            location: 'workshop'
+          }
+        }
+      })
+
+      state.lock()
+      state = state.branch_state(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const hammer = get_first_belief_by_label('hammer')
+      const player_state = state.get_active_state_by_host(player)
+
+      // Player should recognize hammer
+      const existing = player_state.recognize(hammer)
+      expect(existing.length).to.be.at.least(1)
+
+      // Perceive hammer (familiar)
+      const perception = player_state.perceive([hammer])
+
+      const content_tt = Traittype.get_by_label('content')
+      const content = perception.get_trait(player_state, content_tt)
+      expect(content).to.be.an('array')
+      expect(content).to.have.lengthOf(1)
+
+      // Content should be direct hammer reference (not perceived belief)
+      expect(content[0]).to.equal(hammer.subject)
+    })
+
+    it('identify() should match traits to knowledge beliefs', () => {
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      // Register hammer archetypes
+      DB.register({
+        material: { type: 'string', exposure: 'visual' },
+        length: { type: 'string', exposure: 'visual' },
+      }, {
+        Hammer: {
+          bases: ['PortableObject'],
+          traits: { material: null, length: null }
+        }
+      }, {})
+
+      state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer1: {
+          bases: ['Hammer'],
+          traits: { location: 'workshop', material: 'steel', length: 'short' }
+        },
+        hammer2: {
+          bases: ['Hammer'],
+          traits: { location: 'workshop', material: 'wood', length: 'long' }
+        },
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              hammer1: ['material', 'length'],  // Player knows hammer1
+              hammer2: ['material', 'length']   // Player knows hammer2
+            },
+            location: 'workshop'
+          }
+        }
+      })
+
+      state.lock()
+      state = state.branch_state(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const hammer1 = get_first_belief_by_label('hammer1')
+      const hammer2 = get_first_belief_by_label('hammer2')
+      const player_state = state.get_active_state_by_host(player)
+
+      // Create perceived belief matching hammer1
+      const perceived = player_state.add_belief_from_template({
+        bases: ['Hammer'],
+        traits: {
+          '@about': null,
+          material: 'steel',
+          length: 'short'
+        }
+      })
+
+      // Identify should return hammer1
+      const candidates = player_state.identify(perceived)
+      expect(candidates).to.be.an('array')
+      expect(candidates.length).to.be.at.least(1)
+      expect(candidates[0]).to.equal(hammer1.subject)
+    })
+
+    it('identify() should return multiple candidates for ambiguous matches', () => {
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      DB.register({
+        material: { type: 'string', exposure: 'visual' }
+      }, {
+        Hammer: {
+          bases: ['PortableObject'],
+          traits: { material: null }
+        }
+      }, {})
+
+      state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer1: {
+          bases: ['Hammer'],
+          traits: { location: 'workshop', material: 'steel' }
+        },
+        hammer2: {
+          bases: ['Hammer'],
+          traits: { location: 'workshop', material: 'steel' }  // Same material
+        },
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              hammer1: ['material'],
+              hammer2: ['material']
+            },
+            location: 'workshop'
+          }
+        }
+      })
+
+      state.lock()
+      state = state.branch_state(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const hammer1 = get_first_belief_by_label('hammer1')
+      const hammer2 = get_first_belief_by_label('hammer2')
+      const player_state = state.get_active_state_by_host(player)
+
+      // Create perceived belief with only material
+      const perceived = player_state.add_belief_from_template({
+        bases: ['Hammer'],
+        traits: {
+          '@about': null,
+          material: 'steel'
+        }
+      })
+
+      // Identify should return both hammers (ambiguous)
+      const candidates = player_state.identify(perceived)
+      expect(candidates).to.be.an('array')
+      expect(candidates.length).to.equal(2)
+      expect(candidates).to.include(hammer1.subject)
+      expect(candidates).to.include(hammer2.subject)
+    })
+
+    it.skip('learn_from() should integrate unambiguous perception into knowledge', () => {
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      DB.register({
+        material: { type: 'string', exposure: 'visual' }
+      }, {
+        Hammer: {
+          bases: ['PortableObject'],
+          traits: { material: null }
+        }
+      }, {})
+
+      state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['Hammer'],
+          traits: { location: 'workshop', material: 'steel' }
+        },
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: { hammer: ['location'] },  // Player knows hammer's location
+            location: 'workshop'
+          }
+        }
+      })
+
+      state.lock()
+      state = state.branch_state(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const hammer = get_first_belief_by_label('hammer')
+      const player_state = state.get_active_state_by_host(player)
+
+      // Player has minimal knowledge (can identify)
+      expect(player_state.recognize(hammer).length).to.be.at.least(1)
+
+      // Count knowledge before
+      const about_tt = Traittype.get_by_label('@about')
+      const before = [...hammer.rev_trait(player_state, about_tt)]
+
+      // Perceive hammer (familiar - will identify)
+      const perception = player_state.perceive([hammer])
+
+      // Learn from perception (should update existing knowledge)
+      player_state.learn_from(perception)
+
+      // Knowledge should now include material trait
+      const knowledge = player_state.recognize(hammer)
+      expect(knowledge.length).to.be.at.least(1)
+
+      const material_tt = Traittype.get_by_label('material')
+      expect(knowledge[0].get_trait(player_state, material_tt)).to.equal('steel')
+    })
+
+    it('learn_from() should handle familiar entities (direct subject refs)', () => {
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop', color: 'blue' }
+        },
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: { hammer: ['color'] },  // Player already knows hammer
+            location: 'workshop'
+          }
+        }
+      })
+
+      state.lock()
+      state = state.branch_state(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const hammer = get_first_belief_by_label('hammer')
+      const player_state = state.get_active_state_by_host(player)
+
+      // Count beliefs before
+      const about_tt = Traittype.get_by_label('@about')
+      const beliefs_before = [...hammer.rev_trait(player_state, about_tt)]
+
+      // Perceive hammer (familiar - will be direct subject ref)
+      const perception = player_state.perceive([hammer])
+
+      // Learn from perception
+      player_state.learn_from(perception)
+
+      // Should not create duplicate
+      const beliefs_after = [...hammer.rev_trait(player_state, about_tt)]
+      expect(beliefs_after.length).to.equal(beliefs_before.length)
+    })
+
+    it.skip('end-to-end: perceive → learn_from → knowledge updated', () => {
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop', color: 'blue' }
+        },
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: { hammer: ['location'] },  // Player knows hammer's location
+            location: 'workshop'
+          }
+        }
+      })
+
+      state.lock()
+      state = state.branch_state(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const hammer = get_first_belief_by_label('hammer')
+      const workshop = get_first_belief_by_label('workshop')
+      const player_state = state.get_active_state_by_host(player)
+
+      // Get location content (what player can see)
+      const location_tt = Traittype.get_by_label('location')
+      const content = [...workshop.rev_trait(state, location_tt)]
+
+      // Player perceives location content
+      const perception = player_state.perceive(content)
+
+      // Player learns from perception
+      player_state.learn_from(perception)
+
+      // Player should know about hammer (knowledge updated with new traits)
+      const knowledge = player_state.recognize(hammer)
+      expect(knowledge.length).to.be.at.least(1)
+
+      // Knowledge should include color (newly observed)
+      const color_tt = Traittype.get_by_label('color')
+      expect(knowledge[0].get_trait(player_state, color_tt)).to.equal('blue')
+    })
+  })
 })

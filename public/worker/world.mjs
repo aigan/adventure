@@ -24,7 +24,7 @@ import { eidos } from './eidos.mjs'
 /** @type {Record<string, string|TraitTypeSchema>} */
 const traittypes = {
   '@about': {
-    type: 'Subject',
+    type: 'Subject',  // Could be simplified to type Thing
     mind: 'parent',  // Resolve in parent mind's ground state
     exposure: 'internal'  // Not directly observable
   },
@@ -40,6 +40,10 @@ const traittypes = {
     type: 'Mind',
     composable: true,  // Compose minds from multiple bases
     exposure: 'internal'  // Not physically observable
+  },
+  content: {
+    type: 'Thing',
+    container: Array,
   },
   color: {
     type: 'string',
@@ -63,12 +67,10 @@ const traittypes = {
     exposure: 'visual'
   },
   name: 'string',
-  inventory: {
-    type: 'PortableObject',
+  tools: {
+    type: 'string',
     container: Array,
-    composable: true  // Compose inventories from multiple bases
   },
-  tools: {type: 'string', container: Array},
 };
 
 /** @type {Record<string, ArchetypeDefinition>} */
@@ -77,6 +79,17 @@ const archetypes = {
     traits: {
       '@about': null,
     },
+  },
+
+  EventAwareness: {
+    bases: ['Thing'],
+    traits: {
+      content: null,
+    },
+  },
+
+  EventPerception: {
+    bases: ['EventAwareness'],
   },
 
   ObjectPhysical: {
@@ -116,9 +129,6 @@ const archetypes = {
   },
   Person: {
     bases: ['ObjectPhysical', 'Mental'],
-    traits: {
-      inventory: null,
-    },
   },
 }
 
@@ -185,7 +195,6 @@ export function init_world() {
     }
   })
 
-  // Create shared items for prototype inventories
   state.add_shared_from_template({
     apprentice_token: {
       bases: ['PortableObject'],
@@ -201,7 +210,6 @@ export function init_world() {
     },
   })
 
-  // Create person prototypes with minds and inventories
   state.add_shared_from_template({
     Villager: {
       bases: ['Person'],
@@ -212,18 +220,6 @@ export function init_world() {
       },
     },
   })
-
-  state.add_shared_from_template({
-    Blacksmith: {
-      bases: ['Person'],
-      traits: {
-        mind: {
-          workshop: ['location', 'tools']
-        },
-        inventory: ['guild_badge'],
-      },
-    },
-  });
 
   state.add_beliefs_from_template({
     person1: {

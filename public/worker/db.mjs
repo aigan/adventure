@@ -313,14 +313,20 @@ export function register_belief_by_subject(belief) {
 
 /**
  * Get or create the canonical Subject for a given SID
- * @param {Mind|null} ground_mind - Parent mind context (null for truly global subjects like archetypes)
+ *
+ * Examples:
+ * - Universal prototype (GenericHammer in Eidos): mater=null
+ * - World entity (tavern in world): mater=world
+ * - NPC private belief (memory in npc): mater=npc_mind
+ *
  * @param {number|null} [sid] - Subject ID (auto-generated if not provided)
+ * @param {Mind|null} [mater] - Mind where this particular is instantiated (null for universals)
  * @returns {Subject}
  */
-export function get_or_create_subject(ground_mind, sid = null) {
+export function get_or_create_subject(sid = null, mater = null) {
   sid ??= next_id()
   if (!subject_by_sid.has(sid)) {
-    const subject = new Subject(ground_mind, sid)
+    const subject = new Subject(sid, mater)
     subject_by_sid.set(sid, subject)
     belief_by_subject.set(subject, new Set())
   }

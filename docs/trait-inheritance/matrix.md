@@ -471,7 +471,7 @@ belief.get_trait(state, 'color') // → null
 - **Test**: ✅ `test/belief.test.mjs` "Shared Belief Scoping" section
   - Accessible from child minds
   - NOT accessible from different parent hierarchy
-  - Global shared beliefs (ground_mind=null)
+  - Global shared beliefs (shared_for_mind_with_parent=logos)
 
 #### 7.8 Trait from Shared Belief at Different Timestamps
 - **Test**: ✅ `test/belief.test.mjs` "resolves correct version at different timestamps"

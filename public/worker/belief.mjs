@@ -81,11 +81,23 @@ export class Belief {
     assert(state instanceof State, "belief must be constructed with a state")
 
     /** @type {Mind} */
-    const mind = state.in_mind
-    const ground_mind = mind.parent
+    const mind = state.in_mind // FIXME: Redundant since we have origin_state
 
     /** @type {Set<Belief|Archetype>} */ this._bases = new Set(bases)
-    this.subject = subject ?? DB.get_or_create_subject(ground_mind)
+    // Eidos: universals (mater=null), Materia: particulars (mater=mind)
+    const mater = mind._type === 'Eidos' ? null : mind
+    this.subject = subject ?? DB.get_or_create_subject(null, mater)
+
+    // Validate: subject.mater must be null (universal) or this mind
+    // This prevents beliefs from using subjects from other minds
+    assert(this.subject.mater === null || this.subject.mater === mind,
+      `Belief can only use subjects with mater=null (universal) or mater=own_mind`,
+      {
+        subject_sid: this.subject.sid,
+        subject_mater: this.subject.mater?.label || 'null',
+        belief_in_mind: mind.label
+      })
+
     this._id = next_id()
     /** @type {Mind} */
     this.in_mind = mind
@@ -892,8 +904,9 @@ export class Belief {
     const belief = Object.create(Belief.prototype)
 
     belief._id = data._id
-    const ground_mind = mind?.parent ?? null
-    belief.subject = DB.get_or_create_subject(ground_mind, data.sid)
+    // Eidos: universals (mater=null), Materia: particulars (mater=mind)
+    const mater = mind._type === 'Eidos' ? null : mind
+    belief.subject = DB.get_or_create_subject(data.sid, mater)
     belief.in_mind = mind
     belief._locked = false
     belief._cache = new Map()
@@ -997,8 +1010,9 @@ export class Belief {
       return base_in
     })
 
-    const ground_mind = state.in_mind.parent
-    const subject = DB.get_or_create_subject(ground_mind, sid)
+    // Eidos: universals (mater=null), Materia: particulars (mater=mind)
+    const mater = state.in_mind._type === 'Eidos' ? null : state.in_mind
+    const subject = DB.get_or_create_subject(sid, mater)
     if (label) subject.set_label(label)
 
     debug([state], "Create belief with", ...resolved_bases)

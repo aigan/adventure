@@ -307,7 +307,7 @@ describe('sysdesig', () => {
   })
 
   describe('Subject.sysdesig()', () => {
-    it('includes label, sid, and ground_mind', () => {
+    it('includes label, sid, and owner_mind', () => {
       const state = createMindWithBeliefs('test', {
         hammer: { bases: ['PortableObject'] }
       })
@@ -320,7 +320,7 @@ describe('sysdesig', () => {
       expect(result).to.include('@')
     })
 
-    it('shows @logos for subjects scoped to logos', () => {
+    it('shows owner_mind for regular subjects', () => {
       const mind = new Materia(logos(), 'test')
       const state = mind.create_state(logos().origin_state, {tt: 1})
       const belief = Belief.from_template(state, {
@@ -329,8 +329,8 @@ describe('sysdesig', () => {
       const subject = belief.subject
       const result = subject.sysdesig()
 
-      // Subject's ground_mind is logos (parent of 'test' mind)
-      expect(result).to.include('@logos')
+      // Subject's owner_mind is 'test' mind
+      expect(result).to.include('@test')
     })
 
     it('works without label', () => {

@@ -141,13 +141,6 @@ export class Session {
     const st = this.state
     const loc = this.avatar.get_trait(st, T.location)
 
-    /*
-    narrator.do_look_in_location(st, {
-      subject: loc,
-      player: this.player,
-    })
-    */
-
     const obs = {
       subject: loc,
       known_as: narrator.desig(st, loc),
@@ -162,6 +155,17 @@ export class Session {
     const lines = []
     lines.push(narrator.say`You are in ${obs}.`)
     postMessage(['main_add', ...lines])
+
+    narrator.do_look_in_location({
+      session: this,
+      subject: loc,
+    })
+
+    // Will create another copy of whats percieved
+    narrator.do_look_in_location({
+      session: this,
+      subject: loc,
+    })
 
     return true
   }

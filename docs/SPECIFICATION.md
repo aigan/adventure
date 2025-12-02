@@ -40,13 +40,44 @@ Each mind contains its own state sequence tracking what it believes over time.
 - Have `@about` linking inner beliefs to outer instances
 
 **Prototypes** (shared beliefs):
-- Inheritance templates: cultural knowledge, archetypes
+- Inheritance templates: archetypes and cultural knowledge
 - Not observable - exist only for `bases` inheritance
 - No ownership (`in_mind = null`, `origin_state = null`)
 - Cannot be learned about - only inherited from
 - Tracked via `@timestamp` meta-trait instead of `origin_state`
 
 **Key distinction**: You observe and learn about instances. You inherit from prototypes.
+
+## Cultural Knowledge
+
+**Cultural knowledge** represents beliefs that exist in the minds of groups or archetypes, not just individual NPCs.
+
+**Structure**:
+- Lives in **prototype minds** within prototypes (e.g., Villager prototype has villager_mind)
+- The prototype mind contains beliefs about world entities (tavern, workshop, etc.)
+- These beliefs are **not in Eidos itself** - they're nested within prototype minds
+- NPCs that inherit from the prototype also inherit this cultural knowledge
+
+**Example**:
+```
+Eidos:
+  Villager prototype (belief)
+    ├─ villager_mind (nested mind trait)
+    │   └─ beliefs about tavern, workshop (cultural knowledge)
+    │       - These beliefs have @about linking to world entities
+    │       - Scoped to the world hierarchy they reference
+```
+
+**Scoping**:
+- Cultural beliefs reference world entities (cross-boundary references)
+- Universal subjects (eternal forms) can be used by any belief
+- Particular subjects (instantiated) can only be used by beliefs in their instantiating mind
+- This prevents different game worlds from accidentally sharing entity identities
+
+**Usage**:
+- NPC instances inherit from Villager prototype → inherit villager_mind knowledge
+- Cultural knowledge can be further nested (NPC's model of other NPCs' cultural beliefs)
+- Enables shared worldview without duplicating beliefs for each NPC
 
 See IMPLEMENTATION.md "Core Philosophy" for implementation details.
 
@@ -185,7 +216,7 @@ This structure supports:
 ## **Core Principles**
 
 * **Everything is beliefs in minds** - All game entities (objects, NPCs, locations) are represented as Beliefs
-* **Global registry with ownership** - Beliefs stored in global registry, each has `in_mind` reference for ownership
+* **Global registry with ownership** - Beliefs stored in global registry, each associated with the mind that instantiated it. Subjects are either universals (eternal forms) or particulars (instantiated in specific mind)
 * **Hierarchical access** - Parent minds can access child minds (theory of mind) through nested belief structures
 * **Prototype inheritance** - Beliefs inherit from Archetypes and other Beliefs via `bases`
 * **Immutable nodes** - Changes create new versions via `base` inheritance

@@ -200,6 +200,16 @@ All current indexes are necessary and non-redundant - each serves distinct query
 - **Branch tracking**: Parent tracks child versions for lazy propagation
 - **Traits**: Type-validated properties resolved at query time via state context
 
+**Subject** - Identity wrapper with scoping via `mater` property
+- `mater = null`: Universal (Eidos forms), can be used by any belief
+- `mater = mind`: Particular (instantiated in specific mind), only usable by beliefs in that mind
+- Validation enforced in Belief constructor: `subject.mater === null || subject.mater === belief.in_mind`
+- Examples:
+  - Universal prototype in Eidos: `mater = null`
+  - World entity (tavern): `mater = world_mind`
+  - NPC private belief: `mater = npc_mind`
+- Cultural beliefs reference world entities via `@about` subjects with `mater = world_mind`
+
 **Archetype** - Defines trait structure for entity types
 - Multiple inheritance: Compose traits from multiple parents
 - Example: Player = Actor + Mental → ObjectPhysical

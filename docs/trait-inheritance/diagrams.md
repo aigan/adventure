@@ -316,13 +316,13 @@ Same trait value, different resolutions!
 ```
 Logos (root)
   └─ Eidos (global shared)
-       └─ GlobalProto (ground_mind = Logos)
+       └─ GlobalProto (shared_for_mind_with_parent = Logos, owner_mind = Eidos)
             ↓ accessible by any mind
        └─ World_1
-            └─ WorldProto (ground_mind = World_1)
+            └─ WorldProto (shared_for_mind_with_parent = World_1, owner_mind = Eidos)
                  ↓ accessible only by World_1 children
        └─ World_2
-            └─ WorldProto (ground_mind = World_2)
+            └─ WorldProto (shared_for_mind_with_parent = World_2, owner_mind = Eidos)
                  ↓ accessible only by World_2 children
 ```
 
