@@ -156,12 +156,18 @@ export class Session {
     lines.push(narrator.say`You are in ${obs}.`)
     postMessage(['main_add', ...lines])
 
+    //return true
+
+
     narrator.do_look_in_location({
       session: this,
       subject: loc,
     })
 
+    return true
+
     // Will create another copy of whats percieved
+    // eslint-disable-next-line no-unreachable
     narrator.do_look_in_location({
       session: this,
       subject: loc,

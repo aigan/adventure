@@ -150,28 +150,34 @@ for (const b of beliefs_before) {
   console.log(`    #${b._id} ${b.get_label() || '(unlabeled)'} @about=${about?.sid}`)
 }
 
-// Simulate do_look
+// Simulate do_look (same as narrator.do_look_in_location)
 const location_traittype = Traittype.get_by_label('location')
 const workshop = state.get_belief_by_label('workshop')
 const content = [...workshop.rev_trait(state, location_traittype)]
 console.log(`\nContent at workshop: ${content.map(b => `#${b._id} ${b.get_label()}`).join(', ')}`)
 
 const player_state = state.get_active_state_by_host(player)
-console.log(`\nPlayer state for do_look: ${player_state._id}, same as before: ${player_state === player_state_before}`)
+console.log(`\nPlayer state for do_look: ${player_state._id}, locked: ${player_state.locked}`)
 
-for (const item of content) {
-  console.log(`\n  Learning about: #${item._id} ${item.get_label()}`)
-  const existing = player_state.recognize(item)
-  console.log(`    recognize() found: ${existing.length} beliefs: ${existing.map(b => `#${b._id}`).join(', ')}`)
-  player_state.learn_about(item)
-}
+// Branch state to allow mutations
+let pov = state.branch_state(state.ground_state, 2)
+pov = pov.get_active_state_by_host(player)
+console.log(`\nBranched player state: ${pov._id}, locked: ${pov.locked}`)
 
-const beliefs_after = [...player_state.get_beliefs()]
-console.log(`\n  Beliefs in player mind AFTER do_look (${beliefs_after.length}):`)
+// Perceive content (creates perceived beliefs + EventPerception)
+const perception = pov.perceive(content)
+console.log(`\nPerception created: #${perception._id} ${perception.get_label() || '(EventPerception)'}`)
+
+const content_tt = Traittype.get_by_label('content')
+const perceived_subjects = perception.get_trait(pov, content_tt)
+console.log(`  Perceived beliefs: ${perceived_subjects.map(s => `#${s.sid}`).join(', ')}`)
+
+const beliefs_after = [...pov.get_beliefs()]
+console.log(`\n  Beliefs in player mind AFTER perceive (${beliefs_after.length}):`)
 for (const b of beliefs_after) {
   const about_tt = Traittype.get_by_label('@about')
-  const about = b.get_trait(player_state, about_tt)
-  console.log(`    #${b._id} ${b.get_label() || '(unlabeled)'} @about=${about?.sid}`)
+  const about = b.get_trait(pov, about_tt)
+  console.log(`    #${b._id} ${b.get_label() || '(unlabeled)'} @about=${about?.sid ?? 'null'}`)
 }
 
 // ============================================================================

@@ -233,8 +233,15 @@ export function init_world() {
     }
   })
 
+  const person1 = state.get_belief_by_label('person1')
+
+  /*
+    const hammer1 = state.get_belief_by_label('hammer1')
+    const person1_pov = state.get_active_state_by_host(person1)
+    person1_pov.learn_about(hammer1)
+  */
+
   state.lock();
-  const person1 = state.get_belief_by_label('person1');
 
   /*
   state = state.branch_state(Cosmos.logos_state(), 2)

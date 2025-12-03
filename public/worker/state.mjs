@@ -867,6 +867,48 @@ export class State {
   }
 
   /**
+   * Perceive a single entity, creating a perceived belief with observable traits
+   * @private
+   * @param {Belief} world_entity - Entity to perceive from the world state
+   * @param {State} about_state - State to resolve trait values in
+   * @param {string[]} modalities - Exposure modalities to observe
+   * @returns {Belief} Perceived belief with observable traits
+   */
+  _perceive_single(world_entity, about_state, modalities) {
+    const observed_traittypes = this.get_observable_traits(world_entity, modalities)
+    const archetype_bases = [...world_entity.get_archetypes()]  // Convert generator to array
+
+    /** @type {Record<string, any>} */
+    const observed_traits = {}
+    for (const traittype of observed_traittypes) {
+      const value = world_entity.get_trait(about_state, traittype)
+      if (value !== null) {
+        // If value is a Subject (nested entity), recursively perceive it
+        if (value instanceof Subject) {
+          const nested_belief = value.get_belief_by_state(about_state)
+          if (nested_belief) {
+            // Recursively perceive the nested entity
+            const nested_perceived = this._perceive_single(nested_belief, about_state, modalities)
+            observed_traits[traittype.label] = nested_perceived.subject
+          }
+        } else {
+          observed_traits[traittype.label] = value
+        }
+      }
+    }
+
+    // Create perceived belief with @about: null (unrecognized)
+    // Use Belief.from() since @about is not allowed in add_belief_from_template
+    const perceived = Belief.from(this, archetype_bases, {
+      '@about': null,
+      ...observed_traits
+    })
+
+    this.insert_beliefs(perceived)
+    return perceived
+  }
+
+  /**
    * Create an observation/perception event capturing what was observed
    *
    * Implements the categorization phase of dual-process recognition:
@@ -887,33 +929,8 @@ export class State {
       // if the traits are the same, or as a base and modify for the current traits.
 
       // Slow path: Unfamiliar entity - create perceived belief
-      const observed_traittypes = this.get_observable_traits(world_entity, modalities)
-      const archetype_bases = [...world_entity.get_archetypes()]  // Convert generator to array
-
-      // Get observable trait values
-      //const about_state = this.about_state ?? this.ground_state
       const about_state = world_entity.origin_state
-
-      //log([about_state], "perceive", world_entity)
-
-      /** @type {Record<string, any>} */
-      const observed_traits = {}
-      for (const traittype of observed_traittypes) {
-        const value = world_entity.get_trait(about_state, traittype)
-        //log([about_state], "add trait", traittype.label, value)
-        if (value !== null) {
-          observed_traits[traittype.label] = value
-        }
-      }
-
-      // Create perceived belief with @about: null (unrecognized)
-      // Use Belief.from() since @about is not allowed in add_belief_from_template
-      const perceived = Belief.from(this, archetype_bases, {
-        '@about': null,
-        ...observed_traits
-      })
-
-      this.insert_beliefs(perceived)
+      const perceived = this._perceive_single(world_entity, about_state, modalities)
       perceived_items.push(perceived.subject)
     }
 
