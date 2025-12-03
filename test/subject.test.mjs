@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, Materia, Belief , logos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, Belief, Subject, logos } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { setupMinimalArchetypes, createStateInNewMind } from './helpers.mjs';
 
@@ -84,7 +84,7 @@ describe('Subject', () => {
     });
 
     it('should return empty iterable for non-existent subject', () => {
-      const nonexistent_subject = DB.get_or_create_subject(null, 999, null);  // Global subject for test
+      const nonexistent_subject = Subject.get_or_create_by_sid(999, null);  // Global subject for test
 
       expect([...nonexistent_subject.beliefs_at_tt(100)]).to.deep.equal([]);
     });

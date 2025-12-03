@@ -1340,7 +1340,7 @@ export class State {
     // Load self
     let self = null
     if (data.self != null) {
-      self = DB.get_or_create_subject(data.self, mind)  // mater = mind
+      self = Subject.get_or_create_by_sid(data.self, mind)  // mater = mind
     }
 
     // Load about_state

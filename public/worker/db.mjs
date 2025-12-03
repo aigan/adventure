@@ -78,12 +78,12 @@ const belief_by_id = new Map()
 /**
  * Subject-based belief index (tracks all versions of same entity)
  * Query: O(1) to get Set<Belief> containing all versions of a subject across time
- * Maintained by: register_belief_by_subject() - populated during belief creation
+ * Maintained by: Subject constructor - populated during subject creation
  * Scale: Essential - enables version queries without scanning all beliefs
  *   Example: Get all versions of "hammer" entity → O(versions) not O(all beliefs)
  * @type {Map<Subject, Set<Belief>>}
  */
-const belief_by_subject = new Map()
+export const belief_by_subject = new Map()
 
 /**
  * Mind-based belief index (tracks which beliefs belong to which mind)
@@ -122,12 +122,12 @@ const label_by_sid = new Map()
 /**
  * Canonical subject instances by SID
  * Query: O(1) lookup by subject ID
- * Maintained by: get_or_create_subject() - ensures single Subject instance per sid
+ * Maintained by: Subject constructor - ensures single Subject instance per sid
  * Scale: Essential - guarantees subject identity (prevents duplicate Subject objects)
  *   Critical for === comparisons and Map/Set usage
  * @type {Map<number, Subject>}
  */
-const subject_by_sid = new Map()
+export const subject_by_sid = new Map()
 
 // ============================================================================
 // Reflection (for testing/debugging)
@@ -311,27 +311,6 @@ export function register_belief_by_subject(belief) {
   }
 }
 
-/**
- * Get or create the canonical Subject for a given SID
- *
- * Examples:
- * - Universal prototype (GenericHammer in Eidos): mater=null
- * - World entity (tavern in world): mater=world
- * - NPC private belief (memory in npc): mater=npc_mind
- *
- * @param {number|null} [sid] - Subject ID (auto-generated if not provided)
- * @param {Mind|null} [mater] - Mind where this particular is instantiated (null for universals)
- * @returns {Subject}
- */
-export function get_or_create_subject(sid = null, mater = null) {
-  sid ??= next_id()
-  if (!subject_by_sid.has(sid)) {
-    const subject = new Subject(sid, mater)
-    subject_by_sid.set(sid, subject)
-    belief_by_subject.set(subject, new Set())
-  }
-  return /** @type {Subject} */ (subject_by_sid.get(sid))
-}
 /**
  * Register state in registries
  * @param {State} state - State to register

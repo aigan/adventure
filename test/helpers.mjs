@@ -5,7 +5,7 @@
  * See docs/IMPLEMENTATION.md for implementation architecture
  */
 
-import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load, logos, logos_state } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Archetype, Traittype, Subject, save_mind, load, logos, logos_state } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
 
 // Browser API mocks for Node.js test environment
@@ -294,7 +294,7 @@ export function get_first_belief_by_label(label) {
   const sid = DB._reflect().sid_by_label.get(label)
   if (sid === undefined) return null
 
-  const subject = DB.get_or_create_subject(sid, null)  // Universal subjects for tests
+  const subject = Subject.get_or_create_by_sid(sid, null)  // Universal subjects for tests
   const beliefs = DB._reflect().belief_by_subject.get(subject)
   if (!beliefs || beliefs.size === 0) return null
 

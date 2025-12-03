@@ -86,7 +86,7 @@ export class Belief {
     /** @type {Set<Belief|Archetype>} */ this._bases = new Set(bases)
     // Eidos: universals (mater=null), Materia: particulars (mater=mind)
     const mater = mind._type === 'Eidos' ? null : mind
-    this.subject = subject ?? DB.get_or_create_subject(null, mater)
+    this.subject = subject ?? new Subject(null, mater)
 
     // Validate: subject.mater must be null (universal) or this mind
     // This prevents beliefs from using subjects from other minds
@@ -906,7 +906,7 @@ export class Belief {
     belief._id = data._id
     // Eidos: universals (mater=null), Materia: particulars (mater=mind)
     const mater = mind._type === 'Eidos' ? null : mind
-    belief.subject = DB.get_or_create_subject(data.sid, mater)
+    belief.subject = Subject.get_or_create_by_sid(data.sid, mater)
     belief.in_mind = mind
     belief._locked = false
     belief._cache = new Map()
@@ -1012,7 +1012,7 @@ export class Belief {
 
     // Eidos: universals (mater=null), Materia: particulars (mater=mind)
     const mater = state.in_mind._type === 'Eidos' ? null : state.in_mind
-    const subject = DB.get_or_create_subject(sid, mater)
+    const subject = sid != null ? Subject.get_or_create_by_sid(sid, mater) : new Subject(null, mater)
     if (label) subject.set_label(label)
 
     debug([state], "Create belief with", ...resolved_bases)

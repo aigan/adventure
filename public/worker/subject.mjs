@@ -35,6 +35,10 @@ export class Subject {
   constructor(sid = null, mater = null) {
     this.sid = sid ?? next_id()
     this.mater = mater
+
+    // Auto-register in DB
+    DB.subject_by_sid.set(this.sid, this)
+    DB.belief_by_subject.set(this, new Set())
   }
 
   /**
@@ -44,6 +48,19 @@ export class Subject {
    */
   static get_by_sid(sid) {
     return DB.get_subject_by_sid(sid)
+  }
+
+  /**
+   * Get or create subject with specific sid
+   * Ensures subject exists in registry with given sid and mater scope
+   * Used for deserialization and cross-references where sid is known
+   * @param {number} sid - Subject identifier (required)
+   * @param {Mind|null} [mater] - Mind scope (null for universal)
+   * @returns {Subject}
+   */
+  static get_or_create_by_sid(sid, mater = null) {
+    assert(typeof sid === 'number', 'sid must be a number', {sid, type: typeof sid})
+    return DB.subject_by_sid.get(sid) ?? new Subject(sid, mater)
   }
 
   /**
