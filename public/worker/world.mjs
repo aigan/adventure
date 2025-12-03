@@ -28,6 +28,10 @@ const traittypes = {
     mind: 'parent',  // Resolve in parent mind's ground state
     exposure: 'internal'  // Not directly observable
   },
+  '@uncertain_identity': {
+    type: 'boolean',
+    exposure: 'internal'  // Not directly observable
+  },
   '@form': {
     type: 'string',
     values: ['solid', 'liquid', 'vapor', 'olfactory', 'auditory', 'intangible']
@@ -78,6 +82,7 @@ const archetypes = {
   Thing: {
     traits: {
       '@about': null,
+      '@uncertain_identity': null,
     },
   },
 
@@ -177,7 +182,12 @@ export function init_world() {
     },
     hammer1: {
       bases: ['Hammer'],
-      traits: { head: 'hammer1_head', handle: 'hammer1_handle', location: 'workshop' }
+      traits: {
+        '@uncertain_identity': true,
+        head: 'hammer1_head',
+        handle: 'hammer1_handle',
+        location: 'workshop',
+      }
     },
 
     // Hammer 2: long dark handle

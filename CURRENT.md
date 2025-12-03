@@ -6,17 +6,18 @@
 
 Currently: Looking at room twice creates two perception events with perceived objects doubled (correct). Next steps:
 
-### Step 1: Implement perceive() fast path (state.mjs:886)
+### ~~Step 1: Implement perceive() fast path~~ ✅ COMPLETE
 
-When player already has knowledge about a world entity:
-- Check existing knowledge via `recognize(world_entity)`
-- If found + traits match: add subject reference directly to EventPerception.content
-- If found + traits differ: create perceived belief using knowledge as base
-- If not found: create new perceived belief with `@about: null` (current slow path)
+**Implementation**:
+- Added `@uncertain_identity` meta-trait to force slow path when identity is questionable
+- Created `_perceive_with_recognition()` for recursive fast-path perception
+- Fast path: finds existing knowledge, recursively perceives nested Subject-valued traits
+- Comparison: only non-Subject traits matter for parent versioning (Subjects auto-resolve)
+- Versioned beliefs created with `sid: knowledge.subject.sid` to maintain identity
+- First perception creates knowledge directly with `@about: world_entity.subject`
+- EventPerception.content includes all recursively perceived entities
 
-**Result**: Familiar entities don't create duplicate perceived beliefs
-
-**Test**: Unskip `test/observation.test.mjs` "learn_from() should handle familiar entities"
+**Tests**: All observation tests passing (478 total)
 
 ### Step 2: Implement learn_from() recognition (state.mjs:1001-1014)
 

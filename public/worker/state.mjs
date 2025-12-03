@@ -909,6 +909,126 @@ export class State {
   }
 
   /**
+   * Perceive entity with identity recognition (fast path)
+   * Recursively perceives nested entities and creates versioned beliefs when traits change
+   * @private
+   * @param {Belief} world_entity - Entity to perceive from world state
+   * @param {State} world_state - State to resolve world entity traits in
+   * @param {string[]} modalities - Observable modalities
+   * @returns {{belief: Belief, all_perceived: Belief[]}} Knowledge belief and all perceived entities
+   */
+  _perceive_with_recognition(world_entity, world_state, modalities) {
+    // Collect all beliefs perceived during this operation (including nested)
+    const all_perceived = []
+
+    // Step 1: Recursively perceive all observable Subject-valued traits first
+    const observed_traittypes = this.get_observable_traits(world_entity, modalities)
+    /** @type {Record<string, any>} */
+    const observed_traits = {}
+
+    for (const traittype of observed_traittypes) {
+      let value = world_entity.get_trait(world_state, traittype)
+
+      if (value !== null) {
+        // If Subject-valued, recursively perceive it
+        if (value instanceof Subject) {
+          const nested_belief = value.get_belief_by_state(world_state)
+          if (nested_belief) {
+            // Check if nested entity has @uncertain_identity
+            const uncertain_tt = Traittype.get_by_label('@uncertain_identity')
+            const is_uncertain = uncertain_tt && nested_belief.get_trait(world_state, uncertain_tt) === true
+
+            if (is_uncertain) {
+              // Nested entity is uncertain: use slow path
+              const perceived = this._perceive_single(nested_belief, world_state, modalities)
+              value = perceived.subject
+              all_perceived.push(perceived)
+            } else {
+              // Nested entity is certain: recursive fast path
+              const result = this._perceive_with_recognition(nested_belief, world_state, modalities)
+              value = result.belief.subject
+              all_perceived.push(...result.all_perceived)  // Collect nested perceptions
+            }
+          }
+        }
+
+        observed_traits[traittype.label] = value
+      }
+    }
+
+    // Step 2: Check for existing knowledge about this entity
+    const existing_knowledge = this.recognize(world_entity)
+
+    let main_belief
+
+    if (existing_knowledge.length === 0) {
+      // No existing knowledge: create new knowledge belief with @about set
+      const archetype_bases = [...world_entity.get_archetypes()]
+      main_belief = Belief.from(this, archetype_bases, {
+        '@about': world_entity.subject,
+        ...observed_traits
+      })
+      this.insert_beliefs(main_belief)
+    } else {
+      // Step 3: Compare NON-SUBJECT traits with existing knowledge
+      // (Subject traits don't matter - they auto-resolve to latest version in state)
+      const knowledge = existing_knowledge[0]  // Use first match
+      let traits_match = true
+
+      for (const traittype of observed_traittypes) {
+        const perceived_value = observed_traits[traittype.label]
+
+        // Skip Subject-valued traits - they don't need comparison
+        if (perceived_value instanceof Subject) continue
+
+        const knowledge_value = knowledge.get_trait(this, traittype)
+
+        if (perceived_value !== knowledge_value) {
+          traits_match = false
+          break
+        }
+      }
+
+      // Step 4: Reuse or create versioned belief
+      if (traits_match) {
+        // All non-Subject traits match: reuse existing knowledge
+        main_belief = knowledge
+      } else {
+        // Traits differ: create new version with knowledge as base
+        // Only include non-Subject trait updates (Subject traits are inherited)
+        /** @type {Record<string, any>} */
+        const trait_updates = {}
+        for (const [label, value] of Object.entries(observed_traits)) {
+          if (!(value instanceof Subject)) {
+            trait_updates[label] = value
+          }
+        }
+
+        // Null out knowledge traits not in perception
+        const knowledge_traits = knowledge.get_traits()
+        for (const [traittype, _value] of knowledge_traits) {
+          if (traittype.label === '@about') continue  // Skip meta-trait
+          if (!(traittype.label in observed_traits)) {
+            trait_updates[traittype.label] = null
+          }
+        }
+
+        // FIXME: dont use from_template when creating beliefs
+        main_belief = Belief.from_template(this, {
+          sid: knowledge.subject.sid,  // Same subject as base (versioning)
+          bases: [knowledge],
+          traits: trait_updates
+        })
+        this.insert_beliefs(main_belief)
+      }
+    }
+
+    // Add main belief to perceived list and return
+    all_perceived.push(main_belief)
+    return {belief: main_belief, all_perceived}
+  }
+
+  /**
    * Create an observation/perception event capturing what was observed
    *
    * Implements the categorization phase of dual-process recognition:
@@ -922,23 +1042,33 @@ export class State {
   perceive(content, modalities = ['visual', 'spatial']) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
-    const perceived_items = []
+    const all_perceived_subjects = []
 
     for (const world_entity of content) {
-      // FIXME: Fast path. If we already have a belief that is about the content, use that directly
-      // if the traits are the same, or as a base and modify for the current traits.
-
-      // Slow path: Unfamiliar entity - create perceived belief
       const about_state = world_entity.origin_state
-      const perceived = this._perceive_single(world_entity, about_state, modalities)
-      perceived_items.push(perceived.subject)
+
+      // Check if identity is uncertain // FIXME: use tratit-type constants
+      const uncertain_tt = Traittype.get_by_label('@uncertain_identity')
+      const is_uncertain = uncertain_tt && world_entity.get_trait(about_state, uncertain_tt) === true
+
+      if (is_uncertain) {
+        // Slow path: Identity uncertain, create perceived belief with @about: null
+        const perceived = this._perceive_single(world_entity, about_state, modalities)
+        all_perceived_subjects.push(perceived.subject)
+      } else {
+        // Fast path: Identity certain, use recognition-based perception
+        const result = this._perceive_with_recognition(world_entity, about_state, modalities)
+        // Add all perceived entities (including nested) to the perception event
+        all_perceived_subjects.push(...result.all_perceived.map(b => b.subject))
+      }
     }
 
-    // Create EventPerception holding all perceived items
+    // FIXME: dont use from_template when creating beliefs
+    // Create EventPerception holding ALL perceived items (including nested entities)
     return this.add_belief_from_template({
       bases: ['EventPerception'],
       traits: {
-        content: perceived_items
+        content: all_perceived_subjects
       }
     })
   }

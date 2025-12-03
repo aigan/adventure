@@ -477,7 +477,7 @@ describe('observation', () => {
       }, {})
     })
 
-    it('perceive() should create perceived beliefs for unfamiliar entities', () => {
+    it('perceive() should create knowledge beliefs for unfamiliar entities (fast path)', () => {
       const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
       let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
 
@@ -498,6 +498,7 @@ describe('observation', () => {
 
       const player = get_first_belief_by_label('player')
       const hammer = get_first_belief_by_label('hammer')
+      const workshop = get_first_belief_by_label('workshop')
       const player_state = state.get_active_state_by_host(player)
 
       // Player doesn't know about hammer yet
@@ -510,28 +511,34 @@ describe('observation', () => {
       expect(perception).to.exist
       expect(perception.get_archetypes().some(a => a.label === 'EventPerception')).to.be.true
 
-      // Check content
+      // Check content - should include hammer and recursively perceived workshop
       const content_tt = Traittype.get_by_label('content')
       const content = perception.get_trait(player_state, content_tt)
       expect(content).to.be.an('array')
-      expect(content).to.have.lengthOf(1)
+      expect(content).to.have.lengthOf(2)  // hammer + workshop (from location trait)
 
-      // Content should be a perceived belief (not direct hammer reference)
-      const perceived_subject = content[0]
-      expect(perceived_subject).to.not.equal(hammer.subject)
+      // Find hammer knowledge belief in content
+      const hammer_knowledge_subject = content.find(s => {
+        const b = player_state.get_belief_by_subject(s)
+        const about_tt = Traittype.get_by_label('@about')
+        const about = b.get_trait(player_state, about_tt)
+        return about && about.sid === hammer.subject.sid
+      })
+      expect(hammer_knowledge_subject).to.exist
 
-      // Get perceived belief
-      const perceived = player_state.get_belief_by_subject(perceived_subject)
+      // Get hammer knowledge belief
+      const hammer_knowledge = player_state.get_belief_by_subject(hammer_knowledge_subject)
       const about_tt = Traittype.get_by_label('@about')
-      const about = perceived.get_trait(player_state, about_tt)
-      expect(about).to.be.null  // Unrecognized
+      const about = hammer_knowledge.get_trait(player_state, about_tt)
+      expect(about).to.not.be.null  // Fast path: @about set to world entity
+      expect(about.sid).to.equal(hammer.subject.sid)
 
       // Should have color trait
       const color_tt = Traittype.get_by_label('color')
-      expect(perceived.get_trait(player_state, color_tt)).to.equal('blue')
+      expect(hammer_knowledge.get_trait(player_state, color_tt)).to.equal('blue')
     })
 
-    it.skip('perceive() should store subject refs for familiar entities', () => {
+    it('perceive() should reuse knowledge for familiar unchanged entities', () => {
       const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
       let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
 
@@ -555,22 +562,34 @@ describe('observation', () => {
 
       const player = get_first_belief_by_label('player')
       const hammer = get_first_belief_by_label('hammer')
+      const workshop = get_first_belief_by_label('workshop')
       const player_state = state.get_active_state_by_host(player)
 
       // Player should recognize hammer
-      const existing = player_state.recognize(hammer)
-      expect(existing.length).to.be.at.least(1)
+      const existing_knowledge = player_state.recognize(hammer)
+      expect(existing_knowledge.length).to.be.at.least(1)
+      const old_knowledge_id = existing_knowledge[0]._id
 
-      // Perceive hammer (familiar)
+      // Perceive hammer (familiar, traits unchanged)
       const perception = player_state.perceive([hammer])
 
       const content_tt = Traittype.get_by_label('content')
       const content = perception.get_trait(player_state, content_tt)
       expect(content).to.be.an('array')
-      expect(content).to.have.lengthOf(1)
+      expect(content.length).to.be.at.least(2)  // hammer + recursively perceived workshop
 
-      // Content should be direct hammer reference (not perceived belief)
-      expect(content[0]).to.equal(hammer.subject)
+      // Find hammer knowledge in content
+      const hammer_subject = content.find(s => {
+        const b = player_state.get_belief_by_subject(s)
+        const about_tt = Traittype.get_by_label('@about')
+        const about = b.get_trait(player_state, about_tt)
+        return about && about.sid === hammer.subject.sid
+      })
+      expect(hammer_subject).to.exist
+
+      // Should be the same belief (reused, not new version)
+      const hammer_knowledge = player_state.get_belief_by_subject(hammer_subject)
+      expect(hammer_knowledge._id).to.equal(old_knowledge_id)
     })
 
     it('identify() should match traits to knowledge beliefs', () => {
@@ -695,7 +714,7 @@ describe('observation', () => {
       expect(candidates).to.include(hammer2.subject)
     })
 
-    it.skip('learn_from() should integrate unambiguous perception into knowledge', () => {
+    it('perceive() should auto-update knowledge when new traits are visible', () => {
       const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
       let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
 
@@ -717,7 +736,7 @@ describe('observation', () => {
         player: {
           bases: ['Person'],
           traits: {
-            mind: { hammer: ['location'] },  // Player knows hammer's location
+            mind: { hammer: ['location'] },  // Player knows hammer's location only
             location: 'workshop'
           }
         }
@@ -730,25 +749,24 @@ describe('observation', () => {
       const hammer = get_first_belief_by_label('hammer')
       const player_state = state.get_active_state_by_host(player)
 
-      // Player has minimal knowledge (can identify)
-      expect(player_state.recognize(hammer).length).to.be.at.least(1)
-
-      // Count knowledge before
-      const about_tt = Traittype.get_by_label('@about')
-      const before = [...hammer.rev_trait(player_state, about_tt)]
-
-      // Perceive hammer (familiar - will identify)
-      const perception = player_state.perceive([hammer])
-
-      // Learn from perception (should update existing knowledge)
-      player_state.learn_from(perception)
-
-      // Knowledge should now include material trait
-      const knowledge = player_state.recognize(hammer)
-      expect(knowledge.length).to.be.at.least(1)
-
+      // Player has minimal knowledge (can recognize)
+      const old_knowledge = player_state.recognize(hammer)
+      expect(old_knowledge.length).to.be.at.least(1)
+      const old_knowledge_id = old_knowledge[0]._id
       const material_tt = Traittype.get_by_label('material')
-      expect(knowledge[0].get_trait(player_state, material_tt)).to.equal('steel')
+      expect(old_knowledge[0].get_trait(player_state, material_tt)).to.be.null  // Doesn't know material yet
+
+      // Perceive hammer (familiar, but material now visible)
+      player_state.perceive([hammer])
+
+      // Fast path should automatically create versioned belief with material trait
+      const updated_knowledge = player_state.recognize(hammer)
+      expect(updated_knowledge.length).to.be.at.least(1)
+      expect(updated_knowledge[0].get_trait(player_state, material_tt)).to.equal('steel')
+
+      // Should be a new version (different _id but same subject)
+      expect(updated_knowledge[0]._id).to.not.equal(old_knowledge_id)
+      expect(updated_knowledge[0].subject.sid).to.equal(old_knowledge[0].subject.sid)
     })
 
     it('learn_from() should handle familiar entities (direct subject refs)', () => {
@@ -792,7 +810,7 @@ describe('observation', () => {
       expect(beliefs_after.length).to.equal(beliefs_before.length)
     })
 
-    it.skip('end-to-end: perceive → learn_from → knowledge updated', () => {
+    it('end-to-end: perceive location content with familiar entities', () => {
       const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
       let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
 
@@ -805,7 +823,7 @@ describe('observation', () => {
         player: {
           bases: ['Person'],
           traits: {
-            mind: { hammer: ['location'] },  // Player knows hammer's location
+            mind: { hammer: ['location'] },  // Player knows hammer's location only
             location: 'workshop'
           }
         }
@@ -819,23 +837,28 @@ describe('observation', () => {
       const workshop = get_first_belief_by_label('workshop')
       const player_state = state.get_active_state_by_host(player)
 
+      // Verify initial knowledge - knows location but not color
+      const old_knowledge = player_state.recognize(hammer)
+      expect(old_knowledge.length).to.be.at.least(1)
+      const color_tt = Traittype.get_by_label('color')
+      expect(old_knowledge[0].get_trait(player_state, color_tt)).to.be.null
+
       // Get location content (what player can see)
       const location_tt = Traittype.get_by_label('location')
       const content = [...workshop.rev_trait(state, location_tt)]
 
-      // Player perceives location content
+      // Player perceives location content (fast path auto-updates knowledge)
       const perception = player_state.perceive(content)
 
-      // Player learns from perception
-      player_state.learn_from(perception)
-
-      // Player should know about hammer (knowledge updated with new traits)
-      const knowledge = player_state.recognize(hammer)
-      expect(knowledge.length).to.be.at.least(1)
+      // Player should now know about hammer's color (automatically updated)
+      const updated_knowledge = player_state.recognize(hammer)
+      expect(updated_knowledge.length).to.be.at.least(1)
 
       // Knowledge should include color (newly observed)
-      const color_tt = Traittype.get_by_label('color')
-      expect(knowledge[0].get_trait(player_state, color_tt)).to.equal('blue')
+      expect(updated_knowledge[0].get_trait(player_state, color_tt)).to.equal('blue')
+
+      // Should be a new version
+      expect(updated_knowledge[0]._id).to.not.equal(old_knowledge[0]._id)
     })
   })
 })

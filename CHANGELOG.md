@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-12-03
+
+### Fast-Path Perception with Identity Recognition
+- **`perceive()` reuses existing knowledge**: Familiar entities no longer create duplicate beliefs
+  - Fast path when identity is certain: finds existing knowledge via `recognize()`
+  - Compares observable traits; reuses belief if unchanged or creates versioned belief if traits differ
+  - Slow path when `@uncertain_identity` meta-trait is true: creates perceived belief with `@about: null`
+- **First perception creates knowledge directly**: Sets `@about: world_entity.subject` on initial observation
+- **Recursive nested perception**: Subject-valued observable traits are perceived recursively
+  - EventPerception content includes all recursively perceived entities (parent + nested parts)
+  - Parent versioning only needed when non-Subject traits change (Subjects auto-resolve)
+- **`@uncertain_identity` meta-trait**: Forces slow path for entities where identity is questionable
+
+### All Tests Passing: 478 tests
+
 ## 2025-11-23 - v1.0.1
 
 ### Alpha 1 Stage 1 Complete
