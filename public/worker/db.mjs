@@ -8,15 +8,13 @@
 
 import { register_reset_hook, reset_registries } from './reset.mjs'
 export { reset_registries }
-import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import { Traittype } from './traittype.mjs'
-import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
-import { log, assert } from './debug.mjs';
+import { assert } from './debug.mjs';
 import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
-import { logos, logos_state, eidos } from './cosmos.mjs'
+import { eidos } from './eidos.mjs'
 
 // ============================================================================
 // Mind Registries
@@ -76,19 +74,9 @@ const state_by_label = {}
 const belief_by_id = new Map()
 
 /**
- * Subject-based belief index (tracks all versions of same entity)
- * Query: O(1) to get Set<Belief> containing all versions of a subject across time
- * Maintained by: Subject constructor - populated during subject creation
- * Scale: Essential - enables version queries without scanning all beliefs
- *   Example: Get all versions of "hammer" entity → O(versions) not O(all beliefs)
- * @type {Map<Subject, Set<Belief>>}
- */
-export const belief_by_subject = new Map()
-
-/**
  * Mind-based belief index (tracks which beliefs belong to which mind)
  * Query: O(1) to get Set<Belief> containing all beliefs in a mind
- * Maintained by: register_belief_by_subject() - populated during belief creation
+ * Maintained by: register_belief_by_mind() - populated during belief creation
  * Scale: Essential - enables mind-scoped queries without scanning all beliefs
  *   Example: find_beliefs_about_subject() → O(beliefs in mind) not O(all beliefs)
  *   Without this index, queries would be O(billions) instead of O(thousands)
@@ -116,20 +104,6 @@ const sid_by_label = new Map()
 const label_by_sid = new Map()
 
 // ============================================================================
-// Subject Registries
-// ============================================================================
-
-/**
- * Canonical subject instances by SID
- * Query: O(1) lookup by subject ID
- * Maintained by: Subject constructor - ensures single Subject instance per sid
- * Scale: Essential - guarantees subject identity (prevents duplicate Subject objects)
- *   Critical for === comparisons and Map/Set usage
- * @type {Map<number, Subject>}
- */
-export const subject_by_sid = new Map()
-
-// ============================================================================
 // Reflection (for testing/debugging)
 // ============================================================================
 
@@ -144,42 +118,10 @@ export function _reflect() {
     state_by_id,
     state_by_label,
     belief_by_id,
-    belief_by_subject,
     belief_by_mind,
     sid_by_label,
-    label_by_sid,
-    subject_by_sid,
-    archetype_by_label: Archetype._registry,
-    traittype_by_label: Traittype._registry
+    label_by_sid
   }
-}
-
-// ============================================================================
-// Singleton Accessors (Backward Compatibility)
-// ============================================================================
-
-/**
- * Get logos mind singleton (backward compatibility wrapper)
- * @returns {Mind}
- */
-export function get_logos_mind() {
-  return logos()
-}
-
-/**
- * Get logos state singleton (backward compatibility wrapper)
- * @returns {State}
- */
-export function get_logos_state() {
-  return logos_state()
-}
-
-/**
- * Get eidos mind singleton (backward compatibility wrapper)
- * @returns {Mind}
- */
-export function get_eidos() {
-  return eidos()
 }
 
 // ============================================================================
@@ -271,18 +213,6 @@ export function register_label(label, sid) {
 }
 
 /**
- * Get beliefs by subject
- * @param {Subject} subject
- * @returns {Generator<Belief>} Iterator over beliefs (empty if subject has no beliefs)
- */
-export function* get_beliefs_by_subject(subject) {
-  const beliefs = belief_by_subject.get(subject)
-  if (beliefs) {
-    yield* beliefs
-  }
-}
-
-/**
  * Get beliefs by mind
  * @param {Mind} mind
  * @returns {Generator<Belief>} Iterator over beliefs (empty if mind has no beliefs)
@@ -295,13 +225,11 @@ export function* get_beliefs_by_mind(mind) {
 }
 
 /**
- * Register belief in belief_by_subject and belief_by_mind registries
+ * Register belief in mind registry
+ * Note: Beliefs register with their subject directly via subject.beliefs.add()
  * @param {Belief} belief - Belief to register
  */
-export function register_belief_by_subject(belief) {
-  // Add to belief_by_subject (Set already initialized by get_or_create_subject)
-  /** @type {Set<Belief>} */ (belief_by_subject.get(belief.subject)).add(belief)
-
+export function register_belief_by_mind(belief) {
   // Register by mind (skip for shared beliefs with null mind)
   if (belief.in_mind !== null) {
     if (!belief_by_mind.has(belief.in_mind)) {
@@ -338,26 +266,6 @@ export function get_state(id) {
 }
 
 /**
- * Get Subject by label
- * @param {string} label
- * @returns {Subject|null}
- */
-export function get_subject_by_label(label) {
-  const sid = sid_by_label.get(label)
-  if (sid === undefined) return null
-  return subject_by_sid.get(sid) ?? null
-}
-
-/**
- * Get Subject by sid
- * @param {number} sid
- * @returns {Subject|null}
- */
-export function get_subject_by_sid(sid) {
-  return subject_by_sid.get(sid) ?? null
-}
-
-/**
  * Reset db.mjs internal registries
  */
 function reset_db_registries() {
@@ -365,11 +273,9 @@ function reset_db_registries() {
   mind_by_label.clear()
   state_by_id.clear()
   belief_by_id.clear()
-  belief_by_subject.clear()
   belief_by_mind.clear()
   sid_by_label.clear()
   label_by_sid.clear()
-  subject_by_sid.clear()
   for (const key in state_by_label) delete state_by_label[key]
 }
 

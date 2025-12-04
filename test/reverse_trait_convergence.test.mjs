@@ -13,7 +13,9 @@ import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
-import { Mind, Materia, State, Convergence, logos, eidos } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, State, Convergence } from '../public/worker/cosmos.mjs'
+import { eidos } from '../public/worker/eidos.mjs'
+import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 describe('Convergence + rev_trait() Integration', () => {

@@ -12,7 +12,8 @@ import { expect } from 'chai'
 import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
-import { Mind, Materia, logos } from '../public/worker/cosmos.mjs'
+import { Mind, Materia } from '../public/worker/cosmos.mjs'
+import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 describe('State.rev_base() and Convergence.rev_base()', () => {
@@ -137,7 +138,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
     it('returns array (polymorphic with State)', () => {
       // Setup world with Mind composition
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']},
@@ -187,7 +188,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
 
     it('filters out null/undefined next states from components', () => {
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_shared_from_template({
         Villager: {bases: ['Person'], traits: {mind: {}}},
@@ -249,7 +250,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
 
     it('can be used interchangeably in queue-based traversal', () => {
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']}
@@ -373,7 +374,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
 
     it('Convergence.rev_base() returns array from multiple components', () => {
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']},
@@ -526,7 +527,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
 
     it('handles nested Convergence (Convergence containing Convergence components)', () => {
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']},

@@ -111,7 +111,8 @@ export class Belief {
     this._cached_all = false
 
     DB.register_belief_by_id(this)
-    DB.register_belief_by_subject(this)
+    this.subject.beliefs.add(this)
+    DB.register_belief_by_mind(this)
   }
 
   /**
@@ -950,7 +951,8 @@ export class Belief {
 
     // Register globally
     DB.register_belief_by_id(belief)
-    DB.register_belief_by_subject(belief)
+    belief.subject.beliefs.add(belief)
+    DB.register_belief_by_mind(belief)
 
     // Register label-sid mappings (for first belief with this label loaded)
     if (data.label) {
@@ -983,7 +985,7 @@ export class Belief {
 
         // Try shared belief (prototype only - prevents same-state inheritance)
         // TODO: Future - support versioned subjects (bases from earlier states with tt < state.tt)
-        const subject = DB.get_subject_by_label(base_in)
+        const subject = Subject.get_by_label(base_in)
         const base = subject?.get_shared_belief_by_state(state)
         if (base) {
           const origin_state_label = base.origin_state?.in_mind?.label ?? 'unknown'

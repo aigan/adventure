@@ -4,6 +4,7 @@ import { Belief } from './belief.mjs'
 import { Archetype } from './archetype.mjs'
 import { assert } from './debug.mjs'
 import { next_id } from './id_sequence.mjs'
+import { register_reset_hook } from './reset.mjs'
 
 /**
  * @typedef {import('./state.mjs').State} State
@@ -29,6 +30,13 @@ import { next_id } from './id_sequence.mjs'
  */
 export class Subject {
   /**
+   * Static registry of all subjects by SID
+   * Ensures single Subject instance per sid (critical for === comparisons)
+   * @type {Map<number, Subject>}
+   */
+  static _registry = new Map()
+
+  /**
    * @param {number|null} [sid] - Subject identifier (auto-generated if not provided)
    * @param {Mind|null} [mater] - Mind where this particular is instantiated (null for universals)
    */
@@ -36,9 +44,11 @@ export class Subject {
     this.sid = sid ?? next_id()
     this.mater = mater
 
-    // Auto-register in DB
-    DB.subject_by_sid.set(this.sid, this)
-    DB.belief_by_subject.set(this, new Set())
+    /** @type {Set<Belief>} All beliefs with this subject across time */
+    this.beliefs = new Set()
+
+    // Auto-register in static registry
+    Subject._registry.set(this.sid, this)
   }
 
   /**
@@ -47,7 +57,7 @@ export class Subject {
    * @returns {Subject|null}
    */
   static get_by_sid(sid) {
-    return DB.get_subject_by_sid(sid)
+    return Subject._registry.get(sid) ?? null
   }
 
   /**
@@ -60,7 +70,27 @@ export class Subject {
    */
   static get_or_create_by_sid(sid, mater = null) {
     assert(typeof sid === 'number', 'sid must be a number', {sid, type: typeof sid})
-    return DB.subject_by_sid.get(sid) ?? new Subject(sid, mater)
+    return Subject._registry.get(sid) ?? new Subject(sid, mater)
+  }
+
+  /**
+   * Get Subject by label
+   * @param {string} label
+   * @returns {Subject|null}
+   */
+  static get_by_label(label) {
+    const sid = DB.get_sid_by_label(label)
+    if (sid === undefined) return null
+    return Subject.get_by_sid(sid)
+  }
+
+  /**
+   * Get all beliefs for a subject across time
+   * @param {Subject} subject
+   * @yields {Belief}
+   */
+  static *get_beliefs_by_subject(subject) {
+    yield* subject.beliefs
   }
 
   /**
@@ -84,7 +114,7 @@ export class Subject {
    */
   get_shared_belief_by_state(state) {
     // For timeless states (tt=null), get all beliefs; otherwise filter by tt
-    const beliefs = state.tt != null ? [...this.beliefs_at_tt(state.tt)] : [...DB.get_beliefs_by_subject(this)]
+    const beliefs = state.tt != null ? [...this.beliefs_at_tt(state.tt)] : [...Subject.get_beliefs_by_subject(this)]
 
     // Shared beliefs are universals (mater=null) that can be used by any belief
     const shared = beliefs.filter(b => {
@@ -206,7 +236,7 @@ export class Subject {
    */
   *beliefs_at_tt(tt) {
     // Get all beliefs with tt <= target
-    const valid_beliefs = [...DB.get_beliefs_by_subject(this)].filter(b => b.get_tt() <= tt)
+    const valid_beliefs = [...this.beliefs].filter(b => b.get_tt() <= tt)
 
     // Yield beliefs that have no descendants in the valid set
     for (const belief of valid_beliefs) {
@@ -238,7 +268,7 @@ export class Subject {
 
       // If not found, try shared beliefs (prototypes in Eidos)
       if (found_belief == null) {
-        const subject = DB.get_subject_by_label(data)
+        const subject = Subject.get_by_label(data)
         found_belief = subject?.get_shared_belief_by_state(belief.origin_state)
       }
 
@@ -299,3 +329,12 @@ function _has_base_in_chain(descendant, ancestor) {
 
   return false
 }
+
+/**
+ * Reset subject registry
+ */
+function reset_subject_registry() {
+  Subject._registry.clear()
+}
+
+register_reset_hook(reset_subject_registry)

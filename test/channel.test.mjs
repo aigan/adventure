@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { Mind, Materia, State, Belief, Archetype, Traittype, Session, save_mind, load , logos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Archetype, Traittype, Session, save_mind, load } from '../public/worker/cosmos.mjs';
+import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { stdTypes, Thing, setupBrowserMocks, cleanupBrowserMocks, MockBroadcastChannel } from './helpers.mjs';
 

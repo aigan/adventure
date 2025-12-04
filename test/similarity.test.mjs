@@ -7,7 +7,8 @@
  */
 
 import { expect } from 'chai'
-import { Traittype, Belief, Materia, logos, logos_state } from '../public/worker/cosmos.mjs'
+import { Traittype, Belief, Materia } from '../public/worker/cosmos.mjs'
+import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { setupStandardArchetypes } from './helpers.mjs'
 

@@ -14,6 +14,7 @@
 
 import { expect } from 'chai';
 import { Mind, Materia, Traittype } from '../public/worker/cosmos.mjs';
+import { eidos } from '../public/worker/eidos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { createStateInNewMind, stdTypes, Thing } from './helpers.mjs';
 
@@ -63,8 +64,8 @@ describe('get_traits() composable trait consistency', () => {
     });
 
     // Create TWO base prototypes, each with different inventory items
-    const eidos = DB.get_eidos();
-    const eidos_state = eidos.create_timed_state(100);
+    const eidos_mind = eidos();
+    const eidos_state = eidos_mind.create_timed_state(100);
 
     const warrior_proto = eidos_state.add_belief_from_template({
       bases: ['HasInventory'],
@@ -162,8 +163,8 @@ describe('get_traits() composable trait consistency', () => {
     });
 
     // Create a base prototype that itself inherits and adds to inventory
-    const eidos = DB.get_eidos();
-    const eidos_state = eidos.create_timed_state(100);
+    const eidos_mind = eidos();
+    const eidos_state = eidos_mind.create_timed_state(100);
 
     const warrior_proto = eidos_state.add_belief_from_template({
       bases: ['HasInventory'],

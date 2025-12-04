@@ -13,6 +13,8 @@ import * as DB from '../public/worker/db.mjs'
 import { Mind } from '../public/worker/mind.mjs'
 import { Materia } from '../public/worker/materia.mjs'
 import { sysdesig } from '../public/worker/debug.mjs'
+import { eidos } from '../public/worker/eidos.mjs'
+import { logos, logos_state } from '../public/worker/logos.mjs'
 
 // Reset for clean test
 DB.reset_registries()
@@ -50,7 +52,7 @@ DB.register({
 
 // Create world
 const world = Materia.create_world()
-const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+const world_state = world.create_state(logos_state(), {tt: 1})
 
 // Create locations
 world_state.add_beliefs_from_template({
@@ -103,12 +105,12 @@ world_state.add_shared_from_template({
 })
 
 // Lock base prototypes before using as bases
-const eidos = DB.get_eidos()
+const eidos = eidos()
 const eidos_s1 = eidos.origin_state
 eidos_s1.lock()
 
 // Create new Eidos state for VillageBlacksmith
-const eidos_s2 = eidos_s1.branch_state(DB.get_logos_state())
+const eidos_s2 = eidos_s1.branch_state(logos_state())
 eidos_s2.add_beliefs_from_template({
   VillageBlacksmith: {
     bases: ['Villager', 'Blacksmith'],

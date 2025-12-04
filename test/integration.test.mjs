@@ -13,7 +13,8 @@
  */
 
 import { expect } from 'chai';
-import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
 
@@ -131,7 +132,7 @@ describe('Integration', () => {
       expect(player_mind).to.be.instanceOf(Mind);
 
       // Verify the Villager prototype's mind knows about workshop (via about_state)
-      const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(state);
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(state);
       const villager_mind = villager.get_trait(state, Traittype.get_by_label('mind'));
       expect(villager_mind).to.be.instanceOf(Mind);
 
@@ -212,7 +213,7 @@ describe('Integration', () => {
       });
 
       // Verify using rev_trait() to find beliefs where @about points to workshop
-      const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(state);
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(state);
       const villager_mind = villager.get_trait(state, Traittype.get_by_label('mind'));
       const villager_mind_state = [...villager_mind.states_at_tt(0)][0];
 
@@ -490,7 +491,7 @@ describe('Integration', () => {
       world_state.lock();
 
       const tavern = world_state.get_belief_by_label('tavern');
-      const villager_proto = DB.get_subject_by_label('VillagerProto').get_shared_belief_by_state(world_state);
+      const villager_proto = Subject.get_by_label('VillagerProto').get_shared_belief_by_state(world_state);
 
       // Create specific villager instance (inherits prototype's knowledge)
       const world_state2 = world_state.branch_state(logos().origin_state, 2);
@@ -607,7 +608,7 @@ describe('Integration', () => {
 
       // Create world with entities
       const world = Materia.create_world();
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
+      const world_state = world.create_state(logos_state(), {tt: 1});
       world_state.add_beliefs_from_template({
         village: {
           bases: ['Location']
@@ -653,7 +654,7 @@ describe('Integration', () => {
       const player_state = player_mind.origin_state;  // Use origin_state since mind is locked
 
       // Verify state.base points to Villager's mind state
-      const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state);
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(world_state);
       expect(villager).to.not.be.null;
       const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
       const villager_state = villager_mind.origin_state;
@@ -721,7 +722,7 @@ describe('Integration', () => {
 
       // Create world with entities
       const world = Materia.create_world();
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
+      const world_state = world.create_state(logos_state(), {tt: 1});
       world_state.add_beliefs_from_template({
         village: {
           bases: ['Location']
@@ -837,7 +838,7 @@ describe('Integration', () => {
 
       // Create world with entities
       const world = Materia.create_world();
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
+      const world_state = world.create_state(logos_state(), {tt: 1});
       world_state.add_beliefs_from_template({
         workshop: {
           bases: ['Location']
@@ -869,7 +870,7 @@ describe('Integration', () => {
       const player_mind = player_belief.get_trait(world_state, Traittype.get_by_label('mind'));
       const player_state = player_mind.origin_state;
 
-      const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state);
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(world_state);
       const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
       const villager_state = villager_mind.origin_state;
 
@@ -923,7 +924,7 @@ describe('Integration', () => {
 
       // Create world with entities
       const world = Materia.create_world();
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
+      const world_state = world.create_state(logos_state(), {tt: 1});
       world_state.add_beliefs_from_template({
         workshop: {bases: ['Location']},
         tavern: {bases: ['Location']},
@@ -966,11 +967,11 @@ describe('Integration', () => {
       });
 
       // Get all the minds and states in the chain
-      const culture = DB.get_subject_by_label('Culture').get_shared_belief_by_state(world_state);
+      const culture = Subject.get_by_label('Culture').get_shared_belief_by_state(world_state);
       const culture_mind = culture.get_trait(world_state, Traittype.get_by_label('mind'));
       const culture_state = culture_mind.origin_state;
 
-      const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state);
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(world_state);
       const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
       const villager_state = villager_mind.origin_state;
 
@@ -1049,7 +1050,7 @@ describe('Integration', () => {
 
       // Create world with entities
       const world = Materia.create_world();
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
+      const world_state = world.create_state(logos_state(), {tt: 1});
       world_state.add_beliefs_from_template({
         village: {bases: ['Location']},
         workshop: {
@@ -1116,7 +1117,7 @@ describe('Integration', () => {
       expect(player_workshop_archetypes).to.include('Location');
 
       // Verify inheritance structure
-      const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state);
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(world_state);
       const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
       const villager_state = villager_mind.origin_state;
 
@@ -1170,7 +1171,7 @@ describe('Integration', () => {
 
       // Create world with entities
       const world = Materia.create_world();
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1});
+      const world_state = world.create_state(logos_state(), {tt: 1});
       world_state.add_beliefs_from_template({
         village: {bases: ['Location']},
         workshop: {
@@ -1225,7 +1226,7 @@ describe('Integration', () => {
       expect(player_workshop.get_trait(player_state, Traittype.get_by_label('location'))).to.not.be.null;
 
       // Verify Villager has the same knowledge
-      const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state);
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(world_state);
       const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
       const villager_state = villager_mind.origin_state;
       const villager_beliefs = [...villager_state.get_beliefs()];

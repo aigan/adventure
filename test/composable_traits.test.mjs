@@ -22,6 +22,7 @@
 import { expect } from 'chai'
 import { Traittype } from '../public/worker/traittype.mjs'
 import * as DB from '../public/worker/db.mjs'
+import { eidos } from '../public/worker/eidos.mjs'
 
 describe('Composable Traits', () => {
   beforeEach(() => {
@@ -74,7 +75,7 @@ describe('Composable Traits', () => {
         }
       )
 
-      const eidos_state = DB.get_eidos().origin_state
+      const eidos_state = eidos().origin_state
       const blacksmith = eidos_state.get_belief_by_label('Blacksmith')
 
       // Verify Blacksmith composes all three items transitively
@@ -129,7 +130,7 @@ describe('Composable Traits', () => {
         }
       )
 
-      const eidos_state = DB.get_eidos().origin_state
+      const eidos_state = eidos().origin_state
       const vb = eidos_state.get_belief_by_label('VillageBlacksmith')
 
       // Should have deduplicated inventory (only 1 hammer, not 2)
@@ -181,7 +182,7 @@ describe('Composable Traits', () => {
         }
       )
 
-      const eidos_state = DB.get_eidos().origin_state
+      const eidos_state = eidos().origin_state
       const blacksmith = eidos_state.get_belief_by_label('Blacksmith')
 
       // Check to_inspect_view shows composed inventory

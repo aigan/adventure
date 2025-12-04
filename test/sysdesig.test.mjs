@@ -1,9 +1,9 @@
 import { expect } from 'chai'
 import { setupStandardArchetypes, createMindWithBeliefs, get_first_belief_by_label } from './helpers.mjs'
 import * as DB from '../public/worker/db.mjs'
-import { Mind, Materia, State, Temporal, Belief, Archetype, logos } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, State, Temporal, Belief, Archetype } from '../public/worker/cosmos.mjs'
+import { logos, logos_state } from '../public/worker/logos.mjs'
 import { sysdesig } from '../public/worker/debug.mjs'
-
 
 describe('sysdesig', () => {
   beforeEach(() => {

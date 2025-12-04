@@ -6,6 +6,8 @@
 import { expect } from 'chai'
 import * as DB from '../public/worker/db.mjs'
 import { Mind, Materia, Belief, Traittype } from '../public/worker/cosmos.mjs'
+import { eidos } from '../public/worker/eidos.mjs'
+import { logos, logos_state } from '../public/worker/logos.mjs'
 
 describe('Composable Traits - Complex Scenarios', () => {
   beforeEach(() => {
@@ -44,8 +46,8 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Materia(DB.get_logos_mind(), 'world')
-      const state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
+      const world_mind = new Materia(logos(), 'world')
+      const state = world_mind.create_state(logos_state(), {tt: 1})
 
       // NPC with two prototype bases
       const npc = state.add_belief_from_template({
@@ -106,7 +108,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const eidos_state = DB.get_eidos().origin_state
+      const eidos_state = eidos().origin_state
       const master = eidos_state.get_belief_by_label('MasterCraftsman')
 
       // Should compose from entire chain: Villager -> Blacksmith -> MasterCraftsman + Guard
@@ -148,7 +150,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const eidos_state = DB.get_eidos().origin_state
+      const eidos_state = eidos().origin_state
       const blacksmith = eidos_state.get_belief_by_label('Blacksmith')
 
       // Should have null (blocks composition from Villager)
@@ -186,8 +188,8 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Materia(DB.get_logos_mind(), 'world')
-      const state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
+      const world_mind = new Materia(logos(), 'world')
+      const state = world_mind.create_state(logos_state(), {tt: 1})
 
       // Create player inheriting from Blacksmith
       const player = state.add_belief_from_template({
@@ -233,8 +235,8 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Materia(DB.get_logos_mind(), 'world')
-      const state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
+      const world_mind = new Materia(logos(), 'world')
+      const state = world_mind.create_state(logos_state(), {tt: 1})
 
       // Create NPC with explicit inventory referencing shared beliefs from Eidos
       // Should compose: Villager[token] + Guard[sword] + [token, sword] from own trait
@@ -281,8 +283,8 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Materia(DB.get_logos_mind(), 'world')
-      const state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
+      const world_mind = new Materia(logos(), 'world')
+      const state = world_mind.create_state(logos_state(), {tt: 1})
 
       // NPC with explicit empty inventory - still composes with base!
       // Empty array is not null, so composition happens: [token] + [] = [token]
@@ -327,8 +329,8 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Materia(DB.get_logos_mind(), 'world')
-      const state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
+      const world_mind = new Materia(logos(), 'world')
+      const state = world_mind.create_state(logos_state(), {tt: 1})
 
       // Create sword in world state
       state.add_belief_from_template({
@@ -390,8 +392,8 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Materia(DB.get_logos_mind(), 'world')
-      let state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
+      const world_mind = new Materia(logos(), 'world')
+      let state = world_mind.create_state(logos_state(), {tt: 1})
 
       // Tick 1: Create NPC as just a Villager (has token)
       const npc = state.add_belief_from_template({
@@ -408,7 +410,7 @@ describe('Composable Traits - Complex Scenarios', () => {
 
       // Tick 2: NPC joins the guard (gains Guard base in addition to Villager)
       // Create a new belief with same subject but additional bases
-      state = state.branch_state(DB.get_logos_state(), 2)
+      state = state.branch_state(logos_state(), 2)
 
       const npc_v2 = Belief.from_template(state, {
         sid: npc.subject.sid,  // Same subject
@@ -455,8 +457,8 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Materia(DB.get_logos_mind(), 'world')
-      let state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
+      const world_mind = new Materia(logos(), 'world')
+      let state = world_mind.create_state(logos_state(), {tt: 1})
 
       // Create sword in world state
       state.add_belief_from_template({
@@ -479,7 +481,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       state.lock()
 
       // Tick 2: NPC acquires sword (should compose with prototype Villager's token)
-      state = state.branch_state(DB.get_logos_state(), 2)
+      state = state.branch_state(logos_state(), 2)
       state = state.tick_with_traits(npc, 2, {
         inventory: ['sword']  // Should compose: Villager[token] + [sword] = [token, sword]
       })
@@ -521,8 +523,8 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Materia(DB.get_logos_mind(), 'world')
-      const state1 = world_mind.create_state(DB.get_logos_state(), {tt: 1})
+      const world_mind = new Materia(logos(), 'world')
+      const state1 = world_mind.create_state(logos_state(), {tt: 1})
 
       const npc = state1.add_belief_from_template({
         bases: ['Villager'],
@@ -533,7 +535,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       state1.lock()
 
       // Branch at different vt
-      const state2 = state1.branch_state(DB.get_logos_state(), 2)
+      const state2 = state1.branch_state(logos_state(), 2)
       state2.lock()
 
       // Composition should work in both states
@@ -587,8 +589,8 @@ describe('Composable Traits - Complex Scenarios', () => {
         }
       )
 
-      const world_mind = new Materia(DB.get_logos_mind(), 'world')
-      let state = world_mind.create_state(DB.get_logos_state(), {tt: 1})
+      const world_mind = new Materia(logos(), 'world')
+      let state = world_mind.create_state(logos_state(), {tt: 1})
 
       // Create sword in world state
       state.add_belief_from_template({
@@ -613,7 +615,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       state.lock()
 
       // Tick 2: NPC gains sword (composes with existing inventory)
-      state = state.branch_state(DB.get_logos_state(), 2)
+      state = state.branch_state(logos_state(), 2)
       state = state.tick_with_traits(npc, 2, {
         inventory: ['sword']  // Composes: [token, hammer] + [sword]
       })

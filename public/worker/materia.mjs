@@ -17,7 +17,9 @@ import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
 import * as DB from './db.mjs'
-import * as Cosmos from './cosmos.mjs'
+import { logos } from './logos.mjs'
+import { Temporal } from './temporal.mjs'
+import { Convergence } from './convergence.mjs'
 
 /**
  * @typedef {import('./subject.mjs').Subject} Subject
@@ -56,8 +58,8 @@ export class Materia extends Mind {
    * @returns {Materia} World mind with logos as parent
    */
   static create_world(label = 'world') {
-    const logos = DB.get_logos_mind()
-    return new Materia(logos, label)
+    const logos_mind = logos()
+    return new Materia(logos_mind, label)
   }
 
   /**
@@ -122,8 +124,6 @@ export class Materia extends Mind {
 
     const parent_mind = ground_state.in_mind
     const self_subject = belief.subject
-
-    const { Convergence } = Cosmos
 
     // Create composed mind (self_subject is Subject, belief.subject is the actual instance)
     const composed_mind = new Materia(parent_mind, self_subject?.get_label() ?? null, null)
@@ -204,7 +204,6 @@ export class Materia extends Mind {
     let state
     if (component_states && component_states.length > 1) {
       // Multi-parent composition - create Convergence
-      const { Convergence } = Cosmos
       state = new Convergence(
         entity_mind,
         ground_state,
@@ -218,7 +217,7 @@ export class Materia extends Mind {
       )
     } else {
       // Single or no base - use regular Temporal state
-      state = new Cosmos.Temporal(
+      state = new Temporal(
         entity_mind,
         ground_state,             // ground_state (where body exists)
         base_mind_state ?? null,  // base state for knowledge inheritance

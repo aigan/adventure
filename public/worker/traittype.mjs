@@ -25,7 +25,6 @@
 import { assert } from './debug.mjs'
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
-import * as Cosmos from './cosmos.mjs'
 import { Subject } from './subject.mjs'
 import { Mind } from './mind.mjs'
 import { State } from './state.mjs'

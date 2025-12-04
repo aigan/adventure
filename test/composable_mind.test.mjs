@@ -16,6 +16,7 @@
 
 import { expect } from 'chai'
 import { Mind, Materia, Belief, Subject, Traittype } from '../public/worker/cosmos.mjs'
+import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
 
 describe('Composable Mind Trait', () => {
@@ -38,7 +39,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         village: {bases: ['Location']},
@@ -89,7 +90,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']},
@@ -150,7 +151,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']},
@@ -223,7 +224,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']},
@@ -265,7 +266,7 @@ describe('Composable Mind Trait', () => {
       expect(mind1.origin_state).to.equal(mind2.origin_state, 'Should return same Convergence')
 
       // Different state still returns same cached Mind (belief-based caching)
-      const world_state2 = world.create_state(DB.get_logos_state(), {tt: 2})
+      const world_state2 = world.create_state(logos_state(), {tt: 2})
       const mind3 = vb_belief.get_trait(world_state2, Traittype.get_by_label('mind'))
 
       expect(mind1).to.equal(mind3, 'Same belief returns same cached Mind instance')
@@ -290,7 +291,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']},
@@ -335,8 +336,8 @@ describe('Composable Mind Trait', () => {
       }
 
       // Order should match bases order (Villager first, Blacksmith second)
-      const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state)
-      const blacksmith = DB.get_subject_by_label('Blacksmith').get_shared_belief_by_state(world_state)
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(world_state)
+      const blacksmith = Subject.get_by_label('Blacksmith').get_shared_belief_by_state(world_state)
 
       const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'))
       const blacksmith_mind = blacksmith.get_trait(world_state, Traittype.get_by_label('mind'))
@@ -360,7 +361,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']}
@@ -381,7 +382,7 @@ describe('Composable Mind Trait', () => {
       })
 
       // Regular state (single base, no composition)
-      const villager = DB.get_subject_by_label('Villager').get_shared_belief_by_state(world_state)
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(world_state)
       const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'))
 
       expect(villager_mind.origin_state.is_union).to.be.undefined
@@ -414,7 +415,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state1 = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state1 = world.create_state(logos_state(), {tt: 1})
 
       world_state1.add_beliefs_from_template({
         tavern: {bases: ['Location']},
@@ -442,7 +443,7 @@ describe('Composable Mind Trait', () => {
       })
 
       // Create second world state (branched)
-      const world_state2 = world.create_state(DB.get_logos_state(), {tt: 2})
+      const world_state2 = world.create_state(logos_state(), {tt: 2})
 
       const vb_belief = world_state1.get_belief_by_label('village_blacksmith')
 
@@ -484,7 +485,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']},
@@ -569,7 +570,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         workshop: {bases: ['Location']}
@@ -638,7 +639,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']},
@@ -710,7 +711,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         world_loc: {bases: ['Location']},
@@ -808,7 +809,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']}
@@ -871,7 +872,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']}
@@ -922,7 +923,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']}
@@ -986,7 +987,7 @@ describe('Composable Mind Trait', () => {
       }, {})
 
       const world = Materia.create_world()
-      const world_state = world.create_state(DB.get_logos_state(), {tt: 1})
+      const world_state = world.create_state(logos_state(), {tt: 1})
 
       world_state.add_beliefs_from_template({
         tavern: {bases: ['Location']},

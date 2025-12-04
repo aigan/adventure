@@ -584,7 +584,7 @@ export class State {
    * @returns {Belief|null} The belief with this label in this state (state only, no shared beliefs)
    */
   get_belief_by_label(label) {
-    const subject = DB.get_subject_by_label(label)
+    const subject = Subject.get_by_label(label)
     if (!subject) return null
     return this.get_belief_by_subject(subject)
   }

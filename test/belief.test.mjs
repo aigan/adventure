@@ -1,5 +1,7 @@
 import { expect } from 'chai';
-import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind, load, logos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { eidos } from '../public/worker/eidos.mjs'
+import { logos } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, createStateInNewMind, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
 
@@ -169,12 +171,11 @@ describe('Belief', () => {
         bases: ['Location'],
       });
 
-      // Should be in belief_by_subject registry
-      expect(DB._reflect().belief_by_subject).to.exist;
-      expect(DB._reflect().belief_by_subject.get(room.subject)).to.exist;
+      // Should be in subject.beliefs
+      expect(room.subject.beliefs).to.exist;
 
-      // Registry should contain a Set of beliefs with this subject
-      const beliefs_with_subject = DB._reflect().belief_by_subject.get(room.subject);
+      // Subject should contain a Set of beliefs
+      const beliefs_with_subject = room.subject.beliefs;
       expect(beliefs_with_subject).to.be.instanceof(Set);
       expect(beliefs_with_subject.has(room)).to.be.true;
     });
@@ -205,8 +206,8 @@ describe('Belief', () => {
       expect(room_v2.subject).to.equal(room_v1.subject);
       expect(room_v3.subject).to.equal(room_v1.subject);
 
-      // All should be in belief_by_subject registry
-      const beliefs_with_subject = DB._reflect().belief_by_subject.get(room_v1.subject);
+      // All should be in subject.beliefs
+      const beliefs_with_subject = room_v1.subject.beliefs;
       expect(beliefs_with_subject.size).to.equal(3);
       expect(beliefs_with_subject.has(room_v1)).to.be.true;
       expect(beliefs_with_subject.has(room_v2)).to.be.true;
@@ -314,8 +315,8 @@ describe('Belief', () => {
 
     it('returns tt from timed state for shared beliefs', () => {
       // Create a shared belief in a timed state in Eidos
-      const eidos = DB.get_eidos();
-      const state_110 = eidos.create_timed_state(110);
+      const eidos_mind = eidos();
+      const state_110 = eidos_mind.create_timed_state(110);
       const archetype = Archetype.get_by_label('Temporal');
       const belief = new Belief(state_110, null, [archetype]);
 
@@ -335,16 +336,16 @@ describe('Belief', () => {
     });
 
     it('returns -Infinity for timeless shared beliefs (no origin_state)', () => {
-      const eidos = DB.get_eidos();
-      const belief = new Belief(eidos.origin_state, null, []);
+      const eidos_mind = eidos();
+      const belief = new Belief(eidos_mind.origin_state, null, []);
       belief.origin_state = null;  // Manually break it for testing
 
       expect(belief.get_tt()).to.equal(-Infinity);
     });
 
     it('handles tt=0 correctly (not confused with null/undefined)', () => {
-      const eidos = DB.get_eidos();
-      const state_0 = eidos.create_timed_state(0);
+      const eidos_mind = eidos();
+      const state_0 = eidos_mind.create_timed_state(0);
       const archetype = Archetype.get_by_label('Temporal');
       const belief = new Belief(state_0, null, [archetype]);
 
@@ -572,8 +573,8 @@ describe('Belief', () => {
     // Matrix 1.4: Shared Belief Inheritance
     it('inherits traits from shared belief prototype', () => {
       // Create shared belief "GenericSword" with damage: 10, weight: 5
-      const eidos = DB.get_eidos();
-      const state_100 = eidos.create_timed_state(100);
+      const eidos_mind = eidos();
+      const state_100 = eidos_mind.create_timed_state(100);
       const generic_sword = state_100.add_belief_from_template({
         bases: ['MeleeWeapon'],
         traits: {
@@ -582,7 +583,7 @@ describe('Belief', () => {
         }
       });
 
-      expect(generic_sword.in_mind).to.equal(eidos);
+      expect(generic_sword.in_mind).to.equal(eidos_mind);
       expect(generic_sword.origin_state).to.equal(state_100);
 
       // Create regular belief inheriting from GenericSword
@@ -608,8 +609,8 @@ describe('Belief', () => {
 
     it('multiple beliefs reference same shared subject', () => {
       // Create shared belief "StandardSword" with damage: 10
-      const eidos = DB.get_eidos();
-      const state_100 = eidos.create_timed_state(100);
+      const eidos_mind = eidos();
+      const state_100 = eidos_mind.create_timed_state(100);
       const standard_sword = state_100.add_belief_from_template({
         bases: ['MeleeWeapon'],
         traits: {
@@ -660,8 +661,8 @@ describe('Belief', () => {
     // Matrix 7.8: Trait from Shared Belief at Different Timestamps
     it('resolves correct version at different timestamps', () => {
       // Create shared belief v1 at timestamp 100
-      const eidos = DB.get_eidos();
-      const state_100 = eidos.create_timed_state(100);
+      const eidos_mind = eidos();
+      const state_100 = eidos_mind.create_timed_state(100);
       const seasonal_v1 = state_100.add_belief_from_template({
         bases: ['Effect'],
         traits: {
@@ -671,7 +672,7 @@ describe('Belief', () => {
       });
 
       // Create shared belief v2 at tt 200 (newer version)
-      const state_200 = eidos.create_timed_state(200);
+      const state_200 = eidos_mind.create_timed_state(200);
       const seasonal_v2 = new Belief(state_200, seasonal_v1.subject, [seasonal_v1]);
       const bonus_traittype = Traittype.get_by_label('bonus');
       seasonal_v2.add_trait(bonus_traittype, 10);
@@ -696,8 +697,8 @@ describe('Belief', () => {
     // Matrix 2.3: Subject Through Multi-Level Chain
     it('resolves traits through shared belief chain', () => {
       // Create shared belief chain: Weapon (base damage) → Sword (adds sharpness)
-      const eidos = DB.get_eidos();
-      const state_100 = eidos.create_timed_state(100);
+      const eidos_mind = eidos();
+      const state_100 = eidos_mind.create_timed_state(100);
       const weapon = state_100.add_belief_from_template({
         bases: ['MeleeWeapon'],
         traits: {
@@ -740,8 +741,8 @@ describe('Belief', () => {
     // Matrix 7.9: Mixed Archetype + Shared Belief Bases
     it('inherits from shared belief through regular belief chain', () => {
       // Create shared belief "Tool" with durability
-      const eidos = DB.get_eidos();
-      const state_100 = eidos.create_timed_state(100);
+      const eidos_mind = eidos();
+      const state_100 = eidos_mind.create_timed_state(100);
       const tool = state_100.add_belief_from_template({
         bases: ['Tool'],
         traits: {
@@ -776,13 +777,13 @@ describe('Belief', () => {
       // Verify chain: hammer_v2 → hammer_v1 → Tool (shared)
       expect(hammer_v2._bases.has(hammer_v1)).to.be.true;
       expect(hammer_v1._bases.has(tool)).to.be.true;
-      expect(tool.in_mind).to.equal(eidos);
+      expect(tool.in_mind).to.equal(eidos_mind);
     });
 
     it('get_shared_belief_by_state finds shared belief', () => {
       // Create shared belief for a subject
-      const eidos = DB.get_eidos();
-      const state_100 = eidos.create_timed_state(100);
+      const eidos_mind = eidos();
+      const state_100 = eidos_mind.create_timed_state(100);
       const default_item = state_100.add_belief_from_template({
         bases: ['Item'],
         traits: {
@@ -800,14 +801,14 @@ describe('Belief', () => {
 
       expect(found).to.not.be.null;
       expect(found).to.equal(default_item);
-      expect(found.in_mind).to.equal(eidos);  // Confirms it's the shared belief in Eidos
+      expect(found.in_mind).to.equal(eidos_mind);  // Confirms it's the shared belief in Eidos
       expect(found.get_trait(state, Traittype.get_by_label('value'))).to.equal(50);
     });
 
     it('shared beliefs not registered in belief_by_mind', () => {
       // Create shared belief
-      const eidos = DB.get_eidos();
-      const state_100 = eidos.create_timed_state(100);
+      const eidos_mind = eidos();
+      const state_100 = eidos_mind.create_timed_state(100);
       const prototype = state_100.add_belief_from_template({
         bases: ['Item'],
         traits: {
@@ -817,12 +818,12 @@ describe('Belief', () => {
       });
 
       // Shared belief should be in belief_by_subject
-      const beliefs_by_subject = [...DB.get_beliefs_by_subject(prototype.subject)];
+      const beliefs_by_subject = [...Subject.get_beliefs_by_subject(prototype.subject)];
       expect(beliefs_by_subject).to.have.lengthOf.at.least(1);
       expect(beliefs_by_subject).to.include(prototype);
 
       // Shared belief is now in Eidos mind
-      expect(prototype.in_mind).to.equal(eidos);
+      expect(prototype.in_mind).to.equal(eidos_mind);
 
       // Create regular belief in a mind
       const mind = new Materia(logos(), 'player');
@@ -856,8 +857,8 @@ describe('Belief', () => {
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100});
 
       // Create shared belief scoped to world_mind (use existing Thing archetype)
-      const eidos = DB.get_eidos();
-      const state_100 = eidos.create_timed_state(100);
+      const eidos_mind = eidos();
+      const state_100 = eidos_mind.create_timed_state(100);
       const cultural_knowledge = state_100.add_belief_from_template({
         bases: ['Thing'],
         traits: {},
@@ -913,8 +914,8 @@ describe('Belief', () => {
       const dream_parent_state = dream_mind.create_state(logos().origin_state, {tt: 100});
 
       // Create two different universal beliefs in Eidos
-      const eidos = DB.get_eidos();
-      const state_100 = eidos.create_timed_state(100);
+      const eidos_mind = eidos();
+      const state_100 = eidos_mind.create_timed_state(100);
       const world_tavern = state_100.add_belief_from_template({
         bases: ['Thing'],
         traits: {},
@@ -956,8 +957,8 @@ describe('Belief', () => {
 
     it('universal subject (mater=null) accessible from any mind', () => {
       // Create universal shared belief in Eidos
-      const eidos = DB.get_eidos();
-      const state_100 = eidos.create_timed_state(100);
+      const eidos_mind = eidos();
+      const state_100 = eidos_mind.create_timed_state(100);
       const generic_weapon = state_100.add_belief_from_template({
         bases: ['Thing'],
         traits: {},

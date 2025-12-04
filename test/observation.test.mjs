@@ -1,6 +1,7 @@
 import { expect } from 'chai'
 import * as DB from '../public/worker/db.mjs'
 import * as Cosmos from '../public/worker/cosmos.mjs'
+import { logos, logos_state } from '../public/worker/logos.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs'

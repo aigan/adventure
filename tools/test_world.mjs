@@ -32,9 +32,9 @@ console.log('\n' + '='.repeat(80))
 console.log('ARCHETYPES')
 console.log('='.repeat(80))
 
-const archetype_labels = Object.keys(registries.archetype_by_label).sort()
+const archetype_labels = Object.keys(Archetype._registry).sort()
 for (const label of archetype_labels) {
-  const archetype = registries.archetype_by_label[label]
+  const archetype = Archetype._registry[label]
   console.log(`\n${label}:`)
   console.log(`  bases: ${[...archetype._bases].map(b => b.label).join(', ') || '(none)'}`)
   const trait_entries = archetype.get_trait_entries()

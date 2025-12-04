@@ -7,6 +7,7 @@
 
 import { expect } from 'chai'
 import { Mind, Materia, State, Belief, Traittype, Subject } from '../public/worker/cosmos.mjs'
+import { eidos } from '../public/worker/eidos.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { createStateInNewMind, stdTypes, Thing } from './helpers.mjs'
 
@@ -50,8 +51,8 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         })
 
         // Create prototype with inventory
-        const eidos = DB.get_eidos()
-        const eidos_state = eidos.create_timed_state(100)
+        const eidos_mind = eidos()
+        const eidos_state = eidos_mind.create_timed_state(100)
         const warrior_proto = eidos_state.add_belief_from_template({
           bases: ['HasInventory'],
           traits: {
@@ -91,8 +92,8 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
           traits: {}, label: 'shield'
         })
 
-        const eidos = DB.get_eidos()
-        const eidos_state = eidos.create_timed_state(100)
+        const eidos_mind = eidos()
+        const eidos_state = eidos_mind.create_timed_state(100)
 
         // Base with null inventory
         const pacifist_proto = eidos_state.add_belief_from_template({
@@ -160,8 +161,8 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
           traits: {}, label: 'sword'
         })
 
-        const eidos = DB.get_eidos()
-        const eidos_state = eidos.create_timed_state(100)
+        const eidos_mind = eidos()
+        const eidos_state = eidos_mind.create_timed_state(100)
         const warrior_proto = eidos_state.add_belief_from_template({
           bases: ['HasInventory'],
           traits: {
@@ -203,8 +204,8 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
           traits: {}, label: 'sword'
         })
 
-        const eidos = DB.get_eidos()
-        const eidos_state = eidos.create_timed_state(100)
+        const eidos_mind = eidos()
+        const eidos_state = eidos_mind.create_timed_state(100)
         const warrior_proto = eidos_state.add_belief_from_template({
           bases: ['HasInventory'],
           traits: {
@@ -287,8 +288,8 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
           traits: {}, label: 'child3'
         })
 
-        const eidos = DB.get_eidos()
-        const eidos_state = eidos.create_timed_state(100)
+        const eidos_mind = eidos()
+        const eidos_state = eidos_mind.create_timed_state(100)
 
         const parent_proto = eidos_state.add_belief_from_template({
           bases: ['Person'],
@@ -330,8 +331,8 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
           traits: {}, label: 'child2'
         })
 
-        const eidos = DB.get_eidos()
-        const eidos_state = eidos.create_timed_state(100)
+        const eidos_mind = eidos()
+        const eidos_state = eidos_mind.create_timed_state(100)
 
         const parent1 = eidos_state.add_belief_from_template({
           bases: ['Person'],
@@ -405,7 +406,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
       })
 
       it('inherits Subject reference from archetype default', () => {
-        const eidos_state = DB.get_eidos().origin_state
+        const eidos_state = eidos().origin_state
         const standard = eidos_state.get_belief_by_label('StandardBlacksmith')
         const forge = eidos_state.get_belief_by_label('DefaultForge')
 
@@ -417,7 +418,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
       })
 
       it('instance can inherit Subject from prototype archetype', () => {
-        const eidos_state = DB.get_eidos().origin_state
+        const eidos_state = eidos().origin_state
         const forge = eidos_state.get_belief_by_label('DefaultForge')
 
         const state = createStateInNewMind('test')
@@ -585,7 +586,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
       })
 
       it('deduplicates items appearing via multiple inheritance paths', () => {
-        const eidos_state = DB.get_eidos().origin_state
+        const eidos_state = eidos().origin_state
         const diamond = eidos_state.get_belief_by_label('Diamond')
 
         const inventory_traittype = Traittype.get_by_label('inventory')
@@ -645,8 +646,8 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
       it('composes from both archetype and belief bases', () => {
         const state = createStateInNewMind('test')
 
-        const eidos = DB.get_eidos()
-        const eidos_state = eidos.create_timed_state(100)
+        const eidos_mind = eidos()
+        const eidos_state = eidos_mind.create_timed_state(100)
 
         const sword = eidos_state.add_belief_from_template({
           bases: ['PortableObject'],
@@ -677,7 +678,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const labels = result.map(subj => {
           const belief = state.get_belief_by_subject(subj) ||
                          eidos_state.get_belief_by_subject(subj) ||
-                         DB.get_eidos().origin_state.get_belief_by_subject(subj)
+                         eidos().origin_state.get_belief_by_subject(subj)
           return belief.get_label()
         }).sort()
 
@@ -802,8 +803,8 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
           traits: {}, label: 'sword'
         })
 
-        const eidos = DB.get_eidos()
-        const eidos_state = eidos.create_timed_state(100)
+        const eidos_mind = eidos()
+        const eidos_state = eidos_mind.create_timed_state(100)
 
         const warrior_proto = eidos_state.add_belief_from_template({
           bases: ['HasInventory'],
@@ -842,8 +843,8 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
           traits: {}, label: 'shield'
         })
 
-        const eidos = DB.get_eidos()
-        const eidos_state = eidos.create_timed_state(100)
+        const eidos_mind = eidos()
+        const eidos_state = eidos_mind.create_timed_state(100)
 
         const warrior_proto = eidos_state.add_belief_from_template({
           bases: ['HasInventory'],
@@ -978,8 +979,8 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
       })
 
       it('can inherit State value from archetype default', () => {
-        const eidos = DB.get_eidos()
-        const eidos_state = eidos.create_timed_state(100)
+        const eidos_mind = eidos()
+        const eidos_state = eidos_mind.create_timed_state(100)
 
         // Create a reference state
         const ref_state = createStateInNewMind('ref', 50)

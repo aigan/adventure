@@ -1,8 +1,8 @@
 import { expect } from 'chai';
-import { Mind, Materia, Belief, Subject, logos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, Belief, Subject } from '../public/worker/cosmos.mjs';
+import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { setupMinimalArchetypes, createStateInNewMind } from './helpers.mjs';
-
 
 describe('Subject', () => {
   beforeEach(() => {

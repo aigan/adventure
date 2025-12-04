@@ -295,7 +295,7 @@ export function get_first_belief_by_label(label) {
   if (sid === undefined) return null
 
   const subject = Subject.get_or_create_by_sid(sid, null)  // Universal subjects for tests
-  const beliefs = DB._reflect().belief_by_subject.get(subject)
+  const beliefs = subject.beliefs
   if (!beliefs || beliefs.size === 0) return null
 
   return beliefs.values().next().value ?? null

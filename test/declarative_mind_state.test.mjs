@@ -1,8 +1,9 @@
 import { expect } from 'chai';
-import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load , logos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { eidos } from '../public/worker/eidos.mjs'
+import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { stdTypes, Thing, createStateInNewMind } from './helpers.mjs';
-
 
 describe('Mind Trait', () => {
   beforeEach(() => {
@@ -160,8 +161,8 @@ describe('Mind Trait', () => {
     DB.register(traittypes, archetypes, {});
 
     // Create shared belief prototypes (templates for Location types)
-    const eidos = DB.get_eidos();
-    const state_100 = eidos.create_timed_state(100);
+    const eidos_mind = eidos();
+    const state_100 = eidos_mind.create_timed_state(100);
     const tavern_proto = state_100.add_belief_from_template({
       bases: ['Location'],
       traits: {
@@ -346,8 +347,8 @@ describe('Mind Trait', () => {
     DB.register(traittypes, archetypes, {});
 
     // Create shared prototype
-    const eidos = DB.get_eidos();
-    const state_100 = eidos.create_timed_state(100);
+    const eidos_mind = eidos();
+    const state_100 = eidos_mind.create_timed_state(100);
     const tavern_proto = state_100.add_belief_from_template({
       bases: ['Location'],
       traits: {
@@ -371,7 +372,7 @@ describe('Mind Trait', () => {
     // Create shared cultural knowledge (what villagers know about the tavern)
     // NOTE: Uses CulturalKnowledge archetype (non-spatial), not Location (spatial)
     // It's a template containing only the culturally known traits
-    const state_200 = eidos.create_timed_state(200);
+    const state_200 = eidos_mind.create_timed_state(200);
     const cultural_knowledge = state_200.add_belief_from_template({
       bases: ['CulturalKnowledge'],
       traits: {
