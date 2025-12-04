@@ -24,7 +24,6 @@ import { assert, log, debug, sysdesig } from './debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
 import { State } from './state.mjs'
-import * as Cosmos from './cosmos.mjs'
 import { Belief } from './belief.mjs'
 import { Traittype } from './traittype.mjs'
 
@@ -35,6 +34,9 @@ import { Traittype } from './traittype.mjs'
  * @typedef {import('./archetype.mjs').Archetype} Archetype
  * @typedef {import('./convergence.mjs').Convergence} Convergence
  */
+
+// IMPORT CONSTRAINTS: Cannot import materia, logos, eidos, temporal, timeless, convergence
+// (circular dependencies). Use registries instead. See docs/CIRCULAR_DEPENDENCIES.md
 
 /**
  * @typedef {object} MindJSON
@@ -61,17 +63,52 @@ import { Traittype } from './traittype.mjs'
  * @property {Set<State>} state - All states belonging to this mind
  */
 export class Mind {
-  // Registry for polymorphic deserialization
-  /** @type {Object<string, any>} */
+  /**
+   * Registry for Mind subclasses (avoids circular imports)
+   * @type {Object<string, any>}
+   */
   static _type_registry = {}
 
   /**
-   * Register a Mind subclass for deserialization
-   * @param {string} type_name - The _type value (e.g., 'Materia', 'Logos')
+   * Register Mind subclass. Called by subclass at module load.
+   * @param {string} type_name - The _type value (e.g., 'Materia')
    * @param {any} class_constructor - The subclass constructor
    */
   static register_type(type_name, class_constructor) {
     this._type_registry[type_name] = class_constructor
+  }
+
+  /**
+   * Get Mind subclass by type (for deserialization)
+   * @param {string} type_name - The _type value
+   * @returns {any} The class constructor
+   */
+  static get_class(type_name) {
+    return this._type_registry[type_name]
+  }
+
+  /**
+   * Registry for singletons/classes (avoids circular imports)
+   * @type {Object<string, any>}
+   */
+  static _function_registry = {}
+
+  /**
+   * Register singleton or class. Called at module load.
+   * @param {string} name - Function name (e.g., 'eidos', 'Materia')
+   * @param {any} fn - The function or class
+   */
+  static register_function(name, fn) {
+    this._function_registry[name] = fn
+  }
+
+  /**
+   * Get registered function/class (e.g., Mind.get_function('eidos'))
+   * @param {string} name - Function name
+   * @returns {any} The function or class
+   */
+  static get_function(name) {
+    return this._function_registry[name]
   }
 
   /** @type {string} - Type discriminator for polymorphism */
@@ -183,7 +220,7 @@ export class Mind {
     // Track if this mind is Eidos or descended from Eidos
     // All minds in Eidos lineage create universal subjects (mater=null)
     /** @type {boolean} */
-    this.in_eidos = this.constructor.name === 'Eidos' || (parent_mind?.in_eidos ?? false)
+    this.in_eidos = this._type === 'Eidos' || (parent_mind?.in_eidos ?? false)
 
     this.label = label
 
@@ -293,9 +330,9 @@ export class Mind {
    * @returns {State}
    */
   create_state(ground_state, options = {}) {
-    // TODO: Remove tight coupling - Mind shouldn't directly construct Temporal
-    // Consider factory pattern or inversion of dependency
-    const state = new Cosmos.Temporal(this, ground_state, null, options)
+    // Use registry to construct Temporal without importing it (avoids circular dependency)
+    const TemporalClass = State.get_class('Temporal')
+    const state = new TemporalClass(this, ground_state, null, options)
 
     // Track first state as origin
     if (this.origin_state === null) {
@@ -434,7 +471,7 @@ export class Mind {
    * @returns {Mind} New Materia instance with Convergence merging all component states
    */
   static compose(traittype, belief, minds, options = {}) {
-    const { Materia } = Cosmos
+    const Materia = this.get_function('Materia')
     return Materia.compose(traittype, belief, minds, options)
   }
 
@@ -451,7 +488,7 @@ export class Mind {
    * @returns {Mind} The created Materia (access unlocked state via mind.state)
    */
   static create_from_template(ground_state, ground_belief, traits, options = {}) {
-    const { Materia } = Cosmos
+    const Materia = this.get_function('Materia')
     return Materia.create_from_template(ground_state, ground_belief, traits, options)
   }
 
@@ -507,7 +544,7 @@ export class Mind {
 
       // It's a learn spec - call create_from_template on Materia
       // Pass component_states for multi-parent composition
-      const { Materia } = Cosmos
+      const Materia = Mind.get_function('Materia')
       const mind = Materia.create_from_template(creator_state, belief, data, {
         about_state,
         base_mind_state,
@@ -521,7 +558,7 @@ export class Mind {
     if (data?._type === 'Mind' && !(data._states instanceof Set)) {
       // Strip _type from template before passing to create_from_template
       const {_type, ...traits} = data
-      const { Materia } = Cosmos
+      const Materia = Mind.get_function('Materia')
       const mind = Materia.create_from_template(creator_state, belief, traits, {
         about_state,
         base_mind_state,
@@ -569,9 +606,9 @@ export class Mind {
     }
 
     // Fork invariant: child.tt = parent_state.vt (handled by Temporal constructor)
-    // TODO: Remove tight coupling - Mind shouldn't directly construct Temporal
-    // Consider factory pattern or inversion of dependency
-    return new Cosmos.Temporal(
+    // Use registry to construct Temporal without importing it (avoids circular dependency)
+    const TemporalClass = State.get_class('Temporal')
+    return new TemporalClass(
       this,
       ground_state,
       latest ?? null,               // Inherit from latest or null for initial

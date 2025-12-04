@@ -134,3 +134,6 @@ export function logos_state() {
 export function _reset_logos() {
   _logos = null
 }
+
+// Register singleton function for access without importing
+Mind.register_function('logos', logos)

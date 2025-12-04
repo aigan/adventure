@@ -17,7 +17,6 @@ import { assert, log, sysdesig, debug } from './debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import { Archetype } from './archetype.mjs'
 import * as DB from './db.mjs'
-import { eidos } from './cosmos.mjs'
 import { Subject } from './subject.mjs'
 import { Traittype } from './traittype.mjs'
 import { State } from './state.mjs'
@@ -135,7 +134,10 @@ export class Belief {
    * @returns {boolean}
    */
   get is_shared() {
-    // Shared beliefs live in Eidos - the realm of forms
+    if (!this.in_mind) return false
+    // Use Mind registry to avoid circular import (belief→eidos→mind→belief)
+    // @ts-ignore - in_mind.constructor is Mind class with static get_function
+    const eidos = this.in_mind.constructor.get_function('eidos')
     return this.in_mind === eidos()
   }
 

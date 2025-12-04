@@ -33,11 +33,19 @@ let _eidos = null
  * @augments Mind
  */
 export class Eidos extends Mind {
+  /**
+   * Override type discriminator
+   * @type {string}
+   */
+  _type = 'Eidos'
+
   constructor() {
     // Eidos is a child of Logos
     super(logos(), 'Eidos', null)
 
+    // Set type BEFORE creating origin_state so in_eidos is correct
     this._type = 'Eidos'
+    this.in_eidos = true  // Explicitly set since _type wasn't set during super()
 
     // Create timeless origin state for holding shared beliefs
     // Timeless extends State via runtime prototype manipulation
@@ -88,3 +96,6 @@ export function eidos() {
 export function _reset_eidos() {
   _eidos = null
 }
+
+// Register singleton function for access without importing
+Mind.register_function('eidos', eidos)

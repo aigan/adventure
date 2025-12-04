@@ -1,6 +1,5 @@
 import { set_id_sequence } from './id_sequence.mjs'
 import { Mind } from './mind.mjs'
-import { logos } from './cosmos.mjs'
 import * as DB from './db.mjs'
 import { register_reset_hook } from './reset.mjs'
 
@@ -153,11 +152,14 @@ export function load(json_string) {
     case 'Mind':
     case 'Materia':
     case 'Logos':
-    case 'Eidos':
+    case 'Eidos': {
       // When loading root mind, parent should be logos (or null only for logos itself)
       // Mind.from_json handles polymorphic dispatch based on _type
+      // Use Mind registry to avoid circular import (serialize→logos→mind→serialize)
+      const logos = Mind.get_function('logos')
       result = Mind.from_json(/** @type {MindJSON} */ (data),  logos())
       break
+    }
     case 'Belief':
       throw new Error('Loading individual Belief not yet implemented')
     case 'State':

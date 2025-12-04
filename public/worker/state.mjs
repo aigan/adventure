@@ -23,7 +23,6 @@
 import { assert, log, debug } from './debug.mjs'
 import { next_id } from './id_sequence.mjs'
 import * as DB from './db.mjs'
-import * as Cosmos from './cosmos.mjs'
 import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
 import { Serialize } from './serialize.mjs'
@@ -33,6 +32,9 @@ import { Archetype, A } from './archetype.mjs'
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
  */
+
+// IMPORT CONSTRAINTS: Cannot import temporal, timeless, convergence, eidos, logos, materia
+// (circular dependencies). Use registries instead. See docs/CIRCULAR_DEPENDENCIES.md
 
 /**
  * @typedef {object} StateJSON
@@ -60,17 +62,28 @@ import { Archetype, A } from './archetype.mjs'
  * Immutable state snapshot with differential updates
  */
 export class State {
-  // Registry for polymorphic deserialization
-  /** @type {Object<string, any>} */
+  /**
+   * Registry for State subclasses (avoids circular imports)
+   * @type {Object<string, any>}
+   */
   static _type_registry = {}
 
   /**
-   * Register a State subclass for deserialization
-   * @param {string} type_name - The _type value (e.g., 'Temporal', 'Timeless')
+   * Register State subclass. Called by subclass at module load.
+   * @param {string} type_name - The _type value (e.g., 'Temporal')
    * @param {any} class_constructor - The subclass constructor
    */
   static register_type(type_name, class_constructor) {
     this._type_registry[type_name] = class_constructor
+  }
+
+  /**
+   * Get State subclass by type (for deserialization/construction)
+   * @param {string} type_name - The _type value
+   * @returns {any} The class constructor
+   */
+  static get_class(type_name) {
+    return this._type_registry[type_name]
   }
 
   // TODO: Populate this registry for prototype state templates
@@ -398,9 +411,10 @@ export class State {
    * @param {Object<string, object>} beliefs - Object mapping labels to belief definitions
    */
   add_shared_from_template(beliefs) {
-    // TODO: Remove tight coupling - State shouldn't directly access eidos singleton
-    // Consider dependency injection or passing eidos_state as parameter
-    const eidos_mind = Cosmos.eidos()
+    // Use Mind registry to avoid circular dependency (state→eidos→mind→state)
+    // @ts-ignore - in_mind.constructor is Mind class with static get_function
+    const eidos = this.in_mind.constructor.get_function('eidos')
+    const eidos_mind = eidos()
     const eidos_state = eidos_mind.origin_state
     assert(eidos_state instanceof State, 'Eidos origin_state must be State', {eidos_state})
 
@@ -433,9 +447,9 @@ export class State {
 
     // self is inherited from this.self via base.self in constructor (no need to pass explicitly)
 
-    // TODO: Remove tight coupling - State shouldn't directly construct Temporal
-    // Consider factory pattern or inversion of dependency
-    const state = new Cosmos.Temporal(this.in_mind, ground_state, this, options)
+    // Use registry to construct Temporal without importing it
+    const TemporalClass = State.get_class('Temporal')
+    const state = new TemporalClass(this.in_mind, ground_state, this, options)
 
     // Validate time doesn't go backwards (skip check for timeless states)
     if (state.tt != null && this.tt != null) {

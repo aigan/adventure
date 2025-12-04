@@ -1,5 +1,4 @@
 import * as DB from './db.mjs'
-import { logos } from './cosmos.mjs'
 import { Belief } from './belief.mjs'
 import { Archetype } from './archetype.mjs'
 import { assert } from './debug.mjs'

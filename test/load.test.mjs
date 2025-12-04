@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load, Convergence, eidos } from '../public/worker/cosmos.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { setupStandardArchetypes, get_first_belief_by_label, createStateInNewMind } from './helpers.mjs';
@@ -346,6 +346,105 @@ describe('Save/Load functionality', () => {
       DB.reset_registries();
       setupStandardArchetypes();
       const loaded_mind = load(json1);
+
+      // Second save
+      const json2 = save_mind(loaded_mind);
+
+      // Compare JSON strings - should be identical
+      expect(json2).to.equal(json1);
+    });
+
+    it('comprehensive round-trip test with all features', () => {
+      // Create complex structure exercising key serialization features:
+      // - in_eidos preservation (checked via Eidos singleton)
+      // - Convergence states (multi-parent composition)
+      // - Mind traits (nested minds)
+      // - State base chains
+      // - Belief base chains
+      // - Multiple archetype bases
+
+      // Create world with temporal states
+      const world_mind = new Materia(logos(), 'world');
+      let world_state = world_mind.create_state(logos_state(), { tt: 1 });
+
+      const workshop = world_state.add_belief_from_template({
+        bases: ['Location'],
+        traits: {},
+        label: 'workshop',
+      });
+
+      // Create belief with Mind trait
+      const player_mind = new Materia(world_mind, 'player_mind');
+      const player_state = player_mind.create_state(world_state);
+      player_state.lock();
+
+      const player = world_state.add_belief_from_template({
+        bases: ['Person'],
+        traits: {
+          mind: player_mind,
+          location: 'workshop',
+        },
+        label: 'player',
+      });
+
+      world_state.lock();
+
+      // Create state chain with bases
+      let world_state2 = world_state.branch(logos_state(), 2);
+      const hammer = world_state2.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: {
+          location: 'workshop',
+        },
+        label: 'hammer',
+      });
+      world_state2.lock();
+
+      // Create Convergence state
+      const world_state3 = world_state2.branch(logos_state(), 3);
+      world_state3.lock();
+
+      const world_state4 = world_state2.branch(logos_state(), 3);
+      world_state4.lock();
+
+      const convergence = new Convergence(
+        world_mind,
+        logos_state(),
+        [world_state3, world_state4],
+        { tt: 3 }
+      );
+      convergence.lock();
+
+      // First save
+      const json1 = save_mind(world_mind);
+
+      // Verify in_eidos before load
+      expect(eidos().in_eidos).to.be.true;
+      expect(world_mind.in_eidos).to.be.false;
+      expect(player_mind.in_eidos).to.be.false;
+
+      // Load
+      DB.reset_registries();
+      setupStandardArchetypes();
+
+      const loaded_mind = load(json1);
+
+      // Verify in_eidos after load
+      expect(eidos().in_eidos).to.be.true;
+      expect(loaded_mind.in_eidos).to.be.false;
+
+      const loaded_player_mind = [...loaded_mind._child_minds][0];
+      expect(loaded_player_mind.in_eidos).to.be.false;
+
+      // Verify basic structure
+      expect(loaded_mind.label).to.equal('world');
+      expect(loaded_mind._child_minds.size).to.equal(1);
+
+      // Verify Convergence state
+      const loaded_states = [...loaded_mind._states];
+      const loaded_convergence = loaded_states.find(s => s._type === 'Convergence');
+      expect(loaded_convergence).to.exist;
+      expect(loaded_convergence.component_states).to.have.length(2);
 
       // Second save
       const json2 = save_mind(loaded_mind);
