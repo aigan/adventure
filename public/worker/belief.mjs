@@ -58,7 +58,7 @@ import { State } from './state.mjs'
  * @property {number} _id - Unique version identifier
  * @property {Subject} subject - Canonical Subject (identity holder)
  * @property {string|null} label - Optional label for lookup
- * @property {Mind} in_mind - Mind this belief belongs to (eidos() for prototypes)
+ * @property {Mind|undefined} in_mind - Mind this belief belongs to (getter from origin_state)
  * @property {Set<Belief|Archetype>} _bases - Base archetypes/beliefs for inheritance
  * @property {Map<Traittype, *>} _traits - Trait values (sids, primitives, State/Mind refs)
  * @property {Map<string, any>} [_deserialized_traits] - Temporary storage during JSON deserialization
@@ -81,11 +81,11 @@ export class Belief {
     assert(state instanceof State, "belief must be constructed with a state")
 
     /** @type {Mind} */
-    const mind = state.in_mind // FIXME: Redundant since we have origin_state
+    const mind = state.in_mind // TODO: should not need to check for Eidos
 
     /** @type {Set<Belief|Archetype>} */ this._bases = new Set(bases)
-    // Eidos: universals (mater=null), Materia: particulars (mater=mind)
-    const mater = mind._type === 'Eidos' ? null : mind
+    // Eidos and descendants: universals (mater=null), Materia under Logos: particulars (mater=mind)
+    const mater = mind.in_eidos ? null : mind
     this.subject = subject ?? new Subject(null, mater)
 
     // Validate: subject.mater must be null (universal) or this mind
@@ -99,8 +99,6 @@ export class Belief {
       })
 
     this._id = next_id()
-    /** @type {Mind} */
-    this.in_mind = mind
     this._traits = new Map()
     this._locked = false
     /** @type {Map<Traittype, any>} */
@@ -121,6 +119,14 @@ export class Belief {
    */
   get locked() {
     return this._locked
+  }
+
+  /**
+   * Get the mind this belief belongs to
+   * @returns {Mind|undefined}
+   */
+  get in_mind() {
+    return this.origin_state?.in_mind
   }
 
   /**
@@ -354,7 +360,7 @@ export class Belief {
 
     debug([state], "rev_trait", this, traittype.label)
 
-    // FIXME: Update the trait indexes here instead of on modify
+    // TODO: Update the trait indexes here instead of on modify
     const seen = new Set()
     const yielded = new Set()
 
@@ -908,7 +914,6 @@ export class Belief {
     // Eidos: universals (mater=null), Materia: particulars (mater=mind)
     const mater = mind._type === 'Eidos' ? null : mind
     belief.subject = Subject.get_or_create_by_sid(data.sid, mater)
-    belief.in_mind = mind
     belief._locked = false
     belief._cache = new Map()
     belief._cached_all = false
@@ -952,7 +957,6 @@ export class Belief {
     // Register globally
     DB.register_belief_by_id(belief)
     belief.subject.beliefs.add(belief)
-    DB.register_belief_by_mind(belief)
 
     // Register label-sid mappings (for first belief with this label loaded)
     if (data.label) {
@@ -1052,6 +1056,33 @@ export class Belief {
     }
 
     return belief
+  }
+
+  /**
+   * Create a new version of this belief with updated traits
+   * Similar to State.branch_state() pattern - creates versioned belief with same subject
+   * @param {State} state - State context for the new belief
+   * @param {Record<string, any>} traits - Trait updates (already resolved, not templates)
+   * @returns {Belief} New belief with this belief as base
+   */
+  branch(state, traits = {}) {
+    assert(state instanceof State, 'branch requires State parameter', {belief_id: this._id})
+    assert(!state.locked, 'Cannot branch into locked state', {state_id: state._id, belief_id: this._id})
+
+    // Create new belief with same subject (versioning) and current belief as base
+    const branched = new Belief(state, this.subject, [this])
+
+    // Add traits directly (no template resolution)
+    for (const [trait_label, trait_value] of Object.entries(traits)) {
+      const traittype = Traittype.get_by_label(trait_label)
+      assert(traittype instanceof Traittype, `Traittype '${trait_label}' not found`, {trait_label})
+      branched.add_trait(traittype, trait_value)
+    }
+
+    // Insert into state automatically (convenience - mirrors from_template)
+    state.insert_beliefs(branched)
+
+    return branched
   }
 
 }

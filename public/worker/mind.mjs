@@ -167,6 +167,11 @@ export class Mind {
     /** @type {Mind|null} - Internal storage, use getter/setter to access */
     this._parent = parent_mind
 
+    // Track if this mind is Eidos or descended from Eidos
+    // All minds in Eidos lineage create universal subjects (mater=null)
+    /** @type {boolean} */
+    this.in_eidos = this.constructor.name === 'Eidos' || (parent_mind?.in_eidos ?? false)
+
     this.label = label
 
     /** @type {Belief|null} */
@@ -275,6 +280,8 @@ export class Mind {
    * @returns {State}
    */
   create_state(ground_state, options = {}) {
+    // TODO: Remove tight coupling - Mind shouldn't directly construct Temporal
+    // Consider factory pattern or inversion of dependency
     const state = new Cosmos.Temporal(this, ground_state, null, options)
 
     // Track first state as origin
@@ -344,6 +351,8 @@ export class Mind {
    */
   static from_json(data, parent_mind) {
     // Dispatch based on _type (polymorphic deserialization)
+    // TODO: Remove tight coupling - use registry pattern instead of hardcoded dispatch
+    // Each Mind subclass should register its own deserializer
     if (data._type === 'Logos') {
       return Cosmos.Logos.from_json(data)
     }
@@ -392,6 +401,7 @@ export class Mind {
         const origin_state = DB.get_state_by_id(belief_data.origin_state)
         if (origin_state) {
           belief.origin_state = origin_state
+          DB.register_belief_by_mind(belief)  // Register now that origin_state is set
         }
       }
     }
@@ -554,6 +564,8 @@ export class Mind {
     }
 
     // Fork invariant: child.tt = parent_state.vt (handled by Temporal constructor)
+    // TODO: Remove tight coupling - Mind shouldn't directly construct Temporal
+    // Consider factory pattern or inversion of dependency
     return new Cosmos.Temporal(
       this,
       ground_state,

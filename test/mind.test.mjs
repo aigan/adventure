@@ -1,12 +1,15 @@
 import { expect } from 'chai';
 import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { T } from '../public/worker/traittype.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
+import { eidos } from '../public/worker/eidos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { stdTypes, Thing, createStateInNewMind } from './helpers.mjs';
+import { stdTypes, Thing, createStateInNewMind, setupStandardArchetypes } from './helpers.mjs';
 
 describe('Mind', () => {
   beforeEach(() => {
     DB.reset_registries();
+    setupStandardArchetypes();
   });
 
   it('creates mind with unique ID', () => {
@@ -95,13 +98,11 @@ describe('Mind', () => {
 
   describe('resolve_trait_value_from_template()', () => {
     beforeEach(() => {
-      // Setup minimal archetypes for testing
+      // Register additional archetype needed for these tests (parent already registered Thing)
       DB.register({
-        ...stdTypes,
         mind: 'Mind',
         name: 'string',
       }, {
-        Thing,
         Base: {bases: ['Thing'], traits: {name: null}}
       }, {});
     });
@@ -292,4 +293,50 @@ describe('Mind', () => {
       expect(mind.state).to.be.null;
     });
   });
+
+  describe('in_eidos property', () => {
+    it('is true for Eidos itself', () => {
+      const eidos_mind = eidos()
+      expect(eidos_mind.in_eidos).to.be.true
+    })
+
+    it('is false for Logos', () => {
+      const logos_mind = logos()
+      expect(logos_mind.in_eidos).to.be.false
+    })
+
+    it('is true for direct children of Eidos', () => {
+      const eidos_mind = eidos()
+      const eidos_state = eidos_mind.origin_state
+      const prototype = Belief.from_template(eidos_state, {
+        bases: ['Person'],
+        traits: { mind: {} }
+      })
+      const proto_mind = prototype.get_trait(eidos_state, T.mind)
+      expect(proto_mind.in_eidos).to.be.true
+    })
+
+    it('is true for deeply nested descendants of Eidos', () => {
+      // Create: Eidos → Prototype1 (via mind trait) → verify its mind is also in_eidos
+      const eidos_mind = eidos()
+      const eidos_state = eidos_mind.origin_state
+
+      const proto1 = Belief.from_template(eidos_state, {
+        bases: ['Person'],
+        traits: { mind: {} },
+        label: 'Proto1'
+      })
+      const proto1_mind = proto1.get_trait(eidos_state, T.mind)
+
+      // proto1_mind's parent is eidos_mind, which has in_eidos=true
+      // so proto1_mind should also have in_eidos=true
+      expect(proto1_mind.in_eidos).to.be.true
+      expect(proto1_mind._parent).to.equal(eidos_mind)
+    })
+
+    it('is false for world minds (children of Logos)', () => {
+      const world = new Materia(logos(), 'world')
+      expect(world.in_eidos).to.be.false
+    })
+  })
 });

@@ -305,6 +305,7 @@ export class Materia extends Mind {
         const origin_state = DB.get_state_by_id(belief_data.origin_state)
         if (origin_state) {
           belief.origin_state = origin_state
+          DB.register_belief_by_mind(belief)  // Register now that origin_state is set
         }
       }
     }

@@ -8,12 +8,15 @@
 
 // @ts-nocheck
 
-import * as Cosmos from "./cosmos.mjs"
 import * as DB from "./db.mjs"
 import { Subject } from "./subject.mjs"
 import { Traittype } from "./traittype.mjs"
 import { log, assert, sysdesig } from "./debug.mjs"
+import { Materia } from './materia.mjs'
+import { logos, logos_state } from './logos.mjs'
 import { eidos } from './eidos.mjs'
+import { State } from './state.mjs'
+import { Belief } from './belief.mjs'
 
 /**
  * @typedef {import('./db.mjs').ArchetypeDefinition} ArchetypeDefinition
@@ -147,12 +150,12 @@ DB.register(traittypes, archetypes, prototypes_1)
 /**
  * Initialize the game world
  * Called after all modules are loaded to avoid circular dependency issues
- * @returns {{world_state: Cosmos.State, avatar: Cosmos.Belief}}
+ * @returns {{world_state: State, avatar: Belief}}
  */
 export function init_world() {
   // Create world mind and initial state
-  const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world');
-  let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1});
+  const world_mind = new Materia(logos(), 'world');
+  let state = world_mind.create_state(logos_state(), {tt: 1});
 
   state.add_beliefs_from_template({
     village: {

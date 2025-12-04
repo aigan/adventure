@@ -27,8 +27,8 @@ import * as Cosmos from './cosmos.mjs'
 import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
 import { Serialize } from './serialize.mjs'
-import { Traittype } from './traittype.mjs'
-import { Archetype } from './archetype.mjs'
+import { Traittype, T } from './traittype.mjs'
+import { Archetype, A } from './archetype.mjs'
 
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
@@ -385,6 +385,8 @@ export class State {
    * @param {Object<string, object>} beliefs - Object mapping labels to belief definitions
    */
   add_shared_from_template(beliefs) {
+    // TODO: Remove tight coupling - State shouldn't directly access eidos singleton
+    // Consider dependency injection or passing eidos_state as parameter
     const eidos_mind = Cosmos.eidos()
     const eidos_state = eidos_mind.origin_state
     assert(eidos_state instanceof State, 'Eidos origin_state must be State', {eidos_state})
@@ -401,7 +403,7 @@ export class State {
    * @param {number|null} [vt] - Valid time override (for temporal reasoning about past/future)
    * @returns {State} New unlocked state
    */
-  branch_state(ground_state, vt) {
+  branch_state(ground_state, vt) { // FIXME: rename to branch
     // Build options for State constructor
     const options = {}
 
@@ -418,6 +420,8 @@ export class State {
 
     // self is inherited from this.self via base.self in constructor (no need to pass explicitly)
 
+    // TODO: Remove tight coupling - State shouldn't directly construct Temporal
+    // Consider factory pattern or inversion of dependency
     const state = new Cosmos.Temporal(this.in_mind, ground_state, this, options)
 
     // Validate time doesn't go backwards (skip check for timeless states)
@@ -509,7 +513,7 @@ export class State {
    * @param {object} traits - New traits to add
    * @returns {State}
    */
-  tick_with_traits(belief, vt, traits) {
+  tick_with_traits(belief, vt, traits) { // FIXME: rename to tick_with_template()
     this.lock()
     // ground_state is only null for Timeless, which never calls tick_with_traits
     const new_state = this.branch_state(/** @type {State} */ (this.ground_state), vt)
@@ -677,10 +681,7 @@ export class State {
       }
 
       // Create updated belief - keeps all old traits, updates specified ones
-      const updated_belief = Belief.from_template(this, {
-        bases: [existing_belief],
-        traits: new_traits
-      })
+      const updated_belief = existing_belief.branch(this, new_traits)
 
       this.remove_beliefs(existing_belief)
       return updated_belief
@@ -925,6 +926,7 @@ export class State {
     const observed_traittypes = this.get_observable_traits(world_entity, modalities)
     /** @type {Record<string, any>} */
     const observed_traits = {}
+    const uncertain_tt = T['@uncertain_identity']
 
     for (const traittype of observed_traittypes) {
       let value = world_entity.get_trait(world_state, traittype)
@@ -935,7 +937,6 @@ export class State {
           const nested_belief = value.get_belief_by_state(world_state)
           if (nested_belief) {
             // Check if nested entity has @uncertain_identity
-            const uncertain_tt = Traittype.get_by_label('@uncertain_identity')
             const is_uncertain = uncertain_tt && nested_belief.get_trait(world_state, uncertain_tt) === true
 
             if (is_uncertain) {
@@ -1013,13 +1014,8 @@ export class State {
           }
         }
 
-        // FIXME: dont use from_template when creating beliefs
-        main_belief = Belief.from_template(this, {
-          sid: knowledge.subject.sid,  // Same subject as base (versioning)
-          bases: [knowledge],
-          traits: trait_updates
-        })
-        this.insert_beliefs(main_belief)
+        // Use branch() for versioning with same subject - avoids template overhead
+        main_belief = knowledge.branch(this, trait_updates)
       }
     }
 
@@ -1043,12 +1039,12 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     const all_perceived_subjects = []
+    const uncertain_tt = T['@uncertain_identity']
 
     for (const world_entity of content) {
       const about_state = world_entity.origin_state
 
-      // Check if identity is uncertain // FIXME: use tratit-type constants
-      const uncertain_tt = Traittype.get_by_label('@uncertain_identity')
+      // Check if identity is uncertain
       const is_uncertain = uncertain_tt && world_entity.get_trait(about_state, uncertain_tt) === true
 
       if (is_uncertain) {
@@ -1063,14 +1059,12 @@ export class State {
       }
     }
 
-    // FIXME: dont use from_template when creating beliefs
     // Create EventPerception holding ALL perceived items (including nested entities)
-    return this.add_belief_from_template({
-      bases: ['EventPerception'],
-      traits: {
-        content: all_perceived_subjects
-      }
+    const perception = Belief.from(this, [A.EventPerception], {
+      content: all_perceived_subjects
     })
+    this.insert_beliefs(perception)
+    return perception
   }
 
   /**
@@ -1394,6 +1388,8 @@ export class State {
    */
   static from_json(mind, data) {
     // Dispatch based on _type (polymorphic deserialization)
+    // TODO: Remove tight coupling - use registry pattern instead of hardcoded dispatch
+    // Each State subclass should register its own deserializer
     if (data._type === 'Convergence') {
       return Cosmos.Convergence.from_json(mind, data)
     }

@@ -1295,4 +1295,125 @@ describe('Belief', () => {
       expect(location_count).to.equal(1, 'location should only appear once');
     });
   });
+
+  describe('Belief.branch()', () => {
+    it('creates new belief with same subject', () => {
+      const state = createStateInNewMind()
+      const hammer = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        traits: { color: 'red' },
+        label: 'hammer'
+      })
+      state.lock()
+
+      const state2 = state.branch_state(state.ground_state, 2)
+      const hammer_v2 = hammer.branch(state2, { color: 'blue' })
+
+      expect(hammer_v2.subject).to.equal(hammer.subject)
+      expect(hammer_v2._id).to.not.equal(hammer._id)
+    })
+
+    it('adds current belief as base', () => {
+      const state = createStateInNewMind()
+      const hammer = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+      state.lock()
+
+      const state2 = state.branch_state(state.ground_state, 2)
+      const hammer_v2 = hammer.branch(state2, { color: 'blue' })
+
+      expect([...hammer_v2._bases]).to.include(hammer)
+    })
+
+    it('adds traits using add_trait (not add_trait_from_template)', () => {
+      const state = createStateInNewMind()
+      const hammer = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+      const workshop = Belief.from_template(state, {
+        bases: ['Location'],
+        label: 'workshop'
+      })
+      state.lock()
+
+      const state2 = state.branch_state(state.ground_state, 2)
+      const hammer_v2 = hammer.branch(state2, {
+        location: workshop.subject  // Direct Subject, not string
+      })
+
+      const location_tt = Traittype.get_by_label('location')
+      expect(hammer_v2.get_trait(state2, location_tt)).to.equal(workshop.subject)
+    })
+
+    it('automatically inserts belief into state', () => {
+      const state = createStateInNewMind()
+      const hammer = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+      state.lock()
+
+      const state2 = state.branch_state(state.ground_state, 2)
+      const hammer_v2 = hammer.branch(state2, { color: 'blue' })
+
+      expect(state2._insert).to.include(hammer_v2)
+    })
+
+    it('fails on locked state', () => {
+      const state = createStateInNewMind()
+      const hammer = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+      state.lock()
+
+      expect(() => hammer.branch(state, { color: 'blue' })).to.throw()
+
+      // But should work on unlocked state
+      const state2 = state.branch_state(state.ground_state, 2)
+      const hammer_v2 = hammer.branch(state2, { color: 'blue' })
+      expect(hammer_v2).to.be.instanceof(Belief)
+    })
+
+    it('handles null trait values (shadowing)', () => {
+      const state = createStateInNewMind()
+      const hammer = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        traits: { color: 'red' },
+        label: 'hammer'
+      })
+      state.lock()
+
+      const state2 = state.branch_state(state.ground_state, 2)
+      const hammer_v2 = hammer.branch(state2, { color: null })
+
+      const color_tt = Traittype.get_by_label('color')
+      expect(hammer_v2.get_trait(state2, color_tt)).to.be.null
+    })
+
+    it('inherits traits from base belief', () => {
+      const state = createStateInNewMind()
+      const workshop = Belief.from_template(state, {
+        bases: ['Location'],
+        label: 'workshop'
+      })
+      const hammer = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        traits: { color: 'red', location: workshop.subject },
+        label: 'hammer'
+      })
+      state.lock()
+
+      const state2 = state.branch_state(state.ground_state, 2)
+      const hammer_v2 = hammer.branch(state2, { color: 'blue' })
+
+      const color_tt = Traittype.get_by_label('color')
+      const location_tt = Traittype.get_by_label('location')
+      expect(hammer_v2.get_trait(state2, color_tt)).to.equal('blue')
+      expect(hammer_v2.get_trait(state2, location_tt)).to.equal(workshop.subject) // Inherited
+    })
+  })
 });

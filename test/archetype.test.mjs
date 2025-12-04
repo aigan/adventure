@@ -10,6 +10,7 @@
 
 import { expect } from 'chai';
 import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { A } from '../public/worker/archetype.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs';
@@ -206,4 +207,31 @@ describe('Archetype', () => {
       expect(hammer.get_trait(state, location_traittype)).to.equal(workshop.subject);
     });
   });
+
+  describe('A proxy', () => {
+    it('provides convenient archetype access', () => {
+      const archetype = A.PortableObject
+      expect(archetype).to.be.instanceof(Archetype)
+      expect(archetype.label).to.equal('PortableObject')
+    })
+
+    it('matches Archetype.get_by_label()', () => {
+      expect(A.PortableObject).to.equal(Archetype.get_by_label('PortableObject'))
+      expect(A.Location).to.equal(Archetype.get_by_label('Location'))
+      expect(A.Actor).to.equal(Archetype.get_by_label('Actor'))
+    })
+
+    it('returns undefined for non-existent archetypes', () => {
+      expect(A.NonExistentArchetype).to.be.undefined
+    })
+
+    it('works with Belief.from()', () => {
+      const state = createStateInNewMind()
+      const workshop = Belief.from(state, [A.Location], {})
+      state.insert_beliefs(workshop)
+
+      const archetypes = [...workshop.get_archetypes()].map(a => a.label)
+      expect(archetypes).to.include('Location')
+    })
+  })
 });

@@ -230,8 +230,8 @@ export function* get_beliefs_by_mind(mind) {
  * @param {Belief} belief - Belief to register
  */
 export function register_belief_by_mind(belief) {
-  // Register by mind (skip for shared beliefs with null mind)
-  if (belief.in_mind !== null) {
+  // Register by mind (skip for beliefs with null/undefined mind)
+  if (belief.in_mind != null) {
     if (!belief_by_mind.has(belief.in_mind)) {
       belief_by_mind.set(belief.in_mind, new Set())
     }

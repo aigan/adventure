@@ -218,4 +218,15 @@ export class Archetype {
   }
 }
 
+/**
+ * Proxy for concise archetype access by label
+ * Usage: A.EventPerception instead of Archetype.get_by_label('EventPerception')
+ * @type {Record<string, Archetype>}
+ */
+export const A = new Proxy(/** @type {Record<string, Archetype>} */ ({}), {
+  get(_, prop) {
+    return Archetype.get_by_label(/** @type {string} */ (prop))
+  }
+})
+
 register_reset_hook(() => Archetype.reset_registry())
