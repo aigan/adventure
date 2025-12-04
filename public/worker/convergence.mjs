@@ -247,3 +247,6 @@ export class Convergence extends State {
     return base.replace(/State#(\d+)/, `Convergence#$1 (${this.component_states.length} components)`)
   }
 }
+
+// Register for polymorphic deserialization
+State.register_type('Convergence', Convergence)

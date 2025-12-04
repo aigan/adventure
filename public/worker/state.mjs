@@ -60,6 +60,19 @@ import { Archetype, A } from './archetype.mjs'
  * Immutable state snapshot with differential updates
  */
 export class State {
+  // Registry for polymorphic deserialization
+  /** @type {Object<string, any>} */
+  static _type_registry = {}
+
+  /**
+   * Register a State subclass for deserialization
+   * @param {string} type_name - The _type value (e.g., 'Temporal', 'Timeless')
+   * @param {any} class_constructor - The subclass constructor
+   */
+  static register_type(type_name, class_constructor) {
+    this._type_registry[type_name] = class_constructor
+  }
+
   // TODO: Populate this registry for prototype state templates
   // Will be used to share belief lists across many nodes
   // See resolve_template() lines 364-367 for planned usage
@@ -1387,19 +1400,13 @@ export class State {
    * @returns {State}
    */
   static from_json(mind, data) {
-    // Dispatch based on _type (polymorphic deserialization)
-    // TODO: Remove tight coupling - use registry pattern instead of hardcoded dispatch
-    // Each State subclass should register its own deserializer
-    if (data._type === 'Convergence') {
-      return Cosmos.Convergence.from_json(mind, data)
-    }
-    if (data._type === 'Timeless') {
-      return Cosmos.Timeless.from_json(mind, data)
-    }
-    if (data._type === 'Temporal') {
-      return Cosmos.Temporal.from_json(mind, data)
+    // Use registry for polymorphic deserialization
+    const StateClass = this._type_registry[data._type]
+    if (StateClass) {
+      return StateClass.from_json(mind, data)
     }
 
+    // Fallback to base State for unknown/unregistered types
     // Load references and create instance
     const refs = State._load_refs_from_json(mind, data)
     const state = Object.create(State.prototype)

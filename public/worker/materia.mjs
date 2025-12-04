@@ -324,6 +324,9 @@ export class Materia extends Mind {
   }
 }
 
+// Register for polymorphic deserialization
+Mind.register_type('Materia', Materia)
+
 /**
  * Check if a state has another state in its base chain
  * @param {State} descendant - State to check

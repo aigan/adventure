@@ -74,3 +74,6 @@ export class Temporal extends State {
     return state
   }
 }
+
+// Register for polymorphic deserialization
+State.register_type('Temporal', Temporal)

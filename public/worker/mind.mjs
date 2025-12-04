@@ -61,6 +61,19 @@ import { Traittype } from './traittype.mjs'
  * @property {Set<State>} state - All states belonging to this mind
  */
 export class Mind {
+  // Registry for polymorphic deserialization
+  /** @type {Object<string, any>} */
+  static _type_registry = {}
+
+  /**
+   * Register a Mind subclass for deserialization
+   * @param {string} type_name - The _type value (e.g., 'Materia', 'Logos')
+   * @param {any} class_constructor - The subclass constructor
+   */
+  static register_type(type_name, class_constructor) {
+    this._type_registry[type_name] = class_constructor
+  }
+
   /** @type {string} - Type discriminator for polymorphism */
   _type = 'Mind'
   /** @type {string} - Base class identifier */
@@ -350,21 +363,13 @@ export class Mind {
    * @returns {Mind}
    */
   static from_json(data, parent_mind) {
-    // Dispatch based on _type (polymorphic deserialization)
-    // TODO: Remove tight coupling - use registry pattern instead of hardcoded dispatch
-    // Each Mind subclass should register its own deserializer
-    if (data._type === 'Logos') {
-      return Cosmos.Logos.from_json(data)
-    }
-    if (data._type === 'Eidos') {
-      return Cosmos.Eidos.from_json(data, parent_mind)
-    }
-    if (data._type === 'Materia') {
-      assert(parent_mind, 'Materia requires parent_mind for deserialization', {data})
-      return Cosmos.Materia.from_json(data, parent_mind)
+    // Use registry for polymorphic deserialization
+    const MindClass = this._type_registry[data._type]
+    if (MindClass) {
+      return MindClass.from_json(data, parent_mind)
     }
 
-    // Legacy Mind type - should not occur with abstract Mind
+    // Fallback to base Mind for unknown/unregistered types (legacy)
     // Create instance using Object.create (bypasses constructor)
     const mind = Object.create(Mind.prototype)
 

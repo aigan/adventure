@@ -87,3 +87,6 @@ export class Timeless extends State {
     }
   }
 }
+
+// Register for polymorphic deserialization
+State.register_type('Timeless', Timeless)
