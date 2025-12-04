@@ -167,7 +167,7 @@ describe('Temporal Reasoning', () => {
       world_state1.lock()
 
       // Advance world to tt=200
-      const world_state2 = world_state1.branch_state(world_state1.ground_state, 200)
+      const world_state2 = world_state1.branch(world_state1.ground_state, 200)
       world_state2.lock()
 
       // Create child state at world_state2
@@ -218,13 +218,13 @@ describe('Temporal Reasoning', () => {
       expect(state.vt).to.equal(75)
     })
 
-    it('vt can be set via branch_state()', () => {
+    it('vt can be set via branch()', () => {
       const mind = new Materia(logos(), 'world')
       const state1 = mind.create_state(logos().origin_state, {tt: 100})
       state1.lock()
 
       // Create state at vt=150
-      const state2 = state1.branch_state(state1.ground_state, 150)
+      const state2 = state1.branch(state1.ground_state, 150)
 
       expect(state2.tt).to.equal(150) // For world mind with no ground_state, tt = vt
       expect(state2.vt).to.equal(150)
@@ -300,7 +300,7 @@ describe('Temporal Reasoning', () => {
       world_state.lock()
 
       // World advances to tt=200
-      world_state = world_state.branch_state(world_state.ground_state, 200)
+      world_state = world_state.branch(world_state.ground_state, 200)
       world_state.lock()
 
       // Get NPC from new world_state
@@ -447,7 +447,7 @@ describe('Temporal Reasoning', () => {
       world_state.lock()
 
       // Advance world to tt=200
-      world_state = world_state.branch_state(world_state.ground_state, 200)
+      world_state = world_state.branch(world_state.ground_state, 200)
       world_state.lock()
 
       // Get NPC from new world_state
@@ -507,7 +507,7 @@ describe('Temporal Reasoning', () => {
       expect(npc2_model_state.ground_state).to.equal(npc1_state)
     })
 
-    it('branch_state() with explicit vt overrides ground_state.vt', () => {
+    it('branch() with explicit vt overrides ground_state.vt', () => {
       setupArchetypes()
 
       const world_mind = new Materia(logos(), 'world')
@@ -529,7 +529,7 @@ describe('Temporal Reasoning', () => {
       npc_state1.lock()
 
       // Branch with explicit vt=50 (thinking about past)
-      const npc_state2 = npc_state1.branch_state(world_state, 50)
+      const npc_state2 = npc_state1.branch(world_state, 50)
 
       // tt from ground_state.vt, vt from explicit parameter
       expect(npc_state2.tt).to.equal(100)  // ground_state.vt
@@ -640,7 +640,7 @@ describe('Temporal Reasoning', () => {
       const world_state1 = world_mind.create_state(logos().origin_state, {tt: 100})
       world_state1.lock()
 
-      const world_state2 = world_state1.branch_state(world_state1.ground_state, 200)
+      const world_state2 = world_state1.branch(world_state1.ground_state, 200)
       world_state2.lock()
 
       const npc_mind = new Materia(world_mind, 'npc')
@@ -673,10 +673,10 @@ describe('Temporal Reasoning', () => {
       const state1 = mind.create_state(logos().origin_state, {tt: 100})
       state1.lock()
 
-      const state2 = state1.branch_state(state1.ground_state, 200)
+      const state2 = state1.branch(state1.ground_state, 200)
       state2.lock()
 
-      const state3 = state2.branch_state(state2.ground_state, 300)
+      const state3 = state2.branch(state2.ground_state, 300)
 
       expect(state1.tt).to.equal(100)
       expect(state2.tt).to.equal(200)
@@ -692,7 +692,7 @@ describe('Temporal Reasoning', () => {
 
       // Try to create state with lower tt
       expect(() => {
-        state1.branch_state(state1.ground_state, 100)  // 100 < 200 violates constraint
+        state1.branch(state1.ground_state, 100)  // 100 < 200 violates constraint
       }).to.throw('tt must not go backwards')
     })
 
@@ -701,10 +701,10 @@ describe('Temporal Reasoning', () => {
       const state1 = mind.create_state(logos().origin_state, {tt: 100})
       state1.lock()
 
-      const state2 = state1.branch_state(state1.ground_state, 200)
+      const state2 = state1.branch(state1.ground_state, 200)
       state2.lock()
 
-      const state3 = state2.branch_state(state2.ground_state, 300)
+      const state3 = state2.branch(state2.ground_state, 300)
       state3.lock()
 
       // Query at different tt values
@@ -739,26 +739,26 @@ describe('Temporal Reasoning', () => {
       }).to.throw(/ground_state must be in parent mind/)
     })
 
-    it('world mind branch_state with explicit vt', () => {
+    it('world mind branch with explicit vt', () => {
       const mind = new Materia(logos(), 'world')
       const state1 = mind.create_state(logos().origin_state, {tt: 100})
       state1.lock()
 
-      // World mind branch_state with explicit vt
-      const state2 = state1.branch_state(state1.ground_state, 200)
+      // World mind branch with explicit vt
+      const state2 = state1.branch(state1.ground_state, 200)
 
       expect(state2.tt).to.equal(200)
       expect(state2.vt).to.equal(200)
     })
 
-    it('branch_state requires vt parameter', () => {
+    it('branch requires vt parameter', () => {
       const mind = new Materia(logos(), 'world')
       const state1 = mind.create_state(logos().origin_state, {tt: 100})
       state1.lock()
 
-      // Calling branch_state with null vt should fail
+      // Calling branch with null vt should fail
       expect(() => {
-        state1.branch_state(logos().origin_state, null)
+        state1.branch(logos().origin_state, null)
       }).to.throw(/vt must be provided/)
     })
   })

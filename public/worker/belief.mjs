@@ -1060,7 +1060,7 @@ export class Belief {
 
   /**
    * Create a new version of this belief with updated traits
-   * Similar to State.branch_state() pattern - creates versioned belief with same subject
+   * Similar to State.branch() pattern - creates versioned belief with same subject
    * @param {State} state - State context for the new belief
    * @param {Record<string, any>} traits - Trait updates (already resolved, not templates)
    * @returns {Belief} New belief with this belief as base

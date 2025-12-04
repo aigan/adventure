@@ -425,7 +425,7 @@ describe('Mind Trait', () => {
     expect(npc2_initial_belief._bases.has(cultural_knowledge)).to.be.true;
 
     // NOW: NPC1 visits the tavern and observes the coordinates (new information)
-    const npc1_state_after = npc1_state.branch_state(world_state);
+    const npc1_state_after = npc1_state.branch(world_state);
     const npc1_updated_belief = npc1_state_after.learn_about(blacksmith_tavern, {traits: ['coordinates']});
 
     // Verify learn_about returned an updated belief

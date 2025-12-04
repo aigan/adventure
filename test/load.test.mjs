@@ -93,7 +93,7 @@ describe('Save/Load functionality', () => {
       });
 
       // State 2: Update room1 to point back to room2 (creates circular reference)
-      const state2 = state1.tick_with_traits(room1, 2, {
+      const state2 = state1.tick_with_template(room1, 2, {
         location: room2.subject  // room1_v2 → room2 in state2
       });
 
@@ -144,9 +144,9 @@ describe('Save/Load functionality', () => {
       });
 
       state1.lock();
-      const state2 = state1.branch_state(logos().origin_state, 2);
+      const state2 = state1.branch(logos().origin_state, 2);
       state2.lock();
-      const state3 = state2.branch_state(logos().origin_state, 3);
+      const state3 = state2.branch(logos().origin_state, 3);
 
       // Save and reload
       const json = save_mind(state1.in_mind);
@@ -201,9 +201,9 @@ describe('Save/Load functionality', () => {
       });
 
       state.lock();
-      const temp_state = state.branch_state(logos().origin_state, state.vt + 1);
+      const temp_state = state.branch(logos().origin_state, state.vt + 1);
       temp_state.lock();
-      state = temp_state.tick_with_traits(ball, temp_state.vt + 1, { color: 'blue' });
+      state = temp_state.tick_with_template(ball, temp_state.vt + 1, { color: 'blue' });
 
       // Get versioned ball's ID before saving
       const ball_v2 = [...state.get_beliefs()].find(b => b.get_label() === 'ball');
@@ -333,9 +333,9 @@ describe('Save/Load functionality', () => {
         traits: {location: 'room1',}, label: 'room2',
       });
 
-      state = state.tick_with_traits(ball, state.vt + 1, { color: 'blue' });
+      state = state.tick_with_template(ball, state.vt + 1, { color: 'blue' });
 
-      state = state.tick_with_traits(room1, state.vt + 1, {
+      state = state.tick_with_template(room1, state.vt + 1, {
         location: 'room2'
       });
 

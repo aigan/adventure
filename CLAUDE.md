@@ -51,7 +51,7 @@ npm test                 # Run tests + linting (see test/CLAUDE.md)
 
 ## Critical Patterns
 
-**Immutability**: Never mutate - create new versions via `state.branch_state(ground_state, vt)` with `base` inheritance
+**Immutability**: Never mutate - create new versions via `state.branch(ground_state, vt)` with `base` inheritance
 
 **Archetype composition**: Multiple inheritance via `bases: ['Actor', 'Mental']`
 

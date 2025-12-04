@@ -2,7 +2,7 @@
  * State - immutable snapshot of beliefs at a specific time/tick
  *
  * States represent "what exists at this moment" in a mind. Once finalized, they never mutate;
- * instead, create new states via branch_state() operations. This enables time travel,
+ * instead, create new states via branch() operations. This enables time travel,
  * branching possibilities, and maintaining observation history.
  *
  * Key concepts:
@@ -13,7 +13,7 @@
  * - Superposition: Multiple states can exist at same tick with different certainty
  *
  * Usage pattern:
- *   const state2 = state1.branch_state(ground_state, vt)
+ *   const state2 = state1.branch(ground_state, vt)
  *   // Add beliefs to state2 before locking
  *
  * See docs/SPECIFICATION.md for state architecture
@@ -203,7 +203,7 @@ export class State {
     /**
      * Forward links to child states branching from this one
      * Query: O(1) enumeration for possibility tree navigation
-     * Maintained by: branch_state() - adds child to parent's branches
+     * Maintained by: branch() - adds child to parent's branches
      * Scale: Essential - enables navigation of branching timelines and planning scenarios
      * @type {State[]}
      */
@@ -403,7 +403,7 @@ export class State {
    * @param {number|null} [vt] - Valid time override (for temporal reasoning about past/future)
    * @returns {State} New unlocked state
    */
-  branch_state(ground_state, vt) { // FIXME: rename to branch
+  branch(ground_state, vt) {
     // Build options for State constructor
     const options = {}
 
@@ -513,10 +513,10 @@ export class State {
    * @param {object} traits - New traits to add
    * @returns {State}
    */
-  tick_with_traits(belief, vt, traits) { // FIXME: rename to tick_with_template()
+  tick_with_template(belief, vt, traits) {
     this.lock()
-    // ground_state is only null for Timeless, which never calls tick_with_traits
-    const new_state = this.branch_state(/** @type {State} */ (this.ground_state), vt)
+    // ground_state is only null for Timeless, which never calls tick_with_template
+    const new_state = this.branch(/** @type {State} */ (this.ground_state), vt)
     const new_belief = Belief.from_template(new_state, {sid: belief.subject.sid, bases: [belief], traits})
     new_state.remove_beliefs(belief)
     new_state.lock()
@@ -761,7 +761,7 @@ export class State {
 
     if (core_state.locked) {
       // Branch forward to create unlocked state
-      return core_state.branch_state(this, this.vt)
+      return core_state.branch(this, this.vt)
     }
 
     return core_state

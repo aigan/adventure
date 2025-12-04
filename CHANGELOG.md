@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-12-04
+
+### API Refinement - State Method Renames
+- **`State.branch_state()` → `State.branch()`**: Simpler name, better consistency
+  - Updated 79 call sites across production code, tests, tools, and documentation
+  - Now matches `Belief.branch()` naming pattern
+  - Clearer, more concise API surface
+- **`State.tick_with_traits()` → `State.tick_with_template()`**: More accurate naming
+  - Updated 6 call sites
+  - Better reflects internal use of `Belief.from_template()`
+  - Clarifies template-based nature of trait updates
+- Breaking change: Internal API only (no public interface impact)
+- All 494 tests passing
+
 ## 2025-12-03
 
 ### Fast-Path Perception with Identity Recognition

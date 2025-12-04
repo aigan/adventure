@@ -252,7 +252,7 @@ describe('Convergence + rev_trait() Integration', () => {
       conv_state.lock()
 
       // Regular state branching from Convergence
-      const state3 = conv_state.branch_state(world_state, 4)
+      const state3 = conv_state.branch(world_state, 4)
       state3.lock()
 
       // Query from state3 - should traverse back through Convergence

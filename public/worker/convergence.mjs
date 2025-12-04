@@ -177,7 +177,7 @@ export class Convergence extends State {
     throw new Error(
       'Convergence does not support remove operations. ' +
       'Convergence is a read-only composition of component states. ' +
-      'To remove beliefs, create a new State via branch_state() and use remove there.'
+      'To remove beliefs, create a new State via branch() and use remove there.'
     )
   }
 

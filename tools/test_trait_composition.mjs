@@ -110,7 +110,7 @@ const eidos_s1 = eidos.origin_state
 eidos_s1.lock()
 
 // Create new Eidos state for VillageBlacksmith
-const eidos_s2 = eidos_s1.branch_state(logos_state())
+const eidos_s2 = eidos_s1.branch(logos_state())
 eidos_s2.add_beliefs_from_template({
   VillageBlacksmith: {
     bases: ['Villager', 'Blacksmith'],

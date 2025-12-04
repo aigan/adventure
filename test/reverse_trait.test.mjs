@@ -158,7 +158,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state1.lock()
 
       // State 2: Add another NPC
-      const state2 = state1.branch_state(logos().origin_state, 1)
+      const state2 = state1.branch(logos().origin_state, 1)
       const npc2 = Belief.from_template(state2, {
         bases: ['Actor'],
         traits: {'location': room.subject}, label: 'servant'
@@ -189,7 +189,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       // Create 10 states, only add NPCs in states 0, 3, 7
       const npcs = []
       for (let i = 0; i < 10; i++) {
-        state = state.branch_state(logos().origin_state, i + 2)
+        state = state.branch(logos().origin_state, i + 2)
 
         if (i === 0 || i === 3 || i === 7) {
           const npc = Belief.from_template(state, {
@@ -226,7 +226,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       // Add NPCs in sequence
       const npcs = []
       for (let i = 0; i < 3; i++) {
-        state = state.branch_state(logos().origin_state, i + 2)
+        state = state.branch(logos().origin_state, i + 2)
         const npc = Belief.from_template(state, {
           bases: ['Actor'],
           traits: {
@@ -262,7 +262,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state1.lock()
 
       // State 2: NPC moves to bedroom
-      const state2 = state1.branch_state(logos().origin_state, 1)
+      const state2 = state1.branch(logos().origin_state, 1)
       const npc2 = Belief.from_template(state2, {
         bases: [npc],
         traits: {'location': room2.subject}
@@ -299,7 +299,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state1.lock()
 
       // State 2: King leaves (remove location)
-      const state2 = state1.branch_state(logos().origin_state, 1)
+      const state2 = state1.branch(logos().origin_state, 1)
       const npc2 = Belief.from_template(state2, {
         bases: [npc],
         traits: {'location': null}
@@ -308,7 +308,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state2.lock()
 
       // State 3: King returns
-      const state3 = state2.branch_state(logos().origin_state, 2)
+      const state3 = state2.branch(logos().origin_state, 2)
       const npc3 = Belief.from_template(state3, {
         bases: [npc2],
         traits: {'location': room.subject}
@@ -338,7 +338,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
       state1.lock()
 
-      const state2 = state1.branch_state(logos().origin_state, 1)
+      const state2 = state1.branch(logos().origin_state, 1)
       const npc = Belief.from_template(state2, {
         bases: ['Actor'],
         traits: {'location': room.subject}, label: 'smith'
@@ -367,15 +367,15 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state1.lock()
 
       // State 2: no changes to location references
-      const state2 = state1.branch_state(logos().origin_state, 1)
+      const state2 = state1.branch(logos().origin_state, 1)
       state2.lock()
 
       // State 3: no changes
-      const state3 = state2.branch_state(logos().origin_state, 2)
+      const state3 = state2.branch(logos().origin_state, 2)
       state3.lock()
 
       // State 4: add another NPC
-      const state4 = state3.branch_state(logos().origin_state, 3)
+      const state4 = state3.branch(logos().origin_state, 3)
       const npc2 = Belief.from_template(state4, {
         bases: ['Actor'],
         traits: {'location': room.subject}, label: 'student'
@@ -408,7 +408,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state1.lock()
 
       // State 2: different room gets occupant
-      const state2 = state1.branch_state(logos().origin_state, 1)
+      const state2 = state1.branch(logos().origin_state, 1)
       const npc2 = Belief.from_template(state2, {
         bases: ['Actor'],
         traits: {'location': room2.subject}, label: 'treasurer'
@@ -471,7 +471,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       state1.lock()
 
       // State 2: "update" NPC with same location
-      const state2 = state1.branch_state(logos().origin_state, 1)
+      const state2 = state1.branch(logos().origin_state, 1)
       const npc2 = Belief.from_template(state2, {
         bases: [npc],
         traits: {'location': room.subject}  // Same location
@@ -654,7 +654,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
       // Create 100 states with sparse NPC additions
       for (let i = 0; i < 100; i++) {
-        state = state.branch_state(logos().origin_state, i + 2)
+        state = state.branch(logos().origin_state, i + 2)
 
         // Add 1-2 NPCs every 5 states (total ~25 NPCs)
         if (i % 5 === 0) {
@@ -724,7 +724,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       // Create 10 branches, each adding 1 unique NPC
       const branches = []
       for (let i = 0; i < 10; i++) {
-        const branch = root_state.branch_state(logos().origin_state, i + 2)
+        const branch = root_state.branch(logos().origin_state, i + 2)
 
         const branch_npc = Belief.from_template(branch, {
           bases: ['Actor'],
@@ -917,7 +917,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state1.lock()
 
         // State 2: Branch from state1 (ground_state must be in parent mind = logos_state)
-        const state2 = state1.branch_state(logos_state_ref, 2)  // vt = 2
+        const state2 = state1.branch(logos_state_ref, 2)  // vt = 2
 
         // Create v2 as new version of same subject (same sid, new belief)
         const npc_v2 = Belief.from_template(state2, {
@@ -1153,7 +1153,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state1.lock()
 
         // State 2: Add charlie
-        const state2 = state1.branch_state(logos_state_ref, 2)
+        const state2 = state1.branch(logos_state_ref, 2)
         const crime_v2 = Belief.from_template(state2, {
           sid: crime_v1.subject.sid,
           bases: [crime_v1],
@@ -1165,7 +1165,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state2.lock()
 
         // State 3: Remove bob
-        const state3 = state2.branch_state(logos_state_ref, 3)
+        const state3 = state2.branch(logos_state_ref, 3)
         const crime_v3 = Belief.from_template(state3, {
           sid: crime_v1.subject.sid,
           bases: [crime_v2],
@@ -1246,7 +1246,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state1.lock()
 
         // State 2: knight adds [shield]
-        const state2 = state1.branch_state(logos_state_ref, 2)
+        const state2 = state1.branch(logos_state_ref, 2)
         const knight_v2 = Belief.from_template(state2, {
           sid: knight_v1.subject.sid,
           bases: [knight_v1],
@@ -1258,7 +1258,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state2.lock()
 
         // State 3: knight adds [helmet]
-        const state3 = state2.branch_state(logos_state_ref, 3)
+        const state3 = state2.branch(logos_state_ref, 3)
         const knight_v3 = Belief.from_template(state3, {
           sid: knight_v1.subject.sid,
           bases: [knight_v2],

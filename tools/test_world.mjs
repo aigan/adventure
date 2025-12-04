@@ -160,7 +160,7 @@ const player_state = state.get_active_state_by_host(player)
 console.log(`\nPlayer state for do_look: ${player_state._id}, locked: ${player_state.locked}`)
 
 // Branch state to allow mutations
-let pov = state.branch_state(state.ground_state, 2)
+let pov = state.branch(state.ground_state, 2)
 pov = pov.get_active_state_by_host(player)
 console.log(`\nBranched player state: ${pov._id}, locked: ${pov.locked}`)
 

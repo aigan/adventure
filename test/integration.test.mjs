@@ -397,7 +397,7 @@ describe('Integration', () => {
       expect(location_trait).to.not.be.null;
 
       // Learn more about hammer at tt=2 (color)
-      const state2 = state1.branch_state(world_state, 2);
+      const state2 = state1.branch(world_state, 2);
       state2.learn_about(hammer, {traits: ['color']});
       state2.lock();
 
@@ -410,7 +410,7 @@ describe('Integration', () => {
       expect(color_trait).to.equal('grey');
 
       // Learn weight at tt=3
-      const state3 = state2.branch_state(world_state, 3);
+      const state3 = state2.branch(world_state, 3);
       state3.learn_about(hammer, {traits: ['weight']});
       state3.lock();
 
@@ -494,7 +494,7 @@ describe('Integration', () => {
       const villager_proto = Subject.get_by_label('VillagerProto').get_shared_belief_by_state(world_state);
 
       // Create specific villager instance (inherits prototype's knowledge)
-      const world_state2 = world_state.branch_state(logos().origin_state, 2);
+      const world_state2 = world_state.branch(logos().origin_state, 2);
       world_state2.add_beliefs_from_template({
         bob: {
           bases: [villager_proto],

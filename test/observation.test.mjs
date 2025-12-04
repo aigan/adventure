@@ -44,7 +44,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const hammer = get_first_belief_by_label('hammer')
@@ -114,7 +114,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = state.get_belief_by_label('player')
       expect(player, 'player belief not found').to.exist
@@ -160,7 +160,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const hammer = get_first_belief_by_label('hammer')
@@ -198,7 +198,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const player_state = state.get_active_state_by_host(player)
@@ -265,7 +265,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const player_state = state.get_active_state_by_host(player)
@@ -321,7 +321,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const player_state = state.get_active_state_by_host(player)
@@ -374,7 +374,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const player_state = state.get_active_state_by_host(player)
@@ -431,7 +431,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const hammer = get_first_belief_by_label('hammer')
@@ -495,7 +495,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const hammer = get_first_belief_by_label('hammer')
@@ -559,7 +559,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const hammer = get_first_belief_by_label('hammer')
@@ -631,7 +631,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const hammer1 = get_first_belief_by_label('hammer1')
@@ -691,7 +691,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const hammer1 = get_first_belief_by_label('hammer1')
@@ -744,7 +744,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const hammer = get_first_belief_by_label('hammer')
@@ -790,7 +790,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const hammer = get_first_belief_by_label('hammer')
@@ -831,7 +831,7 @@ describe('observation', () => {
       })
 
       state.lock()
-      state = state.branch_state(Cosmos.logos_state(), 2)
+      state = state.branch(Cosmos.logos_state(), 2)
 
       const player = get_first_belief_by_label('player')
       const hammer = get_first_belief_by_label('hammer')

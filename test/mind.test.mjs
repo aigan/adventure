@@ -28,9 +28,9 @@ describe('Mind', () => {
     it('should return outermost state on linear state chain', () => {
       const state1 = createStateInNewMind('test', 100);
       state1.lock();
-      const state2 = state1.branch_state(logos().origin_state, 200);
+      const state2 = state1.branch(logos().origin_state, 200);
       state2.lock();
-      const state3 = state2.branch_state(logos().origin_state, 300);
+      const state3 = state2.branch(logos().origin_state, 300);
       state3.lock();
 
       // Query at different times - should return single outermost state
@@ -51,16 +51,16 @@ describe('Mind', () => {
       // s1(t=100) ← s2(t=200) ← s4(t=300)   [Branch A]
       //     ↑
       //    s3(t=150) ← s5(t=175)            [Branch B]
-      const state2 = state1.branch_state(logos().origin_state, 200);
+      const state2 = state1.branch(logos().origin_state, 200);
       state2.lock();
 
-      const state3 = state1.branch_state(logos().origin_state, 150);
+      const state3 = state1.branch(logos().origin_state, 150);
       state3.lock();
 
-      const state4 = state2.branch_state(logos().origin_state, 300);
+      const state4 = state2.branch(logos().origin_state, 300);
       state4.lock();
 
-      const state5 = state3.branch_state(logos().origin_state, 175);
+      const state5 = state3.branch(logos().origin_state, 175);
       state5.lock();
 
       // Before any state
@@ -276,7 +276,7 @@ describe('Mind', () => {
       state1.lock();
 
       // Create second state (unlocked)
-      const state2 = state1.branch_state(logos().origin_state, 200);
+      const state2 = state1.branch(logos().origin_state, 200);
       expect(mind.state).to.equal(state2);
 
       // Lock second state
@@ -284,7 +284,7 @@ describe('Mind', () => {
       expect(mind.state).to.be.null;
 
       // Create third state
-      const state3 = state1.branch_state(logos().origin_state, 300);
+      const state3 = state1.branch(logos().origin_state, 300);
       expect(mind.state).to.equal(state3);
     });
 

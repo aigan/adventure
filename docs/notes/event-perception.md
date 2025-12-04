@@ -146,7 +146,7 @@ export function cmd_look() {
   current_state.lock()
 
   // Create new world state with updated player
-  const new_world_state = Adventure.state.branch_state(Adventure.state.ground_state)
+  const new_world_state = Adventure.state.branch(Adventure.state.ground_state)
   const updated_player = Belief.from_template(new_world_state, {
     bases: [player],
     traits: {
@@ -167,7 +167,7 @@ Why this flow?
 1. Perception first - Records that observation happened (evidence)
 2. Learn_about after - Extracts knowledge with source link
 3. Lock state - Prevents further modifications to this snapshot
-4. Update player - New player version with updated mind state via branch_state()                                       
+4. Update player - New player version with updated mind state via branch()                      
                                                                                                 
 5. Wire LOOK to Worker Message Handler                                                          
                                                                                                 

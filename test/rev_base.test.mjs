@@ -39,7 +39,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
       state1.lock()
 
       // Create state2 with location change
-      const state2 = state1.branch_state(state1.ground_state, 2)
+      const state2 = state1.branch(state1.ground_state, 2)
 
       const hallway = Belief.from_template(state2, {
         bases: ['Location'],
@@ -54,7 +54,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
       state2.lock()
 
       // Create state3 with no changes
-      const state3 = state2.branch_state(state2.ground_state, 3)
+      const state3 = state2.branch(state2.ground_state, 3)
       state3.lock()
 
       const location_tt = Traittype.get_by_label('location')
@@ -78,7 +78,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
       state1.lock()
 
       // Create state2 with NO location changes
-      const state2 = state1.branch_state(state1.ground_state, 2)
+      const state2 = state1.branch(state1.ground_state, 2)
       state2.lock()
 
       const location_tt = Traittype.get_by_label('location')
@@ -120,7 +120,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
 
       state1.lock()
 
-      const state2 = state1.branch_state(state1.ground_state, 2)
+      const state2 = state1.branch(state1.ground_state, 2)
       state2.lock()
 
       const location_tt = Traittype.get_by_label('location')
@@ -317,7 +317,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
 
       state1.lock()
 
-      const state2 = state1.branch_state(state1.ground_state, 2)
+      const state2 = state1.branch(state1.ground_state, 2)
       state2.lock()
 
       const location_tt = Traittype.get_by_label('location')
@@ -350,7 +350,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
       state1.lock()
 
       // State 2: Remove person's location reference
-      const state2 = state1.branch_state(state1.ground_state, 2)
+      const state2 = state1.branch(state1.ground_state, 2)
       const person2 = Belief.from_template(state2, {
         bases: [person],
         traits: {location: null}
@@ -359,7 +359,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
       state2.lock()
 
       // State 3: No changes
-      const state3 = state2.branch_state(state2.ground_state, 3)
+      const state3 = state2.branch(state2.ground_state, 3)
       state3.lock()
 
       const location_tt = Traittype.get_by_label('location')
@@ -441,7 +441,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
       state1.lock()
 
       // State 2: Version person but don't change location
-      const state2 = state1.branch_state(state1.ground_state, 2)
+      const state2 = state1.branch(state1.ground_state, 2)
       const person2 = Belief.from_template(state2, {
         bases: [person],
         traits: {}, label: 'person_v2'  // Change label but not location
@@ -487,7 +487,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
 
       state1.lock()
 
-      const state2 = state1.branch_state(state1.ground_state, 2)
+      const state2 = state1.branch(state1.ground_state, 2)
       state2.lock()
 
       const location_tt = Traittype.get_by_label('location')
@@ -512,7 +512,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
 
       state1.lock()
 
-      const state2 = state1.branch_state(state1.ground_state, 2)
+      const state2 = state1.branch(state1.ground_state, 2)
       state2.lock()
 
       const location_tt = Traittype.get_by_label('location')
@@ -616,7 +616,7 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
       state1.lock()
 
       // State 2: Change person's location from room1 to room2
-      const state2 = state1.branch_state(state1.ground_state, 2)
+      const state2 = state1.branch(state1.ground_state, 2)
       const person2 = Belief.from_template(state2, {
         bases: [person],
         traits: {location: room2.subject}

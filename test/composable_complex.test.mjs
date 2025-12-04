@@ -410,7 +410,7 @@ describe('Composable Traits - Complex Scenarios', () => {
 
       // Tick 2: NPC joins the guard (gains Guard base in addition to Villager)
       // Create a new belief with same subject but additional bases
-      state = state.branch_state(logos_state(), 2)
+      state = state.branch(logos_state(), 2)
 
       const npc_v2 = Belief.from_template(state, {
         sid: npc.subject.sid,  // Same subject
@@ -481,8 +481,8 @@ describe('Composable Traits - Complex Scenarios', () => {
       state.lock()
 
       // Tick 2: NPC acquires sword (should compose with prototype Villager's token)
-      state = state.branch_state(logos_state(), 2)
-      state = state.tick_with_traits(npc, 2, {
+      state = state.branch(logos_state(), 2)
+      state = state.tick_with_template(npc, 2, {
         inventory: ['sword']  // Should compose: Villager[token] + [sword] = [token, sword]
       })
 
@@ -490,7 +490,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       const inv2 = npc_v2.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv2).to.be.an('array')
 
-      // Actual behavior: tick_with_traits creates new belief with same bases
+      // Actual behavior: tick_with_template creates new belief with same bases
       // Composition happens: Villager[token] + [sword]
       expect(inv2).to.have.lengthOf(2)
       const labels = inv2.map(b => b.get_label()).sort()
@@ -535,7 +535,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       state1.lock()
 
       // Branch at different vt
-      const state2 = state1.branch_state(logos_state(), 2)
+      const state2 = state1.branch(logos_state(), 2)
       state2.lock()
 
       // Composition should work in both states
@@ -615,8 +615,8 @@ describe('Composable Traits - Complex Scenarios', () => {
       state.lock()
 
       // Tick 2: NPC gains sword (composes with existing inventory)
-      state = state.branch_state(logos_state(), 2)
-      state = state.tick_with_traits(npc, 2, {
+      state = state.branch(logos_state(), 2)
+      state = state.tick_with_template(npc, 2, {
         inventory: ['sword']  // Composes: [token, hammer] + [sword]
       })
 

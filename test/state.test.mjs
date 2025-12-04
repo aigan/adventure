@@ -99,7 +99,7 @@ describe('State', () => {
 
       const hammer_v1 = get_first_belief_by_label('hammer_v1');
 
-      const state2 = state1.tick_with_traits(hammer_v1, 2, {color: 'red'});
+      const state2 = state1.tick_with_template(hammer_v1, 2, {color: 'red'});
 
       const beliefs = [...state2.get_beliefs()];
       expect(beliefs).to.have.lengthOf(1);
@@ -117,10 +117,10 @@ describe('State', () => {
 
       // Add different beliefs to each mind
       const item_a = get_first_belief_by_label('item_in_a');
-      const state_a2 = state_a1.tick_with_traits(item_a, 2, {color: 'red'});
+      const state_a2 = state_a1.tick_with_template(item_a, 2, {color: 'red'});
 
       const item_b = get_first_belief_by_label('item_in_b');
-      const state_b2 = state_b1.tick_with_traits(item_b, 2, {color: 'blue'});
+      const state_b2 = state_b1.tick_with_template(item_b, 2, {color: 'blue'});
 
       // Verify states are independent
       const beliefs_a = [...state_a2.get_beliefs()];
@@ -138,7 +138,7 @@ describe('State', () => {
       const mind = state1.in_mind;
 
       state1.lock();
-      const state2 = state1.branch_state(logos().origin_state, 2);
+      const state2 = state1.branch(logos().origin_state, 2);
       const item3 = Belief.from_template(state2, {traits: {}, label: 'item3', bases: ['PortableObject']});
 
       // state2 should have all three items
@@ -168,30 +168,30 @@ describe('State', () => {
       expect(npc_state.ground_state).to.equal(world_state);
     });
 
-    it('branch_state() inherits ground_state from parent', () => {
+    it('branch() inherits ground_state from parent', () => {
       const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
 
       const npc_mind = new Materia(world_mind, 'npc');
       const npc_state1 = npc_mind.create_state(world_state);
       npc_state1.lock();
-      const npc_state2 = npc_state1.branch_state(world_state);
+      const npc_state2 = npc_state1.branch(world_state);
       npc_state2.lock();
 
       expect(npc_state2.ground_state).to.equal(world_state);
     });
 
-    it('branch_state() can override ground_state', () => {
+    it('branch() can override ground_state', () => {
       const world_mind = new Materia(logos(), 'world');
       const world_state1 = world_mind.create_state(logos().origin_state, {tt: 1});
       world_state1.lock();
-      const world_state2 = world_state1.branch_state(logos().origin_state, 2);
+      const world_state2 = world_state1.branch(logos().origin_state, 2);
       world_state2.lock();
 
       const npc_mind = new Materia(world_mind, 'npc');
       const npc_state1 = npc_mind.create_state(world_state1);
       npc_state1.lock();
-      const npc_state2 = npc_state1.branch_state(world_state2);
+      const npc_state2 = npc_state1.branch(world_state2);
       npc_state2.lock();
 
       expect(npc_state2.ground_state).to.equal(world_state2);
@@ -201,8 +201,8 @@ describe('State', () => {
       const mind = new Materia(logos(), 'test');
       const state1 = mind.create_state(logos().origin_state, {tt: 1});
       state1.lock();
-      const state2 = state1.branch_state(logos().origin_state, 2);
-      const state3 = state1.branch_state(logos().origin_state, 3);
+      const state2 = state1.branch(logos().origin_state, 2);
+      const state3 = state1.branch(logos().origin_state, 3);
 
       expect(state1.get_branches()).to.have.lengthOf(2);
       expect(state1.get_branches()).to.include(state2);
@@ -309,7 +309,7 @@ describe('State', () => {
 
       // Branch world state to vt=2
       world_state_v1.lock();
-      const world_state_v2 = world_state_v1.branch_state(logos().origin_state, 2);
+      const world_state_v2 = world_state_v1.branch(logos().origin_state, 2);
 
       // Should find player's state at tt=1 (latest available, even though world is now at vt=2)
       const player_state_v2 = world_state_v2.get_core_state_by_host(player);
@@ -350,7 +350,7 @@ describe('State', () => {
       });
 
       // Create v2 and add to state2
-      const state2 = state1.tick_with_traits(room_v1, 2, {color: 'red'});
+      const state2 = state1.tick_with_template(room_v1, 2, {color: 'red'});
 
       // state1 should resolve to v1
       expect(state1.get_belief_by_subject(room_v1.subject)).to.equal(room_v1);
@@ -403,7 +403,7 @@ describe('State', () => {
       });
 
       // Now update room1 to be inside room2
-      const state2 = state1.tick_with_traits(room1, 2, {
+      const state2 = state1.tick_with_template(room1, 2, {
         location: room2.subject  // room1 now inside room2
       });
 
@@ -460,7 +460,7 @@ describe('State', () => {
       expect(state.self).to.equal(body.subject);
     });
 
-    it('branch_state inherits self from parent', () => {
+    it('branch inherits self from parent', () => {
       const mind = new Materia(logos(), 'test');
       const temp_state = mind.create_state(logos().origin_state, {tt: 1});
       const body = Belief.from_template(temp_state, {
@@ -471,7 +471,7 @@ describe('State', () => {
       const state1 = new Temporal(mind, logos().origin_state, null, {tt: 2, self: body.subject});
       state1.lock();
 
-      const state2 = state1.branch_state(logos().origin_state, 3);
+      const state2 = state1.branch(logos().origin_state, 3);
 
       expect(state2.self).to.equal(body.subject);
       expect(state2.self).to.equal(state1.self);
@@ -487,7 +487,7 @@ describe('State', () => {
 
       const state1 = new Temporal(mind, logos().origin_state, null, {tt: 2, self: body.subject});
       state1.lock();
-      const state2 = state1.branch_state(logos().origin_state, 2);
+      const state2 = state1.branch(logos().origin_state, 2);
 
       expect(state2.self).to.equal(body.subject);
       expect(state2.self).to.equal(state1.self);

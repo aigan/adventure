@@ -234,21 +234,21 @@ The implementation uses **bi-temporal database concepts** with Transaction Time 
   - Ground state owns canonical valid time
 - **No Time Arithmetic**: Never use `tt + 1` or similar
   - Always coordinate via explicit ground_state.vt reference
-  - Time parameters must be passed explicitly to branch_state()
+  - Time parameters must be passed explicitly to branch()
 
 **Method Signatures:**
 ```javascript
 // Create new state (branching from existing state)
-state.branch_state(ground_state, vt)
+state.branch(ground_state, vt)
 
 // World mind (no ground state, must provide explicit vt)
-world_state.branch_state(null, 2)
+world_state.branch(null, 2)
 
 // Child mind (vt inherited from ground_state.vt if not specified)
-npc_state.branch_state(world_state)
+npc_state.branch(world_state)
 
 // Helper for versioning a belief with new traits
-state.tick_with_traits(belief, vt, {trait: value})
+state.tick_with_template(belief, vt, {trait: value})
 ```
 
 **Temporal Querying:**
@@ -282,7 +282,7 @@ state.tick_with_traits(belief, vt, {trait: value})
 ## Key Implementation Patterns
 
 ### State Immutability
-- States are immutable - changes create new state via `state.branch_state(ground_state, vt)`
+- States are immutable - changes create new state via `state.branch(ground_state, vt)`
 - Objects never change, only new versions created with `base` inheritance
 - Property lookup follows prototype chain: `hammer_1 → hammer_1_v2 → hammer_1_v3`
 
@@ -335,7 +335,7 @@ state.tick_with_traits(belief, vt, {trait: value})
    - If resolver returns array, return `{type: 'superposition', branches: [...]}`
    - Cache concrete resolutions in `_resolved_cache[state_id][trait_name]`
 
-4. **Materialization** (`Belief.from_template()`, `State.branch_state()`):
+4. **Materialization** (`Belief.from_template()`, `State.branch()`):
    - When explicitly creating new belief version, walk bases chain
    - Detect branches and resolve via state
    - Create intermediate materialized nodes as needed
