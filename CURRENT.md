@@ -38,6 +38,12 @@ For perceived beliefs with `@about: null`:
 
 ## Backlog
 
+- [ ] **Resolve Remaining Circular Dependencies** - Clean up safe but non-ideal import cycles ([guide](docs/CIRCULAR_DEPENDENCIES.md))
+  - Critical cycles (state ↔ mind) already resolved via registry pattern
+  - Remaining 22 static import cycles are safe but indicate tight coupling
+  - Priority targets: `session ↔ channel`, `worker ↔ narrator`, `traittype ↔ archetype`
+  - Core data model cycle (`db ↔ belief ↔ state ↔ mind`) is fundamental, low priority
+  - Use dpdm to track progress: `npx dpdm public/worker/worker.mjs --circular`
 - [ ] **Observation and Recognition System** - Implement trait-based observation and acquaintance-based recognition ([spec](docs/notes/observation_recognition_spec.md))
   - Meta-traits: `@about` (identification), `@subject` (identity), `@acquaintance` (familiarity), `@source` (origin)
   - Observation based on trait exposure (visual, tactile, spatial, internal)

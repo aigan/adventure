@@ -287,3 +287,184 @@ State (abstract, allows null ground_state for Timeless)
 ```
 
 All subclasses use clean `extends` + `super()` inheritance. No hacks.
+
+## Registry Pattern for Critical Cycles
+
+The most problematic circular dependencies (state ↔ mind ↔ subclasses) are resolved using the **registry pattern** instead of direct imports.
+
+### Type Registry
+Handles polymorphic deserialization and construction without imports:
+
+```javascript
+// State base class
+static _type_registry = {}
+static register_type(type_name, class_constructor) {
+  this._type_registry[type_name] = class_constructor
+}
+static get_class(type_name) {
+  return this._type_registry[type_name]
+}
+
+// Subclass registers itself at module load
+State.register_type('Temporal', Temporal)
+
+// Base class can construct subclass without importing
+const TemporalClass = State.get_class('Temporal')
+const state = new TemporalClass(mind, ground_state, base, options)
+```
+
+### Function Registry
+Handles singleton/class access without imports:
+
+```javascript
+// Mind base class
+static _function_registry = {}
+static register_function(name, fn) {
+  this._function_registry[name] = fn
+}
+static get_function(name) {
+  return this._function_registry[name]
+}
+
+// Singletons register at module load
+Mind.register_function('eidos', eidos)
+Mind.register_function('logos', logos)
+Mind.register_function('Materia', Materia)
+
+// Access without import (use @ts-ignore for TypeScript)
+const eidos = this.in_mind.constructor.get_function('eidos')
+```
+
+### Import Constraints
+
+**state.mjs** cannot import:
+- temporal, timeless, convergence (State subclasses)
+- eidos, logos, materia (Mind subclasses)
+- Use registries instead: `State.get_class()` or `Mind.get_function()`
+
+**mind.mjs** cannot import:
+- materia, logos, eidos (Mind subclasses)
+- temporal, timeless, convergence (State subclasses)
+- Use registries instead: `Mind.get_class()` or `Mind.get_function()`
+
+**belief.mjs** cannot import:
+- eidos (would create belief→eidos→mind→belief cycle)
+- Use registry: `this.in_mind.constructor.get_function('eidos')`
+
+**serialize.mjs** cannot import:
+- logos (would create serialize→logos→mind→serialize cycle)
+- Use registry: `Mind.get_function('logos')`
+
+## Current Circular Dependencies (via dpdm)
+
+As of 2025-01-XX, these circular import cycles exist but are handled safely:
+
+### Critical Cycles (Resolved via Registry Pattern)
+These previously caused runtime crashes, now handled via registries:
+
+1. **state ↔ mind** (via serialize)
+   - `state.mjs → serialize.mjs → mind.mjs → state.mjs`
+   - **Resolution**: Mind registry for logos/Materia access
+
+2. **belief ↔ state ↔ mind**
+   - `belief.mjs → state.mjs → serialize.mjs → mind.mjs → belief.mjs`
+   - **Resolution**: Mind registry for eidos access in belief.is_shared
+
+3. **db ↔ eidos/logos**
+   - `db.mjs → eidos.mjs → mind.mjs → db.mjs`
+   - **Resolution**: Registry pattern prevents runtime issues
+
+### Safe Cycles (No Runtime Issues)
+These are static import cycles that JavaScript handles correctly:
+
+4. **Core data model** (largest cycle)
+   ```
+   archetype ↔ db ↔ belief ↔ subject ↔ state ↔ serialize ↔ mind
+   traittype ↔ archetype ↔ db ↔ belief ↔ state
+   ```
+   - JavaScript handles these fine due to lazy evaluation
+   - Not ideal architecture but no crashes
+
+5. **Type system**
+   - `traittype.mjs ↔ archetype.mjs`
+   - Safe: mutual import for type resolution
+
+6. **Session/UI**
+   - `session.mjs ↔ channel.mjs`
+   - Safe but could be cleaned up
+
+7. **Worker communication**
+   - `worker.mjs → session.mjs → narrator.mjs → worker.mjs`
+   - Safe but indicates tight coupling
+
+### Full 22 Circular Dependency Chains
+
+```
+01) archetype → db
+02) traittype → archetype → db
+03) archetype → db → belief
+04) db → belief
+05) db → belief → subject
+06) belief → subject
+07) archetype → db → belief → subject
+08) traittype → archetype → db → belief
+09) db → belief → state
+10) belief → state
+11) db → belief → state → serialize → mind
+12) state → serialize → mind
+13) belief → state → serialize → mind
+14) traittype → archetype → db → belief → state → serialize → mind
+15) db → belief → state → serialize
+16) traittype → archetype → db → belief → state
+17) archetype → db → belief → state
+18) db → eidos → timeless
+19) db → eidos → logos
+20) traittype ↔ archetype
+21) session ↔ channel
+22) worker → session → narrator → worker
+```
+
+### Dependency Tree (from worker entry point)
+
+```
+worker.mjs
+├── session.mjs
+│   ├── traittype.mjs
+│   │   ├── archetype.mjs
+│   │   │   ├── db.mjs
+│   │   │   │   ├── archetype.mjs (cycle)
+│   │   │   │   ├── traittype.mjs (cycle)
+│   │   │   │   ├── belief.mjs
+│   │   │   │   │   ├── subject.mjs
+│   │   │   │   │   │   ├── belief.mjs (cycle)
+│   │   │   │   │   ├── state.mjs
+│   │   │   │   │   │   ├── serialize.mjs
+│   │   │   │   │   │   │   ├── mind.mjs
+│   │   │   │   │   │   │   │   ├── state.mjs (cycle)
+│   │   │   │   ├── mind.mjs (cycle)
+│   │   │   │   ├── state.mjs (cycle)
+│   │   │   │   ├── eidos.mjs
+│   │   │   │   │   ├── timeless.mjs
+│   │   │   │   │   ├── logos.mjs
+│   ├── world.mjs
+│   │   ├── materia.mjs
+│   │   │   ├── temporal.mjs
+│   │   │   ├── convergence.mjs
+│   ├── channel.mjs
+│   │   ├── session.mjs (cycle)
+│   ├── narrator.mjs
+│       ├── worker.mjs (cycle)
+```
+
+### Analysis
+
+**Status**: All critical runtime cycles resolved via registry pattern. Remaining cycles are safe static imports.
+
+**Future cleanup candidates** (low priority):
+- `session ↔ channel` - Extract interface
+- `worker ↔ narrator` - Dependency injection
+- `traittype ↔ archetype` - Consider merging or extracting shared types
+
+**Not worth fixing** (fundamental data model):
+- Core `db ↔ belief ↔ state ↔ mind` cycle - these are tightly coupled by design
+- Type system cycles - acceptable for schema definitions
