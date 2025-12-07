@@ -227,6 +227,42 @@ export const dispatch = {
 			bases: [...belief._bases].map(b => b.to_inspect_base()),
 		})
 	},
+
+	/** @param {{archetype: string, client_id: number}} param0 */
+	query_archetype({archetype, client_id}) {
+		// Get archetype by label
+		const archetype_obj = Archetype.get_by_label(archetype)
+
+		assert(archetype_obj instanceof Archetype, `Archetype not found: ${archetype}`)
+
+		// Build traits object from archetype template
+		/** @type {Record<string, any>} */
+		const traits = {}
+		for (const [traittype, value] of archetype_obj.get_trait_entries()) {
+			// Format trait values for display
+			let formatted_value
+			if (value instanceof Archetype) {
+				formatted_value = {_type: 'Archetype', label: value.label}
+			} else if (value === null) {
+				formatted_value = null
+			} else {
+				formatted_value = value
+			}
+			traits[traittype.label] = formatted_value
+		}
+
+		(/** @type {BroadcastChannel} */ (channel)).postMessage({
+			msg: "archetype_info",
+			server_id,
+			client_id,
+			data: {
+				label: archetype_obj.label,
+				bases: [...archetype_obj._bases].map(b => ({label: b.label})),
+				traits: traits,
+			},
+			desig: archetype_obj.sysdesig(),
+		})
+	},
 }
 
 /**

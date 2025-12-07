@@ -767,7 +767,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
   describe('Inheritance and Composition', () => {
     describe('Test 4.2: Archetype Defaults and Reverse Index', () => {
       it('belief inheriting archetype default location should NOT appear in warehouse.rev_trait()', () => {
-        // Setup: Register prototypes in Eidos with archetype that has default location
+        // Setup: Register archetypes with default location referencing another archetype
         DB.reset_registries()
         DB.register(
           {
@@ -777,24 +777,28 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
           {
             Thing: { traits: { '@about': null } },
             Location: { bases: ['Thing'] },
+            Warehouse: { bases: ['Location'] },
             Container: {
               bases: ['Thing'],
               traits: {
-                location: 'warehouse'  // Default location label (will resolve to Subject)
+                location: 'Warehouse'  // Default location archetype (will resolve to Archetype object)
               }
             }
           },
-          {
-            warehouse: { bases: ['Location'] }
-          }
+          {}
         )
 
         const location_tt = Traittype.get_by_label('location')
-        const eidos_state = eidos().origin_state
-        const warehouse = eidos_state.get_belief_by_label('warehouse')
+        const warehouse_archetype = Archetype.get_by_label('Warehouse')
 
         // Create world state and add chest that inherits Container archetype
         const state = createStateInNewMind('world')
+
+        // Create warehouse belief
+        const warehouse = state.add_belief_from_template({
+          bases: ['Warehouse'],
+          traits: {}, label: 'warehouse'
+        })
 
         // Create chest that inherits from Container archetype
         // chest does NOT explicitly set location - inherits from archetype default
@@ -808,18 +812,17 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         // Verify chest inherited the location from archetype default
         const chest_location = chest.get_trait(state, location_tt)
 
-        // NOTE: Archetype defaults are NOT resolved to Subjects!
-        // They remain as string labels when inherited.
-        // This is documented behavior - archetype.get_own_trait_value() returns template values
-        assert.strictEqual(chest_location, 'warehouse', 'chest should inherit warehouse location STRING from Container archetype (not Subject)')
+        // Archetype defaults are now resolved to Archetype objects during DB.register()
+        // When belief inherits from archetype, it gets the Archetype object as the trait value
+        assert.strictEqual(chest_location, warehouse_archetype, 'chest should inherit Warehouse archetype from Container archetype default')
 
         // Test: Does warehouse.rev_trait() find chest?
         const items_in_warehouse = [...warehouse.rev_trait(state, location_tt)]
 
-        // Archetype defaults are NOT resolved to Subjects (they remain as string labels)
+        // Archetype defaults are resolved to Archetype objects (not Subjects)
         // Therefore warehouse.subject is never added to reverse index
         assert.isArray(items_in_warehouse, 'should return array')
-        assert.lengthOf(items_in_warehouse, 0, 'chest should NOT appear - archetype defaults are string labels, not Subjects')
+        assert.lengthOf(items_in_warehouse, 0, 'chest should NOT appear - archetype default is Archetype object, not warehouse Subject')
       })
     })
 

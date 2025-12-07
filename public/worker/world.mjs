@@ -98,6 +98,9 @@ const archetypes = {
 
   EventPerception: {
     bases: ['EventAwareness'],
+    traits: {
+      content: null,  // Inherited from EventAwareness
+    },
   },
 
   ObjectPhysical: {
@@ -105,9 +108,31 @@ const archetypes = {
     traits: {
       '@form': 'solid',  // Common case: tangible visible objects
       location: null,
+      material: null,
+      length: null,
       color: null,
     },
   },
+
+
+  PortableObject: {
+    bases: ['ObjectPhysical'],
+  },
+
+
+  HammerHead: {
+    bases: ['ObjectPhysical'],
+    traits: { material: null, color: null }
+  },
+  HammerHandle: {
+    bases: ['ObjectPhysical'],
+    traits: { material: null, color: null, length: null }
+  },
+  Hammer: {
+    bases: ['PortableObject'],
+    traits: { head: 'HammerHead', handle: 'HammerHandle' }
+  },
+
 
   Mental: {
     bases: ['Thing'],
@@ -119,21 +144,6 @@ const archetypes = {
   Location: {
     bases: ['ObjectPhysical'],
     traits: {location: null, tools: null}
-  },
-  PortableObject: {
-    bases: ['ObjectPhysical'],
-  },
-  HammerHead: {
-    bases: ['ObjectPhysical'],
-    traits: { material: null, color: null }
-  },
-  HammerHandle: {
-    bases: ['ObjectPhysical'],
-    traits: { material: null, color: null, length: null }
-  },
-  Hammer: {
-    bases: ['PortableObject'],
-    traits: { head: null, handle: null }
   },
   Person: {
     bases: ['ObjectPhysical', 'Mental'],
@@ -157,6 +167,18 @@ export function init_world() {
   const world_mind = new Materia(logos(), 'world');
   let state = world_mind.create_state(logos_state(), {tt: 1});
 
+
+  state.add_shared_from_template({
+    HammerHandleCommon: {
+      bases: ['HammerHandle'],
+      traits: { material: 'wood' }
+    },
+    HammerCommon: {
+      bases: ['Hammer'],
+      traits: { handle: 'HammerHandleCommon' }
+    },
+  });
+
   state.add_beliefs_from_template({
     village: {
       bases: ['Location'],
@@ -174,38 +196,44 @@ export function init_world() {
       traits: {location: 'village'}
     },
 
-    // Hammer 1: short brown handle
-    hammer1_head: {
-      bases: ['HammerHead'],
-      traits: { material: 'iron', color: 'black' }
-    },
-    hammer1_handle: {
-      bases: ['HammerHandle'],
-      traits: { material: 'wood', color: 'brown', length: 'short' }
-    },
-    hammer1: {
-      bases: ['Hammer'],
+    //hammer1_head: {
+    //  bases: ['HammerHead'],
+    //  traits: { material: 'iron', color: 'black' }
+    //},
+    //hammer1_handle: {
+    //  bases: ['HammerHandle'],
+    //  traits: { material: 'wood', color: 'brown', length: 'short' }
+    //},
+    //hammer1: {
+    //  bases: ['Hammer'],
+    //  traits: {
+    //    '@uncertain_identity': true,
+    //    head: 'hammer1_head',
+    //    handle: 'hammer1_handle',
+    //    location: 'workshop',
+    //  }
+    //},
+
+    //hammer2_head: {
+    //  bases: ['HammerHead'],
+    //  traits: { material: 'iron', color: 'black' }
+    //},
+    //hammer2_handle: {
+    //  bases: ['HammerHandle'],
+    //  traits: { material: 'wood', color: 'dark_brown', length: 'long' }
+    //},
+    //hammer2: {
+    //  bases: ['Hammer'],
+    //  traits: { head: 'hammer2_head', handle: 'hammer2_handle', location: 'workshop' }
+    //},
+
+    hammer3: {
+      bases: ['HammerCommon'],
       traits: {
-        '@uncertain_identity': true,
-        head: 'hammer1_head',
-        handle: 'hammer1_handle',
         location: 'workshop',
-      }
+      },
     },
 
-    // Hammer 2: long dark handle
-    hammer2_head: {
-      bases: ['HammerHead'],
-      traits: { material: 'iron', color: 'black' }
-    },
-    hammer2_handle: {
-      bases: ['HammerHandle'],
-      traits: { material: 'wood', color: 'dark_brown', length: 'long' }
-    },
-    hammer2: {
-      bases: ['Hammer'],
-      traits: { head: 'hammer2_head', handle: 'hammer2_handle', location: 'workshop' }
-    }
   })
 
   state.add_shared_from_template({

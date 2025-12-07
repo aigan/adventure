@@ -94,13 +94,21 @@ export class Subject {
 
   /**
    * Get Belief for this Subject in state context
+   * Tries state first, falls back to shared belief (prototype)
    * @param {State} state
    * @returns {Belief}
    */
   get_belief_by_state(state) {
-    const belief = state.get_belief_by_subject(this)
+    // Try current state first
+    let belief = state.get_belief_by_subject(this)
+
+    // Fall back to shared belief (prototype) if not found in state
     if (!belief) {
-      throw new Error(`Cannot resolve Subject with sid ${this.sid}`)
+      belief = this.get_shared_belief_by_state(state)
+    }
+
+    if (!belief) {
+      throw new Error(`Subject must have belief in state or shared beliefs (sid ${this.sid})`)
     }
     return belief
   }
@@ -190,15 +198,8 @@ export class Subject {
    * @returns {{_ref: number, _type: string, label: string|null, mind_id: number|null, mind_label: string|null, about_label?: string|null}} Belief reference with optional about label for knowledge beliefs
    */
   to_inspect_view(state) {
-    // Try to find belief in state
-    let belief = state.get_belief_by_subject(this)
-
-    // If not found in state, try shared beliefs (prototypes)
-    if (!belief) {
-      belief = this.get_shared_belief_by_state(state)
-    }
-
-    assert(belief instanceof Belief, 'Subject must have belief in state or shared beliefs', {sid: this.sid, state_id: state._id, mind: state.in_mind.label})
+    // get_belief_by_state() tries state first, then falls back to shared belief (prototype)
+    const belief = this.get_belief_by_state(state)
 
     const result = /** @type {{_ref: number, _type: string, label: string|null, mind_id: number|null, mind_label: string|null, about_label?: string|null}} */ ({
       _ref: belief._id,
@@ -262,18 +263,13 @@ export class Subject {
   static _lookup_belief_from_template(traittype, belief, data) {
     // String input: lookup belief by label
     if (typeof data === 'string') {
-      // First try local state
-      let found_belief = belief.origin_state.get_belief_by_label(data)
+      const subject = Subject.get_by_label(data)
+      assert(subject, `Belief not found for trait '${traittype.label}': ${data}`)
 
-      // If not found, try shared beliefs (prototypes in Eidos)
-      if (found_belief == null) {
-        const subject = Subject.get_by_label(data)
-        found_belief = subject?.get_shared_belief_by_state(belief.origin_state)
-      }
+      // get_belief_by_state() tries state first, then falls back to shared belief (prototype)
+      const found_belief = subject.get_belief_by_state(belief.origin_state)
 
-      assert(found_belief, `Belief not found for trait '${traittype.label}': ${data}`)
-
-      return { belief: found_belief, subject: found_belief.subject }
+      return { belief: found_belief, subject: subject }
     }
 
     // Belief input: reject - this is a programming error

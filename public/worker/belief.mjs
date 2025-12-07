@@ -628,8 +628,7 @@ export class Belief {
     const resolve_state = belief_state.about_state ?? belief_state.ground_state
     assert(resolve_state instanceof State, 'belief_state with @about must have about_state or ground_state', {belief_state})
 
-    const belief = resolve_state.get_belief_by_subject(about_trait)
-    assert(belief instanceof Belief, 'Belief referenced by @about must exist in resolve_state', {about_trait, resolve_state_id: resolve_state._id, resolve_state_mind: resolve_state.in_mind?.label})
+    const belief = about_trait.get_belief_by_state(resolve_state)
     return belief
   }
 

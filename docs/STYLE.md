@@ -149,6 +149,90 @@ assert(belief.origin_state instanceof State, 'belief must have origin_state', be
 const state = /** @type {State} */ (belief.origin_state)
 ```
 
+### No Defensive Programming
+
+**Don't guard against things that should never happen**. Use assertions to catch bugs, not if-statements to work around them.
+
+✓ **Good** - Assert expectations:
+```javascript
+const archetype = Archetype.get_by_label(label)
+assert(archetype, `Archetype '${label}' not found`, {label})
+archetype.resolve_template_values()
+
+const eidos_state = eidos().origin_state
+assert(eidos_state instanceof State, 'Eidos must have origin_state')
+const prototype = subject.get_shared_belief_by_state(eidos_state)
+```
+
+✗ **Bad** - Defensive checks that hide bugs:
+```javascript
+const archetype = Archetype.get_by_label(label)
+if (archetype) {  // ✗ If it's missing, that's a bug - don't hide it
+  archetype.resolve_template_values()
+}
+
+const eidos_state = eidos().origin_state
+if (eidos_state) {  // ✗ Eidos always has origin_state - checking hides design errors
+  const prototype = subject.get_shared_belief_by_state(eidos_state)
+}
+```
+
+**Rationale**: Defensive programming makes bugs harder to find by allowing the program to continue in invalid states. If something should always exist, assert it. If it might legitimately not exist (like optional parameters), that's different - but document it clearly.
+
+### Delegation Over Conditionals
+
+**Delegate type-specific logic to the type that owns the metadata, not the caller.**
+
+When a class needs to perform operations based on type information, delegate to the type class rather than using conditionals.
+
+✓ **Good** - Delegate to owner:
+```javascript
+// Traittype owns data_type, so validation lives there
+class Traittype {
+  validate_archetype(subject, state) {
+    const required = Archetype.get_by_label(this.data_type)
+    if (!required) return
+    // ... validation logic using this.data_type
+  }
+}
+
+// Archetype just delegates
+class Archetype {
+  static resolve_trait_value_from_template(traittype, belief, data) {
+    const { subject } = lookup_subject(data)
+    traittype.validate_archetype(subject, belief.origin_state)  // Delegate
+    return subject
+  }
+}
+```
+
+✗ **Bad** - Conditionals in wrong class:
+```javascript
+// Archetype doing validation that uses traittype's data
+class Archetype {
+  static resolve_trait_value_from_template(traittype, belief, data) {
+    const { subject } = lookup_subject(data)
+
+    // ✗ Archetype shouldn't have this logic - it belongs in Traittype
+    const required = Archetype.get_by_label(traittype.data_type)
+    if (required) {
+      for (const a of belief.get_archetypes()) {
+        if (a === required) return subject
+      }
+      throw Error(...)
+    }
+
+    return subject
+  }
+}
+```
+
+**Rationale**:
+- Type-specific logic belongs with the type that owns the metadata
+- Reduces conditionals and coupling
+- Makes behavior easier to extend (add new validation to Traittype, not scattered across callers)
+- Similar to how enum validation uses `traittype.values` in `literal_handler`
+
 ## Testing Requirements
 
 - ✓ Every new feature has tests

@@ -132,6 +132,15 @@ const dispatch = {
     });
   },
   /**
+   * @param {any} dat
+   */
+  archetype_info(dat){
+    render({
+      header: dat.desig,
+      archetype: dat,
+    });
+  },
+  /**
    * Handle notification that states have changed (debounced from worker)
    * @param {any} _dat
    */
@@ -179,6 +188,7 @@ function render(a){
   if( a.header != null ) $header.innerHTML = a.header;
   if( a.table ) render_table( a );
   if( a.entity ) render_entity( a );
+  if( a.archetype ) render_archetype( a );
 }
 
 /**
@@ -265,8 +275,8 @@ function render_entity(a, target){
       if (base.id && state_id) {
         hout += `<a href="?belief=${base.id}&state=${state_id}">#${base.id}${base.label ? ' (' + base.label + ')' : ''}</a> `;
       } else {
-        // Archetype (no id) - just display label
-        hout += `${base.label} `;
+        // Archetype (no id) - make it clickable
+        hout += `<a href="?archetype=${base.label}">${base.label}</a> `;
       }
     }
     hout += `</dd>`;
@@ -282,7 +292,11 @@ function render_entity(a, target){
       if (Array.isArray(value)) {
         const items = value.map(item => {
           if (typeof item === 'object' && item !== null) {
-            if (item._ref && item._type) {
+            if (item._type === 'Archetype') {
+              // Handle Archetype references
+              const link = `?archetype=${item.label}`;
+              return `<a href="${link}">[${item.label}]</a>`;
+            } else if (item._ref && item._type) {
               // Reference to another belief or object
               const type_lower = item._type.toLowerCase();
               const label_text = item.label ? ` (${item.label})` : '';
@@ -304,7 +318,11 @@ function render_entity(a, target){
         });
         display_value = items.join(', ');
       } else if (typeof value === 'object' && value !== null) {
-        if (value._ref && value._type) {
+        if (value._type === 'Archetype') {
+          // Handle Archetype references (use label instead of _ref)
+          const link = `?archetype=${value.label}`;
+          display_value = `<a href="${link}">[${value.label}]</a>`;
+        } else if (value._ref && value._type) {
           // Handle Mind type specially - render its states instead of linking to Mind
           if (value._type === 'Mind' && value.states) {
             const state_links = value.states.map(/** @param {any} s */ (s) => {
@@ -364,6 +382,62 @@ function render_entity(a, target){
   target.innerHTML = hout;
 }
 
+/**
+ * @param {any} a
+ * @param {HTMLElement} [target]
+ */
+function render_archetype(a, target){
+  if (!target) {
+    assert($main, 'main element not found');
+    target = $main;
+  }
+  const archetype_data = a.archetype.data;
+
+  let hout = "<dl>";
+
+  // Display label
+  if (archetype_data.label) {
+    hout += `<dt>Label</dt><dd>${archetype_data.label}</dd>`;
+  }
+
+  // Display bases
+  if (archetype_data.bases?.length > 0) {
+    hout += `<dt>Bases</dt><dd>`;
+    for (const base of archetype_data.bases) {
+      hout += `<a href="?archetype=${base.label}">${base.label}</a> `;
+    }
+    hout += `</dd>`;
+  }
+
+  // Display traits
+  if (archetype_data.traits && Object.keys(archetype_data.traits).length > 0) {
+    hout += `<dt>Traits</dt><dd><dl>`;
+    for (const [trait, value] of Object.entries(archetype_data.traits)) {
+      let display_value = value;
+
+      // Handle archetype references
+      if (typeof value === 'object' && value !== null && value._type === 'Archetype') {
+        const link = `?archetype=${value.label}`;
+        display_value = `<a href="${link}">[${value.label}]</a>`;
+      } else if (value === null) {
+        display_value = 'null';
+      } else if (typeof value === 'object') {
+        display_value = JSON.stringify(value, null, 2);
+      }
+
+      hout += `<dt>${trait}</dt><dd>${display_value}</dd>`;
+    }
+    hout += `</dl></dd>`;
+  }
+
+  hout += "</dl>";
+
+  // Display raw JSON for debugging
+  hout += `<details><summary>Raw JSON</summary><pre>${JSON.stringify(archetype_data, null, 2)}</pre></details>`;
+
+  target.innerHTML = hout;
+}
+
 function parse_url(){
   if (typeof location === 'undefined') return null;
 
@@ -373,6 +447,8 @@ function parse_url(){
     query = {msg: 'query_mind', mind: params.get('mind'), state_id: params.get('state')};
   } else if (params.has('belief') && params.has('state')) {
     query = {msg: 'query_belief', belief: params.get('belief'), state_id: params.get('state')};
+  } else if (params.has('archetype')) {
+    query = {msg: 'query_archetype', archetype: params.get('archetype')};
   } else if (params.has('state')) {
     query = {msg: 'query_state', state: params.get('state')};
   } else {

@@ -189,6 +189,60 @@ export class Traittype {
   }
 
   /**
+   * Validate that a subject has the required archetype for this traittype
+   * Only validates when data_type is an archetype label
+   * @param {Subject} subject - Subject to validate
+   * @param {State} state - State context for belief lookup
+   * @returns {void}
+   * @throws {Error} If subject's belief doesn't have required archetype
+   */
+  validate_archetype(subject, state) {
+    const required_archetype = Archetype.get_by_label(this.data_type)
+    if (!required_archetype) return
+
+    const belief = subject.get_belief_by_state(state)
+    for (const a of belief.get_archetypes()) {
+      if (a === required_archetype) return
+    }
+
+    throw new Error(
+      `Subject does not have required archetype '${this.data_type}' ` +
+      `for trait '${this.label}'`
+    )
+  }
+
+  /**
+   * Resolve string label to typed value for archetype trait defaults
+   * Determines resolution strategy based on traittype's data_type
+   * @param {string} label - String label to resolve
+   * @param {State} eidos_state - Eidos origin state for prototype lookup
+   * @returns {*} Resolved value (Archetype, Subject, or string for literals)
+   * @throws {Error} If reference type label cannot be resolved
+   */
+  resolve_archetype_default(label, eidos_state) {
+    // Literal types keep string values (they validate at belief construction time)
+    const type_class = Traittype.type_class_by_name[this.data_type]
+    if (type_class) return label
+
+    // Try archetype (most common for trait defaults)
+    const archetype = Archetype.get_by_label(label)
+    if (archetype) return archetype
+
+    // Try prototype (shared belief in Eidos)
+    const subject = Subject.get_by_label(label)
+    if (subject) {
+      const prototype = subject.get_shared_belief_by_state(eidos_state)
+      assert(prototype, `Prototype '${label}' found but has no belief in Eidos origin_state`, {label, trait: this.label})
+      return prototype.subject
+    }
+
+    throw new Error(
+      `Cannot resolve archetype trait default '${this.label}': ` +
+      `'${label}' not found in archetypes or prototypes`
+    )
+  }
+
+  /**
    * Deserialize trait value from JSON (handles all JSON value types)
    * Called during JSON deserialization only
    * @param {Belief} belief - Belief being deserialized (for context)

@@ -512,11 +512,11 @@ describe('observation', () => {
       expect(perception).to.exist
       expect(perception.get_archetypes().some(a => a.label === 'EventPerception')).to.be.true
 
-      // Check content - should include hammer and recursively perceived workshop
+      // Check content - should include hammer only (not workshop - location is spatial)
       const content_tt = Traittype.get_by_label('content')
       const content = perception.get_trait(player_state, content_tt)
       expect(content).to.be.an('array')
-      expect(content).to.have.lengthOf(2)  // hammer + workshop (from location trait)
+      expect(content).to.have.lengthOf(1)  // hammer only (location trait excluded with default visual modalities)
 
       // Find hammer knowledge belief in content
       const hammer_knowledge_subject = content.find(s => {
@@ -577,7 +577,7 @@ describe('observation', () => {
       const content_tt = Traittype.get_by_label('content')
       const content = perception.get_trait(player_state, content_tt)
       expect(content).to.be.an('array')
-      expect(content.length).to.be.at.least(2)  // hammer + recursively perceived workshop
+      expect(content.length).to.equal(1)  // hammer only (location trait excluded)
 
       // Find hammer knowledge in content
       const hammer_subject = content.find(s => {
@@ -860,6 +860,224 @@ describe('observation', () => {
 
       // Should be a new version
       expect(updated_knowledge[0]._id).to.not.equal(old_knowledge[0]._id)
+    })
+  })
+
+  describe('perception modalities and tree pruning', () => {
+    it('should not perceive spatial traits with default visual modalities', () => {
+      // Register EventPerception archetypes
+      DB.register({
+        content: { type: 'Thing', container: Array }
+      }, {
+        EventAwareness: {
+          bases: ['Thing'],
+          traits: { content: null }
+        },
+        EventPerception: {
+          bases: ['EventAwareness'],
+          traits: { content: null }
+        }
+      }, {})
+
+      // Setup world with locations
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      state.add_beliefs_from_template({
+        village: {
+          bases: ['Location'],
+        },
+        workshop: {
+          bases: ['Location'],
+          traits: {
+            location: 'village',  // spatial trait
+          },
+        },
+        person1: {
+          bases: ['Person'],
+          traits: {
+            location: 'workshop',  // spatial trait
+          },
+        }
+      })
+
+      state.add_beliefs_from_template({
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {},
+            location: 'workshop',
+          },
+        }
+      })
+
+      state.lock()
+      state = state.branch(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const person1 = get_first_belief_by_label('person1')
+      const workshop = get_first_belief_by_label('workshop')
+
+      let player_state = state.get_active_state_by_host(player)
+
+      // Perceive person1 with default modalities (visual only)
+      const perception = player_state.perceive([person1])
+
+      // Should only perceive person1, NOT workshop or village
+      // (location trait has exposure: spatial, excluded by default)
+      const beliefs_after = [...player_state.get_beliefs()]
+      const about_tt = Traittype.get_by_label('@about')
+
+      // Count beliefs about world entities (exclude EventPerception)
+      const knowledge_beliefs = beliefs_after.filter(b => {
+        const about = b.get_trait(player_state, about_tt)
+        return about !== null  // Has @about → knowledge belief
+      })
+
+      // Should only have knowledge about person1, not workshop or village
+      expect(knowledge_beliefs.length).to.equal(1)
+      expect(knowledge_beliefs[0].get_trait(player_state, about_tt).sid).to.equal(person1.subject.sid)
+    })
+
+    it('should reuse current memory and stop tree walk (recognition-based pruning)', () => {
+      // Register EventPerception archetypes
+      DB.register({
+        content: { type: 'Thing', container: Array }
+      }, {
+        EventAwareness: {
+          bases: ['Thing'],
+          traits: { content: null }
+        },
+        EventPerception: {
+          bases: ['EventAwareness'],
+          traits: { content: null }
+        }
+      }, {})
+
+      // Setup world
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1, vt: 1})
+
+      state.add_beliefs_from_template({
+        workshop: {
+          bases: ['Location'],
+        },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: {
+            color: 'blue',
+          },
+        }
+      })
+
+      state.add_beliefs_from_template({
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              // Player already knows about hammer with same traits
+              hammer: ['color'],
+            },
+            location: 'workshop',
+          },
+        }
+      })
+
+      state.lock()
+
+      const player = get_first_belief_by_label('player')
+      const hammer = get_first_belief_by_label('hammer')
+
+      let player_state = state.get_active_state_by_host(player)
+
+      // Player already has knowledge about hammer
+      const knowledge_before = player_state.recognize(hammer)
+      expect(knowledge_before.length).to.be.at.least(1)
+      const original_knowledge = knowledge_before[0]
+
+      // Perceive hammer again (same state, same traits)
+      const perception = player_state.perceive([hammer])
+
+      // Should reuse existing knowledge belief (not create new one)
+      const knowledge_after = player_state.recognize(hammer)
+      expect(knowledge_after.length).to.be.at.least(1)
+
+      // Same belief object (recognition-based pruning worked)
+      expect(knowledge_after[0]._id).to.equal(original_knowledge._id)
+    })
+
+    it('should create new perception when world state is stale', () => {
+      // Register EventPerception archetypes
+      DB.register({
+        content: { type: 'Thing', container: Array }
+      }, {
+        EventAwareness: {
+          bases: ['Thing'],
+          traits: { content: null }
+        },
+        EventPerception: {
+          bases: ['EventAwareness'],
+          traits: { content: null }
+        }
+      }, {})
+
+      // Setup world at vt=1
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1, vt: 1})
+
+      state.add_beliefs_from_template({
+        hammer: {
+          bases: ['PortableObject'],
+          traits: {
+            color: 'blue',
+          },
+        }
+      })
+
+      state.add_beliefs_from_template({
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              hammer: ['color'],
+            },
+          },
+        }
+      })
+
+      state.lock()
+
+      const player = get_first_belief_by_label('player')
+      const hammer = get_first_belief_by_label('hammer')
+
+      let player_state = state.get_active_state_by_host(player)
+
+      // Player's memory created at tt=1
+      const knowledge_before = player_state.recognize(hammer)
+      expect(knowledge_before.length).to.be.at.least(1)
+      expect(knowledge_before[0].origin_state.tt).to.equal(1)
+
+      // World progresses to vt=2
+      state = state.branch(Cosmos.logos_state(), 2)
+
+      // Update hammer in world
+      const hammer_v2 = hammer.branch(state, {color: 'red'})
+
+      player_state = state.get_active_state_by_host(player)
+
+      // Perceive updated hammer (world.vt=2 > memory.tt=1)
+      const perception = player_state.perceive([hammer_v2])
+
+      // Should create NEW perception (memory is stale)
+      const knowledge_after = player_state.recognize(hammer_v2)
+      expect(knowledge_after.length).to.be.at.least(1)
+
+      // Different belief (new perception created)
+      expect(knowledge_after[0]._id).to.not.equal(knowledge_before[0]._id)
+
+      // New memory has updated color
+      const color_tt = Traittype.get_by_label('color')
+      expect(knowledge_after[0].get_trait(player_state, color_tt)).to.equal('red')
     })
   })
 })

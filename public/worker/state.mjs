@@ -633,9 +633,14 @@ export class State {
     assert(t_about, "Traittype '@about' not found in registry")
 
     const query_state = this.ground_state ?? this.about_state
-    let about_belief = query_state?.get_belief_by_subject(source_belief.subject)
-    if (!about_belief && query_state) {
-      about_belief = source_belief.subject.get_shared_belief_by_state(query_state)
+    // Try to get belief (may not exist if source_belief is not in query_state)
+    let about_belief = null
+    if (query_state) {
+      try {
+        about_belief = source_belief.subject.get_belief_by_state(query_state)
+      } catch {
+        // Belief doesn't exist in query_state - this is okay
+      }
     }
 
     const beliefs_about_subject = about_belief ? [...about_belief.rev_trait(this, t_about)] : []
@@ -836,10 +841,10 @@ export class State {
    * @param {Belief} source_belief - Belief from parent mind to learn about (must be in ground_state)
    * @param {Object} [options] - Learning options
    * @param {string[]} [options.traits] - Specific traits to copy (overrides modalities)
-   * @param {string[]} [options.modalities] - Exposure modalities to observe (default: ['visual', 'spatial'])
+   * @param {string[]} [options.modalities] - Exposure modalities to observe (default: ['visual'])
    * @returns {Belief}
    */
-  learn_about(source_belief, {traits, modalities = ['visual', 'spatial']} = {}) {
+  learn_about(source_belief, {traits, modalities = ['visual']} = {}) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
     assert(this.ground_state instanceof State, 'learn_about requires ground_state', {state_id: this._id})
 
@@ -970,12 +975,30 @@ export class State {
               // Nested entity is uncertain: use slow path
               const perceived = this._perceive_single(nested_belief, world_state, modalities)
               value = perceived.subject
-              all_perceived.push(perceived)
+              // NOTE: Don't add to all_perceived - parts are implicit, not content items
             } else {
-              // Nested entity is certain: recursive fast path
+              // Nested entity is certain: recursive fast path WITH pruning
+              // Check recognition to avoid re-perceiving current memories
+              const nested_knowledge = this.recognize(nested_belief)
+
+              if (nested_knowledge.length > 0) {
+                const nested_memory = nested_knowledge[0]
+                const world_vt = nested_belief.origin_state?.vt
+                const memory_tt = nested_memory.origin_state?.tt
+
+                // If memory is current, reuse it (prune tree walk for this nested entity)
+                if (world_vt != null && memory_tt != null && world_vt <= memory_tt) {
+                  value = nested_memory.subject
+                  // NOTE: Don't add to all_perceived - parts are implicit
+                  observed_traits[traittype.label] = value
+                  continue  // Skip recursive call - memory is current
+                }
+              }
+
+              // Memory stale or doesn't exist - recurse normally
               const result = this._perceive_with_recognition(nested_belief, world_state, modalities)
               value = result.belief.subject
-              all_perceived.push(...result.all_perceived)  // Collect nested perceptions
+              // NOTE: Don't add nested parts to all_perceived - only top-level entities in content
             }
           }
         }
@@ -1059,10 +1082,10 @@ export class State {
    * - Slow path: Unfamiliar entities → create perceived belief with traits
    *
    * @param {Belief[]} content - Array of world entities to perceive
-   * @param {string[]} modalities - Exposure modalities to observe (default: ['visual', 'spatial'])
+   * @param {string[]} modalities - Exposure modalities to observe (default: ['visual'])
    * @returns {Belief} EventPerception belief containing perceived items
    */
-  perceive(content, modalities = ['visual', 'spatial']) {
+  perceive(content, modalities = ['visual']) {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     const all_perceived_subjects = []
@@ -1174,31 +1197,19 @@ export class State {
 
           if (candidates.length === 1 && this.ground_state) {
             // Unambiguous match - learn about the identified entity
-            let world_entity = this.ground_state.get_belief_by_subject(candidates[0])
-            if (!world_entity) {
-              world_entity = candidates[0].get_shared_belief_by_state(this.ground_state)
-            }
-            assert(world_entity, 'Failed to find identified entity in ground_state', {subject: candidates[0]})
+            const world_entity = candidates[0].get_belief_by_state(this.ground_state)
             this.learn_about(world_entity)
           }
           // else: Ambiguous or no match - skip for now
           // (Future: create uncertain knowledge, track ambiguity)
         } else if (this.ground_state) {
           // Already identified - learn about the identified entity
-          let world_entity = this.ground_state.get_belief_by_subject(/** @type {Subject} */ (about))
-          if (!world_entity) {
-            world_entity = /** @type {Subject} */ (about).get_shared_belief_by_state(this.ground_state)
-          }
-          assert(world_entity, 'Failed to find identified entity in ground_state', {about})
+          const world_entity = /** @type {Subject} */ (about).get_belief_by_state(this.ground_state)
           this.learn_about(world_entity)
         }
       } else if (this.ground_state) {
         // Just a subject reference - familiar entity
-        let world_entity = this.ground_state.get_belief_by_subject(item_subject)
-        if (!world_entity) {
-          world_entity = item_subject.get_shared_belief_by_state(this.ground_state)
-        }
-        assert(world_entity, 'Failed to find familiar entity in ground_state', {subject: item_subject})
+        const world_entity = item_subject.get_belief_by_state(this.ground_state)
         this.learn_about(world_entity)
       }
     }

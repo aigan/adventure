@@ -549,7 +549,7 @@ describe('learn_about', () => {
       expect(player_knowledge._traits.has(Traittype.get_by_label('mind'))).to.be.false;
     });
 
-    it('uses default modalities (visual + spatial) when none specified', () => {
+    it('uses default modalities (visual only) when none specified', () => {
       const world_state = createMindWithBeliefs('world', {
         workshop: {
           bases: ['Location']
@@ -569,9 +569,9 @@ describe('learn_about', () => {
       const hammer = get_first_belief_by_label('hammer');
       const hammer_knowledge = npc_state.learn_about(hammer, {});
 
-      // Should have both color and location (default modalities)
+      // Should have color (visual) but NOT location (spatial)
       expect(hammer_knowledge._traits.has(Traittype.get_by_label('color'))).to.be.true;
-      expect(hammer_knowledge._traits.has(Traittype.get_by_label('location'))).to.be.true;
+      expect(hammer_knowledge._traits.has(Traittype.get_by_label('location'))).to.be.false;
     });
 
     it('explicit traits parameter overrides modalities', () => {

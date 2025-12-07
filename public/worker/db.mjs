@@ -344,6 +344,14 @@ export function register(traittypes, archetypes, prototypes = {}) {
     Archetype.register(label, archetype)
   }
 
+  // Resolve archetype trait template values (second pass)
+  // Must happen after all archetypes are registered (archetypes may reference each other)
+  for (const [label, def] of Object.entries(archetypes)) {
+    const archetype = Archetype.get_by_label(label)
+    assert(archetype, `Archetype '${label}' not found after registration`, {label})
+    archetype.resolve_template_values()
+  }
+
   // Register prototypes third (shared beliefs in Eidos)
   const eidos_mind = eidos()
   assert(eidos_mind.origin_state instanceof State, 'Eidos origin_state must be State', {eidos_mind})

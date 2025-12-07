@@ -22,6 +22,7 @@ import { assert } from './debug.mjs'
 import * as DB from './db.mjs'
 import { Traittype } from './traittype.mjs'
 import { Subject } from './subject.mjs'
+import { eidos } from './eidos.mjs'
 import { register_reset_hook } from './reset.mjs'
 
 /**
@@ -126,6 +127,23 @@ export class Archetype {
   }
 
   /**
+   * Resolve trait template values from strings to Subjects/Archetypes
+   * Called after all archetypes are registered during DB.register()
+   * Modifies _traits_template in-place to replace string references
+   */
+  resolve_template_values() {
+    const eidos_state = eidos().origin_state
+    assert(eidos_state, 'Eidos must have origin_state during archetype resolution')
+
+    for (const [traittype, value] of this._traits_template) {
+      if (value === null || typeof value !== 'string') continue
+
+      const resolved = traittype.resolve_archetype_default(value, eidos_state)
+      this._traits_template.set(traittype, resolved)
+    }
+  }
+
+  /**
    * Iterate over all defined traits in this archetype's template including nulls (does not check bases)
    * @returns {Generator<[Traittype, any]>} Yields [traittype, value] pairs
    */
@@ -170,23 +188,26 @@ export class Archetype {
    * @returns {*} Resolved Subject
    */
   static resolve_trait_value_from_template(traittype, belief, data) {
-    if (data === null) return null  // Allow explicit null to block composition
-    // Use shared lookup helper (no duplicate lookups)
-    const { belief: found_belief, subject } = Subject._lookup_belief_from_template(traittype, belief, data)
+    if (data === null) return null
+    const { subject } = Subject._lookup_belief_from_template(traittype, belief, data)
 
-    // If lookup found a belief (from string label), validate archetype
-    if (found_belief) {
-      const required_archetype = Archetype.get_by_label(traittype.data_type)
-      for (const a of found_belief.get_archetypes()) {
-        if (a === required_archetype) {
-          return subject
-        }
-      }
-      throw new Error(`Belief '${data}' does not have required archetype '${traittype.data_type}' for trait '${traittype.label}'`)
+    if (typeof data === 'string') {
+      traittype.validate_archetype(subject, belief.origin_state)
     }
 
-    // Passthrough (Subject or other value, no belief to validate)
     return subject
+  }
+
+  /**
+   * Create inspection view for when archetype is used as a trait value
+   * @param {*} _state - State context (unused, but required by interface)
+   * @returns {{_type: string, label: string}} Archetype reference for UI
+   */
+  to_inspect_view(_state) {
+    return {
+      _type: 'Archetype',
+      label: this.label
+    }
   }
 
   /**
