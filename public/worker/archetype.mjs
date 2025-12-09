@@ -171,8 +171,8 @@ export class Archetype {
     // breadth first
     /** @type {Archetype[]} */ const bases = [this]
     while (bases.length > 0) {
-      const base = bases.shift()
-      if (!base || seen.has(base)) continue
+      const base = /** @type {Archetype} */ (bases.shift())
+      if (seen.has(base)) continue
 
       seen.add(base)
       bases.push(... base._bases)

@@ -575,7 +575,6 @@ export class State {
    * @returns {Belief|null} The belief for this subject visible in this state
    */
   get_belief_by_subject(subject) {
-    // Check cache first (only on locked states)
     if (this.locked && this._subject_index?.has(subject)) {
       // TypeScript: .has() check guarantees .get() returns Belief|null, not undefined
       return /** @type {Belief|null} */ (this._subject_index.get(subject))
@@ -693,7 +692,6 @@ export class State {
       return new_belief
 
     } else {
-      // Update existing belief (use first from ranked list)
       const existing_belief = existing_beliefs[0]
 
       // Copy new traits, dereferencing belief references
@@ -712,7 +710,6 @@ export class State {
         return existing_belief
       }
 
-      // Create updated belief - keeps all old traits, updates specified ones
       const updated_belief = existing_belief.branch(this, new_traits)
 
       this.remove_beliefs(existing_belief)
@@ -731,7 +728,6 @@ export class State {
    * @throws {Error} If host has no mind, or if no state or multiple states found
    */
   get_core_state_by_host(host) {
-    // Get the nested mind from the host entity
     const mind_traittype = Traittype.get_by_label('mind')
     assert(mind_traittype, "Traittype 'mind' not found in registry")
     const host_mind = host.get_trait(this, mind_traittype)
@@ -741,7 +737,6 @@ export class State {
     // Use states_at_tt to get outermost states, then filter by checking ground_state ancestry
     const candidates = []
     for (const s of host_mind.states_at_tt(this.vt)) {
-      // Check if s.ground_state is this or in this's ancestry
       /** @type {State | null} */
       let current_check = this
       while (current_check) {
@@ -930,7 +925,6 @@ export class State {
       }
     }
 
-    // Create perceived belief with @about: null (unrecognized)
     // Use Belief.from() since @about is not allowed in add_belief_from_template
     const perceived = Belief.from(this, archetype_bases, {
       '@about': null,
@@ -968,7 +962,6 @@ export class State {
         if (value instanceof Subject) {
           const nested_belief = value.get_belief_by_state(world_state)
           if (nested_belief) {
-            // Check if nested entity has @uncertain_identity
             const is_uncertain = uncertain_tt && nested_belief.get_trait(world_state, uncertain_tt) === true
 
             if (is_uncertain) {
@@ -978,7 +971,6 @@ export class State {
               // NOTE: Don't add to all_perceived - parts are implicit, not content items
             } else {
               // Nested entity is certain: recursive fast path WITH pruning
-              // Check recognition to avoid re-perceiving current memories
               const nested_knowledge = this.recognize(nested_belief)
 
               if (nested_knowledge.length > 0) {
@@ -1069,7 +1061,6 @@ export class State {
       }
     }
 
-    // Add main belief to perceived list and return
     all_perceived.push(main_belief)
     return {belief: main_belief, all_perceived}
   }
@@ -1094,7 +1085,6 @@ export class State {
     for (const world_entity of content) {
       const about_state = world_entity.origin_state
 
-      // Check if identity is uncertain
       const is_uncertain = uncertain_tt && world_entity.get_trait(about_state, uncertain_tt) === true
 
       if (is_uncertain) {
@@ -1104,12 +1094,10 @@ export class State {
       } else {
         // Fast path: Identity certain, use recognition-based perception
         const result = this._perceive_with_recognition(world_entity, about_state, modalities)
-        // Add all perceived entities (including nested) to the perception event
         all_perceived_subjects.push(...result.all_perceived.map(b => b.subject))
       }
     }
 
-    // Create EventPerception holding ALL perceived items (including nested entities)
     const perception = Belief.from(this, [A.EventPerception], {
       content: all_perceived_subjects
     })
@@ -1132,10 +1120,7 @@ export class State {
     const candidates = new Map()  // Use Map to deduplicate by subject
 
     for (const archetype of archetypes) {
-      // Get knowledge beliefs with this archetype
-      const beliefs = this.get_beliefs_by_archetype(archetype)
-
-      for (const belief of beliefs) {
+      for (const belief of this.get_beliefs_by_archetype(archetype)) {
         // Skip if no @about (not knowledge)
         const about_tt = Traittype.get_by_label('@about')
         if (!about_tt) continue
@@ -1216,23 +1201,24 @@ export class State {
   }
 
   /**
-   * Get all beliefs in this state with a specific archetype
+   * Get beliefs in this state with a specific archetype
+   *
+   * PERFORMANCE: O(n) scan across all beliefs in state chain.
+   * This traverses "all of time and space" for this mind.
+   * See STYLE.md "Iteration vs Indexing" for when to index vs scan.
    *
    * @param {Archetype} archetype - Archetype to match
-   * @returns {Belief[]} Beliefs with this archetype in their bases
+   * @returns {Generator<Belief>} Generator of beliefs with this archetype (allows early exit)
    */
-  get_beliefs_by_archetype(archetype) {
-    const matching_beliefs = []
-
-    // Iterate through all beliefs in this state (including base chain)
+  *get_beliefs_by_archetype(archetype) {
     for (const belief of this.get_beliefs()) {
-      const archetypes = [...belief.get_archetypes()]
-      if (archetypes.some((/** @type {Archetype} */ a) => a === archetype)) {
-        matching_beliefs.push(belief)
+      for (const a of belief.get_archetypes()) {
+        if (a === archetype) {
+          yield belief
+          break  // Found match, stop checking other archetypes for this belief
+        }
       }
     }
-
-    return matching_beliefs
   }
 
   /**
@@ -1247,7 +1233,6 @@ export class State {
    */
   match_traits(perceived, knowledge) {
     // FIXME: validate
-    // Get all traits from perceived belief (except @about)
     const perceived_traits = [...perceived.get_traits()]
       .filter(([tt, _]) => tt.label !== '@about')
 

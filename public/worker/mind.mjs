@@ -381,7 +381,6 @@ export class Mind {
    * @returns {Omit<MindJSON, 'nested_minds'>}
    */
   toJSON() {
-    // Get beliefs from belief_by_mind index
     const mind_beliefs = [...DB.get_beliefs_by_mind(this)].map(b => b.toJSON())
 
     return {
@@ -407,7 +406,6 @@ export class Mind {
     }
 
     // Fallback to base Mind for unknown/unregistered types (legacy)
-    // Create instance using Object.create (bypasses constructor)
     const mind = Object.create(Mind.prototype)
 
     // Set _type (class field initializers don't run with Object.create)
@@ -416,12 +414,10 @@ export class Mind {
     // Use shared initialization with deserialized ID
     mind._init_properties(parent_mind, data.label, null, data._id)
 
-    // Create belief shells
     for (const belief_data of data.belief) {
       Belief.from_json(mind, belief_data)
     }
 
-    // Create state shells and add to their respective minds
     for (const state_data of data.state) {
       const state = State.from_json(mind, state_data)
       // Add to the state's in_mind (which might be different from mind if nested)
@@ -593,7 +589,6 @@ export class Mind {
       }
     }
 
-    // Create new state (either versioning or initial construction)
     // For timeless ground states (vt=null), get all states; otherwise filter by vt
     const latest_states = ground_state.vt != null
       ? [...this.states_at_tt(ground_state.vt)]

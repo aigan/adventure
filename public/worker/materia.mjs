@@ -44,10 +44,8 @@ export class Materia extends Mind {
     // Materia minds MUST have a parent
     assert(parent_mind !== null, 'Materia requires non-null parent_mind', {label})
 
-    // Call Mind constructor which validates parent_mind type
     super(parent_mind, label, self)
 
-    // Set type (overrides Mind's default)
     this._type = 'Materia'
   }
 
@@ -113,12 +111,10 @@ export class Materia extends Mind {
       return state
     })
 
-    // All component states must be locked (Convergence requirement)
     for (const state of component_states) {
       assert(state.locked, 'All component states must be locked', {state})
     }
 
-    // Get ground_state from belief context
     const ground_state = belief.origin_state
     assert(ground_state instanceof State, 'belief.origin_state must be State', {belief})
 
@@ -137,7 +133,6 @@ export class Materia extends Mind {
       {self: /** @type {Subject|null} */ (self_subject), derivation: true}
     )
 
-    // Set as origin state and track
     composed_mind.origin_state = convergence
     composed_mind.state = convergence
 
@@ -194,7 +189,6 @@ export class Materia extends Mind {
     // Extract self_subject from ground_belief
     const self_subject = ground_belief.subject
 
-    // Create the mind (parent is the mind where ground_state exists)
     const parent_mind = ground_state.in_mind
     const entity_mind = new Materia(parent_mind, self_subject.get_label())
 
@@ -256,7 +250,6 @@ export class Materia extends Mind {
       }
     }
 
-    // Return mind - caller can access unlocked state via mind.state
     return entity_mind
   }
 
@@ -269,7 +262,6 @@ export class Materia extends Mind {
   static from_json(data, parent_mind) {
     assert(parent_mind !== null, 'Materia.from_json requires parent_mind', {data})
 
-    // Create instance using Object.create (bypasses constructor)
     const mind = Object.create(Materia.prototype)
 
     // Set _type (class field initializers don't run with Object.create)
@@ -278,12 +270,10 @@ export class Materia extends Mind {
     // Use shared initialization with deserialized ID
     mind._init_properties(parent_mind, data.label, null, data._id)
 
-    // Create belief shells
     for (const belief_data of data.belief) {
       Belief.from_json(mind, belief_data)
     }
 
-    // Create state shells and add to their respective minds
     for (const state_data of data.state) {
       const state = State.from_json(mind, state_data)
       // Add to the state's in_mind (which might be different from mind if nested)

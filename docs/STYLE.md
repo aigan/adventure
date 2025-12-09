@@ -62,9 +62,12 @@ Write short, readable code using modern JavaScript features. Prefer clarity over
   - Optional chaining `?.` for safe property access
   - Nullish coalescing `??` for default values
 - ✓ **Generators** for inheritance chains and controlled iteration (e.g., walking `base` links)
+  - Use nested loops with generators, not `[...generator].some()`
+  - Example: `for (const a of belief.get_archetypes()) { if (a === target) break }`
 - ✗ Avoid `forEach`, `for...of`, or iteration over DB registries
 - ✓ Use indexed lookups: `DB.belief_by_id.get(id)`, `state.get_belief_by_subject(subject)`
 - ✓ When you need to "find" something, use a registry lookup with a key, not iteration
+- ✓ When O(n) scan is unavoidable: return generator, document "all of time and space", consider indexing
 
 ### Comments & Documentation
 

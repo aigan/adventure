@@ -193,7 +193,6 @@ export class Belief {
 
     const to_remove = [...old_set]
 
-    // Update reverse graph edges
     for (const subject of to_remove) {
       this.origin_state.rev_del(subject, traittype, this)
     }
@@ -202,7 +201,6 @@ export class Belief {
       this.origin_state.rev_add(subject, traittype, this)
     }
 
-    // Set the new value
     this._traits.set(traittype, new_value)
   }
 
@@ -235,7 +233,6 @@ export class Belief {
       }
     }
 
-    // Call add_trait with resolved (and possibly composed) value
     this.add_trait(traittype, value)
   }
 
@@ -308,11 +305,10 @@ export class Belief {
     const seen = new Set()
 
     while (queue.length > 0) {
-      const base = queue.shift()
-      if (!base || seen.has(base)) continue
+      const base = /** @type {Belief|Archetype} */ (queue.shift())
+      if (seen.has(base)) continue
       seen.add(base)
 
-      // Check for value - early return when found
       value = base.get_own_trait_value(traittype)
       if (value !== undefined) return value
 
@@ -372,7 +368,6 @@ export class Belief {
     while (queue.length > 0) {
       const current = /** @type {State} */ (queue.shift())
 
-      // Add all deletions to seen set
       const del_beliefs = current._rev_del.get(this.subject)?.get(traittype)
       if (del_beliefs) {
         for (const belief of del_beliefs) {
@@ -473,8 +468,8 @@ export class Belief {
     const seen = new Set()
 
     while (queue.length > 0) {
-      const base = queue.shift()
-      if (!base || seen.has(base)) continue
+      const base = /** @type {Belief|Archetype} */ (queue.shift())
+      if (seen.has(base)) continue
       seen.add(base)
 
       // Polymorphic call - both Archetype and Belief accept Traittype
@@ -540,8 +535,8 @@ export class Belief {
     const seen = new Set()
 
     while (queue.length > 0) {
-      const base = queue.shift()
-      if (!base || seen.has(base)) continue
+      const base = /** @type {Belief|Archetype} */ (queue.shift())
+      if (seen.has(base)) continue
       seen.add(base)
 
       // Yield base's own traits
@@ -649,8 +644,8 @@ export class Belief {
     // breadth first
     /** @type {(Belief|Archetype)[]} */ const bases = [this]
     while (bases.length > 0) {
-      const base = bases.shift()
-      if (!base || seen.has(base)) continue
+      const base = /** @type {Belief|Archetype} */ (bases.shift())
+      if (seen.has(base)) continue
 
       if (base instanceof Archetype) {
         yield* base.get_archetypes(seen)
@@ -673,8 +668,8 @@ export class Belief {
   *get_prototypes(seen = new Set()) {
     /** @type {(Belief|Archetype)[]} */ const bases = [this]
     while (bases.length > 0) {
-      const base = bases.shift()
-      if (!base || seen.has(base)) continue
+      const base = /** @type {Belief|Archetype} */ (bases.shift())
+      if (seen.has(base)) continue
       seen.add(base)
 
       if (base instanceof Archetype) {
@@ -757,8 +752,8 @@ export class Belief {
     /** @type {Belief[]} */ const bases_to_check = [this]
 
     while (bases_to_check.length > 0) {
-      const base = bases_to_check.shift()
-      if (!base || seen.has(base)) continue
+      const base = /** @type {Belief} */ (bases_to_check.shift())
+      if (seen.has(base)) continue
       seen.add(base)
 
       for (const b of base._bases) {
@@ -787,7 +782,6 @@ export class Belief {
 
     parts.push(`#${this._id}`)
 
-    // Add Eidos marker for shared beliefs
     if (this.is_shared) {
       parts.push('◊')
     }
@@ -858,13 +852,11 @@ export class Belief {
       traits: traits_obj
     })
 
-    // Add mind info if this belief is in a mind
     if (this.in_mind) {
       result.mind_id = this.in_mind._id
       result.mind_label = this.in_mind.label
     }
 
-    // Add "about" info if this is knowledge about something
     // For cross-mind beliefs, use the belief's own state context to resolve @about
     const belief_state = this.origin_state ?? state
     const about_belief = this.get_about(belief_state)
@@ -1026,7 +1018,6 @@ export class Belief {
 
     const belief = new Belief(state, subject, resolved_bases)
 
-    // Add remaining traits
     for (const [trait_label, trait_data] of Object.entries(traits)) {
       debug("  add trait", trait_label)
       const traittype = Traittype.get_by_label(trait_label)
@@ -1034,7 +1025,6 @@ export class Belief {
       belief.add_trait_from_template(state, traittype, trait_data, {about_state})
     }
 
-    // Add belief to state's insert list (validates locked state and origin_state)
     state.insert_beliefs(belief)
 
     return belief
@@ -1070,7 +1060,6 @@ export class Belief {
     assert(state instanceof State, 'branch requires State parameter', {belief_id: this._id})
     assert(!state.locked, 'Cannot branch into locked state', {state_id: state._id, belief_id: this._id})
 
-    // Create new belief with same subject (versioning) and current belief as base
     const branched = new Belief(state, this.subject, [this])
 
     // Add traits directly (no template resolution)

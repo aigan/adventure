@@ -36,7 +36,6 @@ export const dispatch = {
 		assert(session instanceof Session, 'session not initialized')
 		assert(session.world, 'session.world not initialized')
 		assert(session.state, 'session.state not initialized');
-		// Return current session state info
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "adventure_info",
 			server_id,
@@ -64,7 +63,6 @@ export const dispatch = {
 
 		assert(mind_obj instanceof Mind, `Mind not found: ${mind}`)
 
-		// Get specified state
 		const state = DB.get_state(Number(state_id))
 
 		assert(state instanceof State, `State not found: ${state_id}`)
@@ -107,7 +105,6 @@ export const dispatch = {
 	query_state({state, client_id}){
 		const state_id = Number(state)
 
-		// Get state from registry
 		const state_obj = DB.get_state(state_id)
 
 		assert(state_obj instanceof State, `State not found: ${state_id}`)
@@ -154,7 +151,6 @@ export const dispatch = {
 
 		assert(belief_obj instanceof Belief, `Belief not found: ${belief_id}`)
 
-		// Get specified state for resolving sids
 		const state_id_num = Number(state_id)
 		const state = DB.get_state(state_id_num)
 
@@ -230,7 +226,6 @@ export const dispatch = {
 
 	/** @param {{archetype: string, client_id: number}} param0 */
 	query_archetype({archetype, client_id}) {
-		// Get archetype by label
 		const archetype_obj = Archetype.get_by_label(archetype)
 
 		assert(archetype_obj instanceof Archetype, `Archetype not found: ${archetype}`)
