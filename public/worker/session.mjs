@@ -164,7 +164,7 @@ export class Session {
       subject: loc,
     })
 
-    return true
+    //return true
 
     // Will create another copy of whats percieved
     // eslint-disable-next-line no-unreachable

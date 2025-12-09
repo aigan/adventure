@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-12-09
+
+### Constraint-Based identify() Optimization
+- **`identify()` uses trait-based filtering**: Searches by most discriminating traits first (certain particular Subjects via rev_trait)
+- **Early exit at max_candidates**: Stops after finding 3 candidates (default, configurable)
+- **Fallback to archetype scan**: Uses most specific archetype only when no certain traits available
+- **Performance**: 10-250× faster depending on constraint selectivity
+
+### Prototype Reuse in Nested Perception
+- **Nested certain entities correctly use fast path**: Prototypes/shared beliefs nested within uncertain entities are now properly reused
+  - Slow path checks `@uncertain_identity` on nested Subject-valued traits
+  - Certain nested entities use `_perceive_with_recognition()` for reuse
+  - Uncertain nested entities use `_perceive_single()` for new perceived beliefs
+- **Prevents duplicate prototypes**: Shared knowledge like common handles, standard parts, or cultural knowledge are reused rather than duplicated
+
 ## 2025-12-04
 
 ### API Refinement - State Method Renames

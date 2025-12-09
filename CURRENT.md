@@ -16,8 +16,9 @@ Currently: Looking at room twice creates two perception events with perceived ob
 - Versioned beliefs created with `sid: knowledge.subject.sid` to maintain identity
 - First perception creates knowledge directly with `@about: world_entity.subject`
 - EventPerception.content includes all recursively perceived entities
+- **Bug fix (2025-12-09)**: Nested certain entities (prototypes) in uncertain entities now correctly use fast path for reuse
 
-**Tests**: All observation tests passing (478 total)
+**Tests**: All observation tests passing (497 total)
 
 ### Step 2: Implement learn_from() recognition (state.mjs:1001-1014)
 

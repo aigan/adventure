@@ -230,7 +230,9 @@ export function init_world() {
     hammer3: {
       bases: ['HammerCommon'],
       traits: {
+        '@uncertain_identity': true,
         location: 'workshop',
+        handle: 'HammerHandleCommon',
       },
     },
 

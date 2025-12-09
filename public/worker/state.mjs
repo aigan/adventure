@@ -1117,43 +1117,192 @@ export class State {
   }
 
   /**
-   * Identify a perceived belief by matching its traits against knowledge beliefs
+   * Identify a perceived belief by matching traits against knowledge beliefs
    *
-   * Implements the identification/recollection phase of dual-process recognition.
-   * Searches for knowledge beliefs with matching archetypes and trait values.
+   * Uses constraint-based matching: filters by most discriminating traits first.
+   * Strategy 1: Certain particular Subject traits (via rev_trait reverse index)
+   * Strategy 2: Fallback to archetype scan with most specific archetype
    *
    * @param {Belief} perceived_belief - Perceived belief with traits but no/unknown @about
-   * @returns {Subject[]} Array of candidate subjects (ranked by match quality)
+   * @param {number} max_candidates - Maximum candidates to return (default 3)
+   * @returns {Subject[]} Array of candidate subjects (up to max_candidates, ranked)
    */
-  identify(perceived_belief) {
-    // FIXME: validate
-    const archetypes = perceived_belief.get_archetypes()
-    const candidates = new Map()  // Use Map to deduplicate by subject
+  identify(perceived_belief, max_candidates = 3) {
+    const candidates = []
+    const about_tt = Traittype.get_by_label('@about')
 
-    for (const archetype of archetypes) {
-      for (const belief of this.get_beliefs_by_archetype(archetype)) {
-        // Skip if no @about (not knowledge)
-        const about_tt = Traittype.get_by_label('@about')
-        if (!about_tt) continue
-        const about = belief.get_trait(this, about_tt)
-        if (!about) continue
+    // Extract perceived traits (excluding @about)
+    const perceived_traits = [...perceived_belief.get_traits()]
+      .filter(([tt, _]) => tt.label !== '@about')
 
-        // Match traits
-        const score = this.match_traits(perceived_belief, belief)
-        if (score > 0) {
-          // Only add if not already present or if score is higher
-          const key = about.sid
-          if (!candidates.has(key) || candidates.get(key).score < score) {
-            candidates.set(key, {subject: about, score})
+    if (perceived_traits.length === 0) {
+      // No traits to match - fall back to archetype scan (rare case)
+      return this._identify_by_archetype(perceived_belief, max_candidates)
+    }
+
+    // Strategy 1: Use certain particular Subject traits (most discriminating)
+    for (const [traittype, value] of perceived_traits) {
+      if (value instanceof Subject && this._is_certain_particular(value)) {
+        // Get the belief for this subject (in ground_state where it lives)
+        if (!this.ground_state) continue
+
+        let value_belief = null
+        try {
+          value_belief = value.get_belief_by_state(this.ground_state)
+        } catch (e) {
+          continue  // Subject not found, skip
+        }
+
+        if (!value_belief) continue
+
+        // Highly selective: use rev_trait reverse index
+        for (const candidate_belief of value_belief.rev_trait(this, traittype)) {
+          // Verify it's knowledge (has @about)
+          if (!about_tt) continue
+          const about = candidate_belief.get_trait(this, about_tt)
+          if (!about) continue
+
+          // Verify all other perceived traits match
+          if (this._all_traits_match(perceived_belief, candidate_belief)) {
+            candidates.push({subject: about, score: 1.0})
+
+            // Direct match on certain particular = high confidence, stop
+            if (candidates.length >= max_candidates) {
+              return candidates.map(c => c.subject)
+            }
           }
+        }
+
+        // If we found any via certain particular, return them
+        if (candidates.length > 0) {
+          return candidates.map(c => c.subject)
+        }
+      }
+    }
+
+    // Strategy 2: Scan by most specific archetype (fallback)
+    // Use breadth-first iteration (recent beliefs first)
+    const archetype = this._get_most_specific_archetype(perceived_belief)
+    if (!archetype) return []  // No archetypes
+
+    for (const belief of this.get_beliefs_by_archetype(archetype)) {
+      // Skip non-knowledge
+      if (!about_tt) continue
+      const about = belief.get_trait(this, about_tt)
+      if (!about) continue
+
+      // Match all perceived traits
+      const score = this.match_traits(perceived_belief, belief)
+      if (score > 0) {
+        candidates.push({subject: about, score})
+
+        // Stop at max candidates
+        if (candidates.length >= max_candidates) {
+          break
         }
       }
     }
 
     // Sort by score (descending), return subjects only
-    return [...candidates.values()]
+    return candidates
       .sort((a, b) => b.score - a.score)
       .map(c => c.subject)
+  }
+
+  /**
+   * Check if Subject is a certain particular (not prototype, not uncertain)
+   *
+   * @private
+   * @param {Subject} subject - Subject to check
+   * @returns {boolean} True if certain particular instance
+   */
+  _is_certain_particular(subject) {
+    // Must be particular (not universal prototype)
+    if (subject.mater === null) return false
+
+    // Check in ground_state (world state) for the belief
+    if (!this.ground_state) return false
+
+    let belief = null
+    try {
+      belief = subject.get_belief_by_state(this.ground_state)
+    } catch (e) {
+      return false  // Subject not found in ground state
+    }
+
+    if (!belief) return false
+
+    const uncertain_tt = Traittype.get_by_label('@uncertain_identity')
+    if (!uncertain_tt) return true  // No uncertainty tracking = assume certain
+
+    const is_uncertain = belief.get_trait(this.ground_state, uncertain_tt)
+    return is_uncertain !== true  // Certain if not explicitly uncertain
+  }
+
+  /**
+   * Verify all perceived traits match candidate belief
+   *
+   * @private
+   * @param {Belief} perceived - Perceived belief with observed traits
+   * @param {Belief} candidate - Knowledge belief to check
+   * @returns {boolean} True if all traits match
+   */
+  _all_traits_match(perceived, candidate) {
+    for (const [traittype, perceived_value] of perceived.get_traits()) {
+      if (traittype.label === '@about') continue
+
+      const candidate_value = candidate.get_trait(this, traittype)
+
+      // Exact match check
+      if (perceived_value instanceof Subject) {
+        if (!(candidate_value instanceof Subject) || perceived_value.sid !== candidate_value.sid) {
+          return false
+        }
+      } else if (perceived_value !== candidate_value) {
+        return false
+      }
+    }
+    return true
+  }
+
+  /**
+   * Get most specific archetype from perceived belief
+   *
+   * @private
+   * @param {Belief} belief
+   * @returns {Archetype} Most specific archetype (first in bases)
+   */
+  _get_most_specific_archetype(belief) {
+    const archetypes = [...belief.get_archetypes()]
+    // Archetypes returned in breadth-first order: most specific first
+    return archetypes[0]
+  }
+
+  /**
+   * Identify by archetype scan (fallback when no traits available)
+   *
+   * @private
+   * @param {Belief} perceived_belief
+   * @param {number} max_candidates
+   * @returns {Subject[]}
+   */
+  _identify_by_archetype(perceived_belief, max_candidates) {
+    const candidates = []
+    const about_tt = Traittype.get_by_label('@about')
+    if (!about_tt) return []
+
+    const archetype = this._get_most_specific_archetype(perceived_belief)
+    if (!archetype) return []
+
+    for (const belief of this.get_beliefs_by_archetype(archetype)) {
+      const about = belief.get_trait(this, about_tt)
+      if (!about) continue
+
+      candidates.push(about)
+      if (candidates.length >= max_candidates) break
+    }
+
+    return candidates
   }
 
   /**
