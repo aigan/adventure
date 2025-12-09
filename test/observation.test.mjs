@@ -4,6 +4,7 @@ import * as Cosmos from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
+import { perceive, identify, learn_from, recognize, learn_about } from '../public/worker/perception.mjs'
 import { setupStandardArchetypes, createMindWithBeliefs } from './helpers.mjs'
 
 describe('observation', () => {
@@ -54,7 +55,7 @@ describe('observation', () => {
       const player_state = state.get_active_state_by_host(player)
 
       // Explicit learn_about (like world.mjs line 200)
-      player_state.learn_about(hammer)
+      learn_about(player_state,hammer)
 
       // Count beliefs about hammer before do_look
       const about_traittype = Traittype.get_by_label('@about')
@@ -71,9 +72,9 @@ describe('observation', () => {
       // This is what do_look does - learn about each item
       for (const item of content) {
         // Check recognize before
-        const existing = player_state.recognize(item)
+        const existing = recognize(player_state,item)
 
-        player_state.learn_about(item)
+        learn_about(player_state,item)
 
         // Count after this learn_about
         const beliefs_after = [...item.rev_trait(player_state, about_traittype)]
@@ -127,7 +128,7 @@ describe('observation', () => {
       const before = [...hammer.rev_trait(player_state, about_traittype)]
       console.log('Before learn_about:', before.length, 'beliefs about hammer')
 
-      player_state.learn_about(hammer)
+      learn_about(player_state,hammer)
 
       // Count beliefs AFTER learn_about
       const after = [...hammer.rev_trait(player_state, about_traittype)]
@@ -169,7 +170,7 @@ describe('observation', () => {
       const player_state = state.get_active_state_by_host(player)
 
       // Recognize should find hammer knowledge from template (in base state)
-      const existing = player_state.recognize(hammer)
+      const existing = recognize(player_state,hammer)
       expect(existing.length, 'should find hammer knowledge from template').to.be.at.least(1)
 
       // Verify the found belief has correct @about
@@ -503,11 +504,11 @@ describe('observation', () => {
       const player_state = state.get_active_state_by_host(player)
 
       // Player doesn't know about hammer yet
-      const existing = player_state.recognize(hammer)
+      const existing = recognize(player_state,hammer)
       expect(existing.length).to.equal(0)
 
       // Perceive hammer
-      const perception = player_state.perceive([hammer])
+      const perception = perceive(player_state,[hammer])
 
       expect(perception).to.exist
       expect(perception.get_archetypes().some(a => a.label === 'EventPerception')).to.be.true
@@ -567,12 +568,12 @@ describe('observation', () => {
       const player_state = state.get_active_state_by_host(player)
 
       // Player should recognize hammer
-      const existing_knowledge = player_state.recognize(hammer)
+      const existing_knowledge = recognize(player_state,hammer)
       expect(existing_knowledge.length).to.be.at.least(1)
       const old_knowledge_id = existing_knowledge[0]._id
 
       // Perceive hammer (familiar, traits unchanged)
-      const perception = player_state.perceive([hammer])
+      const perception = perceive(player_state,[hammer])
 
       const content_tt = Traittype.get_by_label('content')
       const content = perception.get_trait(player_state, content_tt)
@@ -649,7 +650,7 @@ describe('observation', () => {
       })
 
       // Identify should return hammer1
-      const candidates = player_state.identify(perceived)
+      const candidates = identify(player_state,perceived)
       expect(candidates).to.be.an('array')
       expect(candidates.length).to.be.at.least(1)
       expect(candidates[0]).to.equal(hammer1.subject)
@@ -708,7 +709,7 @@ describe('observation', () => {
       })
 
       // Identify should return both hammers (ambiguous)
-      const candidates = player_state.identify(perceived)
+      const candidates = identify(player_state,perceived)
       expect(candidates).to.be.an('array')
       expect(candidates.length).to.equal(2)
       expect(candidates).to.include(hammer1.subject)
@@ -751,17 +752,17 @@ describe('observation', () => {
       const player_state = state.get_active_state_by_host(player)
 
       // Player has minimal knowledge (can recognize)
-      const old_knowledge = player_state.recognize(hammer)
+      const old_knowledge = recognize(player_state,hammer)
       expect(old_knowledge.length).to.be.at.least(1)
       const old_knowledge_id = old_knowledge[0]._id
       const material_tt = Traittype.get_by_label('material')
       expect(old_knowledge[0].get_trait(player_state, material_tt)).to.be.null  // Doesn't know material yet
 
       // Perceive hammer (familiar, but material now visible)
-      player_state.perceive([hammer])
+      perceive(player_state,[hammer])
 
       // Fast path should automatically create versioned belief with material trait
-      const updated_knowledge = player_state.recognize(hammer)
+      const updated_knowledge = recognize(player_state,hammer)
       expect(updated_knowledge.length).to.be.at.least(1)
       expect(updated_knowledge[0].get_trait(player_state, material_tt)).to.equal('steel')
 
@@ -801,10 +802,10 @@ describe('observation', () => {
       const beliefs_before = [...hammer.rev_trait(player_state, about_tt)]
 
       // Perceive hammer (familiar - will be direct subject ref)
-      const perception = player_state.perceive([hammer])
+      const perception = perceive(player_state,[hammer])
 
       // Learn from perception
-      player_state.learn_from(perception)
+      learn_from(player_state,perception)
 
       // Should not create duplicate
       const beliefs_after = [...hammer.rev_trait(player_state, about_tt)]
@@ -839,7 +840,7 @@ describe('observation', () => {
       const player_state = state.get_active_state_by_host(player)
 
       // Verify initial knowledge - knows location but not color
-      const old_knowledge = player_state.recognize(hammer)
+      const old_knowledge = recognize(player_state,hammer)
       expect(old_knowledge.length).to.be.at.least(1)
       const color_tt = Traittype.get_by_label('color')
       expect(old_knowledge[0].get_trait(player_state, color_tt)).to.be.null
@@ -849,10 +850,10 @@ describe('observation', () => {
       const content = [...workshop.rev_trait(state, location_tt)]
 
       // Player perceives location content (fast path auto-updates knowledge)
-      const perception = player_state.perceive(content)
+      const perception = perceive(player_state,content)
 
       // Player should now know about hammer's color (automatically updated)
-      const updated_knowledge = player_state.recognize(hammer)
+      const updated_knowledge = recognize(player_state,hammer)
       expect(updated_knowledge.length).to.be.at.least(1)
 
       // Knowledge should include color (newly observed)
@@ -927,7 +928,7 @@ describe('observation', () => {
       const player_state = state.get_active_state_by_host(player)
 
       // Perceive first hammer
-      player_state.perceive([hammer1])
+      perceive(player_state,[hammer1])
 
       // Find the handle knowledge belief created
       const handle_tt = Traittype.get_by_label('handle')
@@ -950,7 +951,7 @@ describe('observation', () => {
       const handle_id_1 = handle_knowledge._id
 
       // Perceive second hammer with same handle
-      player_state.perceive([hammer2])
+      perceive(player_state,[hammer2])
 
       // Find handle knowledge again
       let handle_knowledge_2 = null
@@ -1032,7 +1033,7 @@ describe('observation', () => {
       let player_state = state.get_active_state_by_host(player)
 
       // Perceive person1 with default modalities (visual only)
-      const perception = player_state.perceive([person1])
+      const perception = perceive(player_state,[person1])
 
       // Should only perceive person1, NOT workshop or village
       // (location trait has exposure: spatial, excluded by default)
@@ -1102,15 +1103,15 @@ describe('observation', () => {
       let player_state = state.get_active_state_by_host(player)
 
       // Player already has knowledge about hammer
-      const knowledge_before = player_state.recognize(hammer)
+      const knowledge_before = recognize(player_state,hammer)
       expect(knowledge_before.length).to.be.at.least(1)
       const original_knowledge = knowledge_before[0]
 
       // Perceive hammer again (same state, same traits)
-      const perception = player_state.perceive([hammer])
+      const perception = perceive(player_state,[hammer])
 
       // Should reuse existing knowledge belief (not create new one)
-      const knowledge_after = player_state.recognize(hammer)
+      const knowledge_after = recognize(player_state,hammer)
       expect(knowledge_after.length).to.be.at.least(1)
 
       // Same belief object (recognition-based pruning worked)
@@ -1164,7 +1165,7 @@ describe('observation', () => {
       let player_state = state.get_active_state_by_host(player)
 
       // Player's memory created at tt=1
-      const knowledge_before = player_state.recognize(hammer)
+      const knowledge_before = recognize(player_state,hammer)
       expect(knowledge_before.length).to.be.at.least(1)
       expect(knowledge_before[0].origin_state.tt).to.equal(1)
 
@@ -1177,10 +1178,10 @@ describe('observation', () => {
       player_state = state.get_active_state_by_host(player)
 
       // Perceive updated hammer (world.vt=2 > memory.tt=1)
-      const perception = player_state.perceive([hammer_v2])
+      const perception = perceive(player_state,[hammer_v2])
 
       // Should create NEW perception (memory is stale)
-      const knowledge_after = player_state.recognize(hammer_v2)
+      const knowledge_after = recognize(player_state,hammer_v2)
       expect(knowledge_after.length).to.be.at.least(1)
 
       // Different belief (new perception created)
@@ -1270,7 +1271,7 @@ describe('observation', () => {
       })
 
       // Identify should use rev_trait on head1, find 2 hammers, verify material
-      const candidates = player_state.identify(perceived)
+      const candidates = identify(player_state,perceived)
       expect(candidates).to.be.an('array')
       expect(candidates.length).to.equal(1)  // Only hammer1 matches (material filtered)
       expect(candidates[0]).to.equal(hammer1.subject)
@@ -1311,7 +1312,7 @@ describe('observation', () => {
       })
 
       // Should return only 3 candidates (not all 10)
-      const candidates = player_state.identify(perceived)
+      const candidates = identify(player_state,perceived)
       expect(candidates).to.be.an('array')
       expect(candidates.length).to.equal(3)  // Max candidates = 3
     })
@@ -1337,7 +1338,7 @@ describe('observation', () => {
       })
       const hammer2 = state.get_belief_by_label('hammer2')
       const player_state = state.get_active_state_by_host(state.get_belief_by_label('player'))
-      player_state.learn_about(hammer2)
+      learn_about(player_state,hammer2)
 
       state.lock()
       state = state.branch(Cosmos.logos_state(), 3)
@@ -1346,7 +1347,7 @@ describe('observation', () => {
       })
       const hammer3 = state.get_belief_by_label('hammer3')
       const player_state2 = state.get_active_state_by_host(state.get_belief_by_label('player'))
-      player_state2.learn_about(hammer3)
+      learn_about(player_state2,hammer3)
 
       // Create perceived belief
       const perceived = player_state2.add_belief_from_template({
@@ -1355,7 +1356,7 @@ describe('observation', () => {
       })
 
       // Should return in temporal order (newest first)
-      const candidates = player_state2.identify(perceived)
+      const candidates = identify(player_state2,perceived)
       expect(candidates).to.be.an('array')
       expect(candidates.length).to.equal(3)
       // Most recent should be first
@@ -1388,7 +1389,7 @@ describe('observation', () => {
       })
 
       // Should fall back to archetype scan
-      const candidates = player_state.identify(perceived)
+      const candidates = identify(player_state,perceived)
       expect(candidates).to.be.an('array')
       expect(candidates.length).to.be.at.least(1)
       expect(candidates[0]).to.equal(hammer1.subject)
@@ -1433,7 +1434,7 @@ describe('observation', () => {
 
       // rev_trait(head1, 'head') returns [hammer1, hammer2]
       // But only hammer1 matches material: 'steel'
-      const candidates = player_state.identify(perceived)
+      const candidates = identify(player_state,perceived)
       expect(candidates).to.be.an('array')
       expect(candidates.length).to.equal(1)
       expect(candidates[0]).to.equal(hammer1.subject)
@@ -1478,7 +1479,7 @@ describe('observation', () => {
 
       // rev_trait(head1, 'head') finds hammer1
       // But _all_traits_match() rejects it (handle mismatch)
-      const candidates = player_state.identify(perceived)
+      const candidates = identify(player_state,perceived)
       expect(candidates).to.be.an('array')
       expect(candidates.length).to.equal(0)  // No match - head was moved to new handle
     })
@@ -1521,7 +1522,7 @@ describe('observation', () => {
         traits: { '@about': null, head: head_particular.subject }
       })
 
-      const candidates_particular = player_state.identify(perceived_particular)
+      const candidates_particular = identify(player_state,perceived_particular)
       expect(candidates_particular).to.be.an('array')
       expect(candidates_particular.length).to.equal(1)
       expect(candidates_particular[0]).to.equal(hammer2.subject)

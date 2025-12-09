@@ -1,4 +1,5 @@
 import { expect } from 'chai'
+import { learn_about } from '../public/worker/perception.mjs';
 import { setupStandardArchetypes, createMindWithBeliefs, createStateInNewMind, get_first_belief_by_label } from './helpers.mjs'
 import { Mind, Materia, Traittype } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
@@ -41,7 +42,7 @@ describe('Subject.to_inspect_view()', () => {
     // NPC learns about workshop
     const npc_mind = new Materia(world_state.in_mind, 'npc')
     const npc_state = npc_mind.create_state(world_state)
-    const workshop_knowledge = npc_state.learn_about(workshop, {traits: []})
+    const workshop_knowledge = learn_about(npc_state, workshop, {traits: []})
 
     // The @about trait stores workshop.subject
     const about_traittype = Traittype.get_by_label('@about')
@@ -122,7 +123,7 @@ describe('Subject.to_inspect_view()', () => {
     // NPC learns about the hammer
     const npc_mind = new Materia(world_state.in_mind, 'npc')
     const npc_state = npc_mind.create_state(world_state)
-    const hammer_knowledge = npc_state.learn_about(world_hammer, {traits: []})
+    const hammer_knowledge = learn_about(npc_state, world_hammer, {traits: []})
 
     // The learned belief has its OWN subject (not the same as world hammer)
     expect(hammer_knowledge.subject).to.not.equal(world_hammer.subject)
@@ -187,7 +188,7 @@ describe('Subject.to_inspect_view()', () => {
 
     const npc_mind = new Materia(world_state.in_mind, 'npc')
     const npc_state = npc_mind.create_state(world_state)
-    const workshop_knowledge = npc_state.learn_about(workshop, {traits: []})
+    const workshop_knowledge = learn_about(npc_state, workshop, {traits: []})
 
     // Full inspection should handle @about trait correctly
     const inspected = workshop_knowledge.to_inspect_view(npc_state)

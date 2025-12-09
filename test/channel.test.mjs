@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { Mind, Materia, State, Belief, Archetype, Traittype, Session, save_mind, load } from '../public/worker/cosmos.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
+import { learn_about } from '../public/worker/perception.mjs';
 import { stdTypes, Thing, setupBrowserMocks, cleanupBrowserMocks, MockBroadcastChannel } from './helpers.mjs';
 
 // Set up browser mocks at module load time
@@ -270,7 +271,7 @@ describe('Channel Message Handlers', () => {
 
       const npc_mind = new Materia(world_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
-      const workshop_belief = npc_state.learn_about(workshop, {traits: []});
+      const workshop_belief = learn_about(npc_state, workshop, {traits: []});
 
       messages.length = 0;
 

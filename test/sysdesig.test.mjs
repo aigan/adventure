@@ -1,4 +1,5 @@
 import { expect } from 'chai'
+import { learn_about } from '../public/worker/perception.mjs';
 import { setupStandardArchetypes, createMindWithBeliefs, get_first_belief_by_label } from './helpers.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { Mind, Materia, State, Temporal, Belief, Archetype } from '../public/worker/cosmos.mjs'
@@ -288,7 +289,7 @@ describe('sysdesig', () => {
 
       const npc_mind = new Materia(world_state.in_mind, 'npc')
       const npc_state = npc_mind.create_state(world_state)
-      const knowledge = npc_state.learn_about(workshop, {traits: []})
+      const knowledge = learn_about(npc_state, workshop, {traits: []})
 
       const result = knowledge.sysdesig(npc_state)
       expect(result).to.include('about workshop')

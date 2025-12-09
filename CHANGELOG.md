@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-12-10
+
+### Changed
+- **Refactored perception module to use explicit state parameters**
+  - Removed Object.assign mixin pattern from State.prototype
+  - All perception functions now take explicit `state` as first parameter instead of using `this` context
+  - Functions called as `perceive(state, ...)` instead of `state.perceive(...)`
+  - Moved 4 methods from state.mjs to perception.mjs: `recognize()`, `learn_about()`, `integrate()`, `_recursively_learn_trait_value()`
+  - Maintains one-way dependency: perception → state (perception can import from state, not vice versa)
+  - Updated all call sites in test files and worker modules (materia.mjs, mind.mjs, world.mjs, narrator.mjs)
+  - Removed `@this {State}` JSDoc annotations, added `@param {State} state` to all functions
+  - Improved TypeScript type safety with explicit parameter types
+
+### Fixed
+- **Fixed duplicate belief creation bug in `integrate()` function**
+  - During mixin refactoring, forgot to remove old belief after branching to new version
+  - `belief.branch(state, traits)` automatically inserts new belief into state
+  - Now correctly calls `state.remove_beliefs(existing)` after branching to prevent duplicates
+  - Fixes 3 integration tests that were expecting 1 belief but finding 2 (duplicate knowledge beliefs about same entity)
+
 ## 2025-12-09
 
 ### Constraint-Based identify() Optimization
@@ -16,6 +36,16 @@ All notable changes to this project will be documented in this file.
   - Certain nested entities use `_perceive_with_recognition()` for reuse
   - Uncertain nested entities use `_perceive_single()` for new perceived beliefs
 - **Prevents duplicate prototypes**: Shared knowledge like common handles, standard parts, or cultural knowledge are reused rather than duplicated
+
+### Perception Module Extraction
+- **Extracted perception methods to `perception.mjs`**: 11 perception-related methods moved from `state.mjs` for better code organization
+  - `perceive()`, `identify()`, `learn_from()`, `match_traits()`, `get_observable_traits()`
+  - `_perceive_single()`, `_perceive_with_recognition()`
+  - Helper methods: `_is_certain_particular()`, `_all_traits_match()`, `_get_most_specific_archetype()`, `_identify_by_archetype()`
+- **Mixin pattern implementation**: Functions applied to `State.prototype` via `Object.assign()`
+  - No API changes - `state.perceive()` still works identically
+  - Cleaner separation of concerns
+  - Better maintainability for perception subsystem
 
 ## 2025-12-04
 

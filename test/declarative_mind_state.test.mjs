@@ -3,6 +3,7 @@ import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load } f
 import { eidos } from '../public/worker/eidos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
+import { learn_about } from '../public/worker/perception.mjs';
 import { stdTypes, Thing, createStateInNewMind } from './helpers.mjs';
 
 describe('Mind Trait', () => {
@@ -426,7 +427,7 @@ describe('Mind Trait', () => {
 
     // NOW: NPC1 visits the tavern and observes the coordinates (new information)
     const npc1_state_after = npc1_state.branch(world_state);
-    const npc1_updated_belief = npc1_state_after.learn_about(blacksmith_tavern, {traits: ['coordinates']});
+    const npc1_updated_belief = learn_about(npc1_state_after, blacksmith_tavern, {traits: ['coordinates']});
 
     // Verify learn_about returned an updated belief
     expect(npc1_updated_belief).to.exist;

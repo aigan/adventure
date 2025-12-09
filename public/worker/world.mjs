@@ -17,6 +17,7 @@ import { logos, logos_state } from './logos.mjs'
 import { eidos } from './eidos.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
+import { learn_about } from './perception.mjs'
 
 /**
  * @typedef {import('./db.mjs').ArchetypeDefinition} ArchetypeDefinition
@@ -292,7 +293,7 @@ export function init_world() {
   const person1_state = state.get_active_state_by_host(person1)
   const hammer = state.get_belief_by_label('hammer')
   assert(hammer, 'hammer belief not found')
-  person1_state.learn_about(hammer)
+  learn_about(person1_state, hammer)
   state.lock();
   */
 

@@ -12,6 +12,7 @@ Core game logic in Web Worker thread.
 
 ### State
 - `state.mjs` - Base: snapshots, `_insert`/`_remove`, locking
+- `perception.mjs` - Observation: `perceive()`, `identify()`, `learn_from()` (mixin to State)
 - `temporal.mjs` - For Materia minds
 - `timeless.mjs` - For Logos, Eidos
 - `convergence.mjs` - Multi-parent composition

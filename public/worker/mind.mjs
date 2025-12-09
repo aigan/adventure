@@ -26,6 +26,7 @@ import * as DB from './db.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
 import { Traittype } from './traittype.mjs'
+import { learn_about } from './perception.mjs'
 
 /**
  * @typedef {import('./belief.mjs').BeliefJSON} BeliefJSON
@@ -637,7 +638,7 @@ export class Mind {
           const belief = ground_state.get_belief_by_label(label)
           assert(belief, `Cannot find belief with label '${label}' in ground_state for mind.append operation`, {label, ground_state_id: ground_state._id, available_labels: [...ground_state.get_beliefs()].map(b => b.get_label()).filter(Boolean)})
           assert(trait_names.length > 0, `Empty trait_names array for mind.append operation on belief '${label}'`, {label, trait_names})
-          state.learn_about(belief, {traits: trait_names})
+          learn_about(state, belief, {traits: trait_names})
         }
         continue
       }

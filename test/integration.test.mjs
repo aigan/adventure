@@ -16,6 +16,7 @@ import { expect } from 'chai';
 import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
+import { learn_about } from '../public/worker/perception.mjs';
 import { createMindWithBeliefs, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
 
 describe('Integration', () => {
@@ -398,7 +399,7 @@ describe('Integration', () => {
 
       // Learn more about hammer at tt=2 (color)
       const state2 = state1.branch(world_state, 2);
-      state2.learn_about(hammer, {traits: ['color']});
+      learn_about(state2,hammer, {traits: ['color']});
       state2.lock();
 
       // Should still have 1 belief (versioned with new trait)
@@ -411,7 +412,7 @@ describe('Integration', () => {
 
       // Learn weight at tt=3
       const state3 = state2.branch(world_state, 3);
-      state3.learn_about(hammer, {traits: ['weight']});
+      learn_about(state3,hammer, {traits: ['weight']});
       state3.lock();
 
       // Should still have 1 belief (further versioned)
@@ -568,7 +569,7 @@ describe('Integration', () => {
 
       // Verify learn_about
       const workshop = get_first_belief_by_label('workshop');
-      const workshop_knowledge = player_mind_state.learn_about(workshop, {traits: []});
+      const workshop_knowledge = learn_about(player_mind_state,workshop, {traits: []});
 
       const workshop_inspected = workshop_knowledge.to_inspect_view(player_mind_state);
       expect(workshop_inspected.traits['@about']._ref).to.equal(workshop._id);

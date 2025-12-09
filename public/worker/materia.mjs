@@ -18,6 +18,7 @@ import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
 import * as DB from './db.mjs'
 import { logos } from './logos.mjs'
+import { learn_about } from './perception.mjs'
 import { Temporal } from './temporal.mjs'
 import { Convergence } from './convergence.mjs'
 
@@ -246,7 +247,7 @@ export class Materia extends Mind {
         `Cannot learn about belief '${label}': must be in ${about_state ? 'about_state' : 'ground_state'}'s mind (not shared belief)`,
         {belief_in_mind: belief.in_mind?.label ?? null, expected_mind: valid_mind?.label ?? null})
       if (trait_names.length > 0) {
-        state.learn_about(belief, {traits: trait_names})
+        learn_about(state, belief, {traits: trait_names})
       }
     }
 

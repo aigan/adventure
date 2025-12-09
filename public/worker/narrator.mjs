@@ -12,6 +12,7 @@
 import { log } from "./debug.mjs"
 import { Subject } from "./subject.mjs"
 import {Traittype, T} from "./traittype.mjs"
+import { perceive, learn_from } from './perception.mjs'
 
 /**
  * @typedef {import('./belief.mjs').Belief} Belief
@@ -52,10 +53,10 @@ export function do_look_in_location(context) {
   const pov = ext.get_active_state_by_host(session.avatar)
 
   //log([ext], ... content)
-  const perception = pov.perceive(content)
+  const perception = perceive(pov,content)
 
   // FIXME: how does perception update existing beliefs?
-  //pov.learn_from(perception)
+  //learn_from(pov,perception)
   //log(perception)
 
   const seen = [];
