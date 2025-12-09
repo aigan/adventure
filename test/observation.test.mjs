@@ -861,6 +861,117 @@ describe('observation', () => {
       // Should be a new version
       expect(updated_knowledge[0]._id).to.not.equal(old_knowledge[0]._id)
     })
+
+    it('should reuse prototype/shared beliefs for nested parts of uncertain entities', () => {
+      // Register hammer archetypes
+      DB.register({
+        material: { type: 'string', exposure: 'visual' },
+        handle: { type: 'HammerHandle', exposure: 'visual' },
+        '@uncertain_identity': { type: 'boolean', exposure: 'internal' }
+      }, {
+        HammerHandle: {
+          bases: ['PortableObject'],
+          traits: {
+            material: null,
+            '@uncertain_identity': null  // Inherit from Thing via PortableObject
+          }
+        },
+        Hammer: {
+          bases: ['PortableObject'],
+          traits: {
+            handle: null,
+            '@uncertain_identity': null  // Inherit from Thing via PortableObject
+          }
+        }
+      }, {})
+
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      // Create shared prototype for handle
+      state.add_shared_from_template({
+        CommonHandle: {
+          bases: ['HammerHandle'],
+          traits: { material: 'wood' }
+        }
+      })
+
+      // Create two uncertain hammers with same shared handle
+      state.add_beliefs_from_template({
+        hammer1: {
+          bases: ['Hammer'],
+          traits: {
+            '@uncertain_identity': true,
+            handle: 'CommonHandle'
+          }
+        },
+        hammer2: {
+          bases: ['Hammer'],
+          traits: {
+            '@uncertain_identity': true,
+            handle: 'CommonHandle'
+          }
+        },
+        player: {
+          bases: ['Person'],
+          traits: { mind: {} }
+        }
+      })
+
+      state.lock()
+      state = state.branch(Cosmos.logos_state(), 2)
+
+      const player = get_first_belief_by_label('player')
+      const hammer1 = get_first_belief_by_label('hammer1')
+      const hammer2 = get_first_belief_by_label('hammer2')
+      const player_state = state.get_active_state_by_host(player)
+
+      // Perceive first hammer
+      player_state.perceive([hammer1])
+
+      // Find the handle knowledge belief created
+      const handle_tt = Traittype.get_by_label('handle')
+      const about_tt = Traittype.get_by_label('@about')
+
+      let handle_knowledge = null
+      for (const belief of player_state.get_beliefs()) {
+        const about = belief.get_trait(player_state, about_tt)
+        if (about) {
+          // Check if this is knowledge about a handle
+          const archetypes = [...belief.get_archetypes()]
+          if (archetypes.some(a => a.label === 'HammerHandle')) {
+            handle_knowledge = belief
+            break
+          }
+        }
+      }
+
+      expect(handle_knowledge, 'handle knowledge should exist').to.exist
+      const handle_id_1 = handle_knowledge._id
+
+      // Perceive second hammer with same handle
+      player_state.perceive([hammer2])
+
+      // Find handle knowledge again
+      let handle_knowledge_2 = null
+      for (const belief of player_state.get_beliefs()) {
+        const about = belief.get_trait(player_state, about_tt)
+        if (about) {
+          const archetypes = [...belief.get_archetypes()]
+          if (archetypes.some(a => a.label === 'HammerHandle')) {
+            handle_knowledge_2 = belief
+            break
+          }
+        }
+      }
+
+      expect(handle_knowledge_2, 'handle knowledge should still exist').to.exist
+
+      // The handle knowledge should be reused (same _id)
+      // because it's a certain shared prototype, not uncertain
+      expect(handle_knowledge_2._id).to.equal(handle_id_1,
+        'shared prototype handle should be reused, not duplicated')
+    })
   })
 
   describe('perception modalities and tree pruning', () => {

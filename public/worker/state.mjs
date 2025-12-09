@@ -908,6 +908,8 @@ export class State {
 
     /** @type {Record<string, any>} */
     const observed_traits = {}
+    const uncertain_tt = T['@uncertain_identity']
+
     for (const traittype of observed_traittypes) {
       const value = world_entity.get_trait(about_state, traittype)
       if (value !== null) {
@@ -915,9 +917,18 @@ export class State {
         if (value instanceof Subject) {
           const nested_belief = value.get_belief_by_state(about_state)
           if (nested_belief) {
-            // Recursively perceive the nested entity
-            const nested_perceived = this._perceive_single(nested_belief, about_state, modalities)
-            observed_traits[traittype.label] = nested_perceived.subject
+            // Check if nested entity has uncertain identity
+            const nested_is_uncertain = uncertain_tt && nested_belief.get_trait(about_state, uncertain_tt) === true
+
+            if (nested_is_uncertain) {
+              // Nested entity uncertain: use slow path
+              const nested_perceived = this._perceive_single(nested_belief, about_state, modalities)
+              observed_traits[traittype.label] = nested_perceived.subject
+            } else {
+              // Nested entity certain (prototype): use fast path for reuse
+              const result = this._perceive_with_recognition(nested_belief, about_state, modalities)
+              observed_traits[traittype.label] = result.belief.subject
+            }
           }
         } else {
           observed_traits[traittype.label] = value
