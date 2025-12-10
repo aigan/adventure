@@ -164,34 +164,4 @@ describe('Similarity', function() {
       expect(handle_color).to.equal('brown')
     })
   })
-
-  describe('similarity detection (is_similar)', function() {
-    // TODO: Implement is_similar function
-    it.skip('should detect similar heads', function() {
-      // hammer1_head and hammer2_head have same material and color
-      // is_similar(hammer1_head, hammer2_head, world_state) => true
-    })
-
-    it.skip('should detect dissimilar handles', function() {
-      // hammer1_handle and hammer2_handle have different color and length
-      // is_similar(hammer1_handle, hammer2_handle, world_state) => false
-    })
-  })
-
-  describe('difference detection (get_differences)', function() {
-    // TODO: Implement get_differences function
-    it.skip('should return empty for identical traits', function() {
-      // get_differences(hammer1_head, hammer2_head, world_state) => {}
-    })
-
-    it.skip('should return differing traits', function() {
-      // get_differences(hammer1_handle, hammer2_handle, world_state) =>
-      // { color: ['brown', 'dark_brown'], length: ['short', 'long'] }
-    })
-
-    it.skip('should detect deep differences through composition', function() {
-      // get_differences(hammer1, hammer2, world_state) =>
-      // { handle: { color: ['brown', 'dark_brown'], length: ['short', 'long'] } }
-    })
-  })
 })

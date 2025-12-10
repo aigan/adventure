@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-12-11
+
+### Fixed
+- **Test debugging helpers now use `sysdesig()` for formatted output**
+  - `trace_trait()`, `inspect_perception()`, and `explain_recognize()` test helpers now return human-readable summaries
+  - Changed from `debug()` (returns boolean) to `sysdesig()` (returns formatted string)
+  - Output shows "sword Subject sid=7 @world" instead of "false" or raw objects
+  - Helps debugging test failures with clear, contextual trait values
+
 ## 2025-12-10
 
 ### Changed
@@ -21,6 +30,13 @@ All notable changes to this project will be documented in this file.
   - `belief.branch(state, traits)` automatically inserts new belief into state
   - Now correctly calls `state.remove_beliefs(existing)` after branching to prevent duplicates
   - Fixes 3 integration tests that were expecting 1 belief but finding 2 (duplicate knowledge beliefs about same entity)
+
+- **Enabled identify() optimization tests** (5 of 7 now passing)
+  - Removed `describe.skip` from test suite (test/observation.test.mjs line 1196)
+  - Fixed test setup by adding missing player knowledge about nested entities (heads, handles)
+  - Empty trait array `[]` creates no knowledge - changed to include at least one trait
+  - Tests now verify: rev_trait usage, max_candidates limit, trait verification, refurbished parts detection
+  - Remaining issues: breadth-first ordering (Test #3), prototype vs particular matching (Test #7)
 
 ## 2025-12-09
 

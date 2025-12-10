@@ -7,6 +7,7 @@
 
 import { Mind, Materia, State, Belief, Archetype, Traittype, Subject, save_mind, load, logos, logos_state } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
+import { sysdesig } from '../public/worker/debug.mjs';
 
 // Browser API mocks for Node.js test environment
 
@@ -299,4 +300,181 @@ export function get_first_belief_by_label(label) {
   if (!beliefs || beliefs.size === 0) return null
 
   return beliefs.values().next().value ?? null
+}
+
+/**
+ * Debugging helper: Show what knowledge beliefs were created by perceive()
+ * @param {State} state - Player state containing the perception
+ * @param {Belief} perception - Perception belief to inspect
+ * @returns {string} Formatted output showing perception contents
+ */
+export function inspect_perception(state, perception) {
+  const content_tt = Traittype.get_by_label('content')
+  const about_tt = Traittype.get_by_label('@about')
+  const content = perception.get_trait(state, content_tt)
+
+  if (!content || content.length === 0) {
+    return 'Perception is empty'
+  }
+
+  const lines = [`Perception #${perception._id} contains ${content.length} knowledge belief(s):`]
+
+  for (let i = 0; i < content.length; i++) {
+    const knowledge = state.get_belief_by_subject(content[i])
+    const about = knowledge.get_trait(state, about_tt)
+    const archetypes = [...knowledge.get_archetypes()].map(a => a.label)
+
+    lines.push(`  ${i + 1}. ${knowledge.label || 'unlabeled'}#${knowledge._id} (@about: ${about ? about.sid : 'null'})`)
+    lines.push(`     archetypes: [${archetypes.join(', ')}]`)
+
+    // Show all traits
+    for (const [tt, value] of knowledge._traits.entries()) {
+      const tt_label = tt.label || '(unlabeled trait)'
+      let display
+      if (value === null) {
+        display = 'null'
+      } else if (value === undefined) {
+        display = 'undefined'
+      } else if (Array.isArray(value)) {
+        display = `[${value.length} items]`
+      } else {
+        display = sysdesig(state, value)
+      }
+      lines.push(`     ${tt_label}: ${display}`)
+    }
+  }
+
+  return lines.join('\n')
+}
+
+/**
+ * Debugging helper: Show full trait resolution path (own → derived → bases)
+ * @param {State} state - State context for resolution
+ * @param {Belief} belief - Belief to trace trait on
+ * @param {string} traittype_label - Label of trait to trace
+ * @returns {string} Formatted output showing resolution path
+ */
+export function trace_trait(state, belief, traittype_label) {
+  const tt = Traittype.get_by_label(traittype_label)
+  if (!tt) return `Traittype '${traittype_label}' not found`
+
+  const lines = [`Tracing '${traittype_label}' on ${belief.label || 'unlabeled'}#${belief._id}:`]
+
+  // Check own traits
+  if (belief._traits.has(tt)) {
+    const value = belief._traits.get(tt)
+    lines.push(`  ✓ Own traits: ${sysdesig(state, value)}`)
+    lines.push(`    → RESOLVED: ${sysdesig(state, value)}`)
+    return lines.join('\n')
+  } else {
+    lines.push(`  ✗ Own traits: (not set)`)
+  }
+
+  // Check derived/composable traits
+  // Note: This is simplified - full implementation would need to check composable logic
+
+  // Check bases (recursively)
+  if (belief.bases && belief.bases.length > 0) {
+    for (const base of belief.bases) {
+      const base_label = base.is_archetype ? `archetype ${base.label}` : `${base.label || 'unlabeled'}#${base._id}`
+
+      if (base.is_archetype) {
+        // Check archetype default value
+        if (base.traits && base.traits[traittype_label] !== undefined) {
+          const archetype_value = base.traits[traittype_label]
+          lines.push(`  Base ${base_label}:`)
+          lines.push(`    ✓ Archetype default: ${sysdesig(state, archetype_value)}`)
+          lines.push(`    → RESOLVED: ${sysdesig(state, archetype_value)}`)
+          return lines.join('\n')
+        }
+      } else {
+        // Check belief base
+        const base_value = base.get_trait(state, tt)
+        if (base_value !== null) {
+          lines.push(`  Base ${base_label}:`)
+          lines.push(`    ✓ Inherited: ${sysdesig(state, base_value)}`)
+          lines.push(`    → RESOLVED: ${sysdesig(state, base_value)}`)
+          return lines.join('\n')
+        }
+      }
+    }
+  }
+
+  lines.push(`  → NOT FOUND (returns null)`)
+  return lines.join('\n')
+}
+
+/**
+ * Debugging helper: Show why recognize() found or didn't find knowledge
+ * @param {State} state - Player state to search in
+ * @param {Belief} world_entity - World entity to search for
+ * @returns {string} Formatted output showing recognition results
+ */
+export function explain_recognize(state, world_entity) {
+  const about_tt = Traittype.get_by_label('@about')
+  const candidates = []
+
+  for (const belief of state.get_beliefs()) {
+    const about = belief.get_trait(state, about_tt)
+    if (about && about.sid === world_entity.subject.sid) {
+      candidates.push(belief)
+    }
+  }
+
+  const lines = [
+    `Searching for knowledge about ${world_entity.label || 'unlabeled'}#${world_entity._id} (sid: ${world_entity.subject.sid}) in ${state.in_mind.label}_state:`,
+    `  Candidates with @about = ${world_entity.subject.sid}:`
+  ]
+
+  if (candidates.length === 0) {
+    lines.push(`    (none found)`)
+  } else {
+    for (const c of candidates) {
+      lines.push(`    #${c._id} ${c.label || 'unlabeled'} - MATCHED`)
+    }
+  }
+
+  lines.push(`  Result: ${candidates.length} knowledge belief(s) found`)
+  return lines.join('\n')
+}
+
+/**
+ * Debugging helper: Show all registered archetypes and traittypes
+ * Useful for understanding what's available in the registry
+ */
+export function dump_registry() {
+  const reflection = DB._reflect()
+
+  console.log('=== ARCHETYPES ===')
+  for (const [label, archetype] of reflection.archetype_by_label.entries()) {
+    console.log(label)
+    const base_labels = archetype.bases ? archetype.bases.map(b => b.label) : []
+    console.log(`  bases: [${base_labels.join(', ')}]`)
+    console.log(`  traits:`, archetype.traits || {})
+  }
+
+  console.log('\n=== TRAITTYPES ===')
+  for (const [label, tt] of reflection.traittype_by_label.entries()) {
+    console.log(label)
+    console.log(`  type: ${tt.type}`)
+    if (tt.container) console.log(`  container: ${tt.container.name}`)
+    if (tt.composable !== undefined) console.log(`  composable: ${tt.composable}`)
+    if (tt.exposure) console.log(`  exposure: ${tt.exposure}`)
+  }
+}
+
+/**
+ * Get world entity that a player knowledge belief is about
+ * @param {State} player_state - Player's state containing knowledge
+ * @param {Subject} knowledge_subject - Subject of player's knowledge belief
+ * @returns {Subject|null} World entity subject, or null if not found
+ */
+export function get_knowledge_about(player_state, knowledge_subject) {
+  const knowledge = player_state.get_belief_by_subject(knowledge_subject)
+  if (!knowledge) return null
+
+  const about_tt = Traittype.get_by_label('@about')
+  if (!about_tt) return null
+
+  return knowledge.get_trait(player_state, about_tt)
 }

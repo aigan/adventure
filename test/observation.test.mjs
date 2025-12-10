@@ -5,7 +5,7 @@ import { logos, logos_state } from '../public/worker/logos.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { perceive, identify, learn_from, recognize, learn_about } from '../public/worker/perception.mjs'
-import { setupStandardArchetypes, createMindWithBeliefs } from './helpers.mjs'
+import { setupStandardArchetypes, createMindWithBeliefs, get_knowledge_about } from './helpers.mjs'
 
 describe('observation', () => {
   beforeEach(() => {
@@ -1193,8 +1193,7 @@ describe('observation', () => {
     })
   })
 
-  // TODO: Fix test setup issues with state management
-  describe.skip('identify() optimization', () => {
+  describe('identify() optimization', () => {
     beforeEach(() => {
       // Register common traittypes
       DB.register({
@@ -1244,6 +1243,8 @@ describe('observation', () => {
           bases: ['Person'],
           traits: {
             mind: {
+              head1: ['material'],
+              head2: ['material'],
               hammer1: ['head', 'material'],
               hammer2: ['head', 'material'],
               hammer3: ['head', 'material']
@@ -1371,7 +1372,7 @@ describe('observation', () => {
         hammer1: { bases: ['Hammer'], traits: { '@uncertain_identity': true } },
         player: {
           bases: ['Person'],
-          traits: { mind: { hammer1: [] } }  // Knows hammer exists but no traits
+          traits: { mind: { hammer1: ['@uncertain_identity'] } }  // Knows hammer exists (learns uncertain flag)
         }
       })
 
@@ -1407,6 +1408,7 @@ describe('observation', () => {
           bases: ['Person'],
           traits: {
             mind: {
+              head1: ['material'],
               hammer1: ['head', 'material'],
               hammer2: ['head', 'material']
             }
@@ -1453,6 +1455,9 @@ describe('observation', () => {
           bases: ['Person'],
           traits: {
             mind: {
+              head1: ['material'],
+              handle1: ['material'],
+              handle2: ['material'],
               hammer1: ['head', 'handle']
             }
           }
@@ -1501,6 +1506,7 @@ describe('observation', () => {
           bases: ['Person'],
           traits: {
             mind: {
+              head_particular: ['material'],
               hammer1: ['head'],
               hammer2: ['head']
             }
@@ -1526,6 +1532,486 @@ describe('observation', () => {
       expect(candidates_particular).to.be.an('array')
       expect(candidates_particular.length).to.equal(1)
       expect(candidates_particular[0]).to.equal(hammer2.subject)
+    })
+  })
+
+  describe('learn_from() inheritance permutations', () => {
+    beforeEach(() => {
+      // Register common traittypes and extend Person archetype
+      DB.register({
+        content: { type: 'Thing', container: Array, exposure: 'internal' },
+        inventory: { type: 'PortableObject', container: Array, composable: true, exposure: 'visual' }
+      }, {
+        EventAwareness: {
+          bases: ['Thing'],
+          traits: { content: null }
+        },
+        EventPerception: {
+          bases: ['EventAwareness']
+        },
+        PersonWithInventory: {
+          bases: ['Person'],
+          traits: { inventory: null }
+        }
+      }, {})
+    })
+
+    describe('Group 2: Subject References (Gap: 2.4)', () => {
+      it('learn_from with non-composable Subject arrays - no prior knowledge', () => {
+        // Register non-composable children trait
+        DB.register({
+          children: { type: 'Person', container: Array, composable: false, exposure: 'visual' }
+        }, {
+          Parent: {
+            bases: ['Person'],
+            traits: { children: null }
+          }
+        }, {})
+
+        const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+        let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+        // Setup: Create children first
+        state.add_beliefs_from_template({
+          child1: { bases: ['Person'] },
+          child2: { bases: ['Person'] },
+          child3: { bases: ['Person'] }
+        })
+
+        const child1 = state.get_belief_by_label('child1')
+        const child2 = state.get_belief_by_label('child2')
+        const child3 = state.get_belief_by_label('child3')
+
+        state.add_shared_from_template({
+          parent_proto: {
+            bases: ['Parent'],
+            traits: { children: [child1.subject, child2.subject] }
+          }
+        })
+
+        state.add_beliefs_from_template({
+          npc: {
+            bases: ['parent_proto'],
+            traits: { children: [child3.subject] }  // Shadows, not composes
+          },
+          player: {
+            bases: ['Person'],
+            traits: { mind: {} }
+          }
+        })
+
+        state.lock()
+        state = state.branch(Cosmos.logos_state(), 2)
+
+        const player = state.get_belief_by_label('player')
+        const npc = state.get_belief_by_label('npc')
+        const player_state = state.get_active_state_by_host(player)
+
+        // Player has no prior knowledge
+        expect(recognize(player_state, npc)).to.have.lengthOf(0)
+
+        // Perceive NPC with shadowed children array
+        const perception = perceive(player_state, [npc])
+        learn_from(player_state, perception)
+
+        // Verify: Knowledge created
+        const knowledge = recognize(player_state, npc)
+        expect(knowledge).to.have.lengthOf(1)
+
+        // Verify: Children array is shadowed (only child3), not composed
+        const children_tt = Traittype.get_by_label('children')
+        const children = knowledge[0].get_trait(player_state, children_tt)
+        expect(children).to.be.an('array')
+        expect(children).to.have.lengthOf(1)
+        // Check that children contains player's knowledge about child3
+        const child3_about = get_knowledge_about(player_state, children[0])
+        expect(child3_about.sid).to.equal(child3.subject.sid)
+      })
+    })
+
+    describe('Group 3: Composable Arrays (Gap: 3.6-3.9)', () => {
+      it('learn_from with composable null blocking - no prior knowledge', () => {
+        const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+        let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+        state.add_beliefs_from_template({
+          sword: { bases: ['PortableObject'] }
+        })
+
+        const sword = state.get_belief_by_label('sword')
+
+        state.add_shared_from_template({
+          warrior_proto: {
+            bases: ['PersonWithInventory'],
+            traits: { inventory: [sword.subject] }
+          }
+        })
+
+        state.add_beliefs_from_template({
+          pacifist: {
+            bases: ['warrior_proto'],
+            traits: { inventory: null }  // Blocks composition
+          },
+          player: {
+            bases: ['Person'],
+            traits: { mind: {} }
+          }
+        })
+
+        state.lock()
+        state = state.branch(Cosmos.logos_state(), 2)
+
+        const player = state.get_belief_by_label('player')
+        const pacifist = state.get_belief_by_label('pacifist')
+        const player_state = state.get_active_state_by_host(player)
+
+        // Perceive pacifist with null inventory
+        const perception = perceive(player_state, [pacifist])
+        learn_from(player_state, perception)
+
+        // Verify: Knowledge created with null (not composed [sword])
+        const knowledge = recognize(player_state, pacifist)
+        expect(knowledge).to.have.lengthOf(1)
+
+        const inventory_tt = Traittype.get_by_label('inventory')
+        const inventory = knowledge[0].get_trait(player_state, inventory_tt)
+        expect(inventory).to.be.null
+      })
+
+      it('learn_from with composable empty array semantics - no prior knowledge', () => {
+        const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+        let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+        state.add_beliefs_from_template({
+          sword: { bases: ['PortableObject'] }
+        })
+
+        const sword = state.get_belief_by_label('sword')
+
+        state.add_shared_from_template({
+          warrior_proto: {
+            bases: ['PersonWithInventory'],
+            traits: { inventory: [sword.subject] }
+          }
+        })
+
+        state.add_beliefs_from_template({
+          knight: {
+            bases: ['warrior_proto'],
+            traits: { inventory: [] }  // Empty array composes (adds nothing)
+          },
+          pacifist: {
+            bases: ['warrior_proto'],
+            traits: { inventory: null }  // Null blocks composition
+          },
+          player: {
+            bases: ['Person'],
+            traits: { mind: {} }
+          }
+        })
+
+        state.lock()
+        state = state.branch(Cosmos.logos_state(), 2)
+
+        const player = state.get_belief_by_label('player')
+        const knight = state.get_belief_by_label('knight')
+        const pacifist = state.get_belief_by_label('pacifist')
+        const player_state = state.get_active_state_by_host(player)
+
+        // Perceive knight (empty array) and pacifist (null)
+        const perception = perceive(player_state, [knight, pacifist])
+        learn_from(player_state, perception)
+
+        const inventory_tt = Traittype.get_by_label('inventory')
+
+        // Verify: Knight has composed inventory [sword] ([] adds nothing)
+        const knight_knowledge = recognize(player_state, knight)
+        expect(knight_knowledge).to.have.lengthOf(1)
+        const knight_inventory = knight_knowledge[0].get_trait(player_state, inventory_tt)
+        expect(knight_inventory).to.be.an('array')
+        expect(knight_inventory).to.have.lengthOf(1)
+        // Check that inventory contains player's knowledge about the sword
+        const sword_about = get_knowledge_about(player_state, knight_inventory[0])
+        expect(sword_about.sid).to.equal(sword.subject.sid)
+
+        // Verify: Pacifist has null (blocks composition)
+        const pacifist_knowledge = recognize(player_state, pacifist)
+        expect(pacifist_knowledge).to.have.lengthOf(1)
+        const pacifist_inventory = pacifist_knowledge[0].get_trait(player_state, inventory_tt)
+        expect(pacifist_inventory).to.be.null
+      })
+
+      it('learn_from with composable diamond deduplication - no prior knowledge', () => {
+        const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+        let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+        state.add_beliefs_from_template({
+          token: { bases: ['PortableObject'] },
+          sword: { bases: ['PortableObject'] },
+          shield: { bases: ['PortableObject'] }
+        })
+
+        const token = state.get_belief_by_label('token')
+        const sword = state.get_belief_by_label('sword')
+        const shield = state.get_belief_by_label('shield')
+
+        // Diamond inheritance pattern
+        state.add_shared_from_template({
+          Base: {
+            bases: ['PersonWithInventory'],
+            traits: { inventory: [token.subject] }
+          }
+        })
+
+        state.add_shared_from_template({
+          Left: {
+            bases: ['Base'],
+            traits: { inventory: [sword.subject] }
+          },
+          Right: {
+            bases: ['Base'],
+            traits: { inventory: [shield.subject] }
+          }
+        })
+
+        state.add_beliefs_from_template({
+          Diamond: {
+            bases: ['Left', 'Right']  // Inherits token via both paths
+          },
+          player: {
+            bases: ['Person'],
+            traits: { mind: {} }
+          }
+        })
+
+        state.lock()
+        state = state.branch(Cosmos.logos_state(), 2)
+
+        const player = state.get_belief_by_label('player')
+        const diamond = state.get_belief_by_label('Diamond')
+        const player_state = state.get_active_state_by_host(player)
+
+        // Perceive Diamond NPC
+        const perception = perceive(player_state, [diamond])
+        learn_from(player_state, perception)
+
+        // Verify: Knowledge created
+        const knowledge = recognize(player_state, diamond)
+        expect(knowledge).to.have.lengthOf(1)
+
+        // Verify: Inventory deduplicated (token appears once, not twice)
+        const inventory_tt = Traittype.get_by_label('inventory')
+        const inventory = knowledge[0].get_trait(player_state, inventory_tt)
+        expect(inventory).to.be.an('array')
+        expect(inventory).to.have.lengthOf(3)  // token, sword, shield
+
+        // Extract @about sids for comparison (player's knowledge points to world entities)
+        const inventory_about_sids = inventory.map(s => get_knowledge_about(player_state, s).sid).sort()
+        const expected_sids = [token.subject.sid, sword.subject.sid, shield.subject.sid].sort()
+        expect(inventory_about_sids).to.deep.equal(expected_sids)
+      })
+
+      it('learn_from with mixed archetype + belief composition - no prior knowledge', () => {
+        const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+        let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+        state.add_beliefs_from_template({
+          badge: { bases: ['PortableObject'] },
+          sword: { bases: ['PortableObject'] }
+        })
+
+        const badge = state.get_belief_by_label('badge')
+
+        // Archetype with default inventory
+        DB.register({}, {
+          Guard: {
+            bases: ['PersonWithInventory'],
+            traits: {
+              inventory: [badge.subject]  // Archetype default
+            }
+          }
+        }, {})
+
+        const sword = state.get_belief_by_label('sword')
+
+        state.add_shared_from_template({
+          guard_proto: {
+            bases: ['Guard'],
+            traits: { inventory: [sword.subject] }
+          }
+        })
+
+        state.add_beliefs_from_template({
+          npc_guard: {
+            bases: ['Guard', 'guard_proto']  // Both archetype and prototype
+          },
+          player: {
+            bases: ['Person'],
+            traits: { mind: {} }
+          }
+        })
+
+        state.lock()
+        state = state.branch(Cosmos.logos_state(), 2)
+
+        const player = state.get_belief_by_label('player')
+        const npc_guard = state.get_belief_by_label('npc_guard')
+        const player_state = state.get_active_state_by_host(player)
+
+        // Perceive guard
+        const perception = perceive(player_state, [npc_guard])
+        learn_from(player_state, perception)
+
+        // Verify: Knowledge created
+        const knowledge = recognize(player_state, npc_guard)
+        expect(knowledge).to.have.lengthOf(1)
+
+        // Verify: Inventory composed from both archetype and prototype
+        const inventory_tt = Traittype.get_by_label('inventory')
+        const inventory = knowledge[0].get_trait(player_state, inventory_tt)
+        expect(inventory).to.be.an('array')
+        expect(inventory).to.have.lengthOf(2)  // badge + sword
+
+        const inventory_about_sids = inventory.map(s => get_knowledge_about(player_state, s).sid).sort()
+        const expected_sids = [badge.subject.sid, sword.subject.sid].sort()
+        expect(inventory_about_sids).to.deep.equal(expected_sids)
+      })
+    })
+
+    describe('Group 4: Mind Traits (Gap: 4.4)', () => {
+      it.skip('FUTURE: Mind trait composition requires cultural knowledge (talking not implemented)', () => {
+        // This test requires two unimplemented features:
+        // 1. Talking/conversation system for learning cultural knowledge
+        // 2. Mind trait composition into Convergence structure
+        //
+        // Minds have exposure:'internal' - cannot be visually perceived.
+        // Cultural knowledge is learned through conversation, not visual perception.
+        // This test will be enabled when talking feature is implemented.
+
+        const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+        let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+        // Create separate minds for different aspects
+        const combat_mind = new Cosmos.Materia(world_mind, 'combat_mind')
+        const social_mind = new Cosmos.Materia(world_mind, 'social_mind')
+        const combat_state = combat_mind.create_state(state)
+        const social_state = social_mind.create_state(state)
+
+        // Create prototype beliefs in world state (can't lock minds in Eidos)
+        state.add_beliefs_from_template({
+          combat_aspect: {
+            bases: ['Person'],
+            traits: { mind: combat_mind }
+          },
+          social_aspect: {
+            bases: ['Person'],
+            traits: { mind: social_mind }
+          }
+        })
+
+        const combat_aspect = state.get_belief_by_label('combat_aspect')
+        const social_aspect = state.get_belief_by_label('social_aspect')
+
+        state.add_beliefs_from_template({
+          npc: {
+            bases: [combat_aspect, social_aspect]  // Multiple minds via belief bases
+          },
+          player: {
+            bases: ['Person'],
+            traits: { mind: {} }
+          }
+        })
+
+        state.lock()
+        state = state.branch(Cosmos.logos_state(), 2)
+
+        const player = state.get_belief_by_label('player')
+        const npc = state.get_belief_by_label('npc')
+        const player_state = state.get_active_state_by_host(player)
+
+        // Learn about NPC through cultural knowledge (explicit mind trait)
+        // This represents shared cultural knowledge: "guards have combat and social aspects"
+        learn_about(player_state, npc, {traits: ['mind']})
+
+        // Verify: Knowledge created
+        const knowledge = recognize(player_state, npc)
+        expect(knowledge).to.have.lengthOf(1)
+
+        // Verify: Mind trait was learned and is Convergence with component minds
+        const mind_tt = Traittype.get_by_label('mind')
+        const mind_value = knowledge[0].get_trait(player_state, mind_tt)
+        expect(mind_value).to.exist
+
+        // Mind should be a Convergence mind
+        expect(mind_value.constructor.name).to.equal('Convergence')
+      })
+    })
+
+    describe('Group 5: State Traits (Gap: 5.3)', () => {
+      it('learn_from with state array composition - no prior knowledge', () => {
+        // Register composable states trait
+        DB.register({
+          states: { type: 'State', container: Array, composable: true, exposure: 'visual' }
+        }, {
+          TemporalEntity: {
+            bases: ['Thing'],
+            traits: { states: null }
+          }
+        }, {})
+
+        const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+        let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+        // Create states for composition
+        const temp_mind1 = new Cosmos.Materia(world_mind, 'temp1')
+        const temp_mind2 = new Cosmos.Materia(world_mind, 'temp2')
+        const state1 = temp_mind1.create_state(state)
+        const state2 = temp_mind2.create_state(state)
+
+        state.add_shared_from_template({
+          entity_proto1: {
+            bases: ['TemporalEntity'],
+            traits: { states: [state1] }
+          },
+          entity_proto2: {
+            bases: ['TemporalEntity'],
+            traits: { states: [state2] }
+          }
+        })
+
+        state.add_beliefs_from_template({
+          entity: {
+            bases: ['entity_proto1', 'entity_proto2']  // Composes states
+          },
+          player: {
+            bases: ['Person'],
+            traits: { mind: {} }
+          }
+        })
+
+        state.lock()
+        state = state.branch(Cosmos.logos_state(), 2)
+
+        const player = state.get_belief_by_label('player')
+        const entity = state.get_belief_by_label('entity')
+        const player_state = state.get_active_state_by_host(player)
+
+        // Perceive entity with composed states
+        const perception = perceive(player_state, [entity])
+        learn_from(player_state, perception)
+
+        // Verify: Knowledge created
+        const knowledge = recognize(player_state, entity)
+        expect(knowledge).to.have.lengthOf(1)
+
+        // Verify: States array composed from both prototypes
+        const states_tt = Traittype.get_by_label('states')
+        const states = knowledge[0].get_trait(player_state, states_tt)
+        expect(states).to.be.an('array')
+        expect(states).to.have.lengthOf(2)
+        expect(states).to.include(state1)
+        expect(states).to.include(state2)
+      })
     })
   })
 })

@@ -6,11 +6,14 @@
  * model and the game interface (text, 3D, UI, etc).
  * @typedef {import('./mind.mjs').Mind} Mind
  * @typedef {import('./state.mjs').State} State
- * @typedef {import('./belief.mjs').Belief} Belief
  */
 
 import { log, assert, is_test } from "./debug.mjs"
 import { Traittype, T } from "./traittype.mjs"
+import { logos_state } from './logos.mjs'
+import { Belief } from './belief.mjs'
+//import { Subject } from './subject.mjs'
+import { A } from './archetype.mjs'
 
 /**
  * Session class - manages the current game state
@@ -138,7 +141,7 @@ export class Session {
     postMessage(['header_set', `Waking up`])
 
     const pl = this.avatar.subject
-    const st = this.state
+    let st = this.state
     const loc = this.avatar.get_trait(st, T.location)
 
     const obs = {
@@ -164,7 +167,19 @@ export class Session {
       subject: loc,
     })
 
-    //return true
+    let hammer = st.get_belief_by_label('hammer3')
+    st = st.branch(logos_state(), 2)
+    const handle = Belief.from(st, [A.HammerHandle], {
+      color: 'blue',
+    })
+
+    if (hammer) {
+      hammer = hammer.branch(st, {
+        handle: handle,
+      })
+    }
+
+    return true
 
     // Will create another copy of whats percieved
     // eslint-disable-next-line no-unreachable

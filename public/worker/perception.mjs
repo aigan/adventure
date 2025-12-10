@@ -307,7 +307,7 @@ export function identify(state, perceived_belief, max_candidates = 3) {
   // Strategy 1: Use certain particular Subject traits (most discriminating)
   for (const [traittype, value] of perceived_traits) {
     if (value instanceof Subject && _is_certain_particular(state, value)) {
-      // Get the belief for this subject (in ground_state where it lives)
+      // Get the belief for this subject in ground_state
       if (!state.ground_state) continue
 
       let value_belief = null
@@ -319,8 +319,13 @@ export function identify(state, perceived_belief, max_candidates = 3) {
 
       if (!value_belief) continue
 
+      // Check if player has knowledge about this subject
+      // If they do, we need to use their knowledge belief's subject for the lookup
+      const player_knowledge = recognize(state, value_belief)
+      const lookup_belief = player_knowledge.length > 0 ? player_knowledge[0] : value_belief
+
       // Highly selective: use rev_trait reverse index
-      for (const candidate_belief of value_belief.rev_trait(state, traittype)) {
+      for (const candidate_belief of lookup_belief.rev_trait(state, traittype)) {
         // Verify it's knowledge (has @about)
         if (!about_tt) continue
         const about = candidate_belief.get_trait(state, about_tt)
@@ -358,7 +363,11 @@ export function identify(state, perceived_belief, max_candidates = 3) {
     // Match all perceived traits
     const score = match_traits(state, perceived_belief, belief)
     if (score > 0) {
-      candidates.push({subject: about, score})
+      candidates.push({
+        subject: about,
+        score,
+        belief_id: belief._id  // For temporal ordering within same state
+      })
 
       // Stop at max candidates
       if (candidates.length >= max_candidates) {
@@ -367,9 +376,15 @@ export function identify(state, perceived_belief, max_candidates = 3) {
     }
   }
 
-  // Sort by score (descending), return subjects only
+  // Sort by score (descending), then by belief_id (newer beliefs have higher IDs)
   return candidates
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score  // Primary: best matches first
+      // Tiebreaker: newer beliefs first (breadth-first + temporal)
+      assert(a.belief_id !== undefined, 'candidate a must have belief_id')
+      assert(b.belief_id !== undefined, 'candidate b must have belief_id')
+      return b.belief_id - a.belief_id
+    })
     .map(c => c.subject)
 }
 
@@ -414,6 +429,8 @@ export function _is_certain_particular(state, subject) {
  * @returns {boolean} True if all traits match
  */
 export function _all_traits_match(state, perceived, candidate) {
+  const about_tt = Traittype.get_by_label('@about')
+
   for (const [traittype, perceived_value] of perceived.get_traits()) {
     if (traittype.label === '@about') continue
 
@@ -421,9 +438,31 @@ export function _all_traits_match(state, perceived, candidate) {
 
     // Exact match check
     if (perceived_value instanceof Subject) {
-      if (!(candidate_value instanceof Subject) || perceived_value.sid !== candidate_value.sid) {
+      if (!(candidate_value instanceof Subject)) {
         return false
       }
+
+      // Direct sid match
+      if (perceived_value.sid === candidate_value.sid) {
+        continue
+      }
+
+      // Check if candidate_value is player's knowledge about perceived_value
+      // e.g., perceived has ground_state Subject(9), candidate has player knowledge Subject(19)
+      // where Subject(19) has @about=Subject(9)
+      if (about_tt && state.ground_state) {
+        try {
+          const candidate_belief = candidate_value.get_belief_by_state(state)
+          const about = candidate_belief?.get_trait(state, about_tt)
+          if (about && about.sid === perceived_value.sid) {
+            continue
+          }
+        } catch (e) {
+          // Subject not found in state
+        }
+      }
+
+      return false
     } else if (perceived_value !== candidate_value) {
       return false
     }
