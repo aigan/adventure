@@ -3,7 +3,7 @@ import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind,
 import { eidos } from '../public/worker/eidos.mjs'
 import { logos } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { createMindWithBeliefs, createStateInNewMind, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
+import { createMindWithBeliefs, createStateInNewMind, setupStandardArchetypes } from './helpers.mjs';
 
 describe('Belief', () => {
   beforeEach(() => {
@@ -71,7 +71,7 @@ describe('Belief', () => {
       const state = mind.create_state(logos().origin_state, {tt: 1});
       Belief.from_template(state, {traits: {}, bases: ['Location'], label: 'workshop'});
 
-      const workshop = get_first_belief_by_label('workshop');
+      const workshop = state.get_belief_by_label('workshop');
       expect(workshop.in_mind).to.equal(mind);
     });
 
@@ -101,7 +101,7 @@ describe('Belief', () => {
       const state_b = mind_b.create_state(logos().origin_state, {tt: 1});
 
       // mind_b cannot use mind_a's subject - enforces isolation
-      const workshop_a = get_first_belief_by_label('workshop');
+      const workshop_a = state_a.get_belief_by_label('workshop');
       expect(() => {
         new Belief(state_b, workshop_a.subject, [workshop_a]);
       }).to.throw(/mater=null.*or.*mater=own_mind/);
@@ -1016,7 +1016,7 @@ describe('Belief', () => {
         }
       });
 
-      const player = get_first_belief_by_label('player');
+      const player = world_state.get_belief_by_label('player');
       const view = player.to_inspect_view(world_state);
 
       // Mind trait should appear in inspection
@@ -1034,7 +1034,7 @@ describe('Belief', () => {
         }
       });
 
-      const ghost = get_first_belief_by_label('ghost');
+      const ghost = world_state.get_belief_by_label('ghost');
       const view = ghost.to_inspect_view(world_state);
 
       // Mental has mind: null in archetype, but null traits are excluded from inspection
@@ -1059,7 +1059,7 @@ describe('Belief', () => {
         }
       });
 
-      const player = get_first_belief_by_label('player');
+      const player = world_state.get_belief_by_label('player');
 
       // Get trait before locking - should not cache
       const mind_before = player.get_trait(world_state, Traittype.get_by_label('mind'));
@@ -1079,7 +1079,7 @@ describe('Belief', () => {
         }
       });
 
-      const player = get_first_belief_by_label('player');
+      const player = world_state.get_belief_by_label('player');
       player.lock(world_state);
 
       // Get inherited trait after locking - should cache
@@ -1101,7 +1101,7 @@ describe('Belief', () => {
         }
       });
 
-      const player = get_first_belief_by_label('player');
+      const player = world_state.get_belief_by_label('player');
 
       // Inspect BEFORE locking (simulates world.mjs debug log)
       const view_unlocked = player.to_inspect_view(world_state);
@@ -1126,7 +1126,7 @@ describe('Belief', () => {
         }
       });
 
-      const player = get_first_belief_by_label('player');
+      const player = world_state.get_belief_by_label('player');
 
       // This test guards against premature caching:
       // 1. to_inspect_view calls get_trait for composable traits
@@ -1154,7 +1154,7 @@ describe('Belief', () => {
         }
       });
 
-      const grandparent = get_first_belief_by_label('grandparent');
+      const grandparent = world_state.get_belief_by_label('grandparent');
 
       // Lock grandparent and iterate all its traits to populate _cached_all
       grandparent.lock(world_state);

@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import { learn_about } from '../public/worker/perception.mjs';
-import { setupStandardArchetypes, createMindWithBeliefs, createStateInNewMind, get_first_belief_by_label } from './helpers.mjs'
+import { setupStandardArchetypes, createMindWithBeliefs, createStateInNewMind } from './helpers.mjs'
 import { Mind, Materia, Traittype } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
@@ -18,7 +18,7 @@ describe('Subject.to_inspect_view()', () => {
       }
     })
 
-    const workshop = get_first_belief_by_label('workshop')
+    const workshop = world_state.get_belief_by_label('workshop')
     const inspected = workshop.subject.to_inspect_view(world_state)
 
     expect(inspected).to.deep.include({
@@ -37,7 +37,7 @@ describe('Subject.to_inspect_view()', () => {
         bases: ['Location']
       }
     })
-    const workshop = get_first_belief_by_label('workshop')
+    const workshop = world_state.get_belief_by_label('workshop')
 
     // NPC learns about workshop
     const npc_mind = new Materia(world_state.in_mind, 'npc')
@@ -85,8 +85,8 @@ describe('Subject.to_inspect_view()', () => {
       shield: { bases: ['PortableObject'] }
     })
 
-    const sword = get_first_belief_by_label('sword')
-    const shield = get_first_belief_by_label('shield')
+    const sword = world_state.get_belief_by_label('sword')
+    const shield = world_state.get_belief_by_label('shield')
 
     // Then create chest with references to them
     const chest = world_state.add_belief_from_template({
@@ -118,7 +118,7 @@ describe('Subject.to_inspect_view()', () => {
     const world_state = createMindWithBeliefs('world', {
       hammer: { bases: ['PortableObject'] }
     })
-    const world_hammer = get_first_belief_by_label('hammer')
+    const world_hammer = world_state.get_belief_by_label('hammer')
 
     // NPC learns about the hammer
     const npc_mind = new Materia(world_state.in_mind, 'npc')
@@ -148,7 +148,7 @@ describe('Subject.to_inspect_view()', () => {
     const world_state = createMindWithBeliefs('world', {
       workshop: { bases: ['Location'] }
     })
-    const workshop = get_first_belief_by_label('workshop')
+    const workshop = world_state.get_belief_by_label('workshop')
 
     // Create a different mind without the workshop
     const other_state = createStateInNewMind('other')
@@ -164,7 +164,7 @@ describe('Subject.to_inspect_view()', () => {
       workshop: { bases: ['Location'] }
     })
 
-    const workshop = get_first_belief_by_label('workshop')
+    const workshop = world_state.get_belief_by_label('workshop')
 
     // Root state has logos origin_state as ground_state
     expect(world_state.ground_state).to.equal(logos().origin_state)
@@ -184,7 +184,7 @@ describe('Subject.to_inspect_view()', () => {
     const world_state = createMindWithBeliefs('world', {
       workshop: { bases: ['Location'] }
     })
-    const workshop = get_first_belief_by_label('workshop')
+    const workshop = world_state.get_belief_by_label('workshop')
 
     const npc_mind = new Materia(world_state.in_mind, 'npc')
     const npc_state = npc_mind.create_state(world_state)

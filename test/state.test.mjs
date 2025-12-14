@@ -3,7 +3,7 @@ import { Mind, Materia, State, Temporal, Belief, Subject, Archetype, Traittype, 
 import * as Cosmos from '../public/worker/cosmos.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { createMindWithBeliefs, setupMinimalArchetypes, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
+import { createMindWithBeliefs, setupMinimalArchetypes, setupStandardArchetypes } from './helpers.mjs';
 
 describe('State', () => {
   beforeEach(() => {
@@ -15,7 +15,7 @@ describe('State', () => {
     it('mind.belief Set contains all beliefs for that mind', () => {
       const mind = new Materia(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 1});
-      Belief.from_template(state, {traits: {}, label: 'workshop', bases: ['Location']});
+      const workshop = Belief.from_template(state, {traits: {}, label: 'workshop', bases: ['Location']});
 
       const hammer = Belief.from_template(state, {
         traits: {}, label: 'hammer',
@@ -23,7 +23,7 @@ describe('State', () => {
       });
 
       expect([...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind).length).to.equal(2);
-      expect([...DB._reflect().belief_by_id.values()].some(b => b.in_mind === mind && b === get_first_belief_by_label('workshop'))).to.be.true;
+      expect([...DB._reflect().belief_by_id.values()].some(b => b.in_mind === mind && b === workshop)).to.be.true;
       expect([...DB._reflect().belief_by_id.values()].some(b => b.in_mind === mind && b === hammer)).to.be.true;
     });
 
@@ -49,8 +49,8 @@ describe('State', () => {
       const state = mind.create_state(logos().origin_state, {tt: 1});
       Belief.from_template(state, {traits: {}, label: 'workshop', bases: ['Location']});
 
-      expect(get_first_belief_by_label('workshop')).to.exist;
-      expect(get_first_belief_by_label('workshop').get_label()).to.equal('workshop');
+      expect(state.get_belief_by_label('workshop')).to.exist;
+      expect(state.get_belief_by_label('workshop').get_label()).to.equal('workshop');
     });
   });
 
@@ -97,7 +97,7 @@ describe('State', () => {
       const state1 = mind.create_state(logos().origin_state, {tt: 1});
       Belief.from_template(state1, {traits: {}, label: 'hammer_v1', bases: ['PortableObject']});
 
-      const hammer_v1 = get_first_belief_by_label('hammer_v1');
+      const hammer_v1 = state1.get_belief_by_label('hammer_v1');
 
       const state2 = state1.tick_with_template(hammer_v1, 2, {color: 'red'});
 
@@ -116,10 +116,10 @@ describe('State', () => {
       Belief.from_template(state_b1, {traits: {}, label: 'item_in_b', bases: ['PortableObject']});
 
       // Add different beliefs to each mind
-      const item_a = get_first_belief_by_label('item_in_a');
+      const item_a = state_a1.get_belief_by_label('item_in_a');
       const state_a2 = state_a1.tick_with_template(item_a, 2, {color: 'red'});
 
-      const item_b = get_first_belief_by_label('item_in_b');
+      const item_b = state_b1.get_belief_by_label('item_in_b');
       const state_b2 = state_b1.tick_with_template(item_b, 2, {color: 'blue'});
 
       // Verify states are independent
@@ -236,7 +236,7 @@ describe('State', () => {
         }
       });
 
-      const player = get_first_belief_by_label('player');
+      const player = world_state.get_belief_by_label('player');
       const player_core_state = world_state.get_core_state_by_host(player);
 
       // Core state should be synchronized with world state
@@ -256,7 +256,7 @@ describe('State', () => {
         hammer: { bases: ['PortableObject'] }
       });
 
-      const hammer = get_first_belief_by_label('hammer');
+      const hammer = world_state.get_belief_by_label('hammer');
 
       expect(() => world_state.get_core_state_by_host(hammer))
         .to.throw('has no mind trait');
@@ -304,7 +304,7 @@ describe('State', () => {
         }
       });
 
-      const player = get_first_belief_by_label('player');
+      const player = world_state_v1.get_belief_by_label('player');
       const player_state_v1 = world_state_v1.get_core_state_by_host(player);
 
       // Branch world state to vt=2

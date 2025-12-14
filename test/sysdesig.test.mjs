@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import { learn_about } from '../public/worker/perception.mjs';
-import { setupStandardArchetypes, createMindWithBeliefs, get_first_belief_by_label } from './helpers.mjs'
+import { setupStandardArchetypes, createMindWithBeliefs } from './helpers.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { Mind, Materia, State, Temporal, Belief, Archetype } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
@@ -31,7 +31,7 @@ describe('sysdesig', () => {
       const state = createMindWithBeliefs('test', {
         hammer: { bases: ['PortableObject'] }
       })
-      const hammer = get_first_belief_by_label('hammer')
+      const hammer = state.get_belief_by_label('hammer')
 
       const result = sysdesig(state, hammer)
       expect(result).to.be.a('string')
@@ -150,8 +150,8 @@ describe('sysdesig', () => {
         hammer: { bases: ['PortableObject'] },
         anvil: { bases: ['PortableObject'] }
       })
-      const hammer = get_first_belief_by_label('hammer')
-      const anvil = get_first_belief_by_label('anvil')
+      const hammer = state.get_belief_by_label('hammer')
+      const anvil = state.get_belief_by_label('anvil')
 
       const result = sysdesig(state, hammer, anvil)
 
@@ -259,7 +259,7 @@ describe('sysdesig', () => {
           traits: { color: 'brown' }
         }
       })
-      const hammer = get_first_belief_by_label('hammer')
+      const hammer = state.get_belief_by_label('hammer')
       const result = hammer.sysdesig(state)
 
       expect(result).to.include('hammer')
@@ -285,7 +285,7 @@ describe('sysdesig', () => {
       const world_state = createMindWithBeliefs('world', {
         workshop: { bases: ['Location'] }
       })
-      const workshop = get_first_belief_by_label('workshop')
+      const workshop = world_state.get_belief_by_label('workshop')
 
       const npc_mind = new Materia(world_state.in_mind, 'npc')
       const npc_state = npc_mind.create_state(world_state)
@@ -299,7 +299,7 @@ describe('sysdesig', () => {
       const state = createMindWithBeliefs('test', {
         hammer: { bases: ['PortableObject'] }
       })
-      const hammer = get_first_belief_by_label('hammer')
+      const hammer = state.get_belief_by_label('hammer')
       hammer.lock(state)
       const result = hammer.sysdesig(state)
 
@@ -312,7 +312,7 @@ describe('sysdesig', () => {
       const state = createMindWithBeliefs('test', {
         hammer: { bases: ['PortableObject'] }
       })
-      const hammer = get_first_belief_by_label('hammer')
+      const hammer = state.get_belief_by_label('hammer')
       const subject = hammer.subject
       const result = subject.sysdesig()
 

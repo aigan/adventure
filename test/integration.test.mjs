@@ -17,7 +17,7 @@ import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind,
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { learn_about } from '../public/worker/perception.mjs';
-import { createMindWithBeliefs, setupStandardArchetypes, get_first_belief_by_label } from './helpers.mjs';
+import { createMindWithBeliefs, setupStandardArchetypes } from './helpers.mjs';
 
 describe('Integration', () => {
   beforeEach(() => {
@@ -556,7 +556,7 @@ describe('Integration', () => {
       expect([...ball.get_archetypes()].map(a => a.label)).to.include('PortableObject');
 
       // Verify player
-      let player = get_first_belief_by_label('player');
+      let player = world_state.get_belief_by_label('player');
       const player_mind = new Materia(world_state.in_mind, 'player_mind');
       const player_mind_state = player_mind.create_state(world_state);
       player = Belief.from_template(world_state, {
@@ -568,7 +568,7 @@ describe('Integration', () => {
       expect(player_inspected.traits.mind._ref).to.equal(player_mind._id);
 
       // Verify learn_about
-      const workshop = get_first_belief_by_label('workshop');
+      const workshop = world_state.get_belief_by_label('workshop');
       const workshop_knowledge = learn_about(player_mind_state,workshop, {traits: []});
 
       const workshop_inspected = workshop_knowledge.to_inspect_view(player_mind_state);

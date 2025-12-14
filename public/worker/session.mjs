@@ -173,11 +173,13 @@ export class Session {
 
     st.lock()
     st = st.branch(logos_state(), 2)
+
     const handle = Belief.from(st, [A.HammerHandle], {
       color: 'blue',
     })
+    st.insert_beliefs(handle)
 
-    hammer = hammer.branch(st, {
+    hammer = hammer.replace(st, {
       handle: handle.subject,
     })
     //log([st], hammer, hammer.subject)

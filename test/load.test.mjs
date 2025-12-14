@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load, Convergence, eidos } from '../public/worker/cosmos.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { setupStandardArchetypes, get_first_belief_by_label, createStateInNewMind } from './helpers.mjs';
+import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs';
 
 describe('Save/Load functionality', () => {
   beforeEach(() => {
@@ -38,7 +38,8 @@ describe('Save/Load functionality', () => {
       expect(loaded_mind._states.size).to.equal(1);
 
       // Verify belief exists (lazy)
-      const loaded_workshop = get_first_belief_by_label('workshop');
+      const loaded_state = [...loaded_mind._states][0];
+      const loaded_workshop = loaded_state.get_belief_by_label('workshop');
       expect(loaded_workshop).to.exist;
       expect(loaded_workshop._id).to.equal(workshop._id);
     });
@@ -65,9 +66,9 @@ describe('Save/Load functionality', () => {
       const loaded_mind = load(json);
 
       // Get loaded beliefs
-      const loaded_hammer = get_first_belief_by_label('hammer');
-      const loaded_workshop = get_first_belief_by_label('workshop');
       const loaded_state = [...loaded_mind._states][0];
+      const loaded_hammer = loaded_state.get_belief_by_label('hammer');
+      const loaded_workshop = loaded_state.get_belief_by_label('workshop');
 
       // Trait reference should be resolved correctly after load
       const location_traittype = Traittype.get_by_label('location');
@@ -103,17 +104,16 @@ describe('Save/Load functionality', () => {
       setupStandardArchetypes();
       const loaded_mind = load(json);
 
-      // Get state2 (the one with the circular reference)
+      // Get state1 and state2
+      const loaded_state1 = [...loaded_mind._states].find(s => s.tt === 1);
       const loaded_state2 = [...loaded_mind._states].find(s => s.tt === 2);
       expect(loaded_state2).to.exist;
 
-      // Get the beliefs
-      const loaded_room1 = get_first_belief_by_label('room1');
-      const loaded_room2 = get_first_belief_by_label('room2');
-      // room1_v2 is a version of room1 (has room1 as base)
-      const loaded_room1_v2 = [...DB._reflect().belief_by_id.values()].find(b =>
-        b !== loaded_room1 && b._bases.size === 1 && [...b._bases][0] === loaded_room1
-      );
+      // Get the beliefs - room1 from state1 is the original, room1 from state2 is the v2
+      const loaded_room1 = loaded_state1.get_belief_by_label('room1');
+      const loaded_room2 = loaded_state2.get_belief_by_label('room2');
+      // room1_v2 is the current version in state2 (has room1 as base)
+      const loaded_room1_v2 = loaded_state2.get_belief_by_label('room1');
 
       expect(loaded_room1).to.exist;
       expect(loaded_room2).to.exist;
@@ -214,15 +214,16 @@ describe('Save/Load functionality', () => {
       DB.reset_registries();
       setupStandardArchetypes();
       const loaded_mind = load(json);
+      const loaded_state = [...loaded_mind._states][0];
 
       // Verify all beliefs loaded
-      expect(get_first_belief_by_label('workshop')).to.exist;
-      expect(get_first_belief_by_label('hammer')).to.exist;
-      expect(get_first_belief_by_label('player')).to.exist;
-      expect(get_first_belief_by_label('ball')).to.exist;
+      expect(loaded_state.get_belief_by_label('workshop')).to.exist;
+      expect(loaded_state.get_belief_by_label('hammer')).to.exist;
+      expect(loaded_state.get_belief_by_label('player')).to.exist;
+      expect(loaded_state.get_belief_by_label('ball')).to.exist;
 
       // Verify player has mind
-      const loaded_player = get_first_belief_by_label('player');
+      const loaded_player = loaded_state.get_belief_by_label('player');
       const player_mind = loaded_player._traits.get(Traittype.get_by_label('mind'));
       expect(player_mind).to.be.instanceOf(Mind);
       const states = [...player_mind._states];

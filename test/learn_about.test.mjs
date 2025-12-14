@@ -3,7 +3,7 @@ import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind,
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { learn_about } from '../public/worker/perception.mjs';
-import { createMindWithBeliefs, setupStandardArchetypes, setupMinimalArchetypes, get_first_belief_by_label, stdTypes, Thing } from './helpers.mjs';
+import { createMindWithBeliefs, setupStandardArchetypes, setupMinimalArchetypes, stdTypes, Thing } from './helpers.mjs';
 
 describe('learn_about', () => {
   beforeEach(() => {
@@ -21,7 +21,7 @@ describe('learn_about', () => {
 
       const player_mind = new Materia(world_state.in_mind, 'player');
       const player_mind_state = player_mind.create_state(world_state);
-      const workshop = get_first_belief_by_label('workshop');
+      const workshop = world_state.get_belief_by_label('workshop');
       const workshop_knowledge = learn_about(player_mind_state,workshop, {traits: []});
 
       const inspected = workshop_knowledge.to_inspect_view(player_mind_state);
@@ -42,7 +42,7 @@ describe('learn_about', () => {
 
       const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_state);
-      const hammer = get_first_belief_by_label('hammer');
+      const hammer = world_state.get_belief_by_label('hammer');
       const hammer_belief = learn_about(npc_mind_state,hammer, {traits: ['color']});
 
       const color_traittype = Traittype.get_by_label('color');
@@ -64,7 +64,7 @@ describe('learn_about', () => {
       const world_mind_state = world_mind.create_state(logos().origin_state, {tt: 1});
       const hammer_v1_belief = world_mind_state.add_belief_from_template({bases: ['PortableObject'], traits: {}, label: 'hammer_v1'});
 
-      const hammer_v1 = get_first_belief_by_label('hammer_v1');
+      const hammer_v1 = world_mind_state.get_belief_by_label('hammer_v1');
       const hammer_v2 = Belief.from_template(world_mind_state, {
         bases: [hammer_v1],
         traits: { color: 'red' }
@@ -98,7 +98,7 @@ describe('learn_about', () => {
       const player_mind = new Materia(world_state.in_mind, 'player');
       const player_mind_state = player_mind.create_state(world_state);
       const workshop_knowledge = learn_about(player_mind_state,
-        get_first_belief_by_label('workshop'),
+        world_state.get_belief_by_label('workshop'),
         {traits: []}
       );
 
@@ -118,7 +118,7 @@ describe('learn_about', () => {
       const world_mind_state = world_mind.create_state(logos().origin_state, {tt: 1});
       const base_hammer_belief = world_mind_state.add_belief_from_template({bases: ['PortableObject'], traits: {}, label: 'base_hammer'});
 
-      const base_hammer = get_first_belief_by_label('base_hammer');
+      const base_hammer = world_mind_state.get_belief_by_label('base_hammer');
 
       const npc_mind = new Materia(world_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_mind_state);
@@ -135,14 +135,14 @@ describe('learn_about', () => {
         workshop: { bases: ['Location'] },
         hammer: {
           bases: ['PortableObject'],
-          traits: { location: 'workshop' }  // References get_first_belief_by_label('workshop')
+          traits: { location: 'workshop' }  // String reference to workshop belief
         }
       });
 
       const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_state);
       const hammer_knowledge = learn_about(npc_mind_state,
-        get_first_belief_by_label('hammer'),
+        world_state.get_belief_by_label('hammer'),
         {traits: ['location']}
       );
 
@@ -154,7 +154,7 @@ describe('learn_about', () => {
       expect(location_ref.in_mind).to.equal(npc_mind);
 
       // Should be about the workshop from world_mind
-      expect(location_ref.get_about(npc_mind_state)).to.equal(get_first_belief_by_label('workshop'));
+      expect(location_ref.get_about(npc_mind_state)).to.equal(world_state.get_belief_by_label('workshop'));
 
       // Should have the same archetypes
       const archetypes = [...location_ref.get_archetypes()].map(a => a.label);
@@ -176,11 +176,11 @@ describe('learn_about', () => {
       // NPC already knows about the workshop
       const existing_workshop = npc_mind_state.add_belief_from_template({
                 bases: ['Location'],
-        traits: {'@about': get_first_belief_by_label('workshop').subject}, label: 'my_workshop'
+        traits: {'@about': world_state.get_belief_by_label('workshop').subject}, label: 'my_workshop'
       });
 
       const hammer_knowledge = learn_about(npc_mind_state,
-        get_first_belief_by_label('hammer'),
+        world_state.get_belief_by_label('hammer'),
         {traits: ['location']}
       );
 
@@ -205,12 +205,12 @@ describe('learn_about', () => {
       // NPC has two different beliefs about the workshop (uncertainty case)
       const belief1 = npc_mind_state.add_belief_from_template({
                 bases: ['Location'],
-        traits: {'@about': get_first_belief_by_label('workshop').subject}, label: 'workshop_belief_1'
+        traits: {'@about': world_state.get_belief_by_label('workshop').subject}, label: 'workshop_belief_1'
       });
 
       const belief2 = npc_mind_state.add_belief_from_template({
                 bases: ['Location'],
-        traits: {'@about': get_first_belief_by_label('workshop').subject}, label: 'workshop_belief_2'
+        traits: {'@about': world_state.get_belief_by_label('workshop').subject}, label: 'workshop_belief_2'
       });
 
       npc_mind_state.lock();
@@ -218,7 +218,7 @@ describe('learn_about', () => {
 
       // New behavior: updates first belief (highest confidence in future)
       const hammer_knowledge = learn_about(new_state,
-        get_first_belief_by_label('hammer'),
+        world_state.get_belief_by_label('hammer'),
         {traits: ['location']}
       );
 
@@ -234,7 +234,7 @@ describe('learn_about', () => {
       const world_mind_state = world_mind.create_state(logos().origin_state, {tt: 1});
       world_mind_state.add_belief_from_template({bases: ['PortableObject'], traits: {}, label: 'hammer_v1'});
 
-      const hammer_v1 = get_first_belief_by_label('hammer_v1');
+      const hammer_v1 = world_mind_state.get_belief_by_label('hammer_v1');
       const hammer_v2 = Belief.from_template(world_mind_state, {
         bases: [hammer_v1],
         traits: { color: 'red' }
@@ -262,7 +262,7 @@ describe('learn_about', () => {
       const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_mind_state = npc_mind.create_state(world_state);
       const hammer_knowledge = learn_about(npc_mind_state,
-        get_first_belief_by_label('hammer'),
+        world_state.get_belief_by_label('hammer'),
         {traits: ['color']}
       );
 
@@ -484,7 +484,7 @@ describe('learn_about', () => {
       const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
 
-      const hammer = get_first_belief_by_label('hammer');
+      const hammer = world_state.get_belief_by_label('hammer');
       const hammer_knowledge = learn_about(npc_state,hammer, {modalities: ['visual']});
 
       // Should have color (visual)
@@ -513,7 +513,7 @@ describe('learn_about', () => {
       const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
 
-      const hammer = get_first_belief_by_label('hammer');
+      const hammer = world_state.get_belief_by_label('hammer');
       const hammer_knowledge = learn_about(npc_state,hammer, {modalities: ['visual', 'spatial']});
 
       // Should have both color (visual) and location (spatial)
@@ -540,7 +540,7 @@ describe('learn_about', () => {
       const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
 
-      const player = get_first_belief_by_label('player');
+      const player = world_state.get_belief_by_label('player');
       const player_knowledge = learn_about(npc_state,player, {modalities: ['visual', 'internal']});
 
       // Should have color (visual)
@@ -567,7 +567,7 @@ describe('learn_about', () => {
       const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
 
-      const hammer = get_first_belief_by_label('hammer');
+      const hammer = world_state.get_belief_by_label('hammer');
       const hammer_knowledge = learn_about(npc_state,hammer, {});
 
       // Should have color (visual) but NOT location (spatial)
@@ -592,7 +592,7 @@ describe('learn_about', () => {
       const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
 
-      const hammer = get_first_belief_by_label('hammer');
+      const hammer = world_state.get_belief_by_label('hammer');
       // Explicit traits should override modalities
       const hammer_knowledge = learn_about(npc_state,hammer, {
         traits: ['color'],
@@ -623,7 +623,7 @@ describe('learn_about', () => {
       const npc_mind = new Materia(world_state.in_mind, 'npc');
       const npc_state = npc_mind.create_state(world_state);
 
-      const hammer = get_first_belief_by_label('hammer');
+      const hammer = world_state.get_belief_by_label('hammer');
       const hammer_knowledge = learn_about(npc_state,hammer, {modalities: ['visual']});
 
       // Should have color (has exposure metadata: visual)

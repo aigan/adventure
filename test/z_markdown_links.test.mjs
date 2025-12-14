@@ -10,9 +10,9 @@ const PROJECT_ROOT = resolve(__dirname, '..')
 
 describe('Markdown Links', () => {
   it('should have valid relative links in all markdown files', () => {
-    // Find all .md files excluding node_modules, lab, and tmp
+    // Find all .md files excluding node_modules, lab, tmp, and .git
     const md_files = execSync(
-      'find . -name "*.md" -not -path "./node_modules/*" -not -path "./lab/*" -not -path "./tmp/*"',
+      'find . \\( -path "./.git" -o -path "./node_modules" -o -path "./lab" -o -path "./tmp" \\) -prune -o -name "*.md" -print',
       { cwd: PROJECT_ROOT, encoding: 'utf-8' }
     )
       .trim()
@@ -92,9 +92,9 @@ describe('Markdown Links', () => {
   })
 
   it('should have valid relative links in .mjs file comments', () => {
-    // Find all .mjs files excluding node_modules, lab, tmp, emacs lock/backup files, and this test file
+    // Find all .mjs files excluding node_modules, lab, tmp, .git, emacs lock/backup files, and this test file
     const mjs_files = execSync(
-      'find . -name "*.mjs" -not -path "./node_modules/*" -not -path "./lab/*" -not -path "./tmp/*" -not -name ".#*" -not -name "#*#" -not -path "./test/z_markdown_links.test.mjs"',
+      'find . \\( -path "./.git" -o -path "./node_modules" -o -path "./lab" -o -path "./tmp" \\) -prune -o -name "*.mjs" ! -name ".#*" ! -name "#*#" ! -path "./test/z_markdown_links.test.mjs" -print',
       { cwd: PROJECT_ROOT, encoding: 'utf-8' }
     )
       .trim()
@@ -188,7 +188,7 @@ describe('Markdown Links', () => {
     // Find all regular files excluding node_modules, lab, tmp, .git, and hidden files (dotfiles)
     // Hidden files like .directory are often created by file managers and may have different permissions
     const all_files = execSync(
-      'find . -type f -not -path "./node_modules/*" -not -path "./lab/*" -not -path "./tmp/*" -not -path "./.git/*" -not -path "*/.*"',
+      'find . \\( -path "./.git" -o -path "./node_modules" -o -path "./lab" -o -path "./tmp" -o -path "*/.*" \\) -prune -o -type f -print',
       { cwd: PROJECT_ROOT, encoding: 'utf-8' }
     )
       .trim()
