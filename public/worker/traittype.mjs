@@ -90,14 +90,18 @@ const literal_handler = (expected_type) => ({
   validate_value(traittype, value) {
     if (value === null) return  // null always valid (shadowing)
 
-    if (typeof value !== expected_type) {
-      throw new Error(`Expected ${expected_type} for trait '${traittype.label}', got ${typeof value}`)
-    }
+    assert(
+      typeof value === expected_type,
+      `Expected ${expected_type} for trait '${traittype.label}', got ${typeof value}`,
+      {traittype, value, expected_type}
+    )
 
     // Validate enum if specified
-    if (traittype.values && !traittype.values.includes(value)) { // FIXME: use assert
-      throw new Error(`Invalid value '${value}' for trait '${traittype.label}'. Must be one of: ${traittype.values.join(', ')}`)
-    }
+    assert(
+      !traittype.values || traittype.values.includes(value),
+      `Invalid value '${value}' for trait '${traittype.label}'. Must be one of: ${traittype.values?.join(', ')}`,
+      {traittype, value, allowed_values: traittype.values}
+    )
   }
 })
 
@@ -237,19 +241,28 @@ export class Traittype {
    * @throws {Error} If value doesn't match expected type
    */
   validate_value(value) {
+    // null is always valid (shadowing)
+    if (value === null) return
+
     // Handle arrays
     if (this.container === Array) {
-      if (!Array.isArray(value)) {
-        throw new Error(`Expected array for trait '${this.label}', got ${typeof value}`)
-      }
+      assert(
+        Array.isArray(value),
+        `Expected array for trait '${this.label}', got ${typeof value}`,
+        {traittype: this, value}
+      )
 
-      // Validate constraints // FIXME: Use assert
-      if (this.constraints?.min != null && value.length < this.constraints.min) {
-        throw new Error(`Array for '${this.label}' has length ${value.length}, min is ${this.constraints.min}`)
-      }
-      if (this.constraints?.max != null && value.length > this.constraints.max) {
-        throw new Error(`Array for '${this.label}' has length ${value.length}, max is ${this.constraints.max}`)
-      }
+      // Validate constraints
+      assert(
+        this.constraints?.min == null || value.length >= this.constraints.min,
+        `Array for '${this.label}' has length ${value.length}, min is ${this.constraints?.min}`,
+        {traittype: this, value, length: value.length, min: this.constraints?.min}
+      )
+      assert(
+        this.constraints?.max == null || value.length <= this.constraints.max,
+        `Array for '${this.label}' has length ${value.length}, max is ${this.constraints?.max}`,
+        {traittype: this, value, length: value.length, max: this.constraints?.max}
+      )
 
       // Validate each element by delegating to type_class
       for (let i = 0; i < value.length; i++) {

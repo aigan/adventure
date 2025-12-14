@@ -578,9 +578,11 @@ export class Mind {
   static validate_value(traittype, value) {
     if (value === null) return
 
-    if (!(value instanceof Mind)) { // FIXME: use assert
-      throw new Error(`Expected Mind instance for trait '${traittype.label}', got ${value?.constructor?.name || typeof value}`)
-    }
+    assert(
+      value instanceof Mind,
+      `Expected Mind instance for trait '${traittype.label}', got ${value?.constructor?.name || typeof value}`,
+      {traittype, value, value_type: value?.constructor?.name || typeof value}
+    )
   }
 
   /**

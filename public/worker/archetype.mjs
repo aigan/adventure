@@ -222,9 +222,11 @@ export class Archetype {
     if (value === null) return
 
     // Archetypes expect Subject instances
-    if (!(value instanceof Subject)) { // FIXME: use assert
-      throw new Error(`Expected Subject instance for trait '${traittype.label}', got ${value?.constructor?.name || typeof value}`)
-    }
+    assert(
+      value instanceof Subject,
+      `Expected Subject instance for trait '${traittype.label}', got ${value?.constructor?.name || typeof value}`,
+      {traittype, value, value_type: value?.constructor?.name || typeof value}
+    )
 
     // Note: Could add archetype membership validation here if desired
     // Would require state parameter to look up belief

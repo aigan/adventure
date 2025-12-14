@@ -307,9 +307,11 @@ export class Subject {
   static validate_value(traittype, value) {
     if (value === null) return
 
-    if (!(value instanceof Subject)) { // FIXME: use assert
-      throw new Error(`Expected Subject instance for trait '${traittype.label}', got ${value?.constructor?.name || typeof value}`)
-    }
+    assert(
+      value instanceof Subject,
+      `Expected Subject instance for trait '${traittype.label}', got ${value?.constructor?.name || typeof value}`,
+      {traittype, value, value_type: value?.constructor?.name || typeof value}
+    )
   }
 }
 

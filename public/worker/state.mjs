@@ -95,9 +95,11 @@ export class State {
   static validate_value(traittype, value) {
     if (value === null) return
 
-    if (!(value instanceof State)) { // FIXME: use assert
-      throw new Error(`Expected State instance for trait '${traittype.label}', got ${value?.constructor?.name || typeof value}`)
-    }
+    assert(
+      value instanceof State,
+      `Expected State instance for trait '${traittype.label}', got ${value?.constructor?.name || typeof value}`,
+      {traittype, value, value_type: value?.constructor?.name || typeof value}
+    )
   }
 
   // TODO: Populate this registry for prototype state templates

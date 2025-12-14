@@ -178,6 +178,12 @@ export function setupStandardArchetypes() {
       type: 'string',
       exposure: 'visual'
     },
+    // Add enum trait for validation tests
+    '@form': {
+      type: 'string',
+      values: ['solid', 'liquid', 'vapor'],
+      exposure: 'visual'
+    },
     // Semantic test traits
     damage: 'number',
     weight: 'number',
@@ -185,6 +191,9 @@ export function setupStandardArchetypes() {
     sharpness: 'number',
     bonus: 'number',
     value: 'number',
+    // Array validation test traits
+    colors: { type: 'string', container: Array },
+    tags: { type: 'string', container: Array, min: 2, max: 5 },
   };
 
   const archetypes = {
@@ -194,6 +203,7 @@ export function setupStandardArchetypes() {
       traits: {
         location: null,
         color: null,
+        '@form': null,
       },
     },
     Mental: {
@@ -236,6 +246,15 @@ export function setupStandardArchetypes() {
       bases: ['ObjectPhysical'],
       traits: {
         value: null,
+      },
+    },
+    // Test archetype with array traits for validation testing
+    TestEntity: {
+      bases: ['Thing'],
+      traits: {
+        colors: null,    // Array of strings
+        tags: null,      // Array with constraints
+        weight: null,    // Number for validation tests
       },
     },
     Effect: {

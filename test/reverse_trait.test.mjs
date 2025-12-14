@@ -1019,7 +1019,8 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         setupStandardArchetypes()
 
         // Register children as non-composable array
-        const children_tt = new Traittype('children', 'Person', {
+        const children_tt = new Traittype('children', {
+          type: 'Person',
           container: Array,
           composable: false  // Non-composable
         })
@@ -1066,7 +1067,8 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         setupStandardArchetypes()
 
         // Register witnesses as non-composable array
-        const witnesses_tt = new Traittype('witnesses', 'Person', {
+        const witnesses_tt = new Traittype('witnesses', {
+          type: 'Person',
           container: Array,
           composable: false
         })
@@ -1118,7 +1120,8 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         DB.reset_registries()
         setupStandardArchetypes()
 
-        const witnesses_tt = new Traittype('witnesses', 'Person', {
+        const witnesses_tt = new Traittype('witnesses', {
+          type: 'Person',
           container: Array,
           composable: false
         })
