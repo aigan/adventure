@@ -502,6 +502,7 @@ export class State {
     // Clean up reverse index for removed beliefs
     // TODO: EXPENSIVE - iterates all traits (own + inherited) for each belief
     for (const belief of beliefs) {
+      assert(belief instanceof Belief, 'fail', belief)
       for (const [traittype, value] of belief.get_traits()) {
         if (traittype.is_subject_reference) {
           for (const subject of belief.extract_subjects(value)) {

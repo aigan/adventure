@@ -98,13 +98,13 @@ export function debug(...args) {
  * @param {...any} args - Additional context objects to log (explorable in console)
  * @returns {asserts condition}
  */
-export function assert(condition, message, ...args) {
+export function assert(condition, message = 'Assertion failed', ...args) {
   if (!condition) {
     // Skip logging in test environment to keep output clean
     if (!is_test) {
       console.error(message, ...args)
     }
-    throw new Error(message || 'Assertion failed')
+    throw new Error(message)
   }
 }
 

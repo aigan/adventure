@@ -168,16 +168,19 @@ export class Session {
     })
 
     let hammer = st.get_belief_by_label('hammer3')
+    assert(hammer instanceof Belief)
+    log([st], hammer, hammer.subject)
+
+    st.lock()
     st = st.branch(logos_state(), 2)
     const handle = Belief.from(st, [A.HammerHandle], {
       color: 'blue',
     })
 
-    if (hammer) {
-      hammer = hammer.branch(st, {
-        handle: handle,
-      })
-    }
+    hammer = hammer.branch(st, {
+      handle: handle,
+    })
+    log([st], hammer, hammer.subject)
 
     return true
 

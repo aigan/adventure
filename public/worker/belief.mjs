@@ -1050,9 +1050,26 @@ export class Belief {
   }
 
   /**
-   * Create a new version of this belief with updated traits
+   * Replace this belief with a new version having updated traits
+   * Removes old belief and inserts new one (only new version exists in state)
+   * Works even when this belief is locked (creates new belief, doesn't modify old)
+   * @param {State} state - State context for the new belief (must be unlocked)
+   * @param {Record<string, any>} traits - Trait updates (already resolved, not templates)
+   * @returns {Belief} New belief with this belief as base
+   */
+  replace(state, traits = {}) {
+    assert(state instanceof State, 'replace requires State parameter', {belief_id: this._id})
+    assert(!state.locked, 'Cannot replace into locked state', {state_id: state._id, belief_id: this._id})
+
+    state.remove_beliefs(this)
+    return this.branch(state, traits)
+  }
+
+  /**
+   * Create a new version of this belief with updated traits, in addition to the existing one
+   * True branching - both old and new beliefs exist in the state (superposition)
    * Similar to State.branch() pattern - creates versioned belief with same subject
-   * @param {State} state - State context for the new belief
+   * @param {State} state - State context for the new belief (must be unlocked)
    * @param {Record<string, any>} traits - Trait updates (already resolved, not templates)
    * @returns {Belief} New belief with this belief as base
    */

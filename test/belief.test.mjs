@@ -1296,7 +1296,7 @@ describe('Belief', () => {
     });
   });
 
-  describe('Belief.branch()', () => {
+  describe('Belief.replace()', () => {
     it('creates new belief with same subject', () => {
       const state = createStateInNewMind()
       const hammer = Belief.from_template(state, {
@@ -1307,7 +1307,7 @@ describe('Belief', () => {
       state.lock()
 
       const state2 = state.branch(state.ground_state, 2)
-      const hammer_v2 = hammer.branch(state2, { color: 'blue' })
+      const hammer_v2 = hammer.replace(state2, { color: 'blue' })
 
       expect(hammer_v2.subject).to.equal(hammer.subject)
       expect(hammer_v2._id).to.not.equal(hammer._id)
@@ -1322,7 +1322,7 @@ describe('Belief', () => {
       state.lock()
 
       const state2 = state.branch(state.ground_state, 2)
-      const hammer_v2 = hammer.branch(state2, { color: 'blue' })
+      const hammer_v2 = hammer.replace(state2, { color: 'blue' })
 
       expect([...hammer_v2._bases]).to.include(hammer)
     })
@@ -1340,7 +1340,7 @@ describe('Belief', () => {
       state.lock()
 
       const state2 = state.branch(state.ground_state, 2)
-      const hammer_v2 = hammer.branch(state2, {
+      const hammer_v2 = hammer.replace(state2, {
         location: workshop.subject  // Direct Subject, not string
       })
 
@@ -1357,7 +1357,7 @@ describe('Belief', () => {
       state.lock()
 
       const state2 = state.branch(state.ground_state, 2)
-      const hammer_v2 = hammer.branch(state2, { color: 'blue' })
+      const hammer_v2 = hammer.replace(state2, { color: 'blue' })
 
       expect(state2._insert).to.include(hammer_v2)
     })
@@ -1370,11 +1370,11 @@ describe('Belief', () => {
       })
       state.lock()
 
-      expect(() => hammer.branch(state, { color: 'blue' })).to.throw()
+      expect(() => hammer.replace(state, { color: 'blue' })).to.throw()
 
       // But should work on unlocked state
       const state2 = state.branch(state.ground_state, 2)
-      const hammer_v2 = hammer.branch(state2, { color: 'blue' })
+      const hammer_v2 = hammer.replace(state2, { color: 'blue' })
       expect(hammer_v2).to.be.instanceof(Belief)
     })
 
@@ -1388,7 +1388,7 @@ describe('Belief', () => {
       state.lock()
 
       const state2 = state.branch(state.ground_state, 2)
-      const hammer_v2 = hammer.branch(state2, { color: null })
+      const hammer_v2 = hammer.replace(state2, { color: null })
 
       const color_tt = Traittype.get_by_label('color')
       expect(hammer_v2.get_trait(state2, color_tt)).to.be.null
@@ -1408,7 +1408,7 @@ describe('Belief', () => {
       state.lock()
 
       const state2 = state.branch(state.ground_state, 2)
-      const hammer_v2 = hammer.branch(state2, { color: 'blue' })
+      const hammer_v2 = hammer.replace(state2, { color: 'blue' })
 
       const color_tt = Traittype.get_by_label('color')
       const location_tt = Traittype.get_by_label('location')

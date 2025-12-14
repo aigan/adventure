@@ -1173,7 +1173,7 @@ describe('observation', () => {
       state = state.branch(Cosmos.logos_state(), 2)
 
       // Update hammer in world
-      const hammer_v2 = hammer.branch(state, {color: 'red'})
+      const hammer_v2 = hammer.replace(state, {color: 'red'})
 
       player_state = state.get_active_state_by_host(player)
 

@@ -229,8 +229,8 @@ export function _perceive_with_recognition(state, world_entity, world_state, mod
         }
       }
 
-      // Use branch() for versioning with same subject - avoids template overhead
-      main_belief = knowledge.branch(state, trait_updates)
+      // Use replace() to version belief - removes old, inserts new
+      main_belief = knowledge.replace(state, trait_updates)
     }
   }
 
@@ -703,10 +703,8 @@ export function integrate(state, source_state, source_belief, traittypes, existi
     return existing  // No changes, return existing belief
   }
 
-  // Create new version with updates
-  const updated = existing.branch(state, trait_updates)
-  // Remove old belief (branch automatically inserted the new one)
-  state.remove_beliefs(existing)
+  // Create new version with updates (removes old, inserts new)
+  const updated = existing.replace(state, trait_updates)
   return updated
 }
 
