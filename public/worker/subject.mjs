@@ -8,6 +8,7 @@ import { register_reset_hook } from './reset.mjs'
 /**
  * @typedef {import('./state.mjs').State} State
  * @typedef {import('./mind.mjs').Mind} Mind
+ * @typedef {import('./traittype.mjs').Traittype} Traittype
  */
 
 /**
@@ -295,6 +296,20 @@ export class Subject {
     if (data === null) return null  // Allow explicit null to block composition
     const { subject } = Subject._lookup_belief_from_template(traittype, belief, data)
     return subject
+  }
+
+  /**
+   * Validate that value is a Subject instance
+   * @param {Traittype} traittype
+   * @param {*} value
+   * @throws {Error} If value is not a Subject instance
+   */
+  static validate_value(traittype, value) {
+    if (value === null) return
+
+    if (!(value instanceof Subject)) { // FIXME: use assert
+      throw new Error(`Expected Subject instance for trait '${traittype.label}', got ${value?.constructor?.name || typeof value}`)
+    }
   }
 }
 

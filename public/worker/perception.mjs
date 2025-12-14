@@ -92,7 +92,15 @@ export function _perceive_single(state, world_entity, about_state, modalities) {
           }
         }
       } else {
-        observed_traits[traittype.label] = value
+        // Handle Archetype objects from archetype templates - resolve to prototype Subject
+        if (value instanceof Archetype) {
+          // Try to find prototype with same label as archetype
+          const subject = Subject.get_by_label(value.label)
+          // Use null if no prototype exists (abstract archetype with no default instance)
+          observed_traits[traittype.label] = subject ?? null
+        } else {
+          observed_traits[traittype.label] = value
+        }
       }
     }
   }

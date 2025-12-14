@@ -169,7 +169,7 @@ export class Session {
 
     let hammer = st.get_belief_by_label('hammer3')
     assert(hammer instanceof Belief)
-    log([st], hammer, hammer.subject)
+    //log([st], hammer, hammer.subject)
 
     st.lock()
     st = st.branch(logos_state(), 2)
@@ -178,9 +178,9 @@ export class Session {
     })
 
     hammer = hammer.branch(st, {
-      handle: handle,
+      handle: handle.subject,
     })
-    log([st], hammer, hammer.subject)
+    //log([st], hammer, hammer.subject)
 
     return true
 

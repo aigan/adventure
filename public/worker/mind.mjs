@@ -570,6 +570,20 @@ export class Mind {
   }
 
   /**
+   * Validate that value is a Mind instance
+   * @param {Traittype} traittype
+   * @param {*} value
+   * @throws {Error} If value is not a Mind instance
+   */
+  static validate_value(traittype, value) {
+    if (value === null) return
+
+    if (!(value instanceof Mind)) { // FIXME: use assert
+      throw new Error(`Expected Mind instance for trait '${traittype.label}', got ${value?.constructor?.name || typeof value}`)
+    }
+  }
+
+  /**
    * Get or create an open (unlocked) state for the given ground context
    * Determines whether to reuse existing state or create new based on ground_belief.locked
    * @param {State} ground_state - External world state

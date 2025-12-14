@@ -86,6 +86,20 @@ export class State {
     return this._type_registry[type_name]
   }
 
+  /**
+   * Validate that value is a State instance
+   * @param {Traittype} traittype
+   * @param {*} value
+   * @throws {Error} If value is not a State instance
+   */
+  static validate_value(traittype, value) {
+    if (value === null) return
+
+    if (!(value instanceof State)) { // FIXME: use assert
+      throw new Error(`Expected State instance for trait '${traittype.label}', got ${value?.constructor?.name || typeof value}`)
+    }
+  }
+
   // TODO: Populate this registry for prototype state templates
   // Will be used to share belief lists across many nodes
   // See resolve_template() lines 364-367 for planned usage

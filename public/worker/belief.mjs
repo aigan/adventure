@@ -244,6 +244,9 @@ export class Belief {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
     assert(this.can_have_trait(traittype), `Belief can't have trait ${traittype.label}`, {label: traittype.label, belief: this.get_label(), data, archetypes: [...this.get_archetypes()].map(a => a.label)})
 
+    // Validate type before setting
+    traittype.validate_value(data)
+
     if (debug()) {
       const old_value = this.get_trait(this.origin_state, traittype)
       if (old_value !== null) {

@@ -62,7 +62,7 @@ import { register_reset_hook } from './reset.mjs'
 /**
  * Create handler for literal types (string, number, boolean)
  * @param {string} expected_type
- * @returns {{resolve_trait_value_from_template: Function}}
+ * @returns {{resolve_trait_value_from_template: Function, validate_value: Function}}
  */
 const literal_handler = (expected_type) => ({
   /**
@@ -79,6 +79,25 @@ const literal_handler = (expected_type) => ({
       throw new Error(`Invalid value '${data}' for trait '${traittype.label}'. Must be one of: ${traittype.values.join(', ')}`)
     }
     return data
+  },
+
+  /**
+   * Validate that value matches expected literal type
+   * @param {Traittype} traittype
+   * @param {*} value
+   * @throws {Error} If value doesn't match expected type
+   */
+  validate_value(traittype, value) {
+    if (value === null) return  // null always valid (shadowing)
+
+    if (typeof value !== expected_type) {
+      throw new Error(`Expected ${expected_type} for trait '${traittype.label}', got ${typeof value}`)
+    }
+
+    // Validate enum if specified
+    if (traittype.values && !traittype.values.includes(value)) { // FIXME: use assert
+      throw new Error(`Invalid value '${value}' for trait '${traittype.label}'. Must be one of: ${traittype.values.join(', ')}`)
+    }
   }
 })
 
@@ -212,6 +231,74 @@ export class Traittype {
   }
 
   /**
+   * Validate that value matches this traittype's expected type
+   * Delegates to type_class.validate_value()
+   * @param {*} value - Value to validate (already resolved, not template)
+   * @throws {Error} If value doesn't match expected type
+   */
+  validate_value(value) {
+    // Handle arrays
+    if (this.container === Array) {
+      if (!Array.isArray(value)) {
+        throw new Error(`Expected array for trait '${this.label}', got ${typeof value}`)
+      }
+
+      // Validate constraints // FIXME: Use assert
+      if (this.constraints?.min != null && value.length < this.constraints.min) {
+        throw new Error(`Array for '${this.label}' has length ${value.length}, min is ${this.constraints.min}`)
+      }
+      if (this.constraints?.max != null && value.length > this.constraints.max) {
+        throw new Error(`Array for '${this.label}' has length ${value.length}, max is ${this.constraints.max}`)
+      }
+
+      // Validate each element by delegating to type_class
+      for (let i = 0; i < value.length; i++) {
+        try {
+          this._validate_single_value(value[i])
+        } catch (/** @type {any} */ err) {
+          throw new Error(`Array element ${i} for trait '${this.label}': ${err.message}`)
+        }
+      }
+      return
+    }
+
+    // Single value - delegate to type_class
+    this._validate_single_value(value)
+  }
+
+  /**
+   * Validate single value (not array) by delegating to type_class
+   * @param {*} value
+   * @throws {Error}
+   * @private
+   */
+  _validate_single_value(value) {
+    const type_class = this._get_type_class()
+
+    if (type_class && typeof type_class.validate_value === 'function') {
+      type_class.validate_value(this, value)
+    }
+    // If no validate_value method, allow (backward compatibility for unknown types)
+  }
+
+  /**
+   * Get type_class for this traittype
+   * @returns {any} Type class (Mind, State, literal_handler object, etc.)
+   * @private
+   */
+  _get_type_class() {
+    // Check literal types first
+    const type_class = Traittype.type_class_by_name[this.data_type]
+    if (type_class) return type_class
+
+    // Check if it's an archetype type
+    const archetype = Archetype.get_by_label(this.data_type)
+    if (archetype) return Archetype
+
+    return null
+  }
+
+  /**
    * Resolve string label to typed value for archetype trait defaults
    * Determines resolution strategy based on traittype's data_type
    * @param {string} label - String label to resolve
@@ -224,7 +311,7 @@ export class Traittype {
     const type_class = Traittype.type_class_by_name[this.data_type]
     if (type_class) return label
 
-    // Try archetype (most common for trait defaults)
+    // Try archetype (stored as template marker, resolved during belief creation)
     const archetype = Archetype.get_by_label(label)
     if (archetype) return archetype
 

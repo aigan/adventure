@@ -184,11 +184,25 @@ export class Archetype {
    * Resolve trait value from template data for archetype references
    * @param {*} traittype - Traittype instance (for accessing label, constraints)
    * @param {*} belief - Belief being constructed (provides origin_state for lookup)
-   * @param {*} data - Raw template data (string label, Subject, or invalid Belief)
+   * @param {*} data - Raw template data (string label, Subject, Archetype, or invalid Belief)
    * @returns {*} Resolved Subject
    */
   static resolve_trait_value_from_template(traittype, belief, data) {
     if (data === null) return null
+
+    // Handle Archetype objects (from archetype templates) - find corresponding prototype
+    if (data instanceof Archetype) {
+      const subject = Subject.get_by_label(data.label)
+      if (!subject) { // FIXME: use assert
+        throw new Error(
+          `Cannot resolve Archetype '${data.label}' for trait '${traittype.label}': ` +
+          `no prototype Subject found with label '${data.label}'`
+        )
+      }
+      traittype.validate_archetype(subject, belief.origin_state)
+      return subject
+    }
+
     const { subject } = Subject._lookup_belief_from_template(traittype, belief, data)
 
     if (typeof data === 'string') {
@@ -196,6 +210,24 @@ export class Archetype {
     }
 
     return subject
+  }
+
+  /**
+   * Validate that value is a Subject instance (for archetype-typed traits)
+   * @param {Traittype} traittype
+   * @param {*} value
+   * @throws {Error} If value is not a Subject instance
+   */
+  static validate_value(traittype, value) {
+    if (value === null) return
+
+    // Archetypes expect Subject instances
+    if (!(value instanceof Subject)) { // FIXME: use assert
+      throw new Error(`Expected Subject instance for trait '${traittype.label}', got ${value?.constructor?.name || typeof value}`)
+    }
+
+    // Note: Could add archetype membership validation here if desired
+    // Would require state parameter to look up belief
   }
 
   /**
