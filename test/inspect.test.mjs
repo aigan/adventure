@@ -2,6 +2,7 @@ import { expect } from 'chai';
 
 // Import the render functions
 const { render_entity, render_table } = await import('../public/inspect.mjs');
+import { setupAfterEachValidation } from './helpers.mjs';
 
 describe('inspect.mjs', () => {
   let mockTarget;
@@ -10,6 +11,8 @@ describe('inspect.mjs', () => {
     // Create a fresh mock target for each test
     mockTarget = { innerHTML: '' };
   });
+  setupAfterEachValidation();
+
 
   describe('render_table', () => {
     it('renders basic table with rows', () => {

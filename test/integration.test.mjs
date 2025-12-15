@@ -17,13 +17,15 @@ import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind,
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { learn_about } from '../public/worker/perception.mjs';
-import { createMindWithBeliefs, setupStandardArchetypes } from './helpers.mjs';
+import { createMindWithBeliefs, setupStandardArchetypes, setupAfterEachValidation } from './helpers.mjs';
 
 describe('Integration', () => {
   beforeEach(() => {
     DB.reset_registries();
     setupStandardArchetypes();
   });
+  setupAfterEachValidation();
+
 
   describe('Complex Scenarios from world.mjs', () => {
     it('world.mjs setupStandardArchetypes with Villager prototype', () => {

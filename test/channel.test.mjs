@@ -3,7 +3,7 @@ import { Mind, Materia, State, Belief, Archetype, Traittype, Session, save_mind,
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { learn_about } from '../public/worker/perception.mjs';
-import { stdTypes, Thing, setupBrowserMocks, cleanupBrowserMocks, MockBroadcastChannel } from './helpers.mjs';
+import { stdTypes, Thing, setupBrowserMocks, cleanupBrowserMocks, MockBroadcastChannel, setupAfterEachValidation } from './helpers.mjs';
 
 // Set up browser mocks at module load time
 setupBrowserMocks();
@@ -58,6 +58,8 @@ describe('Channel Message Handlers', () => {
 
     DB.register(traittypes, archetypes, {});
   });
+  setupAfterEachValidation();
+
 
   describe('query_mind handler', () => {
     let Channel;

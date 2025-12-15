@@ -177,7 +177,6 @@ export class Session {
     const handle = Belief.from(st, [A.HammerHandle], {
       color: 'blue',
     })
-    st.insert_beliefs(handle)
 
     hammer = hammer.replace(st, {
       handle: handle.subject,

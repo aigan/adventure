@@ -23,11 +23,14 @@ import { expect } from 'chai'
 import { Traittype } from '../public/worker/traittype.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { eidos } from '../public/worker/eidos.mjs'
+import { setupAfterEachValidation } from './helpers.mjs'
 
 describe('Composable Traits', () => {
   beforeEach(() => {
     DB.reset_registries()
   })
+  setupAfterEachValidation();
+
 
   describe('Inventory Composition', () => {
     // Matrix 3.3: Composable Transitive (A→B→C)

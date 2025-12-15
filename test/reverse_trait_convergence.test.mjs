@@ -9,7 +9,7 @@
  */
 
 import { expect } from 'chai'
-import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs'
+import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
@@ -31,6 +31,8 @@ describe('Convergence + rev_trait() Integration', () => {
     const description_tt = Traittype.get_by_label('description')
     location._traits_template.set(description_tt, null)
   })
+  setupAfterEachValidation();
+
 
   describe('Convergence Traversal', () => {
     it('basic Convergence query - finds references in component states', () => {

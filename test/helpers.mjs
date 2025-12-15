@@ -119,6 +119,49 @@ export function createMindWithBeliefs(label, beliefs = {}, parent_mind = logos()
 }
 
 /**
+ * Validate all beliefs in a state have valid Subject trait references
+ * This simulates the validation that happens during lock, allowing tests
+ * that don't lock to still catch Subject reference errors
+ * @param {State} state - State to validate
+ * @throws {Error} If any belief has Subject traits referencing non-existent beliefs
+ */
+export function validateStateBeliefs(state) {
+  for (const belief of state.get_beliefs()) {
+    belief._validate_subject_traits(state);
+  }
+}
+
+/**
+ * afterEach hook that validates all beliefs in all states
+ * Use this in test files to automatically validate Subject references
+ * @example
+ * import { setupAfterEachValidation } from './helpers.mjs'
+ *
+ * describe('My Tests', () => {
+ *   setupAfterEachValidation()
+ *   // ... tests
+ * })
+ */
+export function setupAfterEachValidation() {
+  afterEach(function() {
+    // Skip validation for tests that intentionally create invalid state
+    if (this.currentTest.title.includes('should throw') ||
+        this.currentTest.title.includes('should validate via test helper') ||
+        this.currentTest.title.includes('throws') ||
+        this.currentTest.title.includes('rejects') ||
+        this.currentTest.title.includes('fails')) {
+      return;
+    }
+
+    // Validate all beliefs in all states
+    const reflection = DB._reflect();
+    for (const state of reflection.state_by_id.values()) {
+      validateStateBeliefs(state);
+    }
+  });
+}
+
+/**
  * Standard trait types used in most tests
  * Spread this into your test's traittype definition
  * @example

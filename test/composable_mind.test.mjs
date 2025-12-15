@@ -18,8 +18,12 @@ import { expect } from 'chai'
 import { Mind, Materia, Belief, Subject, Traittype } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
+import { setupAfterEachValidation } from './helpers.mjs'
 
 describe('Composable Mind Trait', () => {
+
+  setupAfterEachValidation();
+
 
   describe('Phase 1: Basic Coverage', () => {
 

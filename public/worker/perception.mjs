@@ -111,7 +111,6 @@ export function _perceive_single(state, world_entity, about_state, modalities) {
     ...observed_traits
   })
 
-  state.insert_beliefs(perceived)
   return perceived
 }
 
@@ -192,7 +191,6 @@ export function _perceive_with_recognition(state, world_entity, world_state, mod
       '@about': world_entity.subject,
       ...observed_traits
     })
-    state.insert_beliefs(main_belief)
   } else {
     // Step 3: Compare NON-SUBJECT traits with existing knowledge
     // (Subject traits don't matter - they auto-resolve to latest version in state)
@@ -283,7 +281,6 @@ export function perceive(state, content, modalities = ['visual']) {
   const perception = Belief.from(state, [A.EventPerception], {
     content: all_perceived_subjects
   })
-  state.insert_beliefs(perception)
   return perception
 }
 
@@ -668,7 +665,6 @@ export function learn_about(state, source_belief, options = {}) {
     ...trait_values
   })
 
-  state.insert_beliefs(knowledge)
   return knowledge
 }
 

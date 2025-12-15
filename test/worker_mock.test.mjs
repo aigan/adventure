@@ -5,6 +5,7 @@
 
 import { expect } from 'chai';
 import * as DB from '../public/worker/db.mjs';
+import { setupAfterEachValidation } from './helpers.mjs';
 
 /**
  * Mock Worker for testing
@@ -53,6 +54,8 @@ describe('Worker Message Handling', () => {
       received_messages.push(e.data);
     };
   });
+  setupAfterEachValidation();
+
 
   describe('Client → Worker Messages', () => {
     it('should send command with data and ackid', (done) => {

@@ -3,12 +3,14 @@ import { Session } from '../public/worker/session.mjs'
 import * as narrator from '../public/worker/narrator.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
-import { stdTypes, Thing, createMindWithBeliefs } from './helpers.mjs'
+import { stdTypes, Thing, createMindWithBeliefs, setupAfterEachValidation } from './helpers.mjs'
 
 describe('Session', () => {
   beforeEach(() => {
     DB.reset_registries()
   })
+  setupAfterEachValidation();
+
 
   describe('narrator.desig()', () => {
     it('returns label from Subject', () => {

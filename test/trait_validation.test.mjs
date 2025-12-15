@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import * as DB from '../public/worker/db.mjs'
-import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs'
+import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs'
 import { Belief, Traittype, Materia } from '../public/worker/cosmos.mjs'
 
 /**
@@ -32,6 +32,8 @@ describe('Trait Value Validation', () => {
     DB.reset_registries()
     setupStandardArchetypes()
   })
+  setupAfterEachValidation();
+
 
   describe('Primitive types (literal_handler)', () => {
     it('accepts valid string', () => {

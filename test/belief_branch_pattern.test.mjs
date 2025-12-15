@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { Belief, Traittype } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
-import { setupStandardArchetypes, createStateInNewMind } from '../test/helpers.mjs'
+import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs'
 
 // Tests for belief.branch() and belief.replace() patterns
 describe('Belief versioning: branch() and replace()', () => {
@@ -29,6 +29,8 @@ describe('Belief versioning: branch() and replace()', () => {
       },
     }, {})
   })
+  setupAfterEachValidation();
+
 
   describe('replace()', () => {
     it('creates new belief and removes old one from state', () => {

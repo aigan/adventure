@@ -685,6 +685,59 @@ export class Belief {
   }
 
   /**
+   * Validate that all Subject trait values have beliefs in the state
+   * Only validates same-mind references (subject.mater === this.in_mind)
+   * Cross-mind and universal (mater=null) references are allowed
+   * @param {State} state - State to check against
+   * @private
+   */
+  _validate_subject_traits(state) {
+    for (const [traittype, value] of this._traits.entries()) {
+      if (value instanceof Subject) {
+        // Only validate if Subject is from same mind (same-mind references must exist in state)
+        // Cross-mind and universal references are allowed to be in different states
+        if (value.mater === this.in_mind) {
+          const belief = state.get_belief_by_subject(value)
+          assert(belief,
+            `Lock validation failed for belief ${this._id}: ` +
+            `trait '${traittype.label}' references Subject ${value.sid} ` +
+            `which has no belief in state ${state.in_mind.label}. ` +
+            `Did you forget to call state.insert_beliefs()?`,
+            {
+              belief_id: this._id,
+              trait: traittype.label,
+              subject_sid: value.sid,
+              state_mind: state.in_mind.label
+            }
+          )
+        }
+      } else if (Array.isArray(value)) {
+        // Check array elements
+        for (const item of value) {
+          if (item instanceof Subject) {
+            // Only validate same-mind references
+            if (item.mater === this.in_mind) {
+              const belief = state.get_belief_by_subject(item)
+              assert(belief,
+                `Lock validation failed for belief ${this._id}: ` +
+                `trait '${traittype.label}' array contains Subject ${item.sid} ` +
+                `which has no belief in state ${state.in_mind.label}. ` +
+                `Did you forget to call state.insert_beliefs()?`,
+                {
+                  belief_id: this._id,
+                  trait: traittype.label,
+                  subject_sid: item.sid,
+                  state_mind: state.in_mind.label
+                }
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Lock this belief and cascade to child mind states
    * @param {State} state - State context being locked
    */
@@ -692,6 +745,9 @@ export class Belief {
     assert(state._insert.includes(this),
       'Cannot lock belief not in state._insert',
       {belief_id: this._id, label: this.get_label(), state_id: state._id})
+
+    // Validate Subject trait values before locking
+    this._validate_subject_traits(state)
 
     this._locked = true
 
@@ -1035,10 +1091,11 @@ export class Belief {
 
   /**
    * Create belief without template
+   * The belief is automatically inserted into the state.
    * @param {State} state - State creating this belief
    * @param {Array<Belief|Archetype>} [bases] - Base beliefs/archetypes
    * @param {Record<string, any>} [traits] - Trait values (already resolved, not template data)
-   * @returns {Belief}
+   * @returns {Belief} The created and inserted belief
    */
   static from(state, bases = [], traits = {}) {
     const belief = new Belief(state, null, bases)
@@ -1049,6 +1106,7 @@ export class Belief {
       belief.add_trait(traittype, trait_data)
     }
 
+    state.insert_beliefs(belief)
     return belief
   }
 

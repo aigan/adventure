@@ -14,7 +14,7 @@
  */
 
 import { assert } from 'chai'
-import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs'
+import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
@@ -43,6 +43,8 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
     const actor = Archetype.get_by_label('Actor')
     actor._traits_template.set(name_traittype, null)
   })
+  setupAfterEachValidation();
+
 
   describe('Basic Functionality', () => {
     it('returns empty array when no beliefs reference the subject', () => {

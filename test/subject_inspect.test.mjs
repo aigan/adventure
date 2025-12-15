@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import { learn_about } from '../public/worker/perception.mjs';
-import { setupStandardArchetypes, createMindWithBeliefs, createStateInNewMind } from './helpers.mjs'
+import { setupStandardArchetypes, createMindWithBeliefs, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs'
 import { Mind, Materia, Traittype } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
@@ -10,6 +10,8 @@ describe('Subject.to_inspect_view()', () => {
     DB.reset_registries()
     setupStandardArchetypes()
   })
+  setupAfterEachValidation();
+
 
   it('resolves subject in same state', () => {
     const world_state = createMindWithBeliefs('world', {

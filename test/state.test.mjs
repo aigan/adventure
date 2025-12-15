@@ -3,13 +3,15 @@ import { Mind, Materia, State, Temporal, Belief, Subject, Archetype, Traittype, 
 import * as Cosmos from '../public/worker/cosmos.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { createMindWithBeliefs, setupMinimalArchetypes, setupStandardArchetypes } from './helpers.mjs';
+import { createMindWithBeliefs, setupMinimalArchetypes, setupStandardArchetypes, setupAfterEachValidation } from './helpers.mjs';
 
 describe('State', () => {
   beforeEach(() => {
     DB.reset_registries();
     setupMinimalArchetypes();
   });
+  setupAfterEachValidation();
+
 
   describe('Iteration Patterns', () => {
     it('mind.belief Set contains all beliefs for that mind', () => {

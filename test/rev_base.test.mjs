@@ -9,7 +9,7 @@
  */
 
 import { expect } from 'chai'
-import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs'
+import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { Mind, Materia } from '../public/worker/cosmos.mjs'
@@ -21,6 +21,8 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
     DB.reset_registries()
     setupStandardArchetypes()
   })
+  setupAfterEachValidation();
+
 
   describe('State.rev_base() - Basic Interface', () => {
     it('returns array with single next state when skip pointer exists', () => {

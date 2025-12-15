@@ -3,13 +3,15 @@ import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind,
 import { eidos } from '../public/worker/eidos.mjs'
 import { logos } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { createMindWithBeliefs, createStateInNewMind, setupStandardArchetypes } from './helpers.mjs';
+import { createMindWithBeliefs, createStateInNewMind, setupStandardArchetypes, validateStateBeliefs, setupAfterEachValidation } from './helpers.mjs';
 
 describe('Belief', () => {
   beforeEach(() => {
     DB.reset_registries();
     setupStandardArchetypes();
   });
+
+  setupAfterEachValidation();
 
   describe('Belief Versioning', () => {
     it('with_traits creates new belief with base reference', () => {
@@ -1414,6 +1416,145 @@ describe('Belief', () => {
       const location_tt = Traittype.get_by_label('location')
       expect(hammer_v2.get_trait(state2, color_tt)).to.equal('blue')
       expect(hammer_v2.get_trait(state2, location_tt)).to.equal(workshop.subject) // Inherited
+    })
+  })
+
+  describe('Belief.from() auto-insert', () => {
+    it('should auto-insert belief created with Belief.from()', () => {
+      const state = createMindWithBeliefs('test', {
+        workshop: {bases: ['Location']}
+      })
+      const PortableObject = Archetype.get_by_label('PortableObject')
+      const workshop = state.get_belief_by_label('workshop')
+
+      // Use Belief.from() to create belief with explicit traits
+      const belief = Belief.from(state, [PortableObject], {
+        location: workshop.subject
+      })
+
+      // Verify belief is in state's insert list
+      const beliefs = Array.from(state._insert)
+      expect(beliefs).to.include(belief)
+
+      // Verify can retrieve by subject
+      const retrieved = state.get_belief_by_subject(belief.subject)
+      expect(retrieved).to.equal(belief)
+    })
+
+    it('should allow multiple beliefs created with Belief.from()', () => {
+      const state = createMindWithBeliefs('test', {
+        workshop: {bases: ['Location']}
+      })
+      const PortableObject = Archetype.get_by_label('PortableObject')
+      const workshop = state.get_belief_by_label('workshop')
+
+      // Create first object using Belief.from() - it auto-inserts
+      const object1 = Belief.from(state, [PortableObject], {
+        location: workshop.subject
+      })
+
+      // Create second object using Belief.from() - it also auto-inserts
+      const object2 = Belief.from(state, [PortableObject], {
+        location: workshop.subject
+      })
+
+      // Both should be in state
+      const beliefs = Array.from(state._insert)
+      expect(beliefs).to.include(object1)
+      expect(beliefs).to.include(object2)
+
+      // Both should be retrievable
+      expect(state.get_belief_by_subject(object1.subject)).to.equal(object1)
+      expect(state.get_belief_by_subject(object2.subject)).to.equal(object2)
+    })
+  })
+
+  describe('Subject validation during insert and lock', () => {
+    it('should throw when locking belief with Subject trait not in state', () => {
+      const state = createMindWithBeliefs('test', {
+        workshop: {bases: ['Location']}
+      })
+
+      // Create a belief but DON'T insert it
+      const orphan = new Belief(state, null, [Archetype.get_by_label('Thing')])
+
+      // Try to create (and auto-insert) another belief that references the orphan
+      const PortableObject = Archetype.get_by_label('PortableObject')
+      const ref_belief = Belief.from(state, [PortableObject], {
+        location: orphan.subject  // ← This Subject has no belief in state
+      })
+
+      // Lock should throw the validation error
+      expect(() => {
+        ref_belief.lock(state)
+      }).to.throw(/validation failed.*location.*Subject.*no belief in state|did you forget to call state\.insert_beliefs/i)
+    })
+
+    it('should validate via test helper for tests that dont lock', () => {
+      const state = createMindWithBeliefs('test', {
+        workshop: {bases: ['Location']}
+      })
+
+      // Create a belief but DON'T insert it
+      const orphan = new Belief(state, null, [Archetype.get_by_label('Thing')])
+
+      // Manually create and insert a belief (bypassing Belief.from auto-insert)
+      const PortableObject = Archetype.get_by_label('PortableObject')
+      const ref_belief = new Belief(state, null, [PortableObject])
+
+      // Manually add trait AFTER construction
+      const location_tt = Traittype.get_by_label('location')
+      ref_belief.add_trait(location_tt, orphan.subject)
+      state.insert_beliefs(ref_belief)
+
+      // Use test helper to validate (since we're not locking)
+      expect(() => {
+        validateStateBeliefs(state)
+      }).to.throw(/validation failed.*location.*Subject.*no belief in state|did you forget to call state\.insert_beliefs/i)
+    })
+
+    it('should succeed when all Subject traits have beliefs in state', () => {
+      const state = createMindWithBeliefs('test', {
+        workshop: {bases: ['Location']}
+      })
+      const workshop = state.get_belief_by_label('workshop')
+
+      const PortableObject = Archetype.get_by_label('PortableObject')
+      const object = Belief.from(state, [PortableObject], {
+        location: workshop.subject  // ← workshop IS in state
+      })
+
+      // Lock should succeed
+      expect(() => {
+        object.lock(state)
+      }).to.not.throw()
+    })
+
+    it('should be protected by auto-insert from Belief.from()', () => {
+      // This test verifies that the auto-insert feature prevents the lock validation from failing
+      const state = createMindWithBeliefs('test', {
+        workshop: {bases: ['Location']}
+      })
+      const workshop = state.get_belief_by_label('workshop')
+
+      // Create nested structure where all beliefs are auto-inserted
+      const PortableObject = Archetype.get_by_label('PortableObject')
+      const hammer = Belief.from(state, [PortableObject], {
+        location: workshop.subject
+      })
+
+      // Create second object referencing first - both auto-inserted
+      const box = Belief.from(state, [PortableObject], {
+        location: hammer.subject
+      })
+
+      // Lock should succeed - all Subjects have beliefs in state
+      expect(() => {
+        box.lock(state)
+      }).to.not.throw()
+      expect(() => {
+        hammer.lock(state)
+      }).to.not.throw()
     })
   })
 });

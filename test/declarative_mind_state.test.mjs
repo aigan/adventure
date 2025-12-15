@@ -4,12 +4,14 @@ import { eidos } from '../public/worker/eidos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { learn_about } from '../public/worker/perception.mjs';
-import { stdTypes, Thing, createStateInNewMind } from './helpers.mjs';
+import { stdTypes, Thing, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs';
 
 describe('Mind Trait', () => {
   beforeEach(() => {
     DB.reset_registries();
   });
+  setupAfterEachValidation();
+
 
   it('creates mind from declarative template', () => {
     // Setup archetypes and traits

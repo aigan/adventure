@@ -2,13 +2,15 @@ import { expect } from 'chai';
 import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load, Convergence, eidos } from '../public/worker/cosmos.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs';
+import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs';
 
 describe('Save/Load functionality', () => {
   beforeEach(() => {
     DB.reset_registries();
     setupStandardArchetypes();
   });
+  setupAfterEachValidation();
+
 
   describe('save_mind() and load()', () => {
     it('saves and loads a simple mind', () => {

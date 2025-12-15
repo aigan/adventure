@@ -435,6 +435,36 @@ This enables narrative-driven collapse instead of arbitrary selection.
 
 **See also**: `docs/plans/lazy-version-propagation.md` for implementation roadmap
 
+### Belief Creation API
+
+All belief factory methods automatically insert beliefs into the state. You never need to manually call `state.insert_beliefs()`.
+
+**`Belief.from(state, bases, traits)`** - Create belief with explicit trait values
+- Automatically inserts the belief into the state
+- Returns the inserted belief
+- Use when you have already-resolved trait values (Subject objects, primitives)
+- Example: `Belief.from(state, [A.Thing], {label: 'hammer', color: 'blue'})`
+
+**`Belief.from_template(state, template)`** - Create belief from template
+- Resolves string labels to subjects (e.g., `'@about': 'hammer'` → Subject lookup)
+- Automatically inserts the belief into the state
+- Preferred for most use cases
+- Example: `Belief.from_template(state, {bases: ['Thing'], label: 'hammer', traits: {color: 'blue'}})`
+
+**`belief.branch(state, traits)`** - Create versioned belief
+- Creates new version inheriting from original
+- Automatically inserts into state
+- Use for updating beliefs with new trait values
+- Example: `hammer_v2 = hammer.branch(state, {color: 'red'})`
+
+**`belief.replace(state, traits)`** - Replace belief with new version
+- Removes old belief, creates new version
+- Automatically inserts into state
+- Use when you want to replace rather than inherit
+- Example: `hammer = hammer.replace(state, {color: 'red'})`
+
+**All factory methods auto-insert** - this prevents common errors where beliefs are created but not added to state, which would cause Subject references to fail later during trait access.
+
 ### Template System (Planned)
 - Templates implement `is_applicable(template, belief_state)` returning fit quality
 - Templates return iterators yielding `{state, events}` pairs

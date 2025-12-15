@@ -5,11 +5,14 @@
 
 import { expect } from 'chai';
 import * as DB from '../public/worker/db.mjs';
+import { setupAfterEachValidation } from './helpers.mjs';
 
 describe('Message Protocol', () => {
   beforeEach(() => {
     DB.reset_registries();
   });
+  setupAfterEachValidation();
+
 
   describe('Message Format', () => {
     describe('Client → Worker', () => {

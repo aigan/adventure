@@ -3,13 +3,15 @@ import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind,
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { learn_about } from '../public/worker/perception.mjs';
-import { createMindWithBeliefs, setupStandardArchetypes, setupMinimalArchetypes, stdTypes, Thing } from './helpers.mjs';
+import { createMindWithBeliefs, setupStandardArchetypes, setupMinimalArchetypes, stdTypes, Thing, setupAfterEachValidation } from './helpers.mjs';
 
 describe('learn_about', () => {
   beforeEach(() => {
     DB.reset_registries();
     setupStandardArchetypes();
   });
+  setupAfterEachValidation();
+
 
   describe('Basic Functionality', () => {
     it('copies archetypes to different mind', () => {

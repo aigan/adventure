@@ -5,7 +5,7 @@
 
 import { expect } from 'chai';
 import * as DB from '../public/worker/db.mjs';
-import { setupBrowserMocks, cleanupBrowserMocks } from './helpers.mjs';
+import { setupBrowserMocks, cleanupBrowserMocks, setupAfterEachValidation } from './helpers.mjs';
 
 describe('Worker Dispatch (Real Implementation)', () => {
   let postedMessages;
@@ -38,6 +38,8 @@ describe('Worker Dispatch (Real Implementation)', () => {
     DB.reset_registries();
     postedMessages = [];
   });
+  setupAfterEachValidation();
+
 
   after(() => {
     // Clean up mocks

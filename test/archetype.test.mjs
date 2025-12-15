@@ -13,13 +13,15 @@ import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load } f
 import { A } from '../public/worker/archetype.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { setupStandardArchetypes, createStateInNewMind } from './helpers.mjs';
+import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs';
 
 describe('Archetype', () => {
   beforeEach(() => {
     DB.reset_registries();
     setupStandardArchetypes();
   });
+  setupAfterEachValidation();
+
 
   describe('Archetype Composition', () => {
     it('single archetype has correct structure', () => {

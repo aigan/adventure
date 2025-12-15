@@ -16,12 +16,14 @@ import { expect } from 'chai';
 import { Mind, Materia, Traittype } from '../public/worker/cosmos.mjs';
 import { eidos } from '../public/worker/eidos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { createStateInNewMind, stdTypes, Thing } from './helpers.mjs';
+import { createStateInNewMind, stdTypes, Thing, setupAfterEachValidation } from './helpers.mjs';
 
 describe('get_traits() composable trait consistency', () => {
   beforeEach(() => {
     DB.reset_registries();
   });
+  setupAfterEachValidation();
+
 
   // Matrix 7.1 + 3.2: get_trait() vs get_traits() consistency + Composable from Multiple Bases
   it('composes from multiple bases consistently with get_trait()', () => {

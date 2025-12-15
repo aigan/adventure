@@ -5,12 +5,14 @@ import { eidos } from '../public/worker/eidos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import { Temporal } from '../public/worker/temporal.mjs'
 import { Belief } from '../public/worker/belief.mjs'
-import { setupStandardArchetypes } from './helpers.mjs'
+import { setupStandardArchetypes, setupAfterEachValidation } from './helpers.mjs'
 
 describe('Logos Singleton', () => {
   beforeEach(() => {
     DB.reset_registries()
   })
+  setupAfterEachValidation();
+
 
   describe('logos()', () => {
     it('creates logos mind with parent=null', () => {

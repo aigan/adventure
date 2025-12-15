@@ -9,7 +9,7 @@ import { expect } from 'chai'
 import { Mind, Materia, State, Belief, Traittype, Subject } from '../public/worker/cosmos.mjs'
 import { eidos } from '../public/worker/eidos.mjs'
 import * as DB from '../public/worker/db.mjs'
-import { createStateInNewMind, stdTypes, Thing } from './helpers.mjs'
+import { createStateInNewMind, stdTypes, Thing, setupAfterEachValidation } from './helpers.mjs'
 
 describe('Trait Inheritance - Comprehensive Coverage', () => {
 
@@ -41,6 +41,9 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
           {}
         )
       })
+
+  setupAfterEachValidation();
+
 
       it('null value blocks composition from bases', () => {
         const state = createStateInNewMind('test')

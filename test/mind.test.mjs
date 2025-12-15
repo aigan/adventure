@@ -4,13 +4,15 @@ import { T } from '../public/worker/traittype.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import { eidos } from '../public/worker/eidos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { stdTypes, Thing, createStateInNewMind, setupStandardArchetypes } from './helpers.mjs';
+import { stdTypes, Thing, createStateInNewMind, setupStandardArchetypes, setupAfterEachValidation } from './helpers.mjs';
 
 describe('Mind', () => {
   beforeEach(() => {
     DB.reset_registries();
     setupStandardArchetypes();
   });
+  setupAfterEachValidation();
+
 
   it('creates mind with unique ID', () => {
     const mind = new Materia(logos(), 'test_mind');

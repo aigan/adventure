@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import { learn_about } from '../public/worker/perception.mjs';
-import { setupStandardArchetypes, createMindWithBeliefs } from './helpers.mjs'
+import { setupStandardArchetypes, createMindWithBeliefs, setupAfterEachValidation } from './helpers.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { Mind, Materia, State, Temporal, Belief, Archetype } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
@@ -11,6 +11,8 @@ describe('sysdesig', () => {
     DB.reset_registries()
     setupStandardArchetypes()
   })
+  setupAfterEachValidation();
+
 
   describe('sysdesig() helper function', () => {
     it('calls obj.sysdesig(state) if method exists', () => {

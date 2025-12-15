@@ -5,13 +5,15 @@ import { logos, logos_state } from '../public/worker/logos.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { perceive, identify, learn_from, recognize, learn_about } from '../public/worker/perception.mjs'
-import { setupStandardArchetypes, createMindWithBeliefs, get_knowledge_about } from './helpers.mjs'
+import { setupStandardArchetypes, createMindWithBeliefs, get_knowledge_about, setupAfterEachValidation } from './helpers.mjs'
 
 describe('observation', () => {
   beforeEach(() => {
     DB.reset_registries()
     setupStandardArchetypes()
   })
+  setupAfterEachValidation();
+
 
   describe('duplicate belief prevention', () => {
     it('should not create duplicate when looking at already-known entity', () => {

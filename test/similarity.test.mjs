@@ -10,13 +10,15 @@ import { expect } from 'chai'
 import { Traittype, Belief, Materia } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
-import { setupStandardArchetypes } from './helpers.mjs'
+import { setupStandardArchetypes, setupAfterEachValidation } from './helpers.mjs'
 
 describe('Similarity', function() {
   let world_state
   let hammer1, hammer2
   let hammer1_head, hammer2_head
   let hammer1_handle, hammer2_handle
+
+  setupAfterEachValidation();
 
   beforeEach(function() {
     DB.reset_registries()

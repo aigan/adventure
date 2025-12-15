@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import * as DB from '../public/worker/db.mjs';
-import { setupMinimalArchetypes, createStateInNewMind } from './helpers.mjs';
+import { setupMinimalArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs';
 
 
 describe('Registry', () => {
@@ -9,6 +9,8 @@ describe('Registry', () => {
     DB.reset_registries();
     setupMinimalArchetypes();
   });
+  setupAfterEachValidation();
+
 
   describe('Label Uniqueness', () => {
     it('currently allows duplicate labels across minds', () => {

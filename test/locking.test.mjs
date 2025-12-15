@@ -2,13 +2,15 @@ import { expect } from 'chai'
 import { Mind, Materia, State, Temporal, Belief, Traittype } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
-import { setupStandardArchetypes } from './helpers.mjs'
+import { setupStandardArchetypes, setupAfterEachValidation } from './helpers.mjs'
 
 describe('Locking Constraints', () => {
   beforeEach(() => {
     DB.reset_registries()
     setupStandardArchetypes()
   })
+  setupAfterEachValidation();
+
 
   describe('State Constructor', () => {
     it('allows creation with locked ground_state but state becomes immutable', () => {

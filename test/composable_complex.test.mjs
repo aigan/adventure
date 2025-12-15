@@ -8,11 +8,14 @@ import * as DB from '../public/worker/db.mjs'
 import { Mind, Materia, Belief, Traittype } from '../public/worker/cosmos.mjs'
 import { eidos } from '../public/worker/eidos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
+import { setupAfterEachValidation } from './helpers.mjs'
 
 describe('Composable Traits - Complex Scenarios', () => {
   beforeEach(() => {
     DB.reset_registries()
   })
+  setupAfterEachValidation();
+
 
   describe('Multi-level prototype inheritance', () => {
     it('NPC inherits from two prototypes directly', () => {
