@@ -144,20 +144,21 @@ export class Mind {
   _states = new Set()
 
   /**
-   * Index: states by their ground_state reference
+   * Index: states by their ground_state logical position (mind_id:vt)
    * Query: O(1) to get Set<State> of child mind states linked to parent mind state
    * Maintained by: register_state() - populated when state has ground_state
    * Scale: Essential - critical for cascading lock operations and nested mind queries
    *   Example: When parent mind state changes, find all child mind states that reference it
    *   Without this: O(all states in mind), with this: O(matching states)
-   * @type {Map<State, Set<State>>}
+   * Uses (mind_id, vt) as key to support multiple branch objects at same logical state
+   * @type {Map<string, Set<State>>}
    */
   _states_by_ground_state = new Map()
 
   /**
-   * Latest unlocked state, or null if all states are locked
-   * Updated by register_state() when unlocked state is registered
-   * Cleared by State.lock() when this state is locked
+   * Most recent state (locked or unlocked)
+   * Updated by register_state() when any state is registered
+   * Check state.locked to determine if it's still mutable
    * @type {State|null}
    */
   state = null
@@ -281,7 +282,9 @@ export class Mind {
    * @returns {Set<State>}
    */
   get_states_by_ground_state(ground_state) {
-    return this._states_by_ground_state.get(ground_state) ?? new Set()
+    // Key by logical state position (mind_id:vt) to handle multiple branch objects
+    const ground_key = `${ground_state.in_mind._id}:${ground_state.vt}`
+    return this._states_by_ground_state.get(ground_key) ?? new Set()
   }
 
   /**
@@ -308,17 +311,17 @@ export class Mind {
   register_state(state) {
     this._states.add(state)
 
-    // Track latest unlocked state
-    if (!state.locked) {
-      this.state = state
-    }
+    // Track most recent state (locked or unlocked)
+    this.state = state
 
     if (state.ground_state) {
-      if (!this._states_by_ground_state.has(state.ground_state)) {
-        this._states_by_ground_state.set(state.ground_state, new Set())
+      // Key by logical state position (mind_id:vt) to handle multiple branch objects
+      const ground_key = `${state.ground_state.in_mind._id}:${state.ground_state.vt}`
+      if (!this._states_by_ground_state.has(ground_key)) {
+        this._states_by_ground_state.set(ground_key, new Set())
       }
       // TypeScript: We just ensured the key exists above
-      /** @type {Set<State>} */ (this._states_by_ground_state.get(state.ground_state)).add(state)
+      /** @type {Set<State>} */ (this._states_by_ground_state.get(ground_key)).add(state)
     }
   }
 
@@ -349,11 +352,19 @@ export class Mind {
    * @returns {object}
    */
   to_inspect_view(state) {
+    // Filter states to only those directly grounded in the viewing state
+    // TODO: EXPENSIVE - O(n) filter, could index by ground_state._id
+    const relevant_states = [...this._states].filter(mind_state => {
+      if (!mind_state.ground_state) return false
+      // Only show states grounded in this exact viewing state
+      return mind_state.ground_state._id === state._id
+    })
+
     return {
       _ref: this._id,
       _type: 'Mind',
       label: this.label,
-      states: [...this._states].map(s => ({_ref: s._id, _type: 'State'}))
+      states: relevant_states.map(s => ({_ref: s._id, _type: 'State'}))
     }
   }
 
@@ -598,7 +609,9 @@ export class Mind {
 
     // CONSTRUCTION PATH: If ground_belief unlocked, check for existing unlocked state to reuse
     if (!ground_belief.locked) {
-      const existing_states = this._states_by_ground_state.get(ground_state)
+      // Key by logical state position (mind_id:vt) to handle multiple branch objects
+      const ground_key = `${ground_state.in_mind._id}:${ground_state.vt}`
+      const existing_states = this._states_by_ground_state.get(ground_key)
       if (existing_states) {
         for (const state of existing_states) {
           if (!state.locked) return state
@@ -606,11 +619,30 @@ export class Mind {
       }
     }
 
-    // For timeless ground states (vt=null), get all states; otherwise filter by vt
-    const latest_states = ground_state.vt != null
-      ? [...this.states_at_tt(ground_state.vt)]
-      : [...this._states]
-    const latest = latest_states[0]
+    // Find latest locked state grounded in ground_state's ancestry chain
+    // TODO: EXPENSIVE - O(depth * states_per_level) ancestry walk
+    let latest = null
+    if (ground_state.vt != null) {
+      /** @type {State | null} */
+      let ancestor = ground_state  // Start with ground_state itself
+      while (ancestor && !latest) {
+        // Look for locked state at this ancestor's vt that is grounded in this ancestor
+        if (ancestor.vt != null) {
+          const states_at_ancestor_vt = [...this.states_at_tt(ancestor.vt)]
+          for (const s of states_at_ancestor_vt) {
+            if (s.locked && s.ground_state && s.ground_state._id === ancestor._id) {
+              latest = s
+              break
+            }
+          }
+        }
+        ancestor = ancestor.base
+      }
+    } else {
+      // For timeless ground states, just get any locked state
+      const all_states = [...this._states]
+      latest = all_states.find(s => s.locked) ?? all_states[0] ?? null
+    }
 
     // VERSIONING PATH: ground_belief locked requires existing state
     if (ground_belief.locked && !latest) {

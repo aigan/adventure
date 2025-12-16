@@ -161,7 +161,7 @@ DB.register(traittypes, archetypes, prototypes_1)
 /**
  * Initialize the game world
  * Called after all modules are loaded to avoid circular dependency issues
- * @returns {{world_state: State, avatar: Belief}}
+ * @returns {{world_state: State, avatar: Subject}}
  */
 export function init_world() {
   // Create world mind and initial state
@@ -266,11 +266,19 @@ export function init_world() {
   })
 
   state.add_beliefs_from_template({
+    badge1: {
+      bases: ['guild_badge'],
+      traits: {
+        color: 'blue',
+        location: 'workshop',
+      },
+    },
     person1: {
       bases: ['Person'],
       traits: {
         mind: {
-//          hammer: ['color'],
+          // hammer: ['color'],
+          badge1: ['color', 'location'],
         },
         location: 'workshop',
       },
@@ -297,5 +305,5 @@ export function init_world() {
   state.lock();
   */
 
-  return { world_state: state, avatar: person1 }
+  return { world_state: state, avatar: person1.subject }
 }

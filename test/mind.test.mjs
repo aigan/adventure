@@ -245,7 +245,7 @@ describe('Mind', () => {
       expect(mind.state.locked).to.be.false;
     });
 
-    it('clears state property after locking', () => {
+    it('keeps state reference after locking', () => {
       const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos_state(), {tt: 1});
 
@@ -263,31 +263,38 @@ describe('Mind', () => {
       // Lock the state
       state.lock();
 
-      // mind.state should now be null
-      expect(mind.state).to.be.null;
+      // mind.state should still point to the locked state
+      expect(mind.state).to.equal(state);
+      expect(mind.state.locked).to.be.true;
     });
 
-    it('tracks most recent unlocked state when multiple states exist', () => {
+    it('tracks most recent state when multiple states exist', () => {
       const mind = new Materia(logos(), 'test');
 
       // Create first state
       const state1 = mind.create_state(logos_state(), {tt: 100});
       expect(mind.state).to.equal(state1);
+      expect(mind.state.locked).to.be.false;
 
       // Lock first state before branching
       state1.lock();
+      expect(mind.state).to.equal(state1);
+      expect(mind.state.locked).to.be.true;
 
       // Create second state (unlocked)
       const state2 = state1.branch(logos().origin_state, 200);
       expect(mind.state).to.equal(state2);
+      expect(mind.state.locked).to.be.false;
 
       // Lock second state
       state2.lock();
-      expect(mind.state).to.be.null;
+      expect(mind.state).to.equal(state2);
+      expect(mind.state.locked).to.be.true;
 
       // Create third state
       const state3 = state1.branch(logos().origin_state, 300);
       expect(mind.state).to.equal(state3);
+      expect(mind.state.locked).to.be.false;
     });
 
     it('is null for new mind with no states', () => {

@@ -151,7 +151,20 @@ export class State {
       )
     }
 
-    assert(base === null || base.locked, 'Cannot create state from unlocked base state')
+    assert(
+      base === null || base.locked,
+      'Cannot create state from unlocked base state',
+      {
+        base_id: base?._id,
+        base_locked: base?.locked,
+        base_mind: base?.in_mind?.label ?? null,
+        base_tt: base?.tt,
+        base_vt: base?.vt,
+        ground_state_id: ground_state?._id,
+        ground_state_mind: ground_state?.in_mind?.label ?? null,
+        ground_state_vt: ground_state?.vt
+      }
+    )
 
     // Allow null ground_state for Timeless (Logos bootstrap)
     if (ground_state !== null) {
@@ -372,14 +385,21 @@ export class State {
   lock() {
     this.locked = true
 
-    // Clear mind's reference to this as unlocked state
-    if (this.in_mind.state === this) {
-      this.in_mind.state = null
-    }
-
     for (const belief of this._insert) {
       belief.lock(this)
     }
+
+    // Cascade lock to nested mind states (direct lookup via child_minds)
+    // O(1) lookup per child mind using _states_by_ground_state index
+    for (const child_mind of this.in_mind._child_minds) {
+      const child_states = child_mind.get_states_by_ground_state(this)
+      for (const child_state of child_states) {
+        if (!child_state.locked) {
+          child_state.lock()
+        }
+      }
+    }
+
     return this
   }
 
@@ -642,41 +662,37 @@ export class State {
    * The core state is the mind's primary operational state: synchronized with
    * this ground state (tt = this.vt), used as the starting point for belief
    * allocation and tree walks.
-   * @param {Belief} host - Entity with mind trait (e.g., player, NPC)
-   * @returns {State} The core mind state
-   * @throws {Error} If host has no mind, or if no state or multiple states found
+   * @param {Subject} host - Subject with mind trait (e.g., player, NPC)
+   * @returns {State | null} The core mind state, or null if not found in this world branch
+   * @throws {Error} If host has no mind, or if multiple states found
    */
   get_core_state_by_host(host) {
     const mind_traittype = Traittype.get_by_label('mind')
     assert(mind_traittype, "Traittype 'mind' not found in registry")
-    const host_mind = host.get_trait(this, mind_traittype)
-    assert(host_mind, `Entity ${host._id} has no mind trait`, {host_id: host._id, host_label: host.get_label()})
+    const host_belief = host.get_belief_by_state(this)
+    const host_mind = host_belief.get_trait(this, mind_traittype)
+    assert(host_mind, `Entity ${host.sid} has no mind trait`, {host_sid: host.sid, host_label: host.get_label()})
 
     // Find the core state: latest state where tt <= this.vt and ground_state = this (or this's ancestry)
-    // Use states_at_tt to get outermost states, then filter by checking ground_state ancestry
+    // TODO: EXPENSIVE - O(states_at_tt * ancestry_depth) for each lookup
     const candidates = []
     for (const s of host_mind.states_at_tt(this.vt)) {
+      if (!s.ground_state) continue  // Skip states without ground_state
       /** @type {State | null} */
-      let current_check = this
-      while (current_check) {
-        if (current_check === s.ground_state) {
+      let ancestor = this
+      while (ancestor) {
+        // Check if s.ground_state is this ancestor (by state ID)
+        if (ancestor._id === s.ground_state._id) {
           candidates.push(s)
           break
         }
-        current_check = current_check.base
+        ancestor = ancestor.base
       }
     }
 
     if (candidates.length === 0) {
-      assert(false,
-        `No core state found for host`,
-        {
-          host_id: host._id,
-          host_label: host.get_label(),
-          mind_label: host_mind.label,
-          vt: this.vt,
-          available_states: [...host_mind._states].map(s => ({id: s._id, tt: s.tt, ground_state_id: s.ground_state?._id}))
-        })
+      // No state found in this world branch - return null to signal need to create one
+      return null
     }
 
     // Should be exactly one core state (no superposition)
@@ -684,7 +700,7 @@ export class State {
     assert(candidates.length === 1,
       `Expected single core state at tt=${core_tt}, found ${candidates.length} (superposition)`,
       {
-        host_id: host._id,
+        host_sid: host.sid,
         host_label: host.get_label(),
         mind_label: host_mind.label,
         tt: core_tt,
@@ -699,11 +715,30 @@ export class State {
    * Get an active (unlocked) state for a host entity
    * Like get_core_state_by_host(), but ensures the returned state is unlocked.
    * If the core state is locked, branches it forward to create a new unlocked state.
-   * @param {Belief} host - Entity with mind trait (e.g., player, NPC)
+   * @param {Subject} host - Subject with mind trait (e.g., player, NPC)
    * @returns {State} An unlocked state in the host's mind
    */
   get_active_state_by_host(host) {
+    // Active states (unlocked) can only be retrieved from unlocked ground states
+    assert(!this.locked,
+      'Cannot get active state from locked ground state - branch the world state first',
+      {
+        ground_state_id: this._id,
+        ground_state_vt: this.vt,
+        ground_state_locked: this.locked,
+        host_label: host.get_label()
+      })
+
     const core_state = this.get_core_state_by_host(host)
+
+    // If no core state found (different world branch), create one
+    if (!core_state) {
+      const host_belief = host.get_belief_by_state(this)
+      const mind_traittype = Traittype.get_by_label('mind')
+      assert(mind_traittype, "Traittype 'mind' not found in registry")
+      const host_mind = host_belief.get_trait(this, mind_traittype)
+      return host_mind.get_or_create_open_state_for_ground(this, host_belief)
+    }
 
     if (core_state.locked) {
       // Branch forward to create unlocked state

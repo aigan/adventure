@@ -239,7 +239,7 @@ describe('State', () => {
       });
 
       const player = world_state.get_belief_by_label('player');
-      const player_core_state = world_state.get_core_state_by_host(player);
+      const player_core_state = world_state.get_core_state_by_host(player.subject);
 
       // Core state should be synchronized with world state
       expect(player_core_state.ground_state).to.equal(world_state);
@@ -260,7 +260,7 @@ describe('State', () => {
 
       const hammer = world_state.get_belief_by_label('hammer');
 
-      expect(() => world_state.get_core_state_by_host(hammer))
+      expect(() => world_state.get_core_state_by_host(hammer.subject))
         .to.throw('has no mind trait');
     });
 
@@ -286,7 +286,7 @@ describe('State', () => {
       const state1 = player_mind.create_state(world_state);
       const state2 = player_mind.create_state(world_state);
 
-      expect(() => world_state.get_core_state_by_host(player))
+      expect(() => world_state.get_core_state_by_host(player.subject))
         .to.throw('Expected single core state at tt=1, found 2 (superposition)');
     });
 
@@ -307,14 +307,14 @@ describe('State', () => {
       });
 
       const player = world_state_v1.get_belief_by_label('player');
-      const player_state_v1 = world_state_v1.get_core_state_by_host(player);
+      const player_state_v1 = world_state_v1.get_core_state_by_host(player.subject);
 
       // Branch world state to vt=2
       world_state_v1.lock();
       const world_state_v2 = world_state_v1.branch(logos().origin_state, 2);
 
       // Should find player's state at tt=1 (latest available, even though world is now at vt=2)
-      const player_state_v2 = world_state_v2.get_core_state_by_host(player);
+      const player_state_v2 = world_state_v2.get_core_state_by_host(player.subject);
 
       expect(player_state_v2).to.equal(player_state_v1);
       expect(player_state_v2.tt).to.equal(1);

@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-12-16
+
+### Added
+- **`Session.tick()` helper method** - Simplifies linear time progression
+  - Automatically locks current state if unlocked
+  - Branches to next vt (defaults to current vt + 1)
+  - Updates and returns `this.state`
+  - Usage: `st = session.tick()` instead of manual `state.lock(); state.branch(...)`
+
+### Fixed
+- **Mind trait inspection filtered by ground_state** - Inspector now shows only relevant mind state
+  - When viewing a belief with mind trait, only shows state grounded in current viewing state
+  - Prevents showing states from other world branches or timeline ancestors
+  - Example: viewing person1 from world state #43 shows only mind state #44 (grounded in #43), not #38 (grounded in ancestor #6)
+- **State branching with proper base chain tracking** - Child mind states correctly inherit from locked parent states
+  - `get_core_state_by_host()` checks ancestry chain to distinguish world branches
+  - `get_or_create_open_state_for_ground()` walks ground_state base chain to find latest locked state
+  - `get_active_state_by_host()` creates new state when no core state found in current world branch
+  - Ensures proper base chain: new state → locked parent → earlier locked state
+- **Lock cascade works across parallel world branches** - Locking world state correctly propagates to all child mind states
+  - States indexed by logical position `(mind_id:vt)` instead of object identity
+  - Cascade finds child states regardless of which world branch object was used
+
 ## 2025-12-11
 
 ### Fixed

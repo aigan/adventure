@@ -136,6 +136,71 @@ describe('Locking Constraints', () => {
       expect(player_states[0].locked).to.be.true
     })
 
+    it('should lock mind states when world branches and locks', () => {
+      const world_mind = new Materia(logos(), 'world')
+      let world_state = world_mind.create_state(logos_state(), {tt: 1})
+
+      world_state.add_beliefs_from_template({
+        person1: {
+          bases: ['Person'],
+          traits: {
+            mind: {},
+          }
+        }
+      })
+
+      const person1 = world_state.get_belief_by_label('person1')
+      const person1_mind = person1.get_trait(world_state, Traittype.get_by_label('mind'))
+
+      // Lock world state vt=1
+      world_state.lock()
+
+      // Get mind state at tt=1 (should be locked)
+      const mind_state_tt1 = [...person1_mind._states].find(s => s.tt === 1)
+      expect(mind_state_tt1.locked).to.be.true
+
+      // Branch world to vt=2
+      world_state = world_state.branch(logos_state(), 2)
+
+      // Simulate get_active_state_by_host - branches mind state to tt=2
+      const mind_state_tt2 = world_state.get_active_state_by_host(person1.subject)
+      expect(mind_state_tt2.tt).to.equal(2)
+      expect(mind_state_tt2.locked).to.be.false
+      expect(mind_state_tt2.ground_state).to.equal(world_state)
+
+      // Lock world state vt=2 - should cascade to mind state tt=2
+      world_state.lock()
+
+      expect(world_state.locked).to.be.true
+      expect(mind_state_tt2.locked).to.be.true  // Fixed by cascade
+    })
+
+    it('should throw when creating state with locked ground_state', () => {
+      const world_mind = new Materia(logos(), 'world')
+      let world_state = world_mind.create_state(logos_state(), {tt: 1})
+
+      world_state.add_beliefs_from_template({
+        person1: {
+          bases: ['Person'],
+          traits: { mind: {} }
+        }
+      })
+
+      const person1 = world_state.get_belief_by_label('person1')
+
+      // Lock world state
+      world_state.lock()
+
+      // Should throw when trying to get active state from locked ground state
+      expect(() => world_state.get_active_state_by_host(person1.subject)).to.throw(
+        'Cannot get active state from locked ground state'
+      )
+
+      // Correct usage: branch first
+      const unlocked_world = world_state.branch(logos_state(), 2)
+      expect(() => unlocked_world.get_active_state_by_host(person1.subject)).to.not.throw()
+    })
+
     it('does not cascade to inherited Mind traits (already locked via base)', () => {
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1})

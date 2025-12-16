@@ -11,6 +11,7 @@
 
 import * as DB from '../public/worker/db.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
+import { perceive } from '../public/worker/perception.mjs'
 
 // Import world.mjs to get world state
 console.log('Loading world.mjs...')
@@ -139,25 +140,11 @@ console.log('='.repeat(80))
 
 import { Traittype } from '../public/worker/traittype.mjs'
 
-const player_state_before = state.get_active_state_by_host(player)
-console.log('\nPlayer state:', player_state_before._id, 'locked:', player_state_before.locked)
-
-const beliefs_before = [...player_state_before.get_beliefs()]
-console.log(`\n  Beliefs in player mind (${beliefs_before.length}):`)
-for (const b of beliefs_before) {
-  const about_tt = Traittype.get_by_label('@about')
-  const about = b.get_trait(player_state_before, about_tt)
-  console.log(`    #${b._id} ${b.get_label() || '(unlabeled)'} @about=${about?.sid}`)
-}
-
 // Simulate do_look (same as narrator.do_look_in_location)
 const location_traittype = Traittype.get_by_label('location')
 const workshop = state.get_belief_by_label('workshop')
 const content = [...workshop.rev_trait(state, location_traittype)]
 console.log(`\nContent at workshop: ${content.map(b => `#${b._id} ${b.get_label()}`).join(', ')}`)
-
-const player_state = state.get_active_state_by_host(player)
-console.log(`\nPlayer state for do_look: ${player_state._id}, locked: ${player_state.locked}`)
 
 // Branch state to allow mutations
 let pov = state.branch(state.ground_state, 2)
@@ -165,7 +152,7 @@ pov = pov.get_active_state_by_host(player)
 console.log(`\nBranched player state: ${pov._id}, locked: ${pov.locked}`)
 
 // Perceive content (creates perceived beliefs + EventPerception)
-const perception = pov.perceive(content)
+const perception = perceive(pov, content)
 console.log(`\nPerception created: #${perception._id} ${perception.get_label() || '(EventPerception)'}`)
 
 const content_tt = Traittype.get_by_label('content')
@@ -178,6 +165,63 @@ for (const b of beliefs_after) {
   const about_tt = Traittype.get_by_label('@about')
   const about = b.get_trait(pov, about_tt)
   console.log(`    #${b._id} ${b.get_label() || '(unlabeled)'} @about=${about?.sid ?? 'null'}`)
+}
+
+// ============================================================================
+// DIAGNOSTIC: Session.mjs Flow (Branch + Lock Test)
+// ============================================================================
+console.log('\n' + '='.repeat(80))
+console.log('DIAGNOSTIC: Session.mjs Flow (Branch + Lock Test)')
+console.log('='.repeat(80))
+
+import { logos_state } from '../public/worker/logos.mjs'
+
+console.log('\n--- Initial State ---')
+console.log(`World state: vt=${state.vt}, locked=${state.locked}`)
+
+const person1 = state.get_belief_by_label('person1')
+const person1_mind = person1.get_trait(state, Traittype.get_by_label('mind'))
+console.log(`Person1 mind: ${person1_mind.label} (#${person1_mind._id})`)
+
+let mind_states = [...person1_mind._states]
+console.log(`Person1 mind states (${mind_states.length}):`)
+for (const s of mind_states) {
+  console.log(`  State #${s._id}: tt=${s.tt}, vt=${s.vt}, locked=${s.locked}, ground_state.vt=${s.ground_state?.vt}`)
+}
+
+console.log('\n--- Branch world to vt=2 ---')
+let world_state_v2 = state.branch(logos_state(), 2)
+console.log(`World state v2: vt=${world_state_v2.vt}, locked=${world_state_v2.locked}`)
+
+console.log('\n--- Call get_active_state_by_host (simulates do_look) ---')
+const person1_state_v2 = world_state_v2.get_active_state_by_host(person1.subject)
+console.log(`Person1 state created: #${person1_state_v2._id}, tt=${person1_state_v2.tt}, vt=${person1_state_v2.vt}, locked=${person1_state_v2.locked}`)
+console.log(`  ground_state: #${person1_state_v2.ground_state._id}, vt=${person1_state_v2.ground_state.vt}`)
+
+mind_states = [...person1_mind._states]
+console.log(`\nPerson1 mind states NOW (${mind_states.length}):`)
+for (const s of mind_states) {
+  console.log(`  State #${s._id}: tt=${s.tt}, vt=${s.vt}, locked=${s.locked}, ground_state.vt=${s.ground_state?.vt}`)
+}
+
+console.log('\n--- Lock world state vt=2 ---')
+world_state_v2.lock()
+console.log(`World state v2: vt=${world_state_v2.vt}, locked=${world_state_v2.locked}`)
+
+mind_states = [...person1_mind._states]
+console.log(`\nPerson1 mind states AFTER LOCK (${mind_states.length}):`)
+for (const s of mind_states) {
+  console.log(`  State #${s._id}: tt=${s.tt}, vt=${s.vt}, locked=${s.locked}, ground_state.vt=${s.ground_state?.vt}`)
+}
+
+console.log('\n--- EXPECTED vs ACTUAL ---')
+console.log(`State tt=1 (template): locked=${mind_states.find(s => s.tt === 1)?.locked} (expected: true)`)
+console.log(`State tt=2 (active):   locked=${mind_states.find(s => s.tt === 2)?.locked} (expected: true after world lock)`)
+
+if (mind_states.find(s => s.tt === 2)?.locked) {
+  console.log('\n✓ FIX WORKING: Mind state tt=2 is locked after world state vt=2 locked')
+} else {
+  console.log('\n✗ BUG: Mind state tt=2 is still unlocked after world state vt=2 locked')
 }
 
 // ============================================================================

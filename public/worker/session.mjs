@@ -12,7 +12,7 @@ import { log, assert, is_test } from "./debug.mjs"
 import { Traittype, T } from "./traittype.mjs"
 import { logos_state } from './logos.mjs'
 import { Belief } from './belief.mjs'
-//import { Subject } from './subject.mjs'
+import { Subject } from './subject.mjs'
 import { A } from './archetype.mjs'
 
 /**
@@ -26,7 +26,7 @@ export class Session {
   /**
    * @param {Mind} [world_mind] - Optional world mind (for tests)
    * @param {State} [initial_state] - Optional initial state (for tests)
-   * @param {Belief} [avatar] - Optional avatar belief (for tests)
+   * @param {Subject} [avatar] - Optional avatar subject (for tests)
    */
   constructor(world_mind, initial_state, avatar) {
     // Support both constructor injection (tests) and async loading (production)
@@ -34,7 +34,7 @@ export class Session {
     this.world = undefined
     /** @type {State|undefined} */
     this._state = undefined
-    /** @type {Belief|null|undefined} */
+    /** @type {Subject|null|undefined} */
     this.avatar = undefined
     /** @type {BroadcastChannel|null} */
     this._channel = null
@@ -114,6 +114,29 @@ export class Session {
     this._channel = channel
   }
 
+  /**
+   * Advance world state to next vt
+   * Locks current state and branches to new vt
+   * @param {number} [vt] - Valid time (defaults to current vt + 1)
+   * @returns {State} New unlocked state
+   */
+  tick(vt) {
+    assert(this.state, 'session.state must be set before calling tick()')
+    const current_state = this.state
+    assert(current_state.vt != null, 'Cannot tick timeless state')
+
+    // Lock current state if unlocked
+    if (!current_state.locked) {
+      current_state.lock()
+    }
+
+    // Branch to new vt
+    const new_vt = vt ?? (current_state.vt + 1)
+    this.state = current_state.branch(logos_state(), new_vt)
+
+    return this.state
+  }
+
   async load_world() {
     const { init_world } = await import("./world.mjs")
     const { world_state, avatar } = init_world()
@@ -140,9 +163,10 @@ export class Session {
 
     postMessage(['header_set', `Waking up`])
 
-    const pl = this.avatar.subject
+    const pl = this.avatar
     let st = this.state
-    const loc = this.avatar.get_trait(st, T.location)
+    const avatar_belief = pl.get_belief_by_state(st)
+    const loc = avatar_belief.get_trait(st, T.location)
 
     const obs = {
       subject: loc,
@@ -159,20 +183,24 @@ export class Session {
     lines.push(narrator.say`You are in ${obs}.`)
     postMessage(['main_add', ...lines])
 
+    log([st], st)
+
     //return true
 
+    st = this.tick()
 
     narrator.do_look_in_location({
       session: this,
       subject: loc,
     })
+    return true
+
+    //log([st], st, st.lock)
 
     let hammer = st.get_belief_by_label('hammer3')
     assert(hammer instanceof Belief)
-    //log([st], hammer, hammer.subject)
 
-    st.lock()
-    st = st.branch(logos_state(), 2)
+    st = this.tick()
 
     const handle = Belief.from(st, [A.HammerHandle], {
       color: 'blue',
@@ -181,8 +209,9 @@ export class Session {
     hammer = hammer.replace(st, {
       handle: handle.subject,
     })
-    //log([st], hammer, hammer.subject)
+    log([st], hammer, hammer.subject)
 
+    
     return true
 
     // Will create another copy of whats percieved
@@ -191,6 +220,8 @@ export class Session {
       session: this,
       subject: loc,
     })
+
+    st = this.tick()
 
     return true
   }

@@ -54,7 +54,7 @@ describe('observation', () => {
       const workshop = state.get_belief_by_label('workshop')
 
       // Get player's mind state
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Explicit learn_about (like world.mjs line 200)
       learn_about(player_state,hammer)
@@ -121,7 +121,7 @@ describe('observation', () => {
 
       const player = state.get_belief_by_label('player')
       expect(player, 'player belief not found').to.exist
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
       const hammer = state.get_belief_by_label('hammer')
       expect(hammer, 'hammer belief not found').to.exist
 
@@ -169,7 +169,7 @@ describe('observation', () => {
       const hammer = state.get_belief_by_label('hammer')
 
       // Get player's mind state - should branch from locked template state
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Recognize should find hammer knowledge from template (in base state)
       const existing = recognize(player_state,hammer)
@@ -204,7 +204,7 @@ describe('observation', () => {
       state = state.branch(Cosmos.logos_state(), 2)
 
       const player = state.get_belief_by_label('player')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Trace base chain
       const bases = []
@@ -271,7 +271,7 @@ describe('observation', () => {
       state = state.branch(Cosmos.logos_state(), 2)
 
       const player = state.get_belief_by_label('player')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Create perceived belief with flat traits
       const perceived = create_perceived_belief(player_state, ['PortableObject'], {
@@ -327,7 +327,7 @@ describe('observation', () => {
       state = state.branch(Cosmos.logos_state(), 2)
 
       const player = state.get_belief_by_label('player')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Create nested perceived beliefs (handle as separate belief)
       const perceived_handle = create_perceived_belief(player_state, ['HammerHandle'], {
@@ -380,7 +380,7 @@ describe('observation', () => {
       state = state.branch(Cosmos.logos_state(), 2)
 
       const player = state.get_belief_by_label('player')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Create multiple perceived beliefs
       const perceived_hammer = create_perceived_belief(player_state, ['PortableObject'], {
@@ -439,7 +439,7 @@ describe('observation', () => {
       const player = state.get_belief_by_label('player')
       const hammer = state.get_belief_by_label('hammer')
       const workshop = state.get_belief_by_label('workshop')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Create perceived belief - recognized (workshop)
       const perceived_workshop = create_perceived_belief(player_state, ['Location'], {}, workshop.subject)
@@ -503,7 +503,7 @@ describe('observation', () => {
       const player = state.get_belief_by_label('player')
       const hammer = state.get_belief_by_label('hammer')
       const workshop = state.get_belief_by_label('workshop')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Player doesn't know about hammer yet
       const existing = recognize(player_state,hammer)
@@ -567,7 +567,7 @@ describe('observation', () => {
       const player = state.get_belief_by_label('player')
       const hammer = state.get_belief_by_label('hammer')
       const workshop = state.get_belief_by_label('workshop')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Player should recognize hammer
       const existing_knowledge = recognize(player_state,hammer)
@@ -639,7 +639,7 @@ describe('observation', () => {
       const player = state.get_belief_by_label('player')
       const hammer1 = state.get_belief_by_label('hammer1')
       const hammer2 = state.get_belief_by_label('hammer2')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Create perceived belief matching hammer1
       const perceived = player_state.add_belief_from_template({
@@ -699,7 +699,7 @@ describe('observation', () => {
       const player = state.get_belief_by_label('player')
       const hammer1 = state.get_belief_by_label('hammer1')
       const hammer2 = state.get_belief_by_label('hammer2')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Create perceived belief with only material
       const perceived = player_state.add_belief_from_template({
@@ -751,7 +751,7 @@ describe('observation', () => {
 
       const player = state.get_belief_by_label('player')
       const hammer = state.get_belief_by_label('hammer')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Player has minimal knowledge (can recognize)
       const old_knowledge = recognize(player_state,hammer)
@@ -797,7 +797,7 @@ describe('observation', () => {
 
       const player = state.get_belief_by_label('player')
       const hammer = state.get_belief_by_label('hammer')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Count beliefs before
       const about_tt = Traittype.get_by_label('@about')
@@ -839,7 +839,7 @@ describe('observation', () => {
       const player = state.get_belief_by_label('player')
       const hammer = state.get_belief_by_label('hammer')
       const workshop = state.get_belief_by_label('workshop')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Verify initial knowledge - knows location but not color
       const old_knowledge = recognize(player_state,hammer)
@@ -927,7 +927,7 @@ describe('observation', () => {
       const player = state.get_belief_by_label('player')
       const hammer1 = state.get_belief_by_label('hammer1')
       const hammer2 = state.get_belief_by_label('hammer2')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Perceive first hammer
       perceive(player_state,[hammer1])
@@ -1032,7 +1032,7 @@ describe('observation', () => {
       const person1 = state.get_belief_by_label('person1')
       const workshop = state.get_belief_by_label('workshop')
 
-      let player_state = state.get_active_state_by_host(player)
+      let player_state = state.get_active_state_by_host(player.subject)
 
       // Perceive person1 with default modalities (visual only)
       const perception = perceive(player_state,[person1])
@@ -1098,11 +1098,12 @@ describe('observation', () => {
       })
 
       state.lock()
+      state = state.branch(state.ground_state, state.vt + 1)
 
       const player = state.get_belief_by_label('player')
       const hammer = state.get_belief_by_label('hammer')
 
-      let player_state = state.get_active_state_by_host(player)
+      let player_state = state.get_active_state_by_host(player.subject)
 
       // Player already has knowledge about hammer
       const knowledge_before = recognize(player_state,hammer)
@@ -1160,16 +1161,20 @@ describe('observation', () => {
       })
 
       state.lock()
+      state = state.branch(state.ground_state, state.vt + 1)
 
       const player = state.get_belief_by_label('player')
       const hammer = state.get_belief_by_label('hammer')
 
-      let player_state = state.get_active_state_by_host(player)
+      let player_state = state.get_active_state_by_host(player.subject)
 
       // Player's memory created at tt=1
       const knowledge_before = recognize(player_state,hammer)
       expect(knowledge_before.length).to.be.at.least(1)
       expect(knowledge_before[0].origin_state.tt).to.equal(1)
+
+      // Lock before branching
+      state.lock()
 
       // World progresses to vt=2
       state = state.branch(Cosmos.logos_state(), 2)
@@ -1177,7 +1182,7 @@ describe('observation', () => {
       // Update hammer in world
       const hammer_v2 = hammer.replace(state, {color: 'red'})
 
-      player_state = state.get_active_state_by_host(player)
+      player_state = state.get_active_state_by_host(player.subject)
 
       // Perceive updated hammer (world.vt=2 > memory.tt=1)
       const perception = perceive(player_state,[hammer_v2])
@@ -1261,7 +1266,7 @@ describe('observation', () => {
       const player = state.get_belief_by_label('player')
       const head1 = state.get_belief_by_label('head1')
       const hammer1 = state.get_belief_by_label('hammer1')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Create perceived belief with certain head
       const perceived = player_state.add_belief_from_template({
@@ -1306,7 +1311,7 @@ describe('observation', () => {
       state = state.branch(Cosmos.logos_state(), 2)
 
       const player = state.get_belief_by_label('player')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Create perceived belief
       const perceived = player_state.add_belief_from_template({
@@ -1340,7 +1345,7 @@ describe('observation', () => {
         hammer2: { bases: ['Hammer'], traits: { material: 'steel' } }
       })
       const hammer2 = state.get_belief_by_label('hammer2')
-      const player_state = state.get_active_state_by_host(state.get_belief_by_label('player'))
+      const player_state = state.get_active_state_by_host(state.get_belief_by_label('player').subject)
       learn_about(player_state,hammer2)
 
       state.lock()
@@ -1349,7 +1354,7 @@ describe('observation', () => {
         hammer3: { bases: ['Hammer'], traits: { material: 'steel' } }
       })
       const hammer3 = state.get_belief_by_label('hammer3')
-      const player_state2 = state.get_active_state_by_host(state.get_belief_by_label('player'))
+      const player_state2 = state.get_active_state_by_host(state.get_belief_by_label('player').subject)
       learn_about(player_state2,hammer3)
 
       // Create perceived belief
@@ -1383,7 +1388,7 @@ describe('observation', () => {
 
       const player = state.get_belief_by_label('player')
       const hammer1 = state.get_belief_by_label('hammer1')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Create perceived belief with only archetype (no discriminating traits)
       const perceived = player_state.add_belief_from_template({
@@ -1424,7 +1429,7 @@ describe('observation', () => {
       const player = state.get_belief_by_label('player')
       const head1 = state.get_belief_by_label('head1')
       const hammer1 = state.get_belief_by_label('hammer1')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Perceived: head1 + material steel
       const perceived = player_state.add_belief_from_template({
@@ -1472,7 +1477,7 @@ describe('observation', () => {
       const player = state.get_belief_by_label('player')
       const head1 = state.get_belief_by_label('head1')
       const handle2 = state.get_belief_by_label('handle2')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Perceived: head1 (certain) + handle2 (different from hammer1's handle!)
       const perceived = player_state.add_belief_from_template({
@@ -1522,7 +1527,7 @@ describe('observation', () => {
       const player = state.get_belief_by_label('player')
       const head_particular = state.get_belief_by_label('head_particular')
       const hammer2 = state.get_belief_by_label('hammer2')
-      const player_state = state.get_active_state_by_host(player)
+      const player_state = state.get_active_state_by_host(player.subject)
 
       // Perceived: particular head (should use rev_trait)
       const perceived_particular = player_state.add_belief_from_template({
@@ -1607,7 +1612,7 @@ describe('observation', () => {
 
         const player = state.get_belief_by_label('player')
         const npc = state.get_belief_by_label('npc')
-        const player_state = state.get_active_state_by_host(player)
+        const player_state = state.get_active_state_by_host(player.subject)
 
         // Player has no prior knowledge
         expect(recognize(player_state, npc)).to.have.lengthOf(0)
@@ -1665,7 +1670,7 @@ describe('observation', () => {
 
         const player = state.get_belief_by_label('player')
         const pacifist = state.get_belief_by_label('pacifist')
-        const player_state = state.get_active_state_by_host(player)
+        const player_state = state.get_active_state_by_host(player.subject)
 
         // Perceive pacifist with null inventory
         const perception = perceive(player_state, [pacifist])
@@ -1718,7 +1723,7 @@ describe('observation', () => {
         const player = state.get_belief_by_label('player')
         const knight = state.get_belief_by_label('knight')
         const pacifist = state.get_belief_by_label('pacifist')
-        const player_state = state.get_active_state_by_host(player)
+        const player_state = state.get_active_state_by_host(player.subject)
 
         // Perceive knight (empty array) and pacifist (null)
         const perception = perceive(player_state, [knight, pacifist])
@@ -1791,7 +1796,7 @@ describe('observation', () => {
 
         const player = state.get_belief_by_label('player')
         const diamond = state.get_belief_by_label('Diamond')
-        const player_state = state.get_active_state_by_host(player)
+        const player_state = state.get_active_state_by_host(player.subject)
 
         // Perceive Diamond NPC
         const perception = perceive(player_state, [diamond])
@@ -1858,7 +1863,7 @@ describe('observation', () => {
 
         const player = state.get_belief_by_label('player')
         const npc_guard = state.get_belief_by_label('npc_guard')
-        const player_state = state.get_active_state_by_host(player)
+        const player_state = state.get_active_state_by_host(player.subject)
 
         // Perceive guard
         const perception = perceive(player_state, [npc_guard])
@@ -1929,7 +1934,7 @@ describe('observation', () => {
 
         const player = state.get_belief_by_label('player')
         const npc = state.get_belief_by_label('npc')
-        const player_state = state.get_active_state_by_host(player)
+        const player_state = state.get_active_state_by_host(player.subject)
 
         // Learn about NPC through cultural knowledge (explicit mind trait)
         // This represents shared cultural knowledge: "guards have combat and social aspects"
@@ -1996,7 +2001,7 @@ describe('observation', () => {
 
         const player = state.get_belief_by_label('player')
         const entity = state.get_belief_by_label('entity')
-        const player_state = state.get_active_state_by_host(player)
+        const player_state = state.get_active_state_by_host(player.subject)
 
         // Perceive entity with composed states
         const perception = perceive(player_state, [entity])

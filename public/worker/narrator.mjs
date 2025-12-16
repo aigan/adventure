@@ -56,7 +56,7 @@ export function do_look_in_location(context) {
   const perception = perceive(pov,content)
 
   // FIXME: how does perception update existing beliefs?
-  learn_from(pov,perception)
+  //learn_from(pov,perception)
   //log(perception)
 
   const seen = [];
