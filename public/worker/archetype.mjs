@@ -193,12 +193,9 @@ export class Archetype {
     // Handle Archetype objects (from archetype templates) - find corresponding prototype
     if (data instanceof Archetype) {
       const subject = Subject.get_by_label(data.label)
-      if (!subject) { // FIXME: use assert
-        throw new Error(
-          `Cannot resolve Archetype '${data.label}' for trait '${traittype.label}': ` +
-          `no prototype Subject found with label '${data.label}'`
-        )
-      }
+      assert(subject,
+        `Cannot resolve Archetype '${data.label}' for trait '${traittype.label}': ` +
+        `no prototype Subject found with label '${data.label}'`)
       traittype.validate_archetype(subject, belief.origin_state)
       return subject
     }

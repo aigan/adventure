@@ -17,12 +17,9 @@ describe('State', () => {
     it('mind.belief Set contains all beliefs for that mind', () => {
       const mind = new Materia(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 1});
-      const workshop = Belief.from_template(state, {traits: {}, label: 'workshop', bases: ['Location']});
+      const workshop = Belief.from(state, [Archetype.get_by_label('Location')], {});
 
-      const hammer = Belief.from_template(state, {
-        traits: {}, label: 'hammer',
-        bases: ['PortableObject']
-      });
+      const hammer = Belief.from(state, [Archetype.get_by_label('PortableObject')], {});
 
       expect([...DB._reflect().belief_by_id.values()].filter(b => b.in_mind === mind).length).to.equal(2);
       expect([...DB._reflect().belief_by_id.values()].some(b => b.in_mind === mind && b === workshop)).to.be.true;
@@ -30,11 +27,14 @@ describe('State', () => {
     });
 
     it('can iterate over beliefs for a mind', () => {
-      const state = createMindWithBeliefs('test', {
-        workshop: { bases: ['Location'] },
-        hammer: { bases: ['PortableObject'] }
-      });
-      const mind = state.in_mind;
+      const mind = new Materia(logos(), 'test');
+      const state = mind.create_state(logos().origin_state, {tt: 1});
+
+      const workshop = Belief.from(state, [Archetype.get_by_label('Location')], {});
+      workshop.subject.set_label('workshop');
+
+      const hammer = Belief.from(state, [Archetype.get_by_label('PortableObject')], {});
+      hammer.subject.set_label('hammer');
 
       const labels = [];
       for (const belief of DB._reflect().belief_by_id.values()) {
@@ -49,7 +49,8 @@ describe('State', () => {
     it('mind.belief_by_label provides fast label lookup', () => {
       const mind = new Materia(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 1});
-      Belief.from_template(state, {traits: {}, label: 'workshop', bases: ['Location']});
+      const workshop = Belief.from(state, [Archetype.get_by_label('Location')], {});
+      workshop.subject.set_label('workshop');
 
       expect(state.get_belief_by_label('workshop')).to.exist;
       expect(state.get_belief_by_label('workshop').get_label()).to.equal('workshop');

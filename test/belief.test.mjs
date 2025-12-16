@@ -376,16 +376,11 @@ describe('Belief', () => {
       const mind = new Materia(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 100});
 
-      const workshop = state.add_belief_from_template({
-        traits: {},
-        label: 'workshop',
-        bases: ['Location']
-      });
+      const workshop = Belief.from(state, [Archetype.get_by_label('Location')], {});
 
-      const hammer = state.add_belief_from_template({
-                bases: ['PortableObject'],
-        traits: {location: workshop.subject,
-          color: 'grey'}
+      const hammer = Belief.from(state, [Archetype.get_by_label('PortableObject')], {
+        location: workshop.subject,
+        color: 'grey'
       });
 
       const location_value = hammer.get_trait(state, Traittype.get_by_label('location'));
@@ -399,36 +394,28 @@ describe('Belief', () => {
       const mind = new Materia(logos(), 'test');
       const state1 = mind.create_state(logos().origin_state, {tt: 100});
 
-      const workshop = state1.add_belief_from_template({
-        traits: {},
-        label: 'workshop',
-        bases: ['Location']
-      });
+      const workshop = Belief.from(state1, [Archetype.get_by_label('Location')], {});
 
-      const hammer_v1 = state1.add_belief_from_template({
-                bases: ['PortableObject'],
-        traits: {location: workshop.subject,
-          color: 'grey'}
+      const hammer_v1 = Belief.from(state1, [Archetype.get_by_label('PortableObject')], {
+        location: workshop.subject,
+        color: 'grey'
       });
 
       state1.lock();
 
       // Create v2 with only color changed
       const state2 = state1.branch(logos().origin_state, 101);
-      const hammer_v2 = Belief.from_template(state2, {
-        sid: hammer_v1.subject.sid,
-        bases: [hammer_v1],
-        traits: {
-          color: 'blue'
-        }
-      });
+      const hammer_v2 = new Belief(state2, hammer_v1.subject, [hammer_v1]);
+      const color_traittype = Traittype.get_by_label('color');
+      hammer_v2.add_trait(color_traittype, 'blue');
+      state2.insert_beliefs(hammer_v2);
 
       // v2 should have color in _traits, but location inherited from v1
-      expect(hammer_v2._traits.has(Traittype.get_by_label('color'))).to.be.true;
+      expect(hammer_v2._traits.has(color_traittype)).to.be.true;
       expect(hammer_v2._traits.has(Traittype.get_by_label('location'))).to.be.false;
 
       // get_trait should find both
-      expect(hammer_v2.get_trait(state2, Traittype.get_by_label('color'))).to.equal('blue');
+      expect(hammer_v2.get_trait(state2, color_traittype)).to.equal('blue');
       const location_value = hammer_v2.get_trait(state2, Traittype.get_by_label('location'));
       expect(location_value).to.be.instanceOf(Subject);
       expect(location_value.sid).to.equal(workshop.subject.sid);
@@ -439,20 +426,13 @@ describe('Belief', () => {
       const mind = new Materia(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 100});
 
-      const hammer_v1 = Belief.from_template(state, {
-        traits: {
-          color: 'grey'
-        },
-        bases: ['PortableObject']
+      const hammer_v1 = Belief.from(state, [Archetype.get_by_label('PortableObject')], {
+        color: 'grey'
       });
 
-      const hammer_v2 = Belief.from_template(state, {
-        sid: hammer_v1.subject.sid,
-        bases: [hammer_v1],
-        traits: {
-          color: 'blue'  // Shadows v1's grey
-        }
-      });
+      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1]);
+      hammer_v2.add_trait(Traittype.get_by_label('color'), 'blue');  // Shadows v1's grey
+      state.insert_beliefs(hammer_v2);
 
       expect(hammer_v2.get_trait(state, Traittype.get_by_label('color'))).to.equal('blue');
     });
@@ -462,35 +442,20 @@ describe('Belief', () => {
       const mind = new Materia(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 100});
 
-      const workshop = Belief.from_template(state, {
-        traits: {},
-        label: 'workshop',
-        bases: ['Location']
+      const workshop = Belief.from(state, [Archetype.get_by_label('Location')], {});
+
+      const hammer_v1 = Belief.from(state, [Archetype.get_by_label('PortableObject')], {
+        location: workshop.subject,
+        color: 'grey'
       });
 
-      const hammer_v1 = Belief.from_template(state, {
-        traits: {
-          location: workshop.subject,
-          color: 'grey'
-        },
-        bases: ['PortableObject']
-      });
+      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1]);
+      hammer_v2.add_trait(Traittype.get_by_label('color'), 'blue');
+      state.insert_beliefs(hammer_v2);
 
-      const hammer_v2 = Belief.from_template(state, {
-        sid: hammer_v1.subject.sid,
-        bases: [hammer_v1],
-        traits: {
-          color: 'blue'
-        }
-      });
-
-      const hammer_v3 = Belief.from_template(state, {
-        sid: hammer_v1.subject.sid,
-        bases: [hammer_v2],
-        traits: {
-          color: 'red'
-        }
-      });
+      const hammer_v3 = new Belief(state, hammer_v1.subject, [hammer_v2]);
+      hammer_v3.add_trait(Traittype.get_by_label('color'), 'red');
+      state.insert_beliefs(hammer_v3);
 
       // v3 should find location all the way back in v1
       const location_value = hammer_v3.get_trait(state, Traittype.get_by_label('location'));
@@ -503,11 +468,8 @@ describe('Belief', () => {
       const mind = new Materia(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 100});
 
-      const hammer = Belief.from_template(state, {
-        traits: {
-          color: 'grey'
-        },
-        bases: ['PortableObject']
+      const hammer = Belief.from(state, [Archetype.get_by_label('PortableObject')], {
+        color: 'grey'
       });
 
       // Test that a valid trait that exists but isn't on the belief returns null
@@ -521,29 +483,18 @@ describe('Belief', () => {
       const mind = new Materia(logos(), 'test');
       const state = mind.create_state(logos().origin_state, {tt: 100});
 
-      const workshop = Belief.from_template(state, {
-        traits: {},
-        label: 'workshop',
-        bases: ['Location']
-      });
+      const workshop = Belief.from(state, [Archetype.get_by_label('Location')], {});
 
       // Create v1 with location and color
-      const hammer_v1 = Belief.from_template(state, {
-        traits: {
-          location: workshop.subject,
-          color: 'grey'
-        },
-        bases: ['PortableObject']
+      const hammer_v1 = Belief.from(state, [Archetype.get_by_label('PortableObject')], {
+        location: workshop.subject,
+        color: 'grey'
       });
 
       // Create v2 that only sets color (location should be inherited from v1)
-      const hammer_v2 = Belief.from_template(state, {
-        sid: hammer_v1.subject.sid,
-        bases: [hammer_v1],
-        traits: {
-          color: 'blue'
-        }
-      });
+      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1]);
+      hammer_v2.add_trait(Traittype.get_by_label('color'), 'blue');
+      state.insert_beliefs(hammer_v2);
 
       // get_trait should find both own and inherited traits
       expect(hammer_v2.get_trait(state, Traittype.get_by_label('color'))).to.equal('blue');
@@ -1052,19 +1003,17 @@ describe('Belief', () => {
   describe('Trait Caching', () => {
     // Matrix 7.4, 7.5: Caching behavior
     it('does not cache get_trait results for unlocked states', () => {
-      const world_state = createMindWithBeliefs('world', {
-        player: {
-          bases: ['Person'],
-          traits: {
-            mind: {}
-          }
-        }
-      });
+      const mind = new Materia(logos(), 'world');
+      const world_state = mind.create_state(logos().origin_state, {tt: 1});
 
-      const player = world_state.get_belief_by_label('player');
+      const player = Belief.from(world_state, [Archetype.get_by_label('Person')], {});
+
+      // Add mind trait using template resolution
+      const mind_traittype = Traittype.get_by_label('mind');
+      player.add_trait_from_template(world_state, mind_traittype, {});
 
       // Get trait before locking - should not cache
-      const mind_before = player.get_trait(world_state, Traittype.get_by_label('mind'));
+      const mind_before = player.get_trait(world_state, mind_traittype);
       expect(mind_before).to.not.be.null;
 
       // Cache should be empty for unlocked state
@@ -1072,38 +1021,31 @@ describe('Belief', () => {
     });
 
     it('does cache get_trait results for locked beliefs', () => {
-      const world_state = createMindWithBeliefs('world', {
-        player: {
-          bases: ['Person'],
-          traits: {
-            // Don't set @about - it's inherited from Thing archetype
-          }
-        }
-      });
+      const mind = new Materia(logos(), 'world');
+      const world_state = mind.create_state(logos().origin_state, {tt: 1});
 
-      const player = world_state.get_belief_by_label('player');
+      // Don't set @about - it's inherited from Thing archetype
+      const player = Belief.from(world_state, [Archetype.get_by_label('Person')], {});
       player.lock(world_state);
 
       // Get inherited trait after locking - should cache
-      const about_value = player.get_trait(world_state, Traittype.get_by_label('@about'));
+      const about_traittype = Traittype.get_by_label('@about');
+      const about_value = player.get_trait(world_state, about_traittype);
 
       // Cache should have the inherited trait (not own traits)
-      const about_traittype = Traittype.get_by_label('@about');
       expect(player._cache.has(about_traittype)).to.be.true;
       expect(player._cache.get(about_traittype)).to.equal(about_value);
     });
 
     it('to_inspect_view on unlocked state does not poison cache', () => {
-      const world_state = createMindWithBeliefs('world', {
-        player: {
-          bases: ['Person'],
-          traits: {
-            mind: {}
-          }
-        }
-      });
+      const mind = new Materia(logos(), 'world');
+      const world_state = mind.create_state(logos().origin_state, {tt: 1});
 
-      const player = world_state.get_belief_by_label('player');
+      const player = Belief.from(world_state, [Archetype.get_by_label('Person')], {});
+
+      // Add mind trait using template resolution
+      const mind_traittype = Traittype.get_by_label('mind');
+      player.add_trait_from_template(world_state, mind_traittype, {});
 
       // Inspect BEFORE locking (simulates world.mjs debug log)
       const view_unlocked = player.to_inspect_view(world_state);
@@ -1119,16 +1061,14 @@ describe('Belief', () => {
     });
 
     it('composable trait inspection does not cache null for unlocked states', () => {
-      const world_state = createMindWithBeliefs('world', {
-        player: {
-          bases: ['Person'],
-          traits: {
-            mind: {}
-          }
-        }
-      });
+      const mind = new Materia(logos(), 'world');
+      const world_state = mind.create_state(logos().origin_state, {tt: 1});
 
-      const player = world_state.get_belief_by_label('player');
+      const player = Belief.from(world_state, [Archetype.get_by_label('Person')], {});
+
+      // Add mind trait using template resolution
+      const mind_traittype = Traittype.get_by_label('mind');
+      player.add_trait_from_template(world_state, mind_traittype, {});
 
       // This test guards against premature caching:
       // 1. to_inspect_view calls get_trait for composable traits
@@ -1147,16 +1087,14 @@ describe('Belief', () => {
 
     it('uses parent belief cache when _cached_all is true', () => {
       // Create a 3-level belief chain: grandparent -> parent -> child
-      const world_state = createMindWithBeliefs('world', {
-        grandparent: {
-          bases: ['Person'],
-          traits: {
-            mind: {}
-          }
-        }
-      });
+      const mind = new Materia(logos(), 'world');
+      const world_state = mind.create_state(logos().origin_state, {tt: 1});
 
-      const grandparent = world_state.get_belief_by_label('grandparent');
+      const grandparent = Belief.from(world_state, [Archetype.get_by_label('Person')], {});
+
+      // Add mind trait using template resolution
+      const mind_traittype = Traittype.get_by_label('mind');
+      grandparent.add_trait_from_template(world_state, mind_traittype, {});
 
       // Lock grandparent and iterate all its traits to populate _cached_all
       grandparent.lock(world_state);
@@ -1165,11 +1103,7 @@ describe('Belief', () => {
       expect(grandparent._cache.size).to.be.greaterThan(0);
 
       // Create parent with grandparent as base
-      const parent = Belief.from_template(world_state, {
-        bases: [grandparent],
-        label: 'parent'
-      });
-      world_state.insert_beliefs(parent);
+      const parent = Belief.from(world_state, [grandparent], {});
 
       // Lock parent and iterate - should use grandparent's cache
       parent.lock(world_state);
@@ -1182,11 +1116,7 @@ describe('Belief', () => {
       expect(parent_trait_labels).to.deep.equal(gp_trait_labels);
 
       // Create child with parent as base
-      const child = Belief.from_template(world_state, {
-        bases: [parent],
-        label: 'child'
-      });
-      world_state.insert_beliefs(child);
+      const child = Belief.from(world_state, [parent], {});
 
       // Lock child and iterate - should use parent's cache (which covers grandparent too)
       child.lock(world_state);

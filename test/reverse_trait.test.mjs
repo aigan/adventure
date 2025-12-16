@@ -52,10 +52,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const location_traittype = Traittype.get_by_label('location')
 
       // Create a room that nothing references
-      const room = Belief.from_template(state, {
-        bases: ['Location'],
-        traits: {}, label: 'empty_room'
-      })
+      const room = Belief.from(state, [Archetype.get_by_label('Location')], {})
       state.lock()
 
       // Query for beliefs with location trait pointing to this room
@@ -70,18 +67,11 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const location_traittype = Traittype.get_by_label('location')
 
       // Create a room
-      const room = state.add_belief_from_template({
-        bases: ['Location'],
-        traits: {}, label: 'tavern'
-      })
+      const room = Belief.from(state, [Archetype.get_by_label('Location')], {})
 
       // Create NPC in that room
-      const npc = state.add_belief_from_template({
-        bases: ['Actor'],
-        traits: {
-          'location': room.subject
-        },
-        label: 'bartender'
+      const npc = Belief.from(state, [Archetype.get_by_label('Actor')], {
+        location: room.subject
       })
       state.lock()
 
@@ -97,23 +87,17 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const location_traittype = Traittype.get_by_label('location')
 
       // Create a room
-      const room = Belief.from_template(state, {
-        bases: ['Location'],
-        traits: {}, label: 'marketplace'
-      })
+      const room = Belief.from(state, [Archetype.get_by_label('Location')], {})
 
       // Create multiple NPCs in that room
-      const npc1 = Belief.from_template(state, {
-        bases: ['Actor'],
-        traits: {'location': room.subject}, label: 'merchant'
+      const npc1 = Belief.from(state, [Archetype.get_by_label('Actor')], {
+        location: room.subject
       })
-      const npc2 = Belief.from_template(state, {
-        bases: ['Actor'],
-        traits: {'location': room.subject}, label: 'guard'
+      const npc2 = Belief.from(state, [Archetype.get_by_label('Actor')], {
+        location: room.subject
       })
-      const npc3 = Belief.from_template(state, {
-        bases: ['Actor'],
-        traits: {'location': room.subject}, label: 'customer'
+      const npc3 = Belief.from(state, [Archetype.get_by_label('Actor')], {
+        location: room.subject
       })
       state.lock()
 
@@ -130,13 +114,9 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const state = createStateInNewMind('world')
       const location_traittype = Traittype.get_by_label('location')
 
-      const room = Belief.from_template(state, {
-        bases: ['Location'],
-        traits: {}, label: 'cellar'
-      })
-      const npc = Belief.from_template(state, {
-        bases: ['Actor'],
-        traits: {'location': room.subject}, label: 'prisoner'
+      const room = Belief.from(state, [Archetype.get_by_label('Location')], {})
+      const npc = Belief.from(state, [Archetype.get_by_label('Actor')], {
+        location: room.subject
       })
       state.lock()
 
@@ -149,21 +129,16 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const state1 = createStateInNewMind('world')
       const location_traittype = Traittype.get_by_label('location')
 
-      const room = Belief.from_template(state1, {
-        bases: ['Location'],
-        traits: {}, label: 'hall'
-      })
-      const npc1 = Belief.from_template(state1, {
-        bases: ['Actor'],
-        traits: {'location': room.subject}, label: 'noble'
+      const room = Belief.from(state1, [Archetype.get_by_label('Location')], {})
+      const npc1 = Belief.from(state1, [Archetype.get_by_label('Actor')], {
+        location: room.subject
       })
       state1.lock()
 
       // State 2: Add another NPC
       const state2 = state1.branch(logos().origin_state, 1)
-      const npc2 = Belief.from_template(state2, {
-        bases: ['Actor'],
-        traits: {'location': room.subject}, label: 'servant'
+      const npc2 = Belief.from(state2, [Archetype.get_by_label('Actor')], {
+        location: room.subject
       })
       state2.lock()
 
@@ -182,10 +157,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       let state = createStateInNewMind('world')
       const location_traittype = Traittype.get_by_label('location')
 
-      const room = Belief.from_template(state, {
-        bases: ['Location'],
-        traits: {}, label: 'forest'
-      })
+      const room = Belief.from(state, [Archetype.get_by_label('Location')], {})
       state.lock()
 
       // Create 10 states, only add NPCs in states 0, 3, 7
@@ -194,12 +166,8 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state = state.branch(logos().origin_state, i + 2)
 
         if (i === 0 || i === 3 || i === 7) {
-          const npc = Belief.from_template(state, {
-            bases: ['Actor'],
-            traits: {
-              'location': room.subject
-            },
-            label: `traveler${i}`
+          const npc = Belief.from(state, [Archetype.get_by_label('Actor')], {
+            location: room.subject
           })
           npcs.push(npc)
         }
@@ -219,22 +187,15 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       let state = createStateInNewMind('world')
       const location_traittype = Traittype.get_by_label('location')
 
-      const room = Belief.from_template(state, {
-        bases: ['Location'],
-        traits: {}, label: 'inn'
-      })
+      const room = Belief.from(state, [Archetype.get_by_label('Location')], {})
       state.lock()
 
       // Add NPCs in sequence
       const npcs = []
       for (let i = 0; i < 3; i++) {
         state = state.branch(logos().origin_state, i + 2)
-        const npc = Belief.from_template(state, {
-          bases: ['Actor'],
-          traits: {
-            'location': room.subject
-          },
-          label: `guest${i}`
+        const npc = Belief.from(state, [Archetype.get_by_label('Actor')], {
+          location: room.subject
         })
         npcs.push(npc)
         state.lock()
@@ -249,27 +210,19 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const state1 = createStateInNewMind('world')
       const location_traittype = Traittype.get_by_label('location')
 
-      const room1 = Belief.from_template(state1, {
-        bases: ['Location'],
-        traits: {}, label: 'kitchen'
-      })
-      const room2 = Belief.from_template(state1, {
-        bases: ['Location'],
-        traits: {}, label: 'bedroom'
-      })
-      const npc = Belief.from_template(state1, {
-        bases: ['Actor'],
-        traits: {'location': room1.subject}, label: 'cook'
+      const room1 = Belief.from(state1, [Archetype.get_by_label('Location')], {})
+      const room2 = Belief.from(state1, [Archetype.get_by_label('Location')], {})
+      const npc = Belief.from(state1, [Archetype.get_by_label('Actor')], {
+        location: room1.subject
       })
       state1.lock()
 
       // State 2: NPC moves to bedroom
       const state2 = state1.branch(logos().origin_state, 1)
-      const npc2 = Belief.from_template(state2, {
-        bases: [npc],
-        traits: {'location': room2.subject}
-      })
-      state2.replace_beliefs(npc2)
+      const npc2 = new Belief(state2, npc.subject, [npc]);
+      npc2.add_trait(location_traittype, room2.subject);
+      state2.insert_beliefs(npc2);
+      state2.remove_beliefs(npc);
       state2.lock()
 
       // Kitchen should have no occupants in state2
@@ -290,32 +243,26 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       const state1 = createStateInNewMind('world')
       const location_traittype = Traittype.get_by_label('location')
 
-      const room = Belief.from_template(state1, {
-        bases: ['Location'],
-        traits: {}, label: 'throne_room'
-      })
-      const npc = Belief.from_template(state1, {
-        bases: ['Actor'],
-        traits: {'location': room.subject}, label: 'king'
+      const room = Belief.from(state1, [Archetype.get_by_label('Location')], {})
+      const npc = Belief.from(state1, [Archetype.get_by_label('Actor')], {
+        location: room.subject
       })
       state1.lock()
 
       // State 2: King leaves (remove location)
       const state2 = state1.branch(logos().origin_state, 1)
-      const npc2 = Belief.from_template(state2, {
-        bases: [npc],
-        traits: {'location': null}
-      })
-      state2.replace_beliefs(npc2)
+      const npc2 = new Belief(state2, npc.subject, [npc]);
+      npc2.add_trait(location_traittype, null);
+      state2.insert_beliefs(npc2);
+      state2.remove_beliefs(npc);
       state2.lock()
 
       // State 3: King returns
       const state3 = state2.branch(logos().origin_state, 2)
-      const npc3 = Belief.from_template(state3, {
-        bases: [npc2],
-        traits: {'location': room.subject}
-      })
-      state3.replace_beliefs(npc3)
+      const npc3 = new Belief(state3, npc.subject, [npc2]);
+      npc3.add_trait(location_traittype, room.subject);
+      state3.insert_beliefs(npc3);
+      state3.remove_beliefs(npc2);
       state3.lock()
 
       // State 1: King present

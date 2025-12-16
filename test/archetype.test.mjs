@@ -193,7 +193,8 @@ describe('Archetype', () => {
       const state = createStateInNewMind();
       const workshop = state.add_belief_from_template({
         bases: ['Location'],
-        traits: {}, label: 'workshop'
+        traits: {},
+        label: 'workshop'
       });
 
       // This uses the traittype resolver which delegates to Archetype

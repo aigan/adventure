@@ -228,14 +228,14 @@ export function init_world() {
     //  traits: { head: 'hammer2_head', handle: 'hammer2_handle', location: 'workshop' }
     //},
 
-    hammer3: {
-      bases: ['HammerCommon'],
-      traits: {
-        '@uncertain_identity': true,
-        location: 'workshop',
-        handle: 'HammerHandleCommon',
-      },
-    },
+    //hammer3: {
+    //  bases: ['HammerCommon'],
+    //  traits: {
+    //    '@uncertain_identity': true,
+    //    location: 'workshop',
+    //    handle: 'HammerHandleCommon',
+    //  },
+    //},
 
   })
 
@@ -271,6 +271,7 @@ export function init_world() {
       traits: {
         color: 'blue',
         location: 'workshop',
+        '@uncertain_identity': true,
       },
     },
     person1: {
