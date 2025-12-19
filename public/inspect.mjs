@@ -4,6 +4,10 @@ import { log, assert } from "./lib/debug.mjs";
 /** @type {BroadcastChannel|null} */
 let channel = null;
 /** @type {HTMLElement|null} */
+let $path_bar = null;
+/** @type {HTMLElement|null} */
+let $state_table = null;
+/** @type {HTMLElement|null} */
 let $header = null;
 /** @type {HTMLElement|null} */
 let $main = null;
@@ -14,14 +18,82 @@ let server_id = null;
 /** @type {any} */
 let query = null;
 
-if (typeof BroadcastChannel !== 'undefined' && typeof document !== 'undefined') {
+/**
+ * Ensure DOM elements are initialized
+ * Called at the start of each render function to handle late initialization
+ */
+function ensure_dom_elements() {
+  if (!$path_bar) $path_bar = document.querySelector(".path-bar");
+  if (!$state_table) $state_table = document.querySelector(".state-table");
+  if (!$header) $header = document.querySelector("header");
+  if (!$main) $main = document.querySelector("main");
+}
+
+/**
+ * Initialize the inspection page once DOM is ready
+ */
+function initialize() {
   log('Loading');
   channel = new BroadcastChannel('inspect');
-  $header = document.querySelector("header");
-  $main = document.querySelector("main");
+  ensure_dom_elements();
   assert($header, 'header element not found');
+  // @ts-ignore - assert ensures $header is not null
   $header.innerHTML = "Inspecting";
+
+  // Set up message handler
+  channel.postMessage({msg:"connect"});
+  channel.onmessage = ev => {
+    const dat = ev.data;
+    const msg = dat.msg;
+    if( !msg ) return console.error("Got confused message", dat);
+    if( !dispatch[msg] ) return console.error('Message confused:', dat );
+    log("message", dat);
+    dispatch[msg](dat);
+  };
+
   parse_url();
+}
+
+/**
+ * Update footer with session metadata
+ */
+function update_footer() {
+  const $footer = document.querySelector('footer.version');
+  if ($footer && client_id !== null && server_id !== null) {
+    $footer.textContent = `client:${client_id} server:${server_id}`;
+  }
+}
+
+/**
+ * Get formatted label with icon for mind based on type hierarchy
+ * @param {any} mind - Mind object with id, label, type properties
+ * @param {string|undefined} parent_type - Parent mind's type
+ * @returns {string} Formatted label with appropriate icon
+ */
+function get_mind_label_with_icon(mind, parent_type) {
+  const base_label = mind.label || `Mind #${mind.id}`;
+
+  if (mind.type === 'Logos') {
+    return '🌟';  // Only icon for logos
+  } else if (mind.type === 'Eidos') {
+    return `💠 ${base_label}`;  // Icon + label for eidos
+  } else if (parent_type === 'Logos') {
+    return `🌍 ${base_label}`;  // Icon + label for world minds (children of logos)
+  } else if (parent_type === 'Eidos') {
+    return `👤 ${base_label}`;  // Icon + label for prototype minds (children of eidos)
+  } else if (parent_type === 'Materia') {
+    return `🔮 ${base_label}`;  // Icon + label for NPC minds (children of materia)
+  }
+  return base_label;
+}
+
+if (typeof BroadcastChannel !== 'undefined' && typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+  } else {
+    // DOM already loaded (e.g., in tests or if script is deferred)
+    initialize();
+  }
 }
 
 
@@ -37,7 +109,7 @@ if (typeof window !== 'undefined') {
         server_id,
       });
     }
-  }
+  };
 }
 
 /** @type {Record<string, (dat: any) => void>} */
@@ -48,7 +120,9 @@ const dispatch = {
   welcome(dat){
     client_id = dat.client_id;
     server_id = dat.server_id;
-    log_line(`Connected as client ${client_id} to server ${server_id}`);
+    log(`Connected as client ${client_id} to server ${server_id}`);
+
+    update_footer();
 
     if( query?.msg ){
       assert(channel, 'channel not initialized');
@@ -57,8 +131,6 @@ const dispatch = {
         client_id,
         server_id,
       });
-
-      //log("query", query.getAll());
     }
 
   },
@@ -89,56 +161,37 @@ const dispatch = {
    * @param {any} dat
    */
   world_entity_list(dat){
-    const prev_nav = dat.state.base_id
-      ? `<a href="?state=${dat.state.base_id}">← Previous</a>`
-      : '';
-    const next_nav = dat.state.branch_ids?.length > 0
-      ? dat.state.branch_ids.map((/** @type {number} */ id) => `<a href="?state=${id}">#${id} →</a>`).join(' ')
-      : '';
-    const state_nav = [prev_nav, next_nav].filter(Boolean).join(' | ');
-
-    const mind_prefix = dat.state.mind_label || dat.state.self_label || `Mind #${dat.state.mind_id}`;
-    const mutable_indicator = dat.state.locked === false ? ' <span style="color: orange; font-weight: bold;">[MUTABLE]</span>' : '';
-    const time_info = dat.state.vt !== dat.state.tt && dat.state.vt !== undefined
-      ? `tt: ${dat.state.tt}, vt: ${dat.state.vt}`
-      : `tt: ${dat.state.tt}`;
-
-    render({
-      header: `${mind_prefix} beliefs (State #${dat.state.id}, ${time_info}) ${state_nav}${mutable_indicator}`,
-      table: {
-        columns: ["label", "desig"],
-        rows: dat.state.beliefs,
-        row_link: {
-          query: "belief",
-          pass_column: ["id"],
-          state_id: dat.state.id,
-        }
-      },
-    });
+    render_entity_list(dat);
   },
   /**
    * @param {any} dat
    */
   world_entity(dat){
-    const mind_prefix = dat.mind?.label || `Mind #${dat.mind?.id}`;
-    render({
-      header: `${mind_prefix}: ${dat.desig}`,
-      entity: dat,
-      state_id: dat.state_id,
-      state_tt: dat.state_tt,
-      state_vt: dat.state_vt,
-      ground_state_id: dat.ground_state_id,
-      bases: dat.bases,
-    });
+    render_entity(dat);
   },
   /**
    * @param {any} dat
    */
   archetype_info(dat){
-    render({
-      header: dat.desig,
-      archetype: dat,
-    });
+    render_archetype(dat);
+  },
+  /**
+   * @param {any} dat
+   */
+  trait_view(dat){
+    render_trait_view(dat);
+  },
+  /**
+   * @param {any} dat
+   */
+  archetype_trait_view(dat){
+    render_archetype_trait_view(dat);
+  },
+  /**
+   * @param {any} dat
+   */
+  mind_info(dat){
+    render_mind_info(dat);
   },
   /**
    * Handle notification that states have changed (debounced from worker)
@@ -158,284 +211,778 @@ const dispatch = {
   },
 }
 
-if (typeof BroadcastChannel !== 'undefined' && channel) {
-  channel.postMessage({msg:"connect"});
-  channel.onmessage = ev => {
-    const dat = ev.data;
-    const msg = dat.msg;
-    if( !msg ) return console.error("Got confused message", dat);
-    if( !dispatch[msg] ) return console.error('Message confused:', dat );
-    log("message", dat);
-    dispatch[msg](dat);
-  };
-}
-
 /**
- * @param {string} text
+ * Render entity list (beliefs in a mind/state)
+ * @param {any} dat
  */
-function log_line(text){
-  const $p = document.createElement('p');
-  $p.innerText = text;
-  assert($main, 'main element not found');
-  $main.append($p);
-}
-
-/**
- * @param {any} a
- */
-function render(a){
+function render_entity_list(dat){
+  ensure_dom_elements();
+  assert($path_bar, 'path-bar element not found');
+  assert($state_table, 'state-table element not found');
   assert($header, 'header element not found');
-  if( a.header != null ) $header.innerHTML = a.header;
-  if( a.table ) render_table( a );
-  if( a.entity ) render_entity( a );
-  if( a.archetype ) render_archetype( a );
+  assert($main, 'main element not found');
+
+  // Build path bar from mind hierarchy
+  let path_html = '';
+  const mind_path = dat.mind_path || [];
+  const state_id = Number(dat.state.id);
+  for (let i = 0; i < mind_path.length; i++) {
+    const mind = mind_path[i];
+    const parent = i > 0 ? mind_path[i - 1] : null;
+    const label = get_mind_label_with_icon(mind, parent?.type);
+    const is_current = i === mind_path.length - 1;
+
+    if (i > 0) {
+      path_html += '<span class="sep">›</span>';
+    }
+
+    const vt_span = mind.vt !== null ? `<span class="vt">:${mind.vt}</span>` : '';
+
+    // Link to state by default, or to mind info if already viewing that state
+    const is_current_state = Number(mind.state_id) === state_id;
+    const mind_link = is_current_state ? `?mind=${mind.id}` : `?mind=${mind.id}&state=${mind.state_id}`;
+    const current_class = is_current ? ' current' : '';
+    path_html += `
+      <a href="${mind_link}" class="chip mind${current_class}">
+        ${label}${vt_span}
+      </a>
+    `;
+  }
+
+  // Mutable badge
+  if (dat.state.locked === false) {
+    path_html += '<span class="badge mutable">MUTABLE</span>';
+  }
+
+  $path_bar.innerHTML = path_html;
+
+  // State table for list view
+  const prev_link = dat.state.base_id
+    ? `<a href="?state=${dat.state.base_id}" class="state-chip">#${dat.state.base_id}</a>`
+    : '';
+  const next_links = dat.state.branch_ids?.map((/** @type {number} */ id) =>
+    `<a href="?state=${id}" class="state-chip">#${id}</a>`
+  ).join('') || '';
+
+  const state_vt_label = dat.state.vt !== null ? `vt:${dat.state.vt}` : 'Current';
+  $state_table.innerHTML = `
+    <div>
+      <div class="col-header">Previous</div>
+      <div class="states">${prev_link}</div>
+    </div>
+    <div class="current">
+      <div class="col-header">${state_vt_label}</div>
+      <div class="states">
+        <span class="state-chip active">#${dat.state.id}</span>
+      </div>
+    </div>
+    <div>
+      <div class="col-header">Next</div>
+      <div class="states">${next_links}</div>
+    </div>
+  `;
+
+  // Header - use current mind label from path or state
+  const current_mind_label = mind_path.length > 0
+    ? (mind_path[mind_path.length - 1].label || `Mind #${mind_path[mind_path.length - 1].id}`)
+    : (dat.state.mind_label || dat.state.self_label || `Mind #${dat.state.mind_id}`);
+  $header.innerHTML = `${current_mind_label} beliefs (State #${dat.state.id})`;
+
+  // Determine belief icon based on mind hierarchy
+  // 🌱 for eidos beliefs, 📍 for materia beliefs
+  const current_mind = mind_path.length > 0 ? mind_path[mind_path.length - 1] : null;
+  const in_eidos = current_mind && (
+    current_mind.type === 'Eidos' ||
+    mind_path.some((/** @type {any} */ m) => m.type === 'Eidos')
+  );
+  const belief_icon = in_eidos ? '🌱' : '📍';
+
+  // Table of beliefs
+  let rows = '';
+  for (const belief of dat.state.beliefs) {
+    const link = `?belief=${belief.id}&state=${dat.state.id}`;
+    const label_display = belief.label ? `${belief.label} (#${belief.id})` : `#${belief.id}`;
+    rows += `<tr>
+      <td><a href="${link}">${belief_icon} ${label_display}</a></td>
+      <td><a href="${link}">${belief.desig}</a></td>
+    </tr>`;
+  }
+
+  $main.innerHTML = `
+    <section>
+      <h2>Beliefs</h2>
+      <table class="traits beliefs-list">
+        <tr><th>Belief</th><th>Description</th></tr>
+        ${rows}
+      </table>
+    </section>
+  `;
 }
 
 /**
- * @param {any} a
- * @param {HTMLElement} [target]
+ * Render a single belief entity
+ * @param {any} dat
  */
-function render_table(a, target){
-  if (!target) {
-    assert($main, 'main element not found');
-    target = $main;
-  }
-  const at = a.table;
-  const h_th = at.columns.map( /** @param {any} t */ (t)=>`<th>${t}</th>`).join("");
+function render_entity(dat){
+  ensure_dom_elements();
+  assert($path_bar, 'path-bar element not found');
+  assert($state_table, 'state-table element not found');
+  assert($header, 'header element not found');
+  assert($main, 'main element not found');
 
-  let h_body = "";
-  for( const row of at.rows ){
-    let link = `?${at.row_link.query}=${row[at.row_link.pass_column[0]]}`;
-    // Add state_id to link if available
-    if (at.row_link.state_id) {
-      link += `&state=${at.row_link.state_id}`;
-    }
+  const belief_data = dat.data.data;
+  const state_id = Number(dat.state_id);
+  const belief_mind_id = dat.mind?.id;
 
-    let h_row = "";
-    for( const col of at.columns ){
-      h_row += `<td><a href="${link}">${row[col]??"-"}</a></td>`;
-    }
-    h_body += `<tr>${h_row}</td>`;
-  }
-
-  const h_table = `<table><tr>${h_th}</tr>${h_body}</table>`;
-  target.innerHTML = h_table;
-}
-
-/**
- * @param {any} a
- * @param {HTMLElement} [target]
- */
-function render_entity(a, target){
-  if (!target) {
-    assert($main, 'main element not found');
-    target = $main;
-  }
-  const belief_data = a.entity.data.data;
-  const state_id = a.state_id;
-  const belief_mind_id = a.entity.mind?.id;
-
-  let hout = "<dl>";
-
-  // Display ID with mutable indicator if unlocked
-  const mutable_indicator = belief_data.locked === false ? ' <span style="color: orange; font-weight: bold;">[MUTABLE]</span>' : '';
-  hout += `<dt>ID</dt><dd>#${belief_data._id}${mutable_indicator}</dd>`;
-
-  // Display label
-  if (belief_data.label) {
-    hout += `<dt>Label</dt><dd>${belief_data.label}</dd>`;
+  // Build path bar - each mind links to its state (when viewing a specific belief, not browsing)
+  let path_html = '';
+  const mind_path = dat.mind_path || [];
+  for (let i = 0; i < mind_path.length; i++) {
+    const mind = mind_path[i];
+    const parent = i > 0 ? mind_path[i - 1] : null;
+    const label = get_mind_label_with_icon(mind, parent?.type);
+    const vt_span = mind.vt !== null ? `<span class="vt">:${mind.vt}</span>` : '';
+    // Always link to the state when viewing a specific belief
+    const mind_link = `?mind=${mind.id}&state=${mind.state_id}`;
+    path_html += `
+      <a href="${mind_link}" class="chip mind">
+        ${label}${vt_span}
+      </a>
+      <span class="sep">›</span>
+    `;
   }
 
-  // Display state info with link
-  if (state_id) {
-    const time_info = a.state_vt !== a.state_tt && a.state_vt !== undefined
-      ? `tt: ${a.state_tt}, vt: ${a.state_vt}`
-      : `tt: ${a.state_tt}`;
-    const ground_link = a.ground_state_id
-      ? ` ← <a href="?state=${a.ground_state_id}">ground #${a.ground_state_id}</a>`
-      : '';
-    hout += `<dt>State</dt><dd><a href="?state=${state_id}">#${state_id}</a> (${time_info})${ground_link}</dd>`;
+  // Current belief chip with icon
+  const current_mind = mind_path.length > 0 ? mind_path[mind_path.length - 1] : null;
+  const in_eidos = current_mind && (
+    current_mind.type === 'Eidos' ||
+    mind_path.some((/** @type {any} */ m) => m.type === 'Eidos')
+  );
+  const belief_icon = in_eidos ? '🌱' : '📍';
+  const belief_label = belief_data.label || `#${belief_data._id}`;
+  const archetype_label = belief_data.archetypes?.[0] || '';
+  path_html += `
+    <span class="chip belief current">
+      ${belief_icon} ${belief_label} <span class="type">[${archetype_label}]</span>
+    </span>
+  `;
+
+  // Mutable badge
+  if (belief_data.locked === false) {
+    path_html += '<span class="badge mutable">MUTABLE</span>';
   }
 
-  // Display prototypes (Archetypes and shared Beliefs with labels)
+  $path_bar.innerHTML = path_html;
+
+  // Build state table
+  const parent_links = (dat.parent_state_ids || []).map((/** @type {number} */ id) =>
+    `<a href="?belief=${belief_data._id}&state=${id}" class="state-chip">#${id}</a>`
+  ).join('');
+
+  const sibling_chips = (dat.sibling_states || []).map((/** @type {{id: number, is_current: boolean}} */ s) =>
+    s.is_current
+      ? `<span class="state-chip active">#${s.id}</span>`
+      : `<a href="?belief=${belief_data._id}&state=${s.id}" class="state-chip">#${s.id}</a>`
+  ).join('');
+
+  const child_links = (dat.branch_ids || []).map((/** @type {number} */ id) =>
+    `<a href="?belief=${belief_data._id}&state=${id}" class="state-chip">#${id}</a>`
+  ).join('');
+
+  const state_vt_label = dat.state_vt !== null ? `vt:${dat.state_vt}` : 'Current';
+  $state_table.innerHTML = `
+    <div>
+      <div class="col-header">Parents</div>
+      <div class="states">${parent_links}</div>
+    </div>
+    <div class="current">
+      <div class="col-header">${state_vt_label}</div>
+      <div class="states">${sibling_chips}</div>
+    </div>
+    <div>
+      <div class="col-header">Children</div>
+      <div class="states">${child_links}</div>
+    </div>
+  `;
+
+  // Header
+  const mind_prefix = dat.mind?.label || `Mind #${dat.mind?.id}`;
+  $header.innerHTML = `${mind_prefix}: ${dat.desig}`;
+
+  // Main content
+  let main_html = '';
+
+  // Inheritance section
+  main_html += '<section><h2>Inheritance</h2><dl>';
+
+  // Prototypes
   if (belief_data.prototypes?.length > 0) {
-    const prototype_items = belief_data.prototypes.map(/** @param {any} p */ (p) => {
-      if (p.type === 'Belief' && p.id && state_id) {
+    const proto_links = belief_data.prototypes.map((/** @type {any} */ p) => {
+      if (p.type === 'Belief' && p.id) {
         return `<a href="?belief=${p.id}&state=${state_id}">${p.label}</a>`;
       }
-      return p.label;
+      return `<a href="?archetype=${p.label}">${p.label}</a>`;
+    }).join(' › ');
+    main_html += `<dt>Prototypes</dt><dd>${proto_links}</dd>`;
+  }
+
+  // Bases
+  if (dat.bases?.length > 0) {
+    const base_links = dat.bases.map((/** @type {any} */ b) => {
+      if (b.id) {
+        const vt_span = dat.state_vt ? `<span class="vt">:${dat.state_vt}</span>` : '';
+        const lock_icon = belief_data.locked !== false ? ' 🔒' : '';
+        return `<a href="?belief=${b.id}&state=${state_id}">[${belief_data.archetypes?.[0] || ''}] ${b.label || ''} #${b.id}${vt_span}${lock_icon}</a>`;
+      }
+      return `<a href="?archetype=${b.label}">${b.label}</a>`;
     }).join(', ');
-    hout += `<dt>Prototypes</dt><dd>${prototype_items}</dd>`;
+    main_html += `<dt>Base</dt><dd>${base_links}</dd>`;
   }
 
-  // Display bases
-  if (a.bases?.length > 0) {
-    hout += `<dt>Bases</dt><dd>`;
-    for (const base of a.bases) {
-      if (base.id && state_id) {
-        hout += `<a href="?belief=${base.id}&state=${state_id}">#${base.id}${base.label ? ' (' + base.label + ')' : ''}</a> `;
-      } else {
-        // Archetype (no id) - make it clickable
-        hout += `<a href="?archetype=${base.label}">${base.label}</a> `;
-      }
-    }
-    hout += `</dd>`;
-  }
+  main_html += '</dl></section>';
 
-  // Display traits
+  // Traits section
   if (belief_data.traits && Object.keys(belief_data.traits).length > 0) {
-    hout += `<dt>Traits</dt><dd><dl>`;
-    for (const [trait, value] of Object.entries(belief_data.traits)) {
-      let display_value = value;
+    main_html += '<section><h2>Traits</h2><table class="traits">';
 
-      // Handle arrays
-      if (Array.isArray(value)) {
-        const items = value.map(item => {
-          if (typeof item === 'object' && item !== null) {
-            if (item._type === 'Archetype') {
-              // Handle Archetype references
-              const link = `?archetype=${item.label}`;
-              return `<a href="${link}">[${item.label}]</a>`;
-            } else if (item._ref && item._type) {
-              // Reference to another belief or object
-              const type_lower = item._type.toLowerCase();
-              const label_text = item.label ? ` (${item.label})` : '';
-              const link = (type_lower === 'belief' && state_id)
-                ? `?${type_lower}=${item._ref}&state=${state_id}`
-                : `?${type_lower}=${item._ref}`;
-              // Add mind prefix if different mind
-              const mind_prefix = (item.mind_id && item.mind_id !== belief_mind_id)
-                ? `${item.mind_label || 'Mind #' + item.mind_id}: `
-                : '';
-              // Add "about" label for knowledge beliefs
-              const about_text = item.about_label ? ` about ${item.about_label}` : '';
-              return `<a href="${link}">${mind_prefix}#${item._ref}${label_text}${about_text}</a>`;
-            } else {
-              return JSON.stringify(item);
-            }
-          }
-          return item;
-        });
-        display_value = items.join(', ');
-      } else if (typeof value === 'object' && value !== null) {
-        if (value._type === 'Archetype') {
-          // Handle Archetype references (use label instead of _ref)
-          const link = `?archetype=${value.label}`;
-          display_value = `<a href="${link}">[${value.label}]</a>`;
-        } else if (value._ref && value._type) {
-          // Handle Mind type specially - render its states instead of linking to Mind
-          if (value._type === 'Mind' && value.states) {
-            const state_links = value.states.map(/** @param {any} s */ (s) => {
-              const link = `?state=${s._ref}`;
-              return `<a href="${link}">#${s._ref}</a>`;
-            });
-            display_value = state_links.join(', ');
-          } else {
-            // Reference to another belief or object
-            const type_lower = value._type.toLowerCase();
-            const label_text = value.label ? ` (${value.label})` : '';
-            const link = (type_lower === 'belief' && state_id)
-              ? `?${type_lower}=${value._ref}&state=${state_id}`
-              : `?${type_lower}=${value._ref}`;
-            // Add mind prefix if different mind
-            const mind_prefix = (value.mind_id && value.mind_id !== belief_mind_id)
-              ? `${value.mind_label || 'Mind #' + value.mind_id}: `
-              : '';
-            // Add "about" label for knowledge beliefs
-            const about_text = value.about_label ? ` about ${value.about_label}` : '';
-            display_value = `<a href="${link}">${mind_prefix}#${value._ref}${label_text}${about_text}</a>`;
-          }
-        } else {
-          display_value = JSON.stringify(value, null, 2);
-        }
+    // Separate regular traits and meta traits
+    const regular_traits = [];
+    const meta_traits = [];
+
+    for (const [trait, value] of Object.entries(belief_data.traits)) {
+      if (trait.startsWith('@')) {
+        meta_traits.push([trait, value]);
+      } else {
+        regular_traits.push([trait, value]);
       }
-      hout += `<dt>${trait}</dt><dd>${display_value}</dd>`;
     }
-    hout += `</dl></dd>`;
+
+    // Render regular traits first, then meta traits
+    for (const [trait, value] of [...regular_traits, ...meta_traits]) {
+      const is_meta = /** @type {string} */ (trait).startsWith('@');
+      const row_class = is_meta ? ' class="meta"' : '';
+      const display_value = format_trait_value(value, state_id, belief_mind_id);
+      const trait_link = `?belief=${belief_data._id}&state=${state_id}&trait=${encodeURIComponent(trait)}`;
+      main_html += `<tr${row_class}><th><a href="${trait_link}">${trait}</a></th><td>${display_value}</td></tr>`;
+    }
+
+    main_html += '</table></section>';
   }
 
-  // Display reverse traits (beliefs referencing this one)
-  const rev_traits = a.entity.data.rev_traits;
+  // Reverse traits section
+  const rev_traits = dat.data.rev_traits;
   if (rev_traits && Object.keys(rev_traits).length > 0) {
-    hout += `<dt>Reverse Traits</dt><dd><dl>`;
+    main_html += '<section><h2>Referenced By</h2><table class="traits">';
+
     for (const [trait, refs] of Object.entries(rev_traits)) {
       const items = /** @type {any[]} */ (refs).map(item => {
         const label_text = item.label ? ` (${item.label})` : '';
-        const link = state_id
-          ? `?belief=${item._ref}&state=${state_id}`
-          : `?belief=${item._ref}`;
+        const link = `?belief=${item._ref}&state=${state_id}`;
         const mind_prefix = (item.mind_id && item.mind_id !== belief_mind_id)
           ? `${item.mind_label || 'Mind #' + item.mind_id}: `
           : '';
         return `<a href="${link}">${mind_prefix}#${item._ref}${label_text}</a>`;
-      });
-      hout += `<dt>${trait}</dt><dd>${items.join(', ')}</dd>`;
+      }).join(', ');
+      main_html += `<tr><th>${trait}</th><td>${items}</td></tr>`;
     }
-    hout += `</dl></dd>`;
+
+    main_html += '</table></section>';
   }
 
-  hout += "</dl>";
+  // Raw JSON
+  main_html += `<details><summary>Raw JSON</summary><pre>${JSON.stringify(belief_data, null, 2)}</pre></details>`;
 
-  // Display raw JSON for debugging
-  hout += `<details><summary>Raw JSON</summary><pre>${JSON.stringify(belief_data, null, 2)}</pre></details>`;
-
-  target.innerHTML = hout;
+  $main.innerHTML = main_html;
 }
 
 /**
- * @param {any} a
- * @param {HTMLElement} [target]
+ * Format a trait value for display
+ * @param {any} value
+ * @param {number} state_id
+ * @param {number|undefined} belief_mind_id
+ * @returns {string}
  */
-function render_archetype(a, target){
-  if (!target) {
-    assert($main, 'main element not found');
-    target = $main;
-  }
-  const archetype_data = a.archetype.data;
-
-  let hout = "<dl>";
-
-  // Display label
-  if (archetype_data.label) {
-    hout += `<dt>Label</dt><dd>${archetype_data.label}</dd>`;
+function format_trait_value(value, state_id, belief_mind_id) {
+  if (value === null || value === undefined) {
+    return '-';
   }
 
-  // Display bases
-  if (archetype_data.bases?.length > 0) {
-    hout += `<dt>Bases</dt><dd>`;
-    for (const base of archetype_data.bases) {
-      hout += `<a href="?archetype=${base.label}">${base.label}</a> `;
+  if (Array.isArray(value)) {
+    const items = value.map(item => format_trait_value(item, state_id, belief_mind_id));
+    return items.join(', ');
+  }
+
+  if (typeof value === 'object') {
+    if (value._type === 'Archetype') {
+      return `<a href="?archetype=${value.label}">[${value.label}]</a>`;
     }
-    hout += `</dd>`;
-  }
-
-  // Display traits
-  if (archetype_data.traits && Object.keys(archetype_data.traits).length > 0) {
-    hout += `<dt>Traits</dt><dd><dl>`;
-    for (const [trait, value] of Object.entries(archetype_data.traits)) {
-      let display_value = value;
-
-      // Handle archetype references
-      if (typeof value === 'object' && value !== null && value._type === 'Archetype') {
-        const link = `?archetype=${value.label}`;
-        display_value = `<a href="${link}">[${value.label}]</a>`;
-      } else if (value === null) {
-        display_value = 'null';
-      } else if (typeof value === 'object') {
-        display_value = JSON.stringify(value, null, 2);
+    if (value._ref && value._type) {
+      if (value._type === 'Mind' && value.states) {
+        // For Mind traits, link to the core state (first state in the array)
+        // which is the state synchronized to the current ground state
+        const core_state = value.states[0];
+        if (core_state) {
+          const mind_label = value.label ? ` (${value.label})` : '';
+          return `<a href="?mind=${value._ref}&state=${core_state._ref}">Mind #${value._ref}${mind_label}</a>`;
+        }
       }
-
-      hout += `<dt>${trait}</dt><dd>${display_value}</dd>`;
+      const type_lower = value._type.toLowerCase();
+      const label_text = value.label ? ` (${value.label})` : '';
+      const link = (type_lower === 'belief' && state_id)
+        ? `?${type_lower}=${value._ref}&state=${state_id}`
+        : `?${type_lower}=${value._ref}`;
+      const mind_prefix = (value.mind_id && value.mind_id !== belief_mind_id)
+        ? `${value.mind_label || 'Mind #' + value.mind_id}: `
+        : '';
+      const about_text = value.about_label ? ` about ${value.about_label}` : '';
+      return `<a href="${link}">${mind_prefix}#${value._ref}${label_text}${about_text}</a>`;
     }
-    hout += `</dl></dd>`;
+    return JSON.stringify(value);
   }
 
-  hout += "</dl>";
+  return String(value);
+}
 
-  // Display raw JSON for debugging
-  hout += `<details><summary>Raw JSON</summary><pre>${JSON.stringify(archetype_data, null, 2)}</pre></details>`;
+/**
+ * Render archetype view
+ * @param {any} dat
+ */
+function render_archetype(dat){
+  ensure_dom_elements();
+  assert($path_bar, 'path-bar element not found');
+  assert($state_table, 'state-table element not found');
+  assert($header, 'header element not found');
+  assert($main, 'main element not found');
 
-  target.innerHTML = hout;
+  const archetype_data = dat.data;
+
+  // Build path bar - minds (Eidos) › archetype
+  let path_html = '';
+  const mind_path = dat.mind_path || [];
+  for (let i = 0; i < mind_path.length; i++) {
+    const mind = mind_path[i];
+    const parent = i > 0 ? mind_path[i - 1] : null;
+    const label = get_mind_label_with_icon(mind, parent?.type);
+    path_html += `
+      <a href="?mind=${mind.id}" class="chip mind">
+        ${label}
+      </a>
+      <span class="sep">›</span>
+    `;
+  }
+
+  // Archetype chip
+  const archetype_icon = '⭕';
+  path_html += `
+    <span class="chip belief current">
+      ${archetype_icon} ${archetype_data.label} <span class="type">[Archetype]</span>
+    </span>
+  `;
+
+  $path_bar.innerHTML = path_html;
+
+  // Clear state table for archetype view
+  $state_table.innerHTML = '';
+
+  // Header
+  $header.innerHTML = dat.desig;
+
+  // Main content
+  let main_html = '<section><h2>Archetype</h2><dl>';
+
+  // Bases
+  if (archetype_data.bases?.length > 0) {
+    const base_links = archetype_data.bases.map((/** @type {any} */ b) =>
+      `<a href="?archetype=${b.label}">${b.label}</a>`
+    ).join(' › ');
+    main_html += `<dt>Bases</dt><dd>${base_links}</dd>`;
+  }
+
+  main_html += '</dl></section>';
+
+  // Traits section
+  if (archetype_data.traits && Object.keys(archetype_data.traits).length > 0) {
+    main_html += '<section><h2>Traits Template</h2><table class="traits">';
+
+    for (const [trait, value] of Object.entries(archetype_data.traits)) {
+      const is_meta = trait.startsWith('@');
+      const row_class = is_meta ? ' class="meta"' : '';
+      const trait_link = `?archetype=${encodeURIComponent(archetype_data.label)}&trait=${encodeURIComponent(trait)}`;
+      let display_value = value;
+      if (typeof value === 'object' && value !== null && value._type === 'Archetype') {
+        display_value = `<a href="?archetype=${value.label}">[${value.label}]</a>`;
+      } else if (value === null) {
+        display_value = '<em>null</em>';
+      } else if (typeof value === 'object') {
+        display_value = JSON.stringify(value);
+      }
+      main_html += `<tr${row_class}><th><a href="${trait_link}">${trait}</a></th><td>${display_value}</td></tr>`;
+    }
+
+    main_html += '</table></section>';
+  }
+
+  // Raw JSON
+  main_html += `<details><summary>Raw JSON</summary><pre>${JSON.stringify(archetype_data, null, 2)}</pre></details>`;
+
+  $main.innerHTML = main_html;
+}
+
+/**
+ * Render trait detail view
+ * @param {any} dat
+ */
+function render_trait_view(dat){
+  ensure_dom_elements();
+  assert($path_bar, 'path-bar element not found');
+  assert($state_table, 'state-table element not found');
+  assert($header, 'header element not found');
+  assert($main, 'main element not found');
+
+  // Build path bar - minds › belief › trait
+  let path_html = '';
+  const mind_path = dat.mind_path || [];
+  for (let i = 0; i < mind_path.length; i++) {
+    const mind = mind_path[i];
+    const parent = i > 0 ? mind_path[i - 1] : null;
+    const label = get_mind_label_with_icon(mind, parent?.type);
+    const vt_span = mind.vt !== null ? `<span class="vt">:${mind.vt}</span>` : '';
+    // Always link to the state when viewing a specific trait
+    const mind_link = `?mind=${mind.id}&state=${mind.state_id}`;
+    path_html += `
+      <a href="${mind_link}" class="chip mind">
+        ${label}${vt_span}
+      </a>
+      <span class="sep">›</span>
+    `;
+  }
+
+  // Belief chip
+  const belief_label = dat.belief_label || `#${dat.belief_id}`;
+  const current_mind = mind_path.length > 0 ? mind_path[mind_path.length - 1] : null;
+  const in_eidos = current_mind && (
+    current_mind.type === 'Eidos' ||
+    mind_path.some((/** @type {any} */ m) => m.type === 'Eidos')
+  );
+  const belief_icon = in_eidos ? '🌱' : '📍';
+  path_html += `
+    <a href="?belief=${dat.belief_id}&state=${dat.state_id}" class="chip belief">
+      ${belief_icon} ${belief_label}
+    </a>
+    <span class="sep">›</span>
+  `;
+
+  // Current trait chip
+  const value_display = format_trait_value(dat.current_value, dat.state_id, dat.belief_id);
+  path_html += `
+    <span class="chip trait current">
+      <span class="chip-label">${dat.trait_name}</span>
+      <span class="chip-value">${value_display}</span>
+    </span>
+  `;
+
+  // Mutable badge
+  if (dat.state_locked === false) {
+    path_html += '<span class="badge mutable">MUTABLE</span>';
+  }
+
+  $path_bar.innerHTML = path_html;
+
+  // Build state table
+  const parent_links = (dat.parent_state_ids || []).map((/** @type {number} */ id) =>
+    `<a href="?belief=${dat.belief_id}&state=${id}&trait=${encodeURIComponent(dat.trait_name)}" class="state-chip">#${id}</a>`
+  ).join('');
+
+  const sibling_chips = (dat.sibling_states || []).map((/** @type {{id: number, is_current: boolean}} */ s) =>
+    s.is_current
+      ? `<span class="state-chip active">#${s.id}</span>`
+      : `<a href="?belief=${dat.belief_id}&state=${s.id}&trait=${encodeURIComponent(dat.trait_name)}" class="state-chip">#${s.id}</a>`
+  ).join('');
+
+  const child_links = (dat.branch_ids || []).map((/** @type {number} */ id) =>
+    `<a href="?belief=${dat.belief_id}&state=${id}&trait=${encodeURIComponent(dat.trait_name)}" class="state-chip">#${id}</a>`
+  ).join('');
+
+  const state_vt_label = dat.state_vt !== null ? `vt:${dat.state_vt}` : 'Current';
+  $state_table.innerHTML = `
+    <div>
+      <div class="col-header">Parents</div>
+      <div class="states">${parent_links}</div>
+    </div>
+    <div class="current">
+      <div class="col-header">${state_vt_label}</div>
+      <div class="states">${sibling_chips}</div>
+    </div>
+    <div>
+      <div class="col-header">Children</div>
+      <div class="states">${child_links}</div>
+    </div>
+  `;
+
+  // Header
+  $header.innerHTML = `${dat.belief_desig}: ${dat.trait_name}`;
+
+  // Main content
+  let main_html = '';
+
+  // Current value section
+  main_html += '<section class="trait-value-display"><h3>Value</h3>';
+  main_html += `<div class="value-box"><span class="value-content">${value_display}</span></div>`;
+  main_html += '</section>';
+
+  // Source section
+  main_html += '<section class="trait-source"><h3>Source</h3><dl class="compact">';
+  const source_note = dat.source === 'own' ? '(own trait)' : '(inherited)';
+  const source_link = `<a href="?belief=${dat.source_belief_id}&state=${dat.state_id}">${source_note}</a>`;
+  main_html += `<dt>Defined in</dt><dd>${source_link}</dd>`;
+  main_html += '</dl></section>';
+
+  // Value history section
+  if (dat.history && dat.history.length > 0) {
+    main_html += '<section class="trait-history"><h3>History</h3><div class="history-list">';
+    for (const item of dat.history) {
+      const item_class = item.is_current ? ' current' : '';
+      const vt_display = item.vt !== null ? `vt:${item.vt}` : '-';
+      const value_str = format_trait_value(item.value, item.state_id, dat.belief_id);
+      main_html += `<div class="history-item${item_class}">`;
+      main_html += `<span class="history-state"><a href="?belief=${dat.belief_id}&state=${item.state_id}&trait=${encodeURIComponent(dat.trait_name)}">#${item.state_id}</a></span>`;
+      main_html += `<span class="history-value">${value_str}</span>`;
+      main_html += `<span class="history-vt">${vt_display}</span>`;
+      main_html += `</div>`;
+    }
+    main_html += '</div></section>';
+  }
+
+  $main.innerHTML = main_html;
+}
+
+/**
+ * Render archetype trait view (trait metadata without value history)
+ * @param {any} dat
+ */
+function render_archetype_trait_view(dat){
+  ensure_dom_elements();
+  assert($path_bar, 'path-bar element not found');
+  assert($state_table, 'state-table element not found');
+  assert($header, 'header element not found');
+  assert($main, 'main element not found');
+
+  // Build path bar - Eidos › archetype › trait
+  let path_html = '';
+  const mind_path = dat.mind_path || [];
+  for (let i = 0; i < mind_path.length; i++) {
+    const mind = mind_path[i];
+    const parent = i > 0 ? mind_path[i - 1] : null;
+    const label = get_mind_label_with_icon(mind, parent?.type);
+    path_html += `
+      <a href="?mind=${mind.id}" class="chip mind">
+        ${label}
+      </a>
+      <span class="sep">›</span>
+    `;
+  }
+
+  // Archetype chip
+  const archetype_label = dat.archetype_label;
+  const archetype_icon = '⭕';
+  path_html += `
+    <a href="?archetype=${encodeURIComponent(archetype_label)}" class="chip belief">
+      ${archetype_icon} ${archetype_label} <span class="type">[Archetype]</span>
+    </a>
+    <span class="sep">›</span>
+  `;
+
+  // Trait chip
+  const trait_name = dat.trait_name;
+  path_html += `
+    <span class="chip trait current">
+      ${trait_name}
+    </span>
+  `;
+
+  $path_bar.innerHTML = path_html;
+
+  // Clear state table for archetype trait view
+  $state_table.innerHTML = '';
+
+  // Header
+  $header.innerHTML = `Trait: ${trait_name}`;
+
+  // Main content
+  let main_html = '';
+
+  // Trait value from archetype template
+  main_html += '<section class="trait-value-display"><h2>Template Value</h2>';
+  const template_value = dat.template_value;
+  let display_value = template_value;
+  if (template_value === null) {
+    display_value = '<em>null</em>';
+  } else if (typeof template_value === 'object') {
+    display_value = JSON.stringify(template_value, null, 2);
+  }
+  main_html += `<div class="value-box"><div class="value-content">${display_value}</div></div>`;
+  main_html += '</section>';
+
+  // Traittype metadata (if available)
+  if (dat.traittype_metadata) {
+    main_html += '<section><h2>TraitType Metadata</h2><dl class="compact">';
+    const meta = dat.traittype_metadata;
+    if (meta.label) {
+      main_html += `<dt>Label</dt><dd>${meta.label}</dd>`;
+    }
+    if (meta.data_type) {
+      main_html += `<dt>Data Type</dt><dd>${meta.data_type}</dd>`;
+    }
+    if (meta.composable !== undefined) {
+      main_html += `<dt>Composable</dt><dd>${meta.composable}</dd>`;
+    }
+    if (meta.values) {
+      main_html += `<dt>Values</dt><dd>${JSON.stringify(meta.values)}</dd>`;
+    }
+    if (meta.exposure) {
+      main_html += `<dt>Exposure</dt><dd>${meta.exposure}</dd>`;
+    }
+    if (meta.container) {
+      main_html += `<dt>Container</dt><dd>${meta.container.name || meta.container}</dd>`;
+    }
+    if (meta.mind_scope) {
+      main_html += `<dt>Mind Scope</dt><dd>${meta.mind_scope}</dd>`;
+    }
+    if (meta.constraints && (meta.constraints.min !== null || meta.constraints.max !== null)) {
+      const constraints = [];
+      if (meta.constraints.min !== null) constraints.push(`min: ${meta.constraints.min}`);
+      if (meta.constraints.max !== null) constraints.push(`max: ${meta.constraints.max}`);
+      main_html += `<dt>Constraints</dt><dd>${constraints.join(', ')}</dd>`;
+    }
+    main_html += '</dl></section>';
+  }
+
+  $main.innerHTML = main_html;
+}
+
+/**
+ * Render mind info view
+ * @param {any} dat
+ */
+function render_mind_info(dat){
+  ensure_dom_elements();
+  assert($path_bar, 'path-bar element not found');
+  assert($state_table, 'state-table element not found');
+  assert($header, 'header element not found');
+  assert($main, 'main element not found');
+
+  const mind_data = dat.data;
+
+  // Build path bar from mind hierarchy
+  let path_html = '';
+  const mind_path = dat.mind_path || [];
+  for (let i = 0; i < mind_path.length; i++) {
+    const mind = mind_path[i];
+    const parent = i > 0 ? mind_path[i - 1] : null;
+    const label = get_mind_label_with_icon(mind, parent?.type);
+    const is_current = i === mind_path.length - 1;
+
+    if (i > 0) {
+      path_html += '<span class="sep">›</span>';
+    }
+
+    if (is_current) {
+      // Current mind - highlighted
+      path_html += `
+        <span class="chip mind current">
+          ${label}
+        </span>
+      `;
+    } else {
+      path_html += `
+        <a href="?mind=${mind.id}" class="chip mind">
+          ${label}
+        </a>
+      `;
+    }
+  }
+
+  $path_bar.innerHTML = path_html;
+
+  // Clear state table for mind view
+  $state_table.innerHTML = '';
+
+  // Header
+  $header.innerHTML = dat.desig;
+
+  // Main content
+  let main_html = '';
+
+  // Self (if present)
+  if (mind_data.self_label) {
+    main_html += '<section><h2>Mind Details</h2><dl>';
+    main_html += `<dt>Self</dt><dd>${mind_data.self_label}</dd>`;
+    main_html += '</dl></section>';
+  }
+
+  // Child minds section
+  if (mind_data.child_minds && mind_data.child_minds.length > 0) {
+    main_html += '<section><h2>Child Minds</h2><table class="traits">';
+    main_html += '<tr><th>ID</th><th>Label</th></tr>';
+
+    for (const child of mind_data.child_minds) {
+      let child_label = child.label || `Mind #${child.id}`;
+
+      // Determine icon based on child's type
+      if (child.type === 'Eidos') {
+        child_label = `💠 ${child_label}`;
+      } else if (child.type === 'Materia' && mind_data.type === 'Logos') {
+        // World minds (materia children of logos)
+        child_label = `🌍 ${child_label}`;
+      } else if (child.type === 'Materia' && mind_data.type === 'Eidos') {
+        // Prototype minds (materia children of eidos)
+        child_label = `👤 ${child_label}`;
+      } else if (child.type === 'Materia') {
+        // NPC minds (materia children of materia)
+        child_label = `🔮 ${child_label}`;
+      }
+      const child_link = `<a href="?mind=${child.id}">${child_label}</a>`;
+      main_html += `<tr><td><a href="?mind=${child.id}">#${child.id}</a></td><td>${child_link}</td></tr>`;
+    }
+
+    main_html += '</table></section>';
+  }
+
+  // States section
+  if (mind_data.states && mind_data.states.length > 0) {
+    // Sort states by tt descending (most recent first), handling null tt for timeless minds
+    const sorted_states = [...mind_data.states].sort((a, b) => {
+      const tt_a = a.tt !== null ? a.tt : -Infinity;
+      const tt_b = b.tt !== null ? b.tt : -Infinity;
+      return tt_b - tt_a;
+    });
+
+    main_html += '<section><h2>States</h2><table class="traits">';
+    main_html += '<tr><th>ID</th><th>TT</th><th>VT</th><th>Locked</th><th>Base</th></tr>';
+
+    for (const state of sorted_states) {
+      const state_link = `<a href="?state=${state.id}">#${state.id}</a>`;
+      const tt_display = state.tt !== null ? state.tt : '-';
+      const vt_display = state.vt !== null ? state.vt : '-';
+      const locked_display = state.locked ? '🔒' : '-';
+      const base_display = state.base_id ? `<a href="?state=${state.base_id}">#${state.base_id}</a>` : '-';
+
+      main_html += `<tr>
+        <td>${state_link}</td>
+        <td>${tt_display}</td>
+        <td>${vt_display}</td>
+        <td>${locked_display}</td>
+        <td>${base_display}</td>
+      </tr>`;
+    }
+
+    main_html += '</table></section>';
+  }
+
+  // Raw JSON
+  main_html += `<details><summary>Raw JSON</summary><pre>${JSON.stringify(mind_data, null, 2)}</pre></details>`;
+
+  $main.innerHTML = main_html;
 }
 
 function parse_url(){
@@ -445,8 +992,14 @@ function parse_url(){
 
   if (params.has('mind') && params.has('state')) {
     query = {msg: 'query_mind', mind: params.get('mind'), state_id: params.get('state')};
+  } else if (params.has('mind')) {
+    query = {msg: 'query_mind_info', mind: params.get('mind')};
+  } else if (params.has('belief') && params.has('state') && params.has('trait')) {
+    query = {msg: 'query_trait', belief: params.get('belief'), state_id: params.get('state'), trait: params.get('trait')};
   } else if (params.has('belief') && params.has('state')) {
     query = {msg: 'query_belief', belief: params.get('belief'), state_id: params.get('state')};
+  } else if (params.has('archetype') && params.has('trait')) {
+    query = {msg: 'query_archetype_trait', archetype: params.get('archetype'), trait: params.get('trait')};
   } else if (params.has('archetype')) {
     query = {msg: 'query_archetype', archetype: params.get('archetype')};
   } else if (params.has('state')) {
@@ -460,4 +1013,4 @@ function parse_url(){
 }
 
 // Export for testing
-export { render_entity, render_table };
+export { render_entity };

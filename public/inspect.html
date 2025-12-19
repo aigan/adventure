@@ -1,113 +1,34 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,700;1,400;1,700&display=block" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
-<style>
-body {
-  background: #242;
-  margin: 0;
-}
-
-body > nav {
-	background: grey;
-	padding: .5rem 1rem;
-}
-
-body > header{
-	margin: 1rem;
-}
-
-body > main {
-	margin: 1rem;
-}
-
-body > main > table {
-	border-collapse: collapse;
-
-	td,th{
-		border: thin solid;
-		position: relative;
-
-		a {
-			color: currentColor;
-			text-decoration: none;
-			display: block;
-			box-sizing: border-box;
-			width: 100%;
-			height: 100%;
-			padding: .5rem;
-
-			&:hover {
-				background: DarkSeaGreen;
-			}
-
-			&:active {
-				background: greenyellow;
-			}
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta http-equiv="Cache-Control" content="max-age=0, must-revalidate">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+	<link rel="stylesheet" href="styles.css">
+	<link rel="stylesheet" href="inspect.css">
+	<style>
+		/* Prevent layout shift from font loading */
+		html {
+			font-family: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
 		}
-	}
-}
+		/* Reserve space for main layout areas */
+		.path-bar { min-height: 3.5rem; }
+		.state-table { min-height: 4.5rem; }
+		body > header { min-height: 2rem; }
+	</style>
+</head>
+<body>
 
-body > nav > a {
-	color: black;
-	background: azure;
-	border: thick outset olive;
-	padding: .2rem .5rem;
-	text-decoration: none;
-	display: inline-block;
-
-	&:hover {
-		background: yellow;
-	}
-	&:active {
-		border-style: inset;
-		padding-top: .4rem;
-		padding-bottom: 0rem;
-	}
-}
-
-dl {
-	dt {
-		font-weight: bold;
-		margin-top: 0.5rem;
-	}
-	dd {
-		margin-left: 1.5rem;
-	}
-	dl {
-		margin-left: 0;
-		dd {
-			margin-left: 1rem;
-		}
-	}
-}
-
-pre {
-	background: #111;
-	padding: 0.5rem;
-	border-radius: 0.25rem;
-	overflow-x: auto;
-}
-
-details {
-	margin-top: 1rem;
-	summary {
-		cursor: pointer;
-		font-weight: bold;
-		&:hover {
-			background: #343;
-		}
-	}
-}
-
-</style>
-
-<nav>
-	<a href="?world" class="btn">World</a>
-</nav>
-
+<nav class="path-bar"></nav>
+<div class="state-table"></div>
 <header>Loading...</header>
 <main></main>
 
+<footer class="version"></footer>
+
 <script type="module" src="./inspect.mjs"></script>
+</body>
+</html>

@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-12-19
+
+### Changed
+- **Inspect UI uses Mind type architecture for icon display**
+  - Replaced label-based comparison (`mind.label === 'logos'`) with type-based (`mind.type === 'Logos'`)
+  - Uses Mind._type property ('Logos', 'Eidos', 'Materia') from proper Mind class architecture
+  - Worker `channel.mjs` now includes `type` field in all mind_path and child_minds data
+  - More robust and follows established data model patterns
+
+### Added
+- **Unicode icons for visual mind/belief hierarchy in inspect UI**
+  - Mind breadcrumbs: 🌟 Logos (icon only) | 💠 Eidos | 🌍 world minds | 👤 prototype minds | 🔮 NPC minds
+  - Belief icons: 🌱 for Eidos beliefs | 📍 for Materia beliefs
+  - Icons appear in breadcrumb navigation, child minds table, and beliefs list
+  - Helps distinguish mind types and belief contexts at a glance
+
+### Refactored
+- **Extracted duplicated icon selection logic** into `get_mind_label_with_icon()` helper function
+  - Eliminated ~60 lines of code duplication across 3 render functions
+  - Single source of truth for mind icon/label formatting
+  - Improved maintainability and consistency
+
 ## 2025-12-16
 
 ### Added

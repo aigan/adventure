@@ -806,28 +806,57 @@ export class Belief {
       parts.push(label)
     }
 
+    // Walk bases breadth-first, stop at first named prototype or archetypes
+    /** @type {Archetype[]} */
     const edge_archetypes = []
+    /** @type {Belief[]} */
+    const queue = [this]
     const seen = new Set()
-    /** @type {Belief[]} */ const bases_to_check = [this]
 
-    while (bases_to_check.length > 0) {
-      const base = /** @type {Belief} */ (bases_to_check.shift())
-      if (seen.has(base)) continue
-      seen.add(base)
+    while (queue.length > 0 && edge_archetypes.length === 0) {
+      const current = /** @type {Belief} */ (queue.shift())
+      if (!current || seen.has(current)) continue
+      seen.add(current)
 
-      for (const b of base._bases) {
+      for (const b of current._bases) {
         if (b instanceof Archetype) {
           edge_archetypes.push(b)
         } else if (b instanceof Belief) {
-          bases_to_check.push(b)
+          // Stop at named prototypes
+          if (b.is_shared && b.get_label()) {
+            for (const archetype of b._bases) {
+              if (archetype instanceof Archetype) edge_archetypes.push(archetype)
+            }
+          } else {
+            queue.push(b)
+          }
         }
       }
-
-      if (edge_archetypes.length > 0) break
     }
 
     if (edge_archetypes.length > 0) {
-      parts.push(`[${edge_archetypes.map(a => a.label).join(', ')}]`)
+      // Filter to keep only "leaf" archetypes - remove any that are bases of others in the list
+      const leaf_archetypes = edge_archetypes.filter(archetype => {
+        // Check if this archetype is a base of any other archetype in the list
+        return !edge_archetypes.some(other => {
+          if (other === archetype) return false
+          // Walk other's bases to see if archetype appears
+          const queue = [other]
+          const seen = new Set()
+          while (queue.length > 0) {
+            const current = queue.shift()
+            if (!current || seen.has(current)) continue
+            seen.add(current)
+            if (current === archetype) return true
+            for (const base of current._bases) {
+              if (base instanceof Archetype) queue.push(base)
+            }
+          }
+          return false
+        })
+      })
+
+      parts.push(`[${leaf_archetypes.map(a => a.label).join(', ')}]`)
     }
 
     // Include subject label if this belief is about something

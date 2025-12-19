@@ -1,0 +1,438 @@
+/* Inspect-specific styles (extends styles.css) */
+
+/* Override body background for inspect */
+body {
+	background: #242;
+	margin: 0;
+}
+
+/* Remove underline hover, use background highlights instead */
+a:hover {
+	text-decoration: none;
+}
+
+/* Default link hover - subtle background highlight */
+a {
+	padding: 0.15rem 0.3rem;
+	margin: -0.15rem -0.3rem;
+	border-radius: 3px;
+	transition: background 0.15s;
+}
+
+a:hover {
+	background: color-mix(in srgb, var(--color-link) 15%, transparent);
+}
+
+/* Header - more prominent */
+body > header {
+	margin: 1.5rem 1.5rem 0;
+	font-size: 1.2rem;
+}
+
+/* Path bar (also serves as nav) */
+.path-bar {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	padding: 1rem 1.5rem;
+	background: #2a3a2a;
+	border-bottom: 1px solid #4a5a4a;
+}
+
+.path-bar .sep {
+	color: #686;
+}
+
+/* Chips */
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.35rem 0.65rem;
+	margin: 0;
+	border-radius: 4px;
+	text-decoration: none;
+	border: 1px solid transparent;
+}
+
+.chip.mind {
+	color: var(--color-link);
+	background: color-mix(in srgb, var(--color-link) 10%, transparent);
+	border-color: color-mix(in srgb, var(--color-link) 30%, transparent);
+	transition: background 0.15s, border-color 0.15s;
+}
+
+.chip.mind:hover {
+	background: color-mix(in srgb, var(--color-link) 20%, transparent) !important;
+	border-color: color-mix(in srgb, var(--color-link) 45%, transparent);
+}
+
+.chip.mind.current {
+	background: color-mix(in srgb, var(--color-link) 18%, transparent);
+	border-color: color-mix(in srgb, var(--color-link) 50%, transparent);
+}
+
+.chip.mind.current:hover {
+	background: color-mix(in srgb, var(--color-link) 25%, transparent) !important;
+	border-color: color-mix(in srgb, var(--color-link) 60%, transparent);
+}
+
+.chip.belief {
+	color: #9d9;
+	background: color-mix(in srgb, #9d9 10%, transparent);
+	border-color: color-mix(in srgb, #9d9 30%, transparent);
+	transition: background 0.15s, border-color 0.15s;
+}
+
+.chip.belief:hover {
+	background: color-mix(in srgb, #9d9 20%, transparent) !important;
+	border-color: color-mix(in srgb, #9d9 45%, transparent);
+}
+
+.chip.belief.current {
+	background: color-mix(in srgb, #9d9 18%, transparent);
+	border-color: color-mix(in srgb, #9d9 50%, transparent);
+}
+
+.chip.belief.current:hover {
+	background: color-mix(in srgb, #9d9 25%, transparent) !important;
+	border-color: color-mix(in srgb, #9d9 60%, transparent);
+}
+
+.chip .vt,
+.chip .type {
+	color: #797;
+}
+
+/* Badge */
+.badge {
+	margin-left: auto;
+	padding: 0.2rem 0.5rem;
+	font-size: 0.8rem;
+	font-weight: 600;
+	border-radius: 3px;
+}
+
+.badge.mutable {
+	color: #fa0;
+	border: 1px solid #fa0;
+	background: color-mix(in srgb, #fa0 15%, transparent);
+}
+
+/* State table */
+.state-table {
+	display: grid;
+	grid-template-columns: 1fr 1.5fr 1fr;
+	background: #2a3a2a;
+	border-bottom: 1px solid #4a5a4a;
+}
+
+.state-table > div {
+	padding: 0.75rem 1.5rem;
+}
+
+.state-table > div + div {
+	border-left: 1px solid #4a5a4a;
+}
+
+.state-table > .current {
+	background: #354535;
+}
+
+.col-header {
+	color: #797;
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	margin-bottom: 0.5rem;
+}
+
+.states {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.state-chip {
+	padding: 0.3rem 0.6rem;
+	margin: 0;
+	background: #354035;
+	border-radius: 4px;
+	color: var(--color-link);
+	text-decoration: none;
+	transition: background 0.15s;
+}
+
+.state-chip:hover {
+	background: #405040 !important;
+}
+
+.state-chip.active {
+	background: var(--color-link);
+	color: #222;
+	font-weight: 600;
+}
+
+/* Main content */
+body > main {
+	margin: 1.5rem;
+}
+
+main section {
+	background: #2a3a2a;
+	border: 1px solid #4a5a4a;
+	border-radius: 8px;
+	padding: 1.25rem;
+	margin-bottom: 1.25rem;
+}
+
+section h2 {
+	color: #aa9;
+	font-size: 0.85rem;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	margin: 0 0 1rem 0;
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid #4a5a4a;
+}
+
+/* Definition lists */
+dl {
+	dt {
+		font-weight: bold;
+		margin-top: 0.75rem;
+
+		&:first-child {
+			margin-top: 0;
+		}
+	}
+	dd {
+		margin-left: 1.5rem;
+		margin-top: 0.25rem;
+	}
+}
+
+.vt {
+	color: #797;
+	font-size: 0.9em;
+}
+
+/* Traits table */
+table.traits {
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0 0.25rem;
+}
+
+table.traits th,
+table.traits td {
+	padding: 0.6rem 1rem;
+	text-align: left;
+}
+
+table.traits tr {
+	position: relative;
+	background: #313d31;
+	border-radius: 4px;
+}
+
+table.traits tr:hover {
+	background: #3a4a3a;
+}
+
+table.traits th {
+	width: 9rem;
+	font-weight: 600;
+	color: #fb8;
+	border-left: 3px solid #fb8;
+	border-radius: 4px 0 0 4px;
+}
+
+table.traits th a {
+	color: #fb8;
+	text-decoration: none;
+}
+
+table.traits th a::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+}
+
+table.traits td {
+	border-radius: 0 4px 4px 0;
+}
+
+/* Beliefs list table - wider first column, expanding description */
+table.traits.beliefs-list th:first-child,
+table.traits.beliefs-list td:first-child {
+	width: 20rem;
+	white-space: nowrap;
+}
+
+table.traits.beliefs-list th:last-child,
+table.traits.beliefs-list td:last-child {
+	width: auto;
+}
+
+table.traits td a {
+	padding: 0;
+	margin: 0;
+	color: var(--color-link);
+	text-decoration: none;
+}
+
+table.traits td a::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+}
+
+table.traits td a:hover {
+	color: var(--color-link-hover);
+	background: transparent !important;
+}
+
+/* Meta-traits (@about, @form, etc.) */
+table.traits tr.meta {
+	background: #2a332a;
+}
+
+table.traits tr.meta:hover {
+	background: #333d33;
+}
+
+table.traits tr.meta th {
+	color: #8a8;
+	border-left-color: #686;
+	font-weight: 500;
+}
+
+/* Details */
+details {
+	margin-top: 1.25rem;
+
+	summary {
+		cursor: pointer;
+		font-weight: bold;
+		padding: 0.5rem 0.75rem;
+		border-radius: 4px;
+
+		&:hover {
+			background: #343;
+		}
+	}
+}
+
+pre {
+	background: #111;
+	padding: 1rem;
+	border-radius: 4px;
+	overflow-x: auto;
+	margin-top: 0.75rem;
+}
+
+/* Version display in corner */
+footer.version {
+	position: fixed;
+	bottom: 0.5rem;
+	right: 0.5rem;
+	color: #686;
+	font-size: 0.7rem;
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+/* Trait chip styles */
+.chip.trait {
+	background: color-mix(in srgb, #fb8 10%, transparent);
+	border-color: color-mix(in srgb, #fb8 30%, transparent);
+	color: #fb8;
+}
+
+.chip.trait.current {
+	background: color-mix(in srgb, #fb8 18%, transparent);
+	border-color: color-mix(in srgb, #fb8 50%, transparent);
+}
+
+.chip.trait .chip-value {
+	color: var(--color-text);
+	font-weight: normal;
+	padding-left: 0.3rem;
+	border-left: 1px solid #555;
+	margin-left: 0.2rem;
+}
+
+/* Trait value display section */
+.trait-value-display .value-box {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	padding: 1rem;
+	background: #2a3a2a;
+	border-radius: 4px;
+	border-left: 3px solid #fb8;
+}
+
+.value-content {
+	font-size: 1.5rem;
+	font-weight: 600;
+}
+
+/* Trait history */
+.history-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.history-item {
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	gap: 1rem;
+	padding: 0.4rem 0.6rem;
+	border-radius: 3px;
+	background: #2a3a2a;
+}
+
+.history-item.current {
+	background: color-mix(in srgb, #fb8 15%, #2a3a2a);
+}
+
+.history-state {
+	font-size: 0.85em;
+}
+
+.history-value {
+	color: var(--color-text);
+}
+
+.history-vt {
+	font-size: 0.75em;
+	color: #797;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Compact definition lists */
+dl.compact {
+	margin: 0;
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 0.25rem 1rem;
+}
+
+dl.compact dt {
+	color: #797;
+	font-weight: normal;
+}
+
+dl.compact dd {
+	margin: 0;
+}
+
+.source-note {
+	color: #888;
+	font-size: 0.85em;
+}

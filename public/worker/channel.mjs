@@ -4,7 +4,9 @@ import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
 import { Archetype } from './archetype.mjs'
+import { Traittype } from './traittype.mjs'
 import { Session } from './session.mjs'
+import { logos } from './logos.mjs'
 
 /** @type {BroadcastChannel|null} */
 let channel = null
@@ -77,6 +79,27 @@ export const dispatch = {
 			})
 		}
 
+		// Build mind path from world to current mind
+		// Each entry includes the mind's own state (via ground_state chain)
+		/** @type {{id: number, label: string|null, type: string, vt: number|null, state_id: number}[]} */
+		const mind_path = []
+		/** @type {Mind|null|undefined} */
+		let path_mind = mind_obj
+		/** @type {State|null|undefined} */
+		let path_state = state
+		while (path_mind && path_state) {
+			mind_path.unshift({
+				id: path_mind._id,
+				label: path_mind.label,
+				type: path_mind._type,
+				vt: path_state.vt,
+				state_id: path_state._id,
+			})
+			// Walk up to parent mind via ground_state
+			path_state = path_state.ground_state
+			path_mind = path_mind._parent
+		}
+
 		const state_info = /** @type {{id: number, tt: number, vt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
 			id: state._id,
 			tt: state.tt,
@@ -98,6 +121,7 @@ export const dispatch = {
 			server_id,
 			client_id,
 			state: state_info,
+			mind_path,
 		})
 	},
 
@@ -116,6 +140,27 @@ export const dispatch = {
 				label: belief.get_label(),
 				desig: belief.sysdesig(state_obj),
 			})
+		}
+
+		// Build mind path from world to current mind
+		// Each entry includes the mind's own state (via ground_state chain)
+		/** @type {{id: number, label: string|null, type: string, vt: number|null, state_id: number}[]} */
+		const mind_path = []
+		/** @type {Mind|null|undefined} */
+		let path_mind = state_obj.in_mind
+		/** @type {State|null|undefined} */
+		let path_state = state_obj
+		while (path_mind && path_state) {
+			mind_path.unshift({
+				id: path_mind._id,
+				label: path_mind.label,
+				type: path_mind._type,
+				vt: path_state.vt,
+				state_id: path_state._id,
+			})
+			// Walk up to parent mind via ground_state
+			path_state = path_state.ground_state
+			path_mind = path_mind._parent
 		}
 
 		const state_info = /** @type {{id: number, tt: number, vt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
@@ -139,6 +184,7 @@ export const dispatch = {
 			server_id,
 			client_id,
 			state: state_info,
+			mind_path,
 		})
 	},
 
@@ -171,6 +217,50 @@ export const dispatch = {
 			})
 		}
 
+		// Build mind path from world to current mind
+		// Each entry includes the mind's own state (via ground_state chain)
+		/** @type {{id: number, label: string|null, type: string, vt: number|null, state_id: number}[]} */
+		const mind_path = []
+		/** @type {Mind|null|undefined} */
+		let path_mind = belief_obj.in_mind
+		/** @type {State|null|undefined} */
+		let path_state = state
+		while (path_mind && path_state) {
+			mind_path.unshift({
+				id: path_mind._id,
+				label: path_mind.label,
+				type: path_mind._type,
+				vt: path_state.vt,
+				state_id: path_state._id,
+			})
+			// Walk up to parent mind via ground_state
+			path_state = path_state.ground_state
+			path_mind = path_mind._parent
+		}
+
+		// Find sibling states at same vt
+		/** @type {{id: number, is_current: boolean}[]} */
+		const sibling_states = []
+		const mind = state.in_mind
+		for (const s of mind._states) {
+			if (s.vt === state.vt) {
+				sibling_states.push({
+					id: s._id,
+					is_current: s._id === state._id,
+				})
+			}
+		}
+		sibling_states.sort((a, b) => a.id - b.id)
+
+		// Get parent states (base chain)
+		/** @type {number[]} */
+		const parent_state_ids = []
+		let base_state = state.base
+		while (base_state) {
+			parent_state_ids.push(base_state._id)
+			base_state = base_state.base
+		}
+
 		const response = {
 			msg: "world_entity",
 			server_id,
@@ -178,7 +268,12 @@ export const dispatch = {
 			state_id: state._id,
 			state_tt: state.tt,
 			state_vt: state.vt,
+			state_locked: state.locked,
 			ground_state_id: state.ground_state?._id ?? null,
+			branch_ids: state.get_branches().map(b => b._id),
+			parent_state_ids,
+			sibling_states,
+			mind_path,
 			data: {
 				data: belief_obj.to_inspect_view(state),
 				rev_traits,
@@ -189,6 +284,121 @@ export const dispatch = {
 		};
 
 		//log('response', response)
+
+		(/** @type {BroadcastChannel} */ (channel)).postMessage(response)
+	},
+
+	/** @param {{belief: string|number, state_id: string|number, trait: string, client_id: number}} param0 */
+	query_trait({belief, state_id, trait, client_id}){
+		const belief_id = Number(belief)
+		const belief_obj = DB.get_belief_by_id(belief_id)
+		assert(belief_obj instanceof Belief, `Belief not found: ${belief_id}`)
+
+		const state_id_num = Number(state_id)
+		const state = DB.get_state(state_id_num)
+		assert(state instanceof State, `State not found: ${state_id}`)
+
+		// Build mind path
+		/** @type {{id: number, label: string|null, type: string, vt: number|null, state_id: number}[]} */
+		const mind_path = []
+		/** @type {Mind|null|undefined} */
+		let path_mind = belief_obj.in_mind
+		/** @type {State|null|undefined} */
+		let path_state = state
+		while (path_mind && path_state) {
+			mind_path.unshift({
+				id: path_mind._id,
+				label: path_mind.label,
+				type: path_mind._type,
+				vt: path_state.vt,
+				state_id: path_state._id,
+			})
+			path_state = path_state.ground_state
+			path_mind = path_mind._parent
+		}
+
+		// Get current trait value
+		// Try to get traittype - if it doesn't exist, access trait directly
+		const traittype = Traittype.get_by_label(trait)
+		const current_value = traittype ? belief_obj.get_trait(state, traittype) : belief_obj._traits.get(trait)
+
+		// Find trait source (own vs inherited)
+		let source = 'inherited'
+		let source_belief_id = belief_obj._id
+		if (Object.prototype.hasOwnProperty.call(belief_obj._traits, trait)) {
+			source = 'own'
+		} else {
+			// Walk base chain to find where it's defined
+			for (const base of belief_obj._bases) {
+				if (base instanceof Belief && Object.prototype.hasOwnProperty.call(base._traits, trait)) {
+					source_belief_id = base._id
+					break
+				}
+			}
+		}
+
+		// Build value history by walking state chain
+		/** @type {Array<{state_id: number, vt: number|null, value: any, is_current: boolean}>} */
+		const history = []
+		/** @type {State|null} */
+		let walk_state = state
+		const seen_states = new Set()
+		while (walk_state && history.length < 20) {
+			if (seen_states.has(walk_state._id)) break
+			seen_states.add(walk_state._id)
+
+			const value = traittype ? belief_obj.get_trait(walk_state, traittype) : belief_obj._traits.get(trait)
+			history.push({
+				state_id: walk_state._id,
+				vt: walk_state.vt,
+				value,
+				is_current: walk_state._id === state._id,
+			})
+
+			walk_state = walk_state.base
+		}
+
+		// Get state navigation (same as query_belief)
+		const sibling_states = []
+		const mind = state.in_mind
+		for (const s of mind._states) {
+			if (s.vt === state.vt) {
+				sibling_states.push({
+					id: s._id,
+					is_current: s._id === state._id,
+				})
+			}
+		}
+		sibling_states.sort((a, b) => a.id - b.id)
+
+		const parent_state_ids = []
+		let base_state = state.base
+		while (base_state) {
+			parent_state_ids.push(base_state._id)
+			base_state = base_state.base
+		}
+
+		/** @type {any} */
+		const response = {
+			msg: "trait_view",
+			server_id,
+			client_id,
+			belief_id: belief_obj._id,
+			belief_label: belief_obj.get_label(),
+			belief_desig: belief_obj.sysdesig(state),
+			state_id: state._id,
+			state_vt: state.vt,
+			state_locked: state.locked,
+			branch_ids: state.get_branches().map(b => b._id),
+			parent_state_ids,
+			sibling_states,
+			mind_path,
+			trait_name: trait,
+			current_value,
+			source,
+			source_belief_id,
+			history,
+		};
 
 		(/** @type {BroadcastChannel} */ (channel)).postMessage(response)
 	},
@@ -246,16 +456,156 @@ export const dispatch = {
 			traits[traittype.label] = formatted_value
 		}
 
+		// Build mind path with Logos as navigation home
+		const mind_path = []
+		const logos_mind = logos()
+		if (logos_mind) {
+			mind_path.push({
+				id: logos_mind._id,
+				label: logos_mind.label,
+				type: logos_mind._type,
+				vt: null,
+				state_id: null,
+			})
+		}
+
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "archetype_info",
 			server_id,
 			client_id,
+			mind_path,
 			data: {
 				label: archetype_obj.label,
 				bases: [...archetype_obj._bases].map(b => ({label: b.label})),
 				traits: traits,
 			},
 			desig: archetype_obj.sysdesig(),
+		})
+	},
+
+	/** @param {{archetype: string, trait: string, client_id: number}} param0 */
+	query_archetype_trait({archetype, trait, client_id}) {
+		const archetype_obj = Archetype.get_by_label(archetype)
+		assert(archetype_obj instanceof Archetype, `Archetype not found: ${archetype}`)
+
+		// Get traittype
+		const traittype = Traittype.get_by_label(trait)
+
+		// Get template value from archetype
+		let template_value = null
+		if (traittype) {
+			template_value = archetype_obj._traits_template.get(traittype)
+		}
+
+		// Build traittype metadata
+		/** @type {any} */
+		let traittype_metadata = null
+		if (traittype) {
+			traittype_metadata = {
+				label: traittype.label,
+				data_type: traittype.data_type,
+				composable: traittype.composable,
+				values: traittype.values,
+				exposure: traittype.exposure,
+				container: traittype.container,
+				mind_scope: traittype.mind_scope,
+				constraints: traittype.constraints,
+			}
+		}
+
+		// Build mind path with Logos as navigation home
+		const mind_path = []
+		const logos_mind = logos()
+		if (logos_mind) {
+			mind_path.push({
+				id: logos_mind._id,
+				label: logos_mind.label,
+				type: logos_mind._type,
+				vt: null,
+				state_id: null,
+			})
+		}
+
+		(/** @type {BroadcastChannel} */ (channel)).postMessage({
+			msg: "archetype_trait_view",
+			server_id,
+			client_id,
+			mind_path,
+			archetype_label: archetype_obj.label,
+			trait_name: trait,
+			template_value,
+			traittype_metadata,
+		})
+	},
+
+	/** @param {{mind: string|number, client_id: number}} param0 */
+	query_mind_info({mind, client_id}) {
+		// Accept mind id (numeric string) or label (string)
+		const mind_str = String(mind)
+		const mind_obj = /^\d+$/.test(mind_str)
+			? Mind.get_by_id(Number(mind_str))
+			: Mind.get_by_label(mind_str)
+
+		assert(mind_obj instanceof Mind, `Mind not found: ${mind}`)
+
+		// Build mind path from world to current mind
+		/** @type {{id: number, label: string|null, type: string}[]} */
+		const mind_path = []
+		/** @type {Mind|null|undefined} */
+		let path_mind = mind_obj
+		while (path_mind) {
+			mind_path.unshift({
+				id: path_mind._id,
+				label: path_mind.label,
+				type: path_mind._type,
+			})
+			path_mind = path_mind._parent
+		}
+
+		// Get child minds
+		const child_minds = []
+		const registries = /** @type {{mind_by_id: Map<number, Mind>}} */ (DB._reflect())
+		for (const child of registries.mind_by_id.values()) {
+			if (child._parent === mind_obj) {
+				child_minds.push({
+					id: child._id,
+					label: child.label,
+					type: child._type,
+				})
+			}
+		}
+
+		// Get states belonging to this mind
+		const states = []
+		for (const state of mind_obj._states) {
+			states.push({
+				id: state._id,
+				tt: state.tt,
+				vt: state.vt,
+				locked: state.locked,
+				base_id: state.base?._id ?? null,
+			})
+		}
+		// Client will handle sorting
+
+		(/** @type {BroadcastChannel} */ (channel)).postMessage({
+			msg: "mind_info",
+			server_id,
+			client_id,
+			data: {
+				id: mind_obj._id,
+				label: mind_obj.label,
+				type: mind_obj._type,
+				parent: mind_obj._parent ? {
+					id: mind_obj._parent._id,
+					label: mind_obj._parent.label,
+				} : null,
+				self_label: mind_obj.self?.get_label(),
+				child_minds,
+				states,
+			},
+			mind_path,
+			desig: mind_obj.sysdesig(),
 		})
 	},
 }

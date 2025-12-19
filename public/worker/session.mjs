@@ -40,7 +40,7 @@ export class Session {
     this._channel = null
     /** @type {Set<number>} Dirty state IDs pending notification */
     this._dirty_states = new Set()
-    /** @type {number|null} Debounce timer ID */
+    /** @type {ReturnType<typeof setTimeout>|null} Debounce timer ID */
     this._debounce_timer = null
 
     if (world_mind) {

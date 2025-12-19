@@ -74,3 +74,14 @@ dialog[disabled] {
 dialog::backdrop, dialog + .backdrop {
   background: var(--color-backdrop);
 }
+
+/* Version display in corner */
+footer.version {
+  position: fixed;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  color: #686;
+  font-size: 0.7rem;
+  opacity: 0.5;
+  pointer-events: none;
+}
