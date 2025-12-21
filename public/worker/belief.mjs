@@ -742,10 +742,7 @@ export class Belief {
    * @param {State} state - State context being locked
    */
   lock(state) {
-    assert(state._insert.includes(this),
-      'Cannot lock belief not in state._insert',
-      {belief_id: this._id, label: this.get_label(), state_id: state._id})
-
+    // Note: Removed O(n) includes() check - callers guarantee belief is in _insert
     // Validate Subject trait values before locking
     this._validate_subject_traits(state)
 

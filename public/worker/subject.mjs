@@ -228,8 +228,7 @@ export class Subject {
    *
    * Note: Timeless shared beliefs have get_tt() === -Infinity, so they're always included
    *
-   * TODO: Refactor to walk tree from starting belief instead of scanning all versions
-   * Current: O(n²) over all belief versions - doesn't scale to millions of versions per subject
+   * Optimized: O(n × depth) via ancestor-set approach instead of O(n²) pairwise checks
    * Future approach: Walk from branch tips or given starting belief
    * Future: Event saving with time/space-based archival for billions of belief versions
    * @param {number} tt - Transaction time to query at
@@ -237,17 +236,29 @@ export class Subject {
    */
   *beliefs_at_tt(tt) {
     // Get all beliefs with tt <= target
-    const valid_beliefs = [...this.beliefs].filter(b => b.get_tt() <= tt)
+    const valid = [...this.beliefs].filter(b => b.get_tt() <= tt)
+    const valid_set = new Set(valid)
 
-    // Yield beliefs that have no descendants in the valid set
-    for (const belief of valid_beliefs) {
-      const has_descendant = valid_beliefs.some(other =>
-        other !== belief && _has_base_in_chain(other, belief)
-      )
-
-      if (!has_descendant) {
-        yield belief
+    // Build set of ancestors that are also in valid set (these are "shadowed")
+    // O(n × depth) instead of O(n²)
+    const shadowed = new Set()
+    for (const belief of valid) {
+      // Walk all bases (BFS) - beliefs can have multiple inheritance
+      const queue = [...belief._bases]
+      const seen = new Set()
+      while (queue.length > 0) {
+        const base = queue.shift()
+        if (!(base instanceof Belief)) continue  // Skip archetypes
+        if (seen.has(base)) continue
+        seen.add(base)
+        if (valid_set.has(base)) shadowed.add(base)
+        queue.push(...base._bases)
       }
+    }
+
+    // Yield beliefs that aren't shadowed (branch tips)
+    for (const belief of valid) {
+      if (!shadowed.has(belief)) yield belief
     }
   }
 

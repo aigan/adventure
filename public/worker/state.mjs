@@ -625,24 +625,16 @@ export class State {
       return null
     }
 
-    // Locked state - search and cache as we go (progressive indexing)
+    // Locked state - build full index on first miss (O(n) once, then O(1))
+    // Note: Progressive indexing with early termination was O(unique_subjects × n)
     if (!this._subject_index) {
       this._subject_index = new Map()
-    }
-
-    for (const belief of this.get_beliefs()) {
-      // Cache each belief we encounter
-      if (!this._subject_index.has(belief.subject)) {
+      for (const belief of this.get_beliefs()) {
         this._subject_index.set(belief.subject, belief)
       }
-
-      // Found it? Return immediately (early termination)
-      if (belief.subject === subject) {
-        return belief
-      }
     }
 
-    return null
+    return this._subject_index.get(subject) ?? null
   }
 
   /**

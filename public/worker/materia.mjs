@@ -66,8 +66,7 @@ export class Materia extends Mind {
    * Yields the outermost state on each branch at or before the given tt
    * (states that have no descendants also at or before the tt)
    *
-   * TODO: Refactor to walk tree from starting state instead of scanning all states
-   * Current: O(n²) over all states in mind - doesn't scale to millions of states
+   * Optimized: O(n × depth) via ancestor-set approach instead of O(n²) pairwise checks
    * Future approach: Walk from branch tips or given starting state
    * Future: Event saving with time/space-based archival for billions of states
    * @param {number} tt - Transaction time to query at
@@ -77,17 +76,23 @@ export class Materia extends Mind {
     if (this._states.size === 0) return
 
     // Get all states with tt <= target (exclude timeless states with tt=null)
-    const valid_states = [...this._states].filter(s => s.tt != null && s.tt <= tt)
+    const valid = [...this._states].filter(s => s.tt != null && s.tt <= tt)
+    const valid_set = new Set(valid)
 
-    // Yield states that have no descendants in the valid set
-    for (const state of valid_states) {
-      const has_descendant = valid_states.some(other =>
-        other !== state && _has_base_in_chain(other, state)
-      )
-
-      if (!has_descendant) {
-        yield state
+    // Build set of ancestors that are in valid set (these are "shadowed")
+    // O(n × depth) instead of O(n²)
+    const shadowed = new Set()
+    for (const state of valid) {
+      let current = state.base
+      while (current) {
+        if (valid_set.has(current)) shadowed.add(current)
+        current = current.base
       }
+    }
+
+    // Yield states that aren't shadowed (branch tips)
+    for (const state of valid) {
+      if (!shadowed.has(state)) yield state
     }
   }
 
