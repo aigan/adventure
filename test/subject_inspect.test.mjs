@@ -1,9 +1,9 @@
 import { expect } from 'chai'
-import { learn_about } from '../public/worker/perception.mjs';
-import { setupStandardArchetypes, createMindWithBeliefs, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs'
 import { Mind, Materia, Traittype } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
+import { learn_about } from '../public/worker/perception.mjs'
+import { setupStandardArchetypes, createMindWithBeliefs, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs'
 
 describe('Subject.to_inspect_view()', () => {
   beforeEach(() => {
@@ -28,7 +28,8 @@ describe('Subject.to_inspect_view()', () => {
       _type: 'Belief',
       label: 'workshop',
       mind_id: workshop.in_mind._id,
-      mind_label: 'world'
+      mind_label: 'world',
+      state_id: world_state._id  // Includes state used to resolve
     })
   })
 
@@ -155,10 +156,14 @@ describe('Subject.to_inspect_view()', () => {
     // Create a different mind without the workshop
     const other_state = createStateInNewMind('other')
 
-    // Trying to inspect workshop.subject in other_state should fail
-    expect(() => {
-      workshop.subject.to_inspect_view(other_state)
-    }).to.throw('Subject must have belief in state or shared beliefs')
+    // Inspecting workshop.subject in other_state returns placeholder (not visible in that state)
+    const inspected = workshop.subject.to_inspect_view(other_state)
+    expect(inspected).to.deep.include({
+      _ref: null,
+      _type: 'Subject',
+      _unavailable: true,
+      sid: workshop.subject.sid
+    })
   })
 
   it('handles root state without ground_state', () => {
@@ -202,5 +207,30 @@ describe('Subject.to_inspect_view()', () => {
       label: 'workshop',
       mind_label: 'world'
     })
+  })
+
+  it('cross-mind reference includes state_id for proper linking', () => {
+    // When viewing an NPC belief that references a world belief via @about,
+    // the @about reference should include the world state_id, not the NPC state_id
+    const world_state = createMindWithBeliefs('world', {
+      workshop: { bases: ['Location'] }
+    })
+    const workshop = world_state.get_belief_by_label('workshop')
+
+    const npc_mind = new Materia(world_state.in_mind, 'npc')
+    const npc_state = npc_mind.create_state(world_state)
+    const workshop_knowledge = learn_about(npc_state, workshop, {traits: []})
+
+    // Full inspection of NPC belief
+    const inspected = workshop_knowledge.to_inspect_view(npc_state)
+
+    // @about should include world_state._id (not npc_state._id)
+    // This enables the UI to link to the correct state when clicking cross-mind references
+    const about_ref = inspected.traits['@about']
+    expect(about_ref.state_id).to.equal(world_state._id)
+    expect(about_ref.mind_id).to.equal(world_state.in_mind._id)
+
+    // The NPC belief itself has NPC mind/state
+    expect(npc_state._id).to.not.equal(world_state._id)
   })
 })

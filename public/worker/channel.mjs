@@ -8,6 +8,10 @@ import { Traittype } from './traittype.mjs'
 import { Session } from './session.mjs'
 import { logos } from './logos.mjs'
 
+// Version stamp for debugging cache issues
+const CHANNEL_VERSION = '2024-12-21-v2'
+log('[channel.mjs]', CHANNEL_VERSION)
+
 /** @type {BroadcastChannel|null} */
 let channel = null
 let client_id_sequence = 0 // Client id
@@ -38,7 +42,8 @@ export const dispatch = {
 		assert(session instanceof Session, 'session not initialized')
 		assert(session.world, 'session.world not initialized')
 		assert(session.state, 'session.state not initialized');
-		(/** @type {BroadcastChannel} */ (channel)).postMessage({
+
+    (/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "adventure_info",
 			server_id,
 			client_id,
@@ -96,8 +101,16 @@ export const dispatch = {
 				state_id: path_state._id,
 			})
 			// Walk up to parent mind via ground_state
-			path_state = path_state.ground_state
-			path_mind = path_mind._parent
+			// Validate that ground_state belongs to parent mind before using it
+			/** @type {State|null|undefined} */
+			const next_state = path_state.ground_state
+			/** @type {Mind|null|undefined} */
+			const next_mind = path_mind._parent
+			if (next_state && next_mind && next_state.in_mind !== next_mind) {
+				break // FIXME: use assert and fix any bug that would trigger the assert
+			}
+			path_state = next_state
+			path_mind = next_mind
 		}
 
 		const state_info = /** @type {{id: number, tt: number, vt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
@@ -159,8 +172,16 @@ export const dispatch = {
 				state_id: path_state._id,
 			})
 			// Walk up to parent mind via ground_state
-			path_state = path_state.ground_state
-			path_mind = path_mind._parent
+			// Validate that ground_state belongs to parent mind before using it
+			/** @type {State|null|undefined} */
+			const next_state = path_state.ground_state
+			/** @type {Mind|null|undefined} */
+			const next_mind = path_mind._parent
+			if (next_state && next_mind && next_state.in_mind !== next_mind) {
+				break // FIXME: use assert and fix any bug that would trigger the assert
+			}
+			path_state = next_state
+			path_mind = next_mind
 		}
 
 		const state_info = /** @type {{id: number, tt: number, vt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
@@ -202,21 +223,6 @@ export const dispatch = {
 
 		assert(state instanceof State, `State not found: ${state_id}`)
 
-		// Build rev_traits object from rev_traits generator
-		/** @type {Record<string, any[]>} */
-		const rev_traits = {}
-		for (const [traittype, ref_belief] of belief_obj.rev_traits(state)) {
-			const label = traittype.label
-			if (!rev_traits[label]) rev_traits[label] = []
-			rev_traits[label].push({
-				_type: 'Belief',
-				_ref: ref_belief._id,
-				label: ref_belief.get_label(),
-				mind_id: ref_belief.in_mind?._id,
-				mind_label: ref_belief.in_mind?.label,
-			})
-		}
-
 		// Build mind path from world to current mind
 		// Each entry includes the mind's own state (via ground_state chain)
 		/** @type {{id: number, label: string|null, type: string, vt: number|null, state_id: number}[]} */
@@ -234,8 +240,23 @@ export const dispatch = {
 				state_id: path_state._id,
 			})
 			// Walk up to parent mind via ground_state
-			path_state = path_state.ground_state
-			path_mind = path_mind._parent
+			// Validate that ground_state belongs to parent mind before using it
+			/** @type {State|null|undefined} */
+			const next_state = path_state.ground_state
+			/** @type {Mind|null|undefined} */
+			const next_mind = path_mind._parent
+			if (next_state && next_mind && next_state.in_mind !== next_mind) {
+				// ground_state doesn't match parent mind - stop walking
+				log('Warning: ground_state mismatch', {
+					state: path_state._id,
+					ground_state: next_state._id,
+					ground_state_mind: next_state.in_mind?._id,
+					expected_mind: next_mind._id
+				})
+				break
+			}
+			path_state = next_state
+			path_mind = next_mind
 		}
 
 		// Find sibling states at same vt
@@ -261,6 +282,47 @@ export const dispatch = {
 			base_state = base_state.base
 		}
 
+		// Check if belief existed at this state's vt
+		const belief_created_vt = belief_obj.origin_state?.vt ?? null
+		if (belief_created_vt !== null && state.vt !== null && state.vt < belief_created_vt) {
+			// Return response with full navigation but indicating belief doesn't exist at this state
+			;(/** @type {BroadcastChannel} */ (channel)).postMessage({
+				msg: "belief_not_found",
+				server_id,
+				client_id,
+				belief_id,
+				state_id: state._id,
+				state_tt: state.tt,
+				state_vt: state.vt,
+				state_locked: state.locked,
+				ground_state_id: state.ground_state?._id ?? null,
+				branch_ids: state.get_branches().map(b => b._id),
+				parent_state_ids,
+				sibling_states,
+				mind_path,
+				belief_created_vt,
+				// Basic belief info for header display
+				desig: belief_obj.sysdesig(belief_obj.origin_state ?? state),
+				archetypes: [...belief_obj.get_archetypes()].map(a => a.label),
+			})
+			return
+		}
+
+		// Build rev_traits object from rev_traits generator
+		/** @type {Record<string, any[]>} */
+		const rev_traits = {}
+		for (const [traittype, ref_belief] of belief_obj.rev_traits(state)) {
+			const label = traittype.label
+			if (!rev_traits[label]) rev_traits[label] = []
+			rev_traits[label].push({
+				_type: 'Belief',
+				_ref: ref_belief._id,
+				label: ref_belief.get_label(),
+				mind_id: ref_belief.in_mind?._id,
+				mind_label: ref_belief.in_mind?.label,
+			})
+		}
+
 		const response = {
 			msg: "world_entity",
 			server_id,
@@ -274,6 +336,7 @@ export const dispatch = {
 			parent_state_ids,
 			sibling_states,
 			mind_path,
+			origin_state_id: belief_obj.origin_state?._id ?? null,
 			data: {
 				data: belief_obj.to_inspect_view(state),
 				rev_traits,
@@ -298,7 +361,11 @@ export const dispatch = {
 		const state = DB.get_state(state_id_num)
 		assert(state instanceof State, `State not found: ${state_id}`)
 
-		// Build mind path
+
+    log('query_trait')
+
+
+    // Build mind path
 		/** @type {{id: number, label: string|null, type: string, vt: number|null, state_id: number}[]} */
 		const mind_path = []
 		/** @type {Mind|null|undefined} */
@@ -313,14 +380,25 @@ export const dispatch = {
 				vt: path_state.vt,
 				state_id: path_state._id,
 			})
-			path_state = path_state.ground_state
-			path_mind = path_mind._parent
+			// Walk up to parent mind via ground_state
+			// Validate that ground_state belongs to parent mind before using it
+			/** @type {State|null|undefined} */
+			const next_state = path_state.ground_state
+			/** @type {Mind|null|undefined} */
+			const next_mind = path_mind._parent
+			if (next_state && next_mind && next_state.in_mind !== next_mind) {
+				break
+			}
+			path_state = next_state
+			path_mind = next_mind
 		}
 
 		// Get current trait value
 		// Try to get traittype - if it doesn't exist, access trait directly
 		const traittype = Traittype.get_by_label(trait)
-		const current_value = traittype ? belief_obj.get_trait(state, traittype) : belief_obj._traits.get(trait)
+		const raw_value = traittype ? belief_obj.get_trait(state, traittype) : belief_obj._traits.get(trait)
+		// Serialize for postMessage
+		const current_value = traittype ? traittype.to_inspect_view(state, raw_value) : raw_value
 
 		// Find trait source (own vs inherited)
 		let source = 'inherited'
@@ -338,6 +416,8 @@ export const dispatch = {
 		}
 
 		// Build value history by walking state chain
+		// Only include states where the belief existed (created at or before that state)
+		const belief_created_vt = belief_obj.origin_state?.vt ?? null
 		/** @type {Array<{state_id: number, vt: number|null, value: any, is_current: boolean}>} */
 		const history = []
 		/** @type {State|null} */
@@ -347,7 +427,15 @@ export const dispatch = {
 			if (seen_states.has(walk_state._id)) break
 			seen_states.add(walk_state._id)
 
-			const value = traittype ? belief_obj.get_trait(walk_state, traittype) : belief_obj._traits.get(trait)
+			// Skip states before the belief was created
+			if (belief_created_vt !== null && walk_state.vt !== null && walk_state.vt < belief_created_vt) {
+				walk_state = walk_state.base
+				continue
+			}
+
+			const raw_hist_value = traittype ? belief_obj.get_trait(walk_state, traittype) : belief_obj._traits.get(trait)
+			// Serialize for postMessage
+			const value = traittype ? traittype.to_inspect_view(walk_state, raw_hist_value) : raw_hist_value
 			history.push({
 				state_id: walk_state._id,
 				vt: walk_state.vt,
@@ -400,7 +488,55 @@ export const dispatch = {
 			history,
 		};
 
-		(/** @type {BroadcastChannel} */ (channel)).postMessage(response)
+		// Debug: find functions in response (with cycle detection)
+		/** @param {any} obj @param {string} path @param {Set<any>} seen */
+		const findFunctions = (obj, path = '', seen = new Set()) => {
+			if (typeof obj === 'function') {
+				console.error('FUNCTION FOUND at:', path)
+				console.error('Function:', obj.toString().slice(0, 200))
+				return true
+			}
+			if (obj && typeof obj === 'object') {
+				if (seen.has(obj)) return false
+				seen.add(obj)
+				// Check if obj is a Traittype
+				if (obj.constructor?.name === 'Traittype') {
+					console.error('TRAITTYPE FOUND at:', path, obj.label)
+					return true
+				}
+				for (const [key, val] of Object.entries(obj)) {
+					if (findFunctions(val, path ? `${path}.${key}` : key, seen)) return true
+				}
+			}
+			return false
+		}
+		const hasFunc = findFunctions(response)
+		if (hasFunc) {
+			console.error('Response has non-serializable content!')
+		}
+
+		// Try to send response, with detailed error on failure
+		try {
+			(/** @type {BroadcastChannel} */ (channel)).postMessage(response)
+		} catch (e) {
+			console.error('postMessage failed:', e)
+			// Try to identify which field causes the issue
+			for (const [key, val] of Object.entries(response)) {
+				try {
+					structuredClone(val)
+				} catch (fieldErr) {
+					console.error(`Field '${key}' cannot be cloned:`, val)
+					// Try to serialize as JSON for debug
+					try {
+						JSON.stringify(val)
+					} catch {
+						console.error(`Field '${key}' also fails JSON.stringify`)
+					}
+				}
+			}
+			// Re-throw to report the error
+			throw e
+		}
 	},
 
 	/** @param {{id: string|number, client_id: number}} param0 */

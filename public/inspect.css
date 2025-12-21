@@ -1,5 +1,9 @@
 /* Inspect-specific styles (extends styles.css) */
 
+/*
+  Use the philosophy of open-props.style
+*/
+
 /* Override body background for inspect */
 body {
 	background: #242;
@@ -174,6 +178,12 @@ body > header {
 	font-weight: 600;
 }
 
+.origin-marker {
+	color: #8cf;
+	font-style: italic;
+	font-size: 0.9em;
+}
+
 /* Main content */
 body > main {
 	margin: 1.5rem;
@@ -228,7 +238,9 @@ table.traits {
 
 table.traits th,
 table.traits td {
-	padding: 0.6rem 1rem;
+	--_padding-block: 0.6rem;
+	--_padding-inline: 1rem;
+	padding: var(--_padding-block) var(--_padding-inline);
 	text-align: left;
 }
 
@@ -261,6 +273,18 @@ table.traits th a::after {
 	inset: 0;
 }
 
+/* Disable th overlay when td has multiple links, use padding instead */
+table.traits tr:has(td a:not(:only-of-type)) th a {
+	padding-block: var(--_padding-block);
+	padding-inline: var(--_padding-inline);
+	margin-block: calc(-1 * var(--_padding-block));
+	margin-inline: calc(-1 * var(--_padding-inline));
+}
+
+table.traits tr:has(td a:not(:only-of-type)) th a::after {
+	content: none;
+}
+
 table.traits td {
 	border-radius: 0 4px 4px 0;
 }
@@ -284,7 +308,7 @@ table.traits td a {
 	text-decoration: none;
 }
 
-table.traits td a::after {
+table.traits td a:only-of-type::after {
 	content: '';
 	position: absolute;
 	inset: 0;
@@ -293,6 +317,17 @@ table.traits td a::after {
 table.traits td a:hover {
 	color: var(--color-link-hover);
 	background: transparent !important;
+}
+
+/* Multi-link cells: fill row height, individual hover */
+table.traits td a:not(:only-of-type) {
+	padding-block: var(--_padding-block);
+	padding-inline: calc(var(--_padding-inline) / 2);
+	margin-block: calc(-1 * var(--_padding-block));
+}
+
+table.traits td a:not(:only-of-type):hover {
+	background: color-mix(in srgb, var(--color-link) 15%, transparent) !important;
 }
 
 /* Meta-traits (@about, @form, etc.) */
@@ -435,4 +470,26 @@ dl.compact dd {
 .source-note {
 	color: #888;
 	font-size: 0.85em;
+}
+
+/* Not found / unavailable states */
+section.not-found {
+	text-align: center;
+	padding: 2rem;
+	color: #a88;
+}
+
+section.not-found h2 {
+	color: #c99;
+	margin-bottom: 1rem;
+}
+
+section.not-found .detail {
+	font-size: 0.9em;
+	color: #886;
+}
+
+.unavailable {
+	color: #886;
+	font-style: italic;
 }

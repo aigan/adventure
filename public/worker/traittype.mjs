@@ -494,11 +494,25 @@ export class Traittype {
    */
   to_inspect_view(state, value) {
     assert(state instanceof State, "should be State", state, value);
+    // Handle null/undefined early
+    if (value === null || value === undefined) {
+      return value
+    }
+    // Functions should never be trait values - indicates a bug
+    if (typeof value === 'function') {
+      console.error('to_inspect_view received function as value:', value)
+      return '[function - serialization error]'
+    }
     if (Array.isArray(value)) {
       return value.map(item => this.to_inspect_view(state, item))
     }
     if (typeof value === 'number' || typeof value === 'string') {
       return value
+    }
+    // Guard against Traittype instances accidentally being passed as values
+    if (value instanceof Traittype) {
+      console.error('to_inspect_view received Traittype as value:', value.label)
+      return `[Traittype: ${value.label}]`
     }
     // If it's a registered class (Mind, State, Belief, Subject), call to_inspect_view
     if (typeof value?.to_inspect_view === 'function') {
@@ -522,6 +536,16 @@ export class Traittype {
     }
     // Fallback for other objects
     if (value?.toJSON) return value.toJSON()
+    // Safety check: if object has any function properties, serialize to JSON string
+    // to avoid postMessage errors
+    if (typeof value === 'object' && value !== null) {
+      for (const v of Object.values(value)) {
+        if (typeof v === 'function') {
+          console.error('to_inspect_view: object with function property:', value)
+          return JSON.stringify(value, (k, v) => typeof v === 'function' ? '[Function]' : v)
+        }
+      }
+    }
     return value
   }
 

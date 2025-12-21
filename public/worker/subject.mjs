@@ -196,18 +196,35 @@ export class Subject {
    * Shallow inspection view for the inspect UI
    * Resolves subject to belief in the given state context
    * @param {State} state - State where this subject should be resolved
-   * @returns {{_ref: number, _type: string, label: string|null, mind_id: number|null, mind_label: string|null, about_label?: string|null}} Belief reference with optional about label for knowledge beliefs
+   * @returns {{_ref: number|null, _type: string, label: string|null, mind_id: number|null, mind_label: string|null, about_label?: string|null, sid?: number, _unavailable?: boolean}} Belief reference with optional about label for knowledge beliefs
    */
   to_inspect_view(state) {
-    // get_belief_by_state() tries state first, then falls back to shared belief (prototype)
-    const belief = this.get_belief_by_state(state)
+    // Try to find belief in state, then fall back to shared belief
+    let belief = state.get_belief_by_subject(this)
+    if (!belief) {
+      belief = this.get_shared_belief_by_state(state)
+    }
 
-    const result = /** @type {{_ref: number, _type: string, label: string|null, mind_id: number|null, mind_label: string|null, about_label?: string|null}} */ ({
+    // If no belief found, return placeholder (subject exists but not visible in this state)
+    if (!belief) {
+      return {
+        _ref: null,
+        _type: 'Subject',
+        label: null,
+        mind_id: this.mater?._id ?? null,
+        mind_label: this.mater?.label ?? null,
+        sid: this.sid,
+        _unavailable: true
+      }
+    }
+
+    const result = /** @type {{_ref: number|null, _type: string, label: string|null, mind_id: number|null, mind_label: string|null, state_id?: number|null, about_label?: string|null, sid?: number, _unavailable?: boolean}} */ ({
       _ref: belief._id,
       _type: 'Belief',
       label: belief.get_label(),
       mind_id: belief.in_mind?._id ?? null,
-      mind_label: belief.in_mind?.label ?? null
+      mind_label: belief.in_mind?.label ?? null,
+      state_id: state._id  // Include the state used to resolve this belief
     })
 
     // Add "about" info if this is knowledge about something

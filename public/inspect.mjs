@@ -184,6 +184,12 @@ const dispatch = {
   /**
    * @param {any} dat
    */
+  belief_not_found(dat){
+    render_belief_not_found(dat);
+  },
+  /**
+   * @param {any} dat
+   */
   archetype_trait_view(dat){
     render_archetype_trait_view(dat);
   },
@@ -375,9 +381,17 @@ function render_entity(dat){
   $path_bar.innerHTML = path_html;
 
   // Build state table
+  // Check if we're at the origin state (where belief was created)
+  const is_origin = dat.origin_state_id !== null && dat.state_id === dat.origin_state_id;
+
   const parent_links = (dat.parent_state_ids || []).map((/** @type {number} */ id) =>
     `<a href="?belief=${belief_data._id}&state=${id}" class="state-chip">#${id}</a>`
   ).join('');
+
+  // Show "origin" when there are no parent states to navigate to for this belief
+  const parent_content = is_origin
+    ? '<span class="origin-marker">origin</span>'
+    : parent_links;
 
   const sibling_chips = (dat.sibling_states || []).map((/** @type {{id: number, is_current: boolean}} */ s) =>
     s.is_current
@@ -393,7 +407,7 @@ function render_entity(dat){
   $state_table.innerHTML = `
     <div>
       <div class="col-header">Parents</div>
-      <div class="states">${parent_links}</div>
+      <div class="states">${parent_content}</div>
     </div>
     <div class="current">
       <div class="col-header">${state_vt_label}</div>
@@ -496,6 +510,84 @@ function render_entity(dat){
 }
 
 /**
+ * Render message when belief doesn't exist at the requested state
+ * @param {any} dat
+ */
+function render_belief_not_found(dat) {
+  ensure_dom_elements();
+  assert($path_bar, 'path_bar element not found');
+  assert($state_table, 'state-table element not found');
+  assert($main, 'main element not found');
+
+  // Build path bar - same as render_entity
+  let path_html = '';
+  const mind_path = dat.mind_path || [];
+  for (let i = 0; i < mind_path.length; i++) {
+    const mind = mind_path[i];
+    const parent = i > 0 ? mind_path[i - 1] : null;
+    const label = get_mind_label_with_icon(mind, parent?.type);
+    const vt_span = mind.vt !== null ? `<span class="vt">:${mind.vt}</span>` : '';
+    const mind_link = `?mind=${mind.id}&state=${mind.state_id}`;
+    path_html += `
+      <a href="${mind_link}" class="chip mind">
+        ${label}${vt_span}
+      </a>
+      <span class="sep">›</span>
+    `;
+  }
+
+  // Current belief chip
+  const archetype_label = dat.archetypes?.[0] || '';
+  path_html += `
+    <span class="chip belief current">
+      📍 #${dat.belief_id} <span class="type">[${archetype_label}]</span>
+    </span>
+  `;
+
+  $path_bar.innerHTML = path_html;
+
+  // Build state table - same as render_entity
+  const parent_links = (dat.parent_state_ids || []).map((/** @type {number} */ id) =>
+    `<a href="?belief=${dat.belief_id}&state=${id}" class="state-chip">#${id}</a>`
+  ).join('');
+
+  const sibling_chips = (dat.sibling_states || []).map((/** @type {{id: number, is_current: boolean}} */ s) =>
+    s.is_current
+      ? `<span class="state-chip active">#${s.id}</span>`
+      : `<a href="?belief=${dat.belief_id}&state=${s.id}" class="state-chip">#${s.id}</a>`
+  ).join('');
+
+  const child_links = (dat.branch_ids || []).map((/** @type {number} */ id) =>
+    `<a href="?belief=${dat.belief_id}&state=${id}" class="state-chip">#${id}</a>`
+  ).join('');
+
+  const state_vt_label = dat.state_vt !== null ? `vt:${dat.state_vt}` : 'Current';
+  $state_table.innerHTML = `
+    <div>
+      <div class="col-header">Parents</div>
+      <div class="states">${parent_links}</div>
+    </div>
+    <div class="current">
+      <div class="col-header">${state_vt_label}</div>
+      <div class="states">${sibling_chips}</div>
+    </div>
+    <div>
+      <div class="col-header">Children</div>
+      <div class="states">${child_links}</div>
+    </div>
+  `;
+
+  // Main content - not found message
+  $main.innerHTML = `
+    <section class="not-found">
+      <h2>Belief Does Not Exist Here</h2>
+      <p>Belief #${dat.belief_id} was created at vt ${dat.belief_created_vt}.</p>
+      <p class="detail">You are viewing state #${dat.state_id} at vt ${dat.state_vt}, which is before this belief existed.</p>
+    </section>
+  `;
+}
+
+/**
  * Format a trait value for display
  * @param {any} value
  * @param {number} state_id
@@ -516,6 +608,11 @@ function format_trait_value(value, state_id, belief_mind_id) {
     if (value._type === 'Archetype') {
       return `<a href="?archetype=${value.label}">[${value.label}]</a>`;
     }
+    // Handle unavailable subjects (exist in different mind/state)
+    if (value._unavailable && value._type === 'Subject') {
+      const mind_prefix = value.mind_label ? `${value.mind_label}: ` : '';
+      return `<span class="unavailable" title="Subject not visible in this state">${mind_prefix}sid:${value.sid}</span>`;
+    }
     if (value._ref && value._type) {
       if (value._type === 'Mind' && value.states) {
         // For Mind traits, link to the core state (first state in the array)
@@ -528,10 +625,14 @@ function format_trait_value(value, state_id, belief_mind_id) {
       }
       const type_lower = value._type.toLowerCase();
       const label_text = value.label ? ` (${value.label})` : '';
-      const link = (type_lower === 'belief' && state_id)
-        ? `?${type_lower}=${value._ref}&state=${state_id}`
+      // For cross-mind beliefs, use the state_id from the reference (if available)
+      // This ensures we link to the correct state in the target belief's mind
+      const is_cross_mind = value.mind_id && value.mind_id !== belief_mind_id;
+      const link_state_id = (is_cross_mind && value.state_id) ? value.state_id : state_id;
+      const link = (type_lower === 'belief' && link_state_id)
+        ? `?${type_lower}=${value._ref}&state=${link_state_id}`
         : `?${type_lower}=${value._ref}`;
-      const mind_prefix = (value.mind_id && value.mind_id !== belief_mind_id)
+      const mind_prefix = is_cross_mind
         ? `${value.mind_label || 'Mind #' + value.mind_id}: `
         : '';
       const about_text = value.about_label ? ` about ${value.about_label}` : '';

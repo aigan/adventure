@@ -1,2 +1,5 @@
 AddType application/javascript .mjs
 AddCharset UTF-8 .mjs
+<FilesMatch "\.mjs$">
+  Header set Cache-Control "no-cache, must-revalidate"
+</FilesMatch>
