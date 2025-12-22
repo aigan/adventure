@@ -8,10 +8,6 @@ import { Traittype } from './traittype.mjs'
 import { Session } from './session.mjs'
 import { logos } from './logos.mjs'
 
-// Version stamp for debugging cache issues
-const CHANNEL_VERSION = '2024-12-21-v2'
-log('[channel.mjs]', CHANNEL_VERSION)
-
 /** @type {BroadcastChannel|null} */
 let channel = null
 let client_id_sequence = 0 // Client id
@@ -20,10 +16,11 @@ let server_id = null
 /** @type {Session|null} */
 let session = null
 
-/** @type {{[key: string]: (...args: any[]) => void}} */
+/** @type {{[key: string]: (...args: any[]) => void | Promise<void>}} */
 export const dispatch = {
 	/** @param {any} _dat */
-	connect(_dat){
+	async connect(_dat){
+		await Session.readyP
 		const client_id = ++ client_id_sequence;
 		(/** @type {BroadcastChannel} */ (channel)).postMessage({
 			msg: "welcome",

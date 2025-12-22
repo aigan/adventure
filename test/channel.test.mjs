@@ -421,16 +421,17 @@ describe('Channel Message Handlers', () => {
       const mockSession = new Session(mind, mind.create_state(logos().origin_state, {tt: 1}));
 
       await Channel.init_channel(mockSession);
+      Session.ready();
       messages.length = 0;
 
-      // First connect
-      Channel.dispatch.connect({});
+      // First connect (now async)
+      await Channel.dispatch.connect({});
       expect(messages).to.have.lengthOf(1);
       expect(messages[0].msg).to.equal('welcome');
       expect(messages[0].client_id).to.equal(1);
 
       // Second connect
-      Channel.dispatch.connect({});
+      await Channel.dispatch.connect({});
       expect(messages).to.have.lengthOf(2);
       expect(messages[1].client_id).to.equal(2);
     });

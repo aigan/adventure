@@ -107,6 +107,7 @@ addEventListener('message', async e =>{
     log('Starting');
     current_session = new Session();
     const res = await current_session.start()
+    Session.ready()
     /** @type {AckMessage} */
     const ackMsg = ['ack', ackid, res];
     postMessage(ackMsg);

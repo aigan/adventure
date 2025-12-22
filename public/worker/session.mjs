@@ -23,6 +23,12 @@ import { A } from './archetype.mjs'
 const STATE_CHANGE_DEBOUNCE_MS = 500
 
 export class Session {
+  /** @type {(() => void)|null} */
+  static _ready_resolve = null;
+
+  /** @type {Promise<void>} */
+  static readyP = new Promise(resolve => { Session._ready_resolve = resolve })
+
   /**
    * @param {Mind} [world_mind] - Optional world mind (for tests)
    * @param {State} [initial_state] - Optional initial state (for tests)
@@ -112,6 +118,14 @@ export class Session {
    */
   set_channel(channel) {
     this._channel = channel
+  }
+
+  /**
+   * Signal that session is fully initialized and ready for queries
+   */
+  static ready() {
+    assert(typeof Session._ready_resolve === 'function', 'Session.ready() called before promise initialized')
+    Session._ready_resolve()
   }
 
   /**
