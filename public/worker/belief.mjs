@@ -191,9 +191,7 @@ export class Belief {
       }
     }
 
-    const to_remove = [...old_set]
-
-    for (const subject of to_remove) {
+    for (const subject of old_set) {
       this.origin_state.rev_del(subject, traittype, this)
     }
 
@@ -228,8 +226,8 @@ export class Belief {
       const base_values = this.collect_latest_value_from_all_bases(traittype)
       if (base_values.length > 0) {
         // Compose: base values first, then new value
-        const all_values = [...base_values, value]
-        value = traittype.compose(this, all_values)
+        base_values.push(value)
+        value = traittype.compose(this, base_values)
       }
     }
 
@@ -888,10 +886,10 @@ export class Belief {
       sid: this.subject.sid,
       label: this.get_label(),
       about: about_trait?.toJSON() ?? null,
-      archetypes: [...this.get_archetypes()].map(a => a.label),
-      bases: [...this._bases].map(b => b instanceof Archetype ? b.label : b._id),
+      archetypes: [...this.get_archetypes().map(a => a.label)],
+      bases: [...this._bases.values().map(b => b instanceof Archetype ? b.label : b._id)],
       traits: Object.fromEntries(
-        [...this._traits].map(([traittype, v]) => [traittype.label, Traittype.serializeTraitValue(v)])
+        this._traits.entries().map(([traittype, v]) => [traittype.label, Traittype.serializeTraitValue(v)])
       ),
       origin_state: this.origin_state?._id ?? null
     }
@@ -931,9 +929,9 @@ export class Belief {
       _type: 'Belief',
       _id: this._id,
       label: this.get_label(),
-      archetypes: [...this.get_archetypes()].map(a => a.label),
-      prototypes: [...this.get_prototypes()].map(p => p.to_inspect_prototype()),
-      bases: [...this._bases].map(b => b.to_inspect_base()),
+      archetypes: [...this.get_archetypes().map(a => a.label)],
+      prototypes: [...this.get_prototypes().map(p => p.to_inspect_prototype())],
+      bases: [...this._bases.values().map(b => b.to_inspect_base())],
       traits: traits_obj
     })
 

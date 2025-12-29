@@ -122,14 +122,17 @@ export class Subject {
    */
   get_shared_belief_by_state(state) {
     // For timeless states (tt=null), get all beliefs; otherwise filter by tt
-    const beliefs = state.tt != null ? [...this.beliefs_at_tt(state.tt)] : [...Subject.get_beliefs_by_subject(this)]
+    const beliefs = state.tt != null ? this.beliefs_at_tt(state.tt) : Subject.get_beliefs_by_subject(this)
 
     // Shared beliefs are universals (mater=null) that can be used by any belief
-    const shared = beliefs.filter(b => {
-      if (!b.is_shared) return false
-      // Universal subjects (mater=null) are accessible from any state
-      return b.subject.mater === null
-    })
+    // Take up to 2 to verify uniqueness
+    const shared = []
+    for (const b of beliefs) {
+      if (b.is_shared && b.subject.mater === null) {
+        shared.push(b)
+        if (shared.length >= 2) break
+      }
+    }
 
     assert(shared.length <= 1,
       'Multiple shared beliefs found for subject at tt',
@@ -252,14 +255,17 @@ export class Subject {
    * @yields {Belief} Outermost beliefs on each branch at tt
    */
   *beliefs_at_tt(tt) {
-    // Get all beliefs with tt <= target
-    const valid = [...this.beliefs].filter(b => b.get_tt() <= tt)
-    const valid_set = new Set(valid)
+    // Build valid set directly (beliefs with tt <= target)
+    const valid_set = new Set()
+    for (const b of this.beliefs) {
+      if (b.get_tt() <= tt) valid_set.add(b)
+    }
+    if (valid_set.size === 0) return
 
     // Build set of ancestors that are also in valid set (these are "shadowed")
     // O(n × depth) instead of O(n²)
     const shadowed = new Set()
-    for (const belief of valid) {
+    for (const belief of valid_set) {
       // Walk all bases (BFS) - beliefs can have multiple inheritance
       const queue = [...belief._bases]
       const seen = new Set()
@@ -274,7 +280,7 @@ export class Subject {
     }
 
     // Yield beliefs that aren't shadowed (branch tips)
-    for (const belief of valid) {
+    for (const belief of valid_set) {
       if (!shadowed.has(belief)) yield belief
     }
   }

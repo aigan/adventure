@@ -579,7 +579,11 @@ export class State {
   replace_beliefs(...beliefs) {
     for (const belief of beliefs) {
       // Only remove Belief bases (version chains), not Archetypes
-      const belief_bases = /** @type {Belief[]} */ ([...belief._bases].filter(b => b instanceof Belief))
+      /** @type {Belief[]} */
+      const belief_bases = []
+      for (const b of belief._bases) {
+        if (b instanceof Belief) belief_bases.push(b)
+      }
       this.remove_beliefs(...belief_bases)
       this.insert_beliefs(belief)
     }
@@ -680,42 +684,34 @@ export class State {
     const host_mind = host_belief.get_trait(this, mind_traittype)
     assert(host_mind, `Entity ${host.sid} has no mind trait`, {host_sid: host.sid, host_label: host.get_label()})
 
-    // Find the core state: latest state where tt <= this.vt and ground_state = this (or this's ancestry)
-    // TODO: EXPENSIVE - O(states_at_tt * ancestry_depth) for each lookup
-    const candidates = []
-    for (const s of host_mind.states_at_tt(this.vt)) {
-      if (!s.ground_state) continue  // Skip states without ground_state
-      /** @type {State | null} */
-      let ancestor = this
-      while (ancestor) {
-        // Check if s.ground_state is this ancestor (by state ID)
-        if (ancestor._id === s.ground_state._id) {
-          candidates.push(s)
-          break
-        }
-        ancestor = ancestor.base
+    // Find the core state: latest state where tt <= this.vt
+    // Walk up ground_state chain to find states from this world lineage
+    let ground = /** @type {State|null} */ (this)
+    while (ground) {
+      const candidates = [...host_mind.states_at_tt(ground, this.vt)]
+
+      if (candidates.length > 0) {
+        // Should be exactly one core state (no superposition)
+        const core_tt = candidates[0]?.tt
+        assert(candidates.length === 1,
+          `Expected single core state at tt=${core_tt}, found ${candidates.length} (superposition)`,
+          {
+            host_sid: host.sid,
+            host_label: host.get_label(),
+            mind_label: host_mind.label,
+            tt: core_tt,
+            vt: this.vt,
+            candidates: candidates.map(s => ({id: s._id, tt: s.tt, ground: s.ground_state?._id}))
+          })
+
+        return candidates[0]
       }
+
+      ground = ground.base
     }
 
-    if (candidates.length === 0) {
-      // No state found in this world branch - return null to signal need to create one
-      return null
-    }
-
-    // Should be exactly one core state (no superposition)
-    const core_tt = candidates[0]?.tt
-    assert(candidates.length === 1,
-      `Expected single core state at tt=${core_tt}, found ${candidates.length} (superposition)`,
-      {
-        host_sid: host.sid,
-        host_label: host.get_label(),
-        mind_label: host_mind.label,
-        tt: core_tt,
-        vt: this.vt,
-        candidates: candidates.map(s => ({id: s._id, tt: s.tt, ground: s.ground_state?._id}))
-      })
-
-    return candidates[0]
+    // No state found in this world branch - return null to signal need to create one
+    return null
   }
 
   /**

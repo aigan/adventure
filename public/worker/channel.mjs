@@ -300,7 +300,7 @@ export const dispatch = {
 				belief_created_vt,
 				// Basic belief info for header display
 				desig: belief_obj.sysdesig(belief_obj.origin_state ?? state),
-				archetypes: [...belief_obj.get_archetypes()].map(a => a.label),
+				archetypes: [...belief_obj.get_archetypes().map(a => a.label)],
 			})
 			return
 		}
@@ -340,7 +340,7 @@ export const dispatch = {
 			},
 			desig: belief_obj.sysdesig(state),
 			mind: belief_obj.in_mind ? {id: belief_obj.in_mind._id, label: belief_obj.in_mind.label} : null,
-			bases: [...belief_obj._bases].map(b => b.to_inspect_base()),
+			bases: [...belief_obj._bases.values().map(b => b.to_inspect_base())],
 		};
 
 		//log('response', response)
@@ -563,7 +563,7 @@ export const dispatch = {
 			},
 			desig: belief.sysdesig(session.state),
 			mind: belief.in_mind ? {id: belief.in_mind._id, label: belief.in_mind.label} : null,
-			bases: [...belief._bases].map(b => b.to_inspect_base()),
+			bases: [...belief._bases.values().map(b => b.to_inspect_base())],
 		})
 	},
 
@@ -609,7 +609,7 @@ export const dispatch = {
 			mind_path,
 			data: {
 				label: archetype_obj.label,
-				bases: [...archetype_obj._bases].map(b => ({label: b.label})),
+				bases: [...archetype_obj._bases.values().map(b => ({label: b.label}))],
 				traits: traits,
 			},
 			desig: archetype_obj.sysdesig(),

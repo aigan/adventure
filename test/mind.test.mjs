@@ -28,24 +28,26 @@ describe('Mind', () => {
 
   describe('states_at_tt()', () => {
     it('should return outermost state on linear state chain', () => {
+      const ground = logos().origin_state
       const state1 = createStateInNewMind('test', 100);
       state1.lock();
-      const state2 = state1.branch(logos().origin_state, 200);
+      const state2 = state1.branch(ground, 200);
       state2.lock();
-      const state3 = state2.branch(logos().origin_state, 300);
+      const state3 = state2.branch(ground, 300);
       state3.lock();
 
       // Query at different times - should return single outermost state
-      expect([...state1.in_mind.states_at_tt(50)]).to.deep.equal([]);  // Before any state
-      expect([...state1.in_mind.states_at_tt(100)]).to.deep.equal([state1]);
-      expect([...state1.in_mind.states_at_tt(150)]).to.deep.equal([state1]);
-      expect([...state1.in_mind.states_at_tt(200)]).to.deep.equal([state2]);
-      expect([...state1.in_mind.states_at_tt(250)]).to.deep.equal([state2]);
-      expect([...state1.in_mind.states_at_tt(300)]).to.deep.equal([state3]);
-      expect([...state1.in_mind.states_at_tt(999)]).to.deep.equal([state3]);
+      expect([...state1.in_mind.states_at_tt(ground, 50)]).to.deep.equal([]);  // Before any state
+      expect([...state1.in_mind.states_at_tt(ground, 100)]).to.deep.equal([state1]);
+      expect([...state1.in_mind.states_at_tt(ground, 150)]).to.deep.equal([state1]);
+      expect([...state1.in_mind.states_at_tt(ground, 200)]).to.deep.equal([state2]);
+      expect([...state1.in_mind.states_at_tt(ground, 250)]).to.deep.equal([state2]);
+      expect([...state1.in_mind.states_at_tt(ground, 300)]).to.deep.equal([state3]);
+      expect([...state1.in_mind.states_at_tt(ground, 999)]).to.deep.equal([state3]);
     });
 
     it('should return outermost states on each branch', () => {
+      const ground = logos().origin_state
       const state1 = createStateInNewMind('test', 100);
       state1.lock();
 
@@ -53,48 +55,49 @@ describe('Mind', () => {
       // s1(t=100) ← s2(t=200) ← s4(t=300)   [Branch A]
       //     ↑
       //    s3(t=150) ← s5(t=175)            [Branch B]
-      const state2 = state1.branch(logos().origin_state, 200);
+      const state2 = state1.branch(ground, 200);
       state2.lock();
 
-      const state3 = state1.branch(logos().origin_state, 150);
+      const state3 = state1.branch(ground, 150);
       state3.lock();
 
-      const state4 = state2.branch(logos().origin_state, 300);
+      const state4 = state2.branch(ground, 300);
       state4.lock();
 
-      const state5 = state3.branch(logos().origin_state, 175);
+      const state5 = state3.branch(ground, 175);
       state5.lock();
 
       // Before any state
-      expect([...state1.in_mind.states_at_tt(50)]).to.deep.equal([]);
+      expect([...state1.in_mind.states_at_tt(ground, 50)]).to.deep.equal([]);
 
       // Both branches converge to s1
-      expect([...state1.in_mind.states_at_tt(125)]).to.have.members([state1]);
+      expect([...state1.in_mind.states_at_tt(ground, 125)]).to.have.members([state1]);
 
       // Only branch B has progressed: s3
-      const at_160 = [...state1.in_mind.states_at_tt(160)];
+      const at_160 = [...state1.in_mind.states_at_tt(ground, 160)];
       expect(at_160).to.have.lengthOf(1);
       expect(at_160).to.have.members([state3]);
 
       // Branch A: s2 (just created), Branch B: s5
-      const at_210 = [...state1.in_mind.states_at_tt(210)];
+      const at_210 = [...state1.in_mind.states_at_tt(ground, 210)];
       expect(at_210).to.have.lengthOf(2);
       expect(at_210).to.have.members([state2, state5]);
 
       // Branch A: s2 (s4 is at t=300), Branch B: s5
-      const at_250 = [...state1.in_mind.states_at_tt(250)];
+      const at_250 = [...state1.in_mind.states_at_tt(ground, 250)];
       expect(at_250).to.have.lengthOf(2);
       expect(at_250).to.have.members([state2, state5]);
 
       // Branch A: s4, Branch B: s5 (both tips)
-      const at_400 = [...state1.in_mind.states_at_tt(400)];
+      const at_400 = [...state1.in_mind.states_at_tt(ground, 400)];
       expect(at_400).to.have.lengthOf(2);
       expect(at_400).to.have.members([state4, state5]);
     });
 
     it('should return empty iterable for empty mind', () => {
       const mind = new Materia(logos(), 'test');
-      expect([...mind.states_at_tt(100)]).to.deep.equal([]);
+      const ground = logos().origin_state
+      expect([...mind.states_at_tt(ground, 100)]).to.deep.equal([]);
     });
   });
 

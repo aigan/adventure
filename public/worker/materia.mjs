@@ -62,27 +62,30 @@ export class Materia extends Mind {
   }
 
   /**
-   * Get all states in this mind that were valid at a specific tt
+   * Get all states in this mind for a ground_state that were valid at a specific tt
    * Yields the outermost state on each branch at or before the given tt
    * (states that have no descendants also at or before the tt)
    *
-   * Optimized: O(n × depth) via ancestor-set approach instead of O(n²) pairwise checks
-   * Future approach: Walk from branch tips or given starting state
-   * Future: Event saving with time/space-based archival for billions of states
-   * @param {number} tt - Transaction time to query at
-   * @yields {State} Outermost states on each branch at tt
+   * @param {State} ground_state - Parent mind state to filter by
+   * @param {number} tt - Transaction time (when the mind recorded beliefs)
+   * @yields {State} Outermost states on each branch at tt for this ground_state
    */
-  *states_at_tt(tt) {
-    if (this._states.size === 0) return
+  *states_at_tt(ground_state, tt) {
+    // Get states for this ground_state, then filter by tt
+    const all_states = this.get_states_by_ground_state(ground_state)
+    if (all_states.size === 0) return
 
-    // Get all states with tt <= target (exclude timeless states with tt=null)
-    const valid = [...this._states].filter(s => s.tt != null && s.tt <= tt)
-    const valid_set = new Set(valid)
+    // Build valid set directly (states with tt <= target)
+    const valid_set = new Set()
+    for (const s of all_states) {
+      if (s.tt != null && s.tt <= tt) valid_set.add(s)
+    }
+    if (valid_set.size === 0) return
 
     // Build set of ancestors that are in valid set (these are "shadowed")
     // O(n × depth) instead of O(n²)
     const shadowed = new Set()
-    for (const state of valid) {
+    for (const state of valid_set) {
       let current = state.base
       while (current) {
         if (valid_set.has(current)) shadowed.add(current)
@@ -91,7 +94,7 @@ export class Materia extends Mind {
     }
 
     // Yield states that aren't shadowed (branch tips)
-    for (const state of valid) {
+    for (const state of valid_set) {
       if (!shadowed.has(state)) yield state
     }
   }

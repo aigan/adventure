@@ -8,12 +8,16 @@ This plan implements recall functions to query what a mind knows, returning `Tra
 
 **Key insight**: Recall returns reified `Trait` objects that carry context (subject, source belief, certainty). Two functions serve different lookup patterns:
 
-```javascript
-// Direct lookup by subject - returns array of requested traits
-mind.recall_by_subject(ground_state, subject, vt, request_traits?) → Trait[]
+**Time terminology**:
+- `tt` = transaction time: when the mind recorded the belief (what mind knows at this moment)
+- `vt` = valid time: what time period the belief is about (past memories, future expectations)
 
-// Search by archetype - returns iterator grouped by subject
-mind.recall_by_archetype(ground_state, archetype, vt, request_traits) → Iterator<[Subject, Trait[]]>
+```javascript
+// Direct lookup by subject - yields traits (iterator for early exit)
+*mind.recall_by_subject(ground_state, subject, tt, request_traits?) → Iterator<Trait>
+
+// Search by archetype - yields [subject, traits] pairs grouped by subject
+*mind.recall_by_archetype(ground_state, archetype, tt, request_traits) → Iterator<[Subject, Trait[]]>
 ```
 
 ---
@@ -42,42 +46,43 @@ class Trait {
 
 **Tests**: `test/trait.test.mjs` (8 tests) ✅
 
-### Phase 2: recall_by_subject (Direct Lookup)
+### Phase 2: recall_by_subject (Direct Lookup) ✅
 
 **File**: `public/worker/mind.mjs`
 
 ```javascript
-recall_by_subject(ground_state, subject, vt, request_traits?) → Trait[]
+*recall_by_subject(ground_state, subject, tt, request_traits?) → Iterator<Trait>
 ```
 
-Returns requested traits for a known subject. If superposition exists (multiple beliefs for same subject), returns multiple Traits of same type with different values/certainties.
+Yields requested traits for a known subject (iterator allows early exit). If superposition exists (multiple beliefs for same subject), returns multiple Traits of same type with different values/certainties.
 
 **Tasks**:
-- [ ] Find states at ground_state + vt
-- [ ] Get belief(s) for subject across states
-- [ ] Build Trait for each requested trait (or all if omitted)
-- [ ] Compute combined certainty (path x belief)
-- [ ] Handle superposition (multiple beliefs → multiple Traits)
+- [x] Find states at ground_state + tt
+- [x] Get belief(s) for subject across states
+- [x] Build Trait for each requested trait (or all if omitted)
+- [x] Compute combined certainty (path certainty only for now)
+- [x] Handle superposition (multiple beliefs → multiple Traits)
 
-**Tests**: `test/recall.test.mjs`
-- [ ] Single belief, single trait
-- [ ] Single belief, multiple traits
-- [ ] Superposition: two beliefs → two Traits for same type
-- [ ] Missing subject → empty array
-- [ ] Omit request_traits → all traits returned
+**Tests**: `test/recall.test.mjs` (8 tests) ✅
+- [x] Single belief, single trait
+- [x] Single belief, multiple traits
+- [x] Superposition: two beliefs → two Traits for same type
+- [x] Missing subject → empty array
+- [x] Omit request_traits → all traits returned
+- [x] Path certainty tests (certain, branched, nested)
 
 ### Phase 3: recall_by_archetype (Search + Recall)
 
 **File**: `public/worker/mind.mjs`
 
 ```javascript
-*recall_by_archetype(ground_state, archetype, vt, request_traits) → Iterator<[Subject, Trait[]]>
+*recall_by_archetype(ground_state, archetype, tt, request_traits) → Iterator<[Subject, Trait[]]>
 ```
 
 Searches for beliefs by archetype, groups by subject, returns requested traits for each.
 
 **Tasks**:
-- [ ] Find states at ground_state + vt (ordered by certainty)
+- [ ] Find states at ground_state + tt (ordered by certainty)
 - [ ] Get beliefs by archetype across states
 - [ ] Group by subject
 - [ ] For each subject, build Trait[] for requested traits
@@ -120,12 +125,17 @@ Handle @about refs to include component traits.
 ### recall_by_subject
 
 ```javascript
-// What do I know about the hammer's location?
-const traits = mind.recall_by_subject(ground, hammer_subject, vt, ['location'])
+// What do I know about the hammer's location? (spread to array)
+const traits = [...mind.recall_by_subject(ground, hammer_subject, tt, ['location'])]
 // → [Trait{location, workshop, 0.7}, Trait{location, shed, 0.3}]
 
+// Early exit when first match found
+for (const trait of mind.recall_by_subject(ground, hammer_subject, tt, ['color'])) {
+  if (trait.value === 'black') break  // Found it, stop iterating
+}
+
 // All traits about hammer
-const traits = mind.recall_by_subject(ground, hammer_subject, vt)
+const traits = [...mind.recall_by_subject(ground, hammer_subject, tt)]
 // → [Trait{color, black, 1.0}, Trait{weight, 2, 1.0}, ...]
 ```
 
@@ -133,7 +143,7 @@ const traits = mind.recall_by_subject(ground, hammer_subject, vt)
 
 ```javascript
 // Find tools, get their color and location
-for (const [subject, traits] of mind.recall_by_archetype(ground, 'Tool', vt, ['color', 'location'])) {
+for (const [subject, traits] of mind.recall_by_archetype(ground, 'Tool', tt, ['color', 'location'])) {
   const color = traits.find(t => t.type.label === 'color')
   if (color?.value === 'black') {
     // Found a black tool
@@ -180,9 +190,9 @@ belief_certainty = belief's own @certainty (default 1.0)
 ## Completion Checklist
 
 - [x] Phase 1: Trait class
-- [ ] Phase 2: recall_by_subject
+- [x] Phase 2: recall_by_subject
 - [ ] Phase 3: recall_by_archetype
-- [ ] Phase 4: Path certainty
+- [ ] Phase 4: Path certainty (done as part of Phase 2)
 - [ ] Phase 5: Component flattening (optional)
 - [ ] Update CHANGELOG.md
 - [ ] Remove deprecated query_possibilities/query_beliefs

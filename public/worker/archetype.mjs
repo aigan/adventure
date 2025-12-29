@@ -262,9 +262,10 @@ export class Archetype {
    * @returns {string}
    */
   sysdesig() {
-    const bases = [...this._bases].map(b => b.label).join(', ')
-    if (bases) {
-      return `Archetype ${this.label} (bases: ${bases})`
+    const labels = []
+    for (const b of this._bases) labels.push(b.label)
+    if (labels.length > 0) {
+      return `Archetype ${this.label} (bases: ${labels.join(', ')})`
     }
     return `Archetype ${this.label}`
   }

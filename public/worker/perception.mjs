@@ -65,7 +65,7 @@ export function get_observable_traits(state, belief, modalities) {
  */
 export function _perceive_single(state, world_entity, about_state, modalities) {
   const observed_traittypes = get_observable_traits(state, world_entity, modalities)
-  const archetype_bases = [...world_entity.get_archetypes()]  // Convert generator to array
+  const archetype_bases = [...world_entity.get_archetypes()]
 
   /** @type {Record<string, any>} */
   const observed_traits = {}
@@ -301,8 +301,10 @@ export function identify(state, perceived_belief, max_candidates = 3) {
   const about_tt = Traittype.get_by_label('@about')
 
   // Extract perceived traits (excluding @about)
-  const perceived_traits = [...perceived_belief.get_traits()]
-    .filter(([tt, _]) => tt.label !== '@about')
+  const perceived_traits = []
+  for (const [tt, v] of perceived_belief.get_traits()) {
+    if (tt.label !== '@about') perceived_traits.push([tt, v])
+  }
 
   if (perceived_traits.length === 0) {
     // No traits to match - fall back to archetype scan (rare case)
@@ -481,12 +483,14 @@ export function _all_traits_match(state, perceived, candidate) {
  * @param {State} state - State for resolution context
  * @private
  * @param {Belief} belief
- * @returns {Archetype} Most specific archetype (first in bases)
+ * @returns {Archetype|null} Most specific archetype (first in bases)
  */
 export function _get_most_specific_archetype(state, belief) {
-  const archetypes = [...belief.get_archetypes()]
   // Archetypes returned in breadth-first order: most specific first
-  return archetypes[0]
+  for (const archetype of belief.get_archetypes()) {
+    return archetype
+  }
+  return null
 }
 
 /**
@@ -597,13 +601,18 @@ export function recognize(state, source_belief) {
     }
   }
 
-  const beliefs_about_subject = about_belief ? [...about_belief.rev_trait(state, t_about)] : []
-
   // TODO: Sort by confidence (for now just return first 3)
   // TODO: Limit to explicit knowledge beliefs (not observation events, etc.)
   // TODO: Filter by acquaintance threshold - beliefs with low acquaintance
   //       may not trigger recognition during perception events
-  return beliefs_about_subject.slice(0, 3)
+  const result = []
+  if (about_belief) {
+    for (const b of about_belief.rev_trait(state, t_about)) {
+      result.push(b)
+      if (result.length >= 3) break
+    }
+  }
+  return result
 }
 
 /**
@@ -754,8 +763,10 @@ export function _recursively_learn_trait_value(state, source_state, value) {
  */
 export function match_traits(state, perceived, knowledge) {
   // FIXME: validate
-  const perceived_traits = [...perceived.get_traits()]
-    .filter(([tt, _]) => tt.label !== '@about')
+  const perceived_traits = []
+  for (const [tt, v] of perceived.get_traits()) {
+    if (tt.label !== '@about') perceived_traits.push([tt, v])
+  }
 
   if (perceived_traits.length === 0) {
     // No traits to match (just archetype)

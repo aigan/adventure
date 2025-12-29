@@ -15,6 +15,7 @@
 import { expect } from 'chai';
 import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
+import { eidos } from '../public/worker/eidos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { learn_about } from '../public/worker/perception.mjs';
 import { createMindWithBeliefs, setupStandardArchetypes, setupAfterEachValidation } from './helpers.mjs';
@@ -140,7 +141,8 @@ describe('Integration', () => {
       expect(villager_mind).to.be.instanceOf(Mind);
 
       // Verify villager mind has a state with beliefs (learned about workshop)
-      const villager_mind_state = [...villager_mind.states_at_tt(0)][0];
+      // Villager is a shared belief, so its mind states have ground_state = eidos origin_state
+      const villager_mind_state = [...villager_mind.states_at_tt(eidos().origin_state, 0)][0];
       expect(villager_mind_state).to.exist;
       const beliefs = [...villager_mind_state.get_beliefs()];
       expect(beliefs.length).to.be.greaterThan(0);
@@ -218,7 +220,8 @@ describe('Integration', () => {
       // Verify using rev_trait() to find beliefs where @about points to workshop
       const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(state);
       const villager_mind = villager.get_trait(state, Traittype.get_by_label('mind'));
-      const villager_mind_state = [...villager_mind.states_at_tt(0)][0];
+      // Villager is a shared belief, so its mind states have ground_state = eidos origin_state
+      const villager_mind_state = [...villager_mind.states_at_tt(eidos().origin_state, 0)][0];
 
       const workshop = state.get_belief_by_label('workshop');
       const about_traittype = Traittype.get_by_label('@about');
@@ -303,7 +306,7 @@ describe('Integration', () => {
 
       const npc = world_state.get_belief_by_label('npc');
       const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'));
-      const npc_state = [...npc_mind.states_at_tt(world_state.vt)][0];
+      const npc_state = [...npc_mind.states_at_tt(world_state, world_state.vt)][0];
 
       // Query for beliefs about workshop in NPC's mind - should be empty
       const about_traittype = Traittype.get_by_label('@about');
@@ -388,7 +391,7 @@ describe('Integration', () => {
       const npc = world_state.get_belief_by_label('npc');
       const hammer = world_state.get_belief_by_label('hammer');
       const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'));
-      const state1 = [...npc_mind.states_at_tt(world_state.vt)][0];
+      const state1 = [...npc_mind.states_at_tt(world_state, world_state.vt)][0];
 
       // At tt=1, should have 1 belief about hammer (location only)
       const about_traittype = Traittype.get_by_label('@about');
@@ -508,7 +511,8 @@ describe('Integration', () => {
 
       const bob = world_state2.get_belief_by_label('bob');
       const bob_mind = bob.get_trait(world_state2, Traittype.get_by_label('mind'));
-      const bob_state = [...bob_mind.states_at_tt(0)][0];
+      // Bob inherits mind from VillagerProto (shared belief), so states are grounded in eidos
+      const bob_state = [...bob_mind.states_at_tt(eidos().origin_state, 0)][0];
 
       // Bob's mind should find knowledge about tavern (inherited from prototype)
       const about_traittype = Traittype.get_by_label('@about');

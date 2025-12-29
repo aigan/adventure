@@ -68,7 +68,7 @@ describe('Temporal Reasoning', () => {
       expect(npc_mind).to.be.instanceOf(Mind)
 
       // Find the child mind's state
-      const npc_states = [...npc_mind.states_at_tt(100)]
+      const npc_states = [...npc_mind.states_at_tt(world_state, 100)]
       expect(npc_states).to.have.lengthOf(1)
 
       const npc_state = npc_states[0]
@@ -133,7 +133,7 @@ describe('Temporal Reasoning', () => {
       const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Lock initial mind state before locking world_state
-      const initial_npc_state = [...npc_mind.states_at_tt(world_state.vt)][0]
+      const initial_npc_state = [...npc_mind.states_at_tt(world_state, world_state.vt)][0]
       initial_npc_state.lock()
 
       world_state.lock()
@@ -164,7 +164,7 @@ describe('Temporal Reasoning', () => {
       const npc_mind = npc.get_trait(world_state1, Traittype.get_by_label('mind'))
 
       // Lock initial mind state
-      const initial_npc_state = [...npc_mind.states_at_tt(world_state1.vt)][0]
+      const initial_npc_state = [...npc_mind.states_at_tt(world_state1, world_state1.vt)][0]
       initial_npc_state.lock()
 
       world_state1.lock()
@@ -297,7 +297,7 @@ describe('Temporal Reasoning', () => {
       const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Lock initial mind state
-      const initial_npc_state = [...npc_mind.states_at_tt(world_state.vt)][0]
+      const initial_npc_state = [...npc_mind.states_at_tt(world_state, world_state.vt)][0]
       initial_npc_state.lock()
 
       world_state.lock()
@@ -374,7 +374,7 @@ describe('Temporal Reasoning', () => {
       const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Lock initial mind state
-      const initial_npc_state = [...npc_mind.states_at_tt(world_state.vt)][0]
+      const initial_npc_state = [...npc_mind.states_at_tt(world_state, world_state.vt)][0]
       initial_npc_state.lock()
 
       world_state.lock()
@@ -444,7 +444,7 @@ describe('Temporal Reasoning', () => {
       const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
 
       // Lock initial mind state
-      const initial_npc_state = [...npc_mind.states_at_tt(world_state.vt)][0]
+      const initial_npc_state = [...npc_mind.states_at_tt(world_state, world_state.vt)][0]
       initial_npc_state.lock()
 
       world_state.lock()
@@ -495,7 +495,7 @@ describe('Temporal Reasoning', () => {
 
       // Get NPC2's mind (auto-created from trait spec)
       const npc2_model_mind = npc2_model.get_trait(npc1_state, Traittype.get_by_label('mind'))
-      const npc2_model_state = [...npc2_model_mind.states_at_tt(100)][0]
+      const npc2_model_state = [...npc2_model_mind.states_at_tt(npc1_state, 100)][0]
 
       world_state.lock()
       npc1_state.lock()
@@ -528,7 +528,7 @@ describe('Temporal Reasoning', () => {
 
       // Get NPC's mind (auto-created from trait spec)
       const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
-      const npc_state1 = [...npc_mind.states_at_tt(100)][0]
+      const npc_state1 = [...npc_mind.states_at_tt(world_state, 100)][0]
       npc_state1.lock()
 
       // Branch with explicit vt=50 (thinking about past)
@@ -572,7 +572,7 @@ describe('Temporal Reasoning', () => {
       expect(possibility_b.ground_state).to.equal(world_state)
 
       // states_at_tt should return both
-      const states = [...npc_mind.states_at_tt(100)]
+      const states = [...npc_mind.states_at_tt(world_state, 100)]
       expect(states).to.include(possibility_a)
       expect(states).to.include(possibility_b)
       expect(states.length).to.be.at.least(2)
@@ -711,11 +711,61 @@ describe('Temporal Reasoning', () => {
       state3.lock()
 
       // Query at different tt values
-      expect([...mind.states_at_tt(50)]).to.deep.equal([])
-      expect([...mind.states_at_tt(100)]).to.deep.equal([state1])
-      expect([...mind.states_at_tt(150)]).to.deep.equal([state1])
-      expect([...mind.states_at_tt(200)]).to.deep.equal([state2])
-      expect([...mind.states_at_tt(999)]).to.deep.equal([state3])
+      const ground = logos().origin_state
+      expect([...mind.states_at_tt(ground, 50)]).to.deep.equal([])
+      expect([...mind.states_at_tt(ground, 100)]).to.deep.equal([state1])
+      expect([...mind.states_at_tt(ground, 150)]).to.deep.equal([state1])
+      expect([...mind.states_at_tt(ground, 200)]).to.deep.equal([state2])
+      expect([...mind.states_at_tt(ground, 999)]).to.deep.equal([state3])
+    })
+
+    it('states_at_tt filters by ground_state', () => {
+      // states_at_tt(ground_state, tt) only returns states for the specified ground_state
+      // This ensures you get states relevant to a specific parent context
+      setupArchetypes()
+
+      const world_mind = new Materia(logos(), 'world')
+
+      // Create two parallel world branches at tt=100
+      const world_state_a = world_mind.create_state(logos().origin_state, {tt: 100})
+      const npc_a = world_state_a.add_belief_from_template({
+        label: 'npc_a',
+        bases: ['Person'],
+        traits: { mind: {} }
+      })
+      const npc_mind = npc_a.get_trait(world_state_a, Traittype.get_by_label('mind'))
+      const npc_state_for_a = [...npc_mind.states_at_tt(world_state_a, 100)][0]
+      npc_state_for_a.lock()
+      world_state_a.lock()
+
+      // Second branch - create parallel world state (sibling, not child)
+      const world_state_b = world_mind.create_state(logos().origin_state, {tt: 100})
+      const npc_b = world_state_b.add_belief_from_template({
+        label: 'npc_b',
+        bases: ['Person'],
+        traits: { mind: npc_mind }  // Reuse the same mind
+      })
+      // Create independent state for this ground_state
+      const npc_state_for_b = npc_mind.get_or_create_open_state_for_ground(world_state_b, npc_b)
+      npc_state_for_b.lock()
+      world_state_b.lock()
+
+      // Both states have tt=100
+      expect(npc_state_for_a.tt).to.equal(100)
+      expect(npc_state_for_b.tt).to.equal(100)
+
+      // Verify they have different ground_states
+      expect(npc_state_for_a.ground_state).to.equal(world_state_a)
+      expect(npc_state_for_b.ground_state).to.equal(world_state_b)
+
+      // states_at_tt(ground_state, tt) now filters by ground_state
+      const states_a = [...npc_mind.states_at_tt(world_state_a, 100)]
+      expect(states_a).to.have.lengthOf(1)
+      expect(states_a).to.include(npc_state_for_a)
+
+      const states_b = [...npc_mind.states_at_tt(world_state_b, 100)]
+      expect(states_b).to.have.lengthOf(1)
+      expect(states_b).to.include(npc_state_for_b)
     })
   })
 

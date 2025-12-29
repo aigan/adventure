@@ -26,6 +26,7 @@ import * as DB from './db.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
 import { Traittype } from './traittype.mjs'
+import { Trait } from './trait.mjs'
 import { learn_about } from './perception.mjs'
 
 /**
@@ -150,8 +151,7 @@ export class Mind {
    * Scale: Essential - critical for cascading lock operations and nested mind queries
    *   Example: When parent mind state changes, find all child mind states that reference it
    *   Without this: O(all states in mind), with this: O(matching states)
-   * Uses (mind_id, vt) as key to support multiple branch objects at same logical state
-   * @type {Map<string, Set<State>>}
+   * @type {Map<State, Set<State>>}
    */
   _states_by_ground_state = new Map()
 
@@ -282,20 +282,19 @@ export class Mind {
    * @returns {Set<State>}
    */
   get_states_by_ground_state(ground_state) {
-    // Key by logical state position (mind_id:vt) to handle multiple branch objects
-    const ground_key = `${ground_state.in_mind._id}:${ground_state.vt}`
-    return this._states_by_ground_state.get(ground_key) ?? new Set()
+    return this._states_by_ground_state.get(ground_state) ?? new Set()
   }
 
   /**
-   * Get all states in this mind that were valid at a specific tt
+   * Get all states in this mind for a ground_state that were valid at a specific tt
    * NOTE: This is only implemented in Materia. Logos and Eidos do not support temporal queries.
-   * @param {number} _tt - Transaction time to query at
+   * @param {State} _ground_state - Parent mind state to filter by
+   * @param {number} _tt - Transaction time (when the mind recorded beliefs)
    * @returns {Generator<State, void, unknown>} Outermost states on each branch at tt
    * @abstract
    */
   // eslint-disable-next-line require-yield
-  *states_at_tt(_tt) {
+  *states_at_tt(_ground_state, _tt) {
     throw new Error(
       `states_at_tt() is only available on Materia. ` +
       `This mind is ${this._type} which does not support temporal queries.`
@@ -315,13 +314,10 @@ export class Mind {
     this.state = state
 
     if (state.ground_state) {
-      // Key by logical state position (mind_id:vt) to handle multiple branch objects
-      const ground_key = `${state.ground_state.in_mind._id}:${state.ground_state.vt}`
-      if (!this._states_by_ground_state.has(ground_key)) {
-        this._states_by_ground_state.set(ground_key, new Set())
+      if (!this._states_by_ground_state.has(state.ground_state)) {
+        this._states_by_ground_state.set(state.ground_state, new Set())
       }
-      // TypeScript: We just ensured the key exists above
-      /** @type {Set<State>} */ (this._states_by_ground_state.get(ground_key)).add(state)
+      /** @type {Set<State>} */ (this._states_by_ground_state.get(state.ground_state)).add(state)
     }
   }
 
@@ -354,17 +350,18 @@ export class Mind {
   to_inspect_view(state) {
     // Filter states to only those directly grounded in the viewing state
     // TODO: EXPENSIVE - O(n) filter, could index by ground_state._id
-    const relevant_states = [...this._states].filter(mind_state => {
-      if (!mind_state.ground_state) return false
-      // Only show states grounded in this exact viewing state
-      return mind_state.ground_state._id === state._id
-    })
+    const states = []
+    for (const mind_state of this._states) {
+      if (mind_state.ground_state && mind_state.ground_state._id === state._id) {
+        states.push({_ref: mind_state._id, _type: 'State'})
+      }
+    }
 
     return {
       _ref: this._id,
       _type: 'Mind',
       label: this.label,
-      states: relevant_states.map(s => ({_ref: s._id, _type: 'State'}))
+      states
     }
   }
 
@@ -393,14 +390,12 @@ export class Mind {
    * @returns {Omit<MindJSON, 'nested_minds'>}
    */
   toJSON() {
-    const mind_beliefs = [...DB.get_beliefs_by_mind(this)].map(b => b.toJSON())
-
     return {
       _type: this._type,  // Use instance _type property for polymorphism
       _id: this._id,
       label: this.label,
-      belief: mind_beliefs,
-      state: [...this._states].map(s => s.toJSON())
+      belief: [...DB.get_beliefs_by_mind(this).map(b => b.toJSON())],
+      state: [...this._states.values().map(s => s.toJSON())]
     }
   }
 
@@ -609,13 +604,9 @@ export class Mind {
 
     // CONSTRUCTION PATH: If ground_belief unlocked, check for existing unlocked state to reuse
     if (!ground_belief.locked) {
-      // Key by logical state position (mind_id:vt) to handle multiple branch objects
-      const ground_key = `${ground_state.in_mind._id}:${ground_state.vt}`
-      const existing_states = this._states_by_ground_state.get(ground_key)
-      if (existing_states) {
-        for (const state of existing_states) {
-          if (!state.locked) return state
-        }
+      const existing_states = this.get_states_by_ground_state(ground_state)
+      for (const state of existing_states) {
+        if (!state.locked) return state
       }
     }
 
@@ -628,9 +619,8 @@ export class Mind {
       while (ancestor && !latest) {
         // Look for locked state at this ancestor's vt that is grounded in this ancestor
         if (ancestor.vt != null) {
-          const states_at_ancestor_vt = [...this.states_at_tt(ancestor.vt)]
-          for (const s of states_at_ancestor_vt) {
-            if (s.locked && s.ground_state && s.ground_state._id === ancestor._id) {
+          for (const s of this.states_at_tt(ancestor, ancestor.vt)) {
+            if (s.locked) {
               latest = s
               break
             }
@@ -640,8 +630,12 @@ export class Mind {
       }
     } else {
       // For timeless ground states, just get any locked state
-      const all_states = [...this._states]
-      latest = all_states.find(s => s.locked) ?? all_states[0] ?? null
+      let first = null
+      for (const s of this._states) {
+        if (!first) first = s
+        if (s.locked) { latest = s; break }
+      }
+      if (!latest) latest = first
     }
 
     // VERSIONING PATH: ground_belief locked requires existing state
@@ -696,6 +690,86 @@ export class Mind {
     }
 
     return this  // Return Mind instance (state created/modified as side effect)
+  }
+
+  /**
+   * Recall traits for a known subject
+   *
+   * Yields requested traits for a subject across states at the given ground_state + tt.
+   * If superposition exists (multiple beliefs for same subject), yields multiple Traits
+   * of the same type with different values/certainties.
+   *
+   * @param {State} ground_state - World/parent state context
+   * @param {Subject} subject - Subject to recall traits for
+   * @param {number} tt - Transaction time: when the mind recorded beliefs (what mind knows at this moment)
+   * @param {string[]} [request_traits] - Trait labels to return (omit for all traits)
+   * @yields {Trait} Trait objects with combined certainty
+   */
+  *recall_by_subject(ground_state, subject, tt, request_traits) {
+    assert(ground_state instanceof State, 'ground_state must be State', {ground_state})
+    assert(subject && typeof subject.sid === 'number', 'subject must be Subject', {subject})
+    assert(typeof tt === 'number', 'tt must be number', {tt})
+
+    // Resolve request_traits to Traittype objects upfront
+    const traittypes = request_traits
+      ? request_traits.map(label => {
+          const traittype = Traittype.get_by_label(label)
+          assert(traittype, `Unknown traittype: ${label}`, {label})
+          return traittype
+        })
+      : null  // null means all traits
+
+    // Use states_at_tt() to get outermost states at this tt
+    for (const state of this.states_at_tt(ground_state, tt)) {
+
+      const belief = state.get_belief_by_subject(subject)
+      if (!belief) continue
+
+      // Compute path certainty (walk state base chain for @certainty splits)
+      const path_certainty = this._compute_path_certainty(state)
+      const combined_certainty = path_certainty
+
+      // Get traits to yield
+      const types_to_get = traittypes ?? belief.get_slots()
+
+      for (const traittype of types_to_get) {
+        // Skip meta-traits
+        if (traittype.label.startsWith('@')) continue
+
+        const value = belief.get_trait(state, traittype)
+        if (value === undefined) continue  // Skip undefined (not set)
+
+        yield new Trait({
+          subject: belief.subject,
+          type: traittype,
+          value,
+          source: belief,
+          certainty: combined_certainty
+        })
+      }
+    }
+  }
+
+  /**
+   * Compute path certainty by walking state base chain
+   * Multiplies @certainty values at each split point
+   * @param {State} state - State to compute certainty for
+   * @returns {number} Combined path certainty (0.0-1.0)
+   * @private
+   */
+  _compute_path_certainty(state) {
+    let certainty = 1.0
+    /** @type {State|null} */
+    let current = state
+
+    while (current) {
+      if (current.certainty !== undefined && current.certainty !== 1.0) {
+        certainty *= current.certainty
+      }
+      current = current.base
+    }
+
+    return certainty
   }
 }
 

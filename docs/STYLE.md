@@ -64,6 +64,18 @@ Write short, readable code using modern JavaScript features. Prefer clarity over
 - ✓ **Generators** for inheritance chains and controlled iteration (e.g., walking `base` links)
   - Use nested loops with generators, not `[...generator].some()`
   - Example: `for (const a of belief.get_archetypes()) { if (a === target) break }`
+- ✓ **Preserve iterators** - pass them through without materializing
+  - ✓ Pass iterator directly to functions that accept iterables (check types!)
+  - ✓ Use `for...of` with early `break` instead of `.find()` on spread array
+  - ✓ Filter inline: `for (x of iter) { if (cond) result.push(x) }`
+  - ✗ `[...iterator]` then use once - just iterate directly
+  - ✗ `[...iter].filter().slice(0,3)` - filter and limit inline instead
+  - Exception: Multiple passes, `.sort()`, or API requires array → use `[...iter]`
+- ✓ **Iterator methods** - iterators have `.map()`, `.filter()`, `.find()`, `.take()`, etc.
+  - ✓ `[...iter.map(fn)]` - map lazily, materialize once (good)
+  - ✗ `[...iter].map(fn)` - materialize, then map again (wasteful)
+  - ✓ `iter.filter(fn).take(3)` - chain iterator methods lazily
+  - ✓ `Object.fromEntries(iter.map(fn))` - no spread needed, accepts iterable
 - ✗ Avoid `forEach`, `for...of`, or iteration over DB registries
 - ✓ Use indexed lookups: `DB.belief_by_id.get(id)`, `state.get_belief_by_subject(subject)`
 - ✓ When you need to "find" something, use a registry lookup with a key, not iteration
@@ -126,6 +138,9 @@ for (const belief of beliefs) {  // Don't comment obvious things
 - ✓ Use `assert()` from `lib/debug.mjs` for preconditions
 - ✓ Validate inputs early (fail fast)
 - ✓ Document error conditions in JSDoc
+- ✓ Return `null` for "not found" cases, never `undefined`
+  - `undefined` = "property doesn't exist" (implicit)
+  - `null` = "value intentionally absent" (explicit)
 
 ### Assertion Patterns
 

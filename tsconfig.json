@@ -3,8 +3,9 @@
     "allowJs": true,
     "checkJs": true,
     "noEmit": true,
-    "target": "ES2024",
-    "module": "ES2022",
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
     "moduleResolution": "node",
     "strict": true,
 
