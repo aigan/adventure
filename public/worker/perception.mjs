@@ -365,9 +365,9 @@ export function identify(state, perceived_belief, max_candidates = 3) {
     const about = belief.get_trait(state, about_tt)
     if (!about) continue
 
-    // Match all perceived traits
+    // Match all perceived traits - require exact match (all traits must match)
     const score = match_traits(state, perceived_belief, belief)
-    if (score > 0) {
+    if (score === 1) {
       candidates.push({
         subject: about,
         score,
@@ -781,4 +781,89 @@ export function match_traits(state, perceived, knowledge) {
   }
 
   return matched_count / total_count
+}
+
+/**
+ * FIXME: Migrate to mind.recall()
+ *
+ * Query beliefs across superposed states (possibility space)
+ *
+ * Searches multiple states ordered by certainty, yielding matches with
+ * combined scores (state certainty × trait match quality). Caller can
+ * stop iteration when satisfied, enabling efficient "good enough" searches.
+ *
+ * @param {State[]} states - Superposed states to search (from mind.states_at_tt())
+ * @param {Object} constraints - Query constraints
+ * @param {string} constraints.archetype - Required archetype label
+ * @param {Object} [constraints.traits] - Trait values to match {label: value}
+ * @yields {{belief: Belief, state: State, score: number}} Matches ordered by likelihood
+ *
+ * @example
+ * // NPC searching memory for black hammer
+ * const states = [...mind.states_at_tt(current_tt)]
+ * for (const {belief, score} of query_possibilities(states, {
+ *   archetype: 'Hammer',
+ *   traits: { color: 'black' }
+ * })) {
+ *   if (score >= 0.5) return belief  // Good enough match
+ * }
+ */
+export function* query_possibilities(states, constraints) {
+  // Sort states by certainty (most certain first)
+  const sorted = [...states].sort((a, b) => b.certainty - a.certainty)
+
+  const archetype = Archetype.get_by_label(constraints.archetype)
+  if (!archetype) return
+
+  const trait_specs = Object.entries(constraints.traits || {})
+
+  for (const state of sorted) {
+    for (const belief of state.get_beliefs_by_archetype(archetype)) {
+      let matched = 0
+
+      for (const [label, expected] of trait_specs) {
+        const tt = Traittype.get_by_label(label)
+        if (!tt) continue
+
+        const actual = belief.get_trait(state, tt)
+        if (actual === expected) {
+          matched++
+        } else if (actual instanceof Subject && expected instanceof Subject) {
+          // Subject comparison by sid
+          if (actual.sid === expected.sid) matched++
+        }
+      }
+
+      const match_score = trait_specs.length > 0
+        ? matched / trait_specs.length
+        : 1.0
+
+      if (match_score > 0) {
+        yield {
+          belief,
+          state,
+          score: state.certainty * match_score
+        }
+      }
+    }
+  }
+}
+
+/**
+ * FIXME: migrate to state.recall()
+ *
+ * Query beliefs within a single state
+ *
+ * Simpler version of query_possibilities for when you have just one state.
+ *
+ * @param {State} state - State to search
+ * @param {Object} constraints - Query constraints
+ * @param {string} constraints.archetype - Required archetype label
+ * @param {Object} [constraints.traits] - Trait values to match {label: value}
+ * @yields {{belief: Belief, score: number}} Matching beliefs with scores
+ */
+export function* query_beliefs(state, constraints) {
+  for (const result of query_possibilities([state], constraints)) {
+    yield { belief: result.belief, score: result.score }
+  }
 }

@@ -216,7 +216,7 @@ export class Convergence extends State {
     state._type = 'Convergence'
 
     const vt = data.vt ?? data.tt
-    state._init_properties(refs.in_mind, refs.ground_state, null, data.tt, vt, refs.self, refs.about_state, data._id)
+    state._init_properties(refs.in_mind, refs.ground_state, null, data.tt, vt, refs.self, refs.about_state, data._id, data.certainty)
 
     // Convergence-specific: resolve and set component_states
     const component_states = data.component_states.map((id) => {

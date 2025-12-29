@@ -42,6 +42,7 @@ import { Archetype, A } from './archetype.mjs'
  * @property {number} _id - State identifier
  * @property {number|null} tt - State transaction time/tick (null for timeless states like logos)
  * @property {number|null} vt - State valid time (null for timeless states like logos)
+ * @property {number} [certainty] - Certainty level 0.0-1.0 for superposition states (defaults to 1.0)
  * @property {number|null} base - Base state _id (null for root states)
  * @property {number|null} ground_state - Ground state _id (null for Timeless/Logos bootstrap)
  * @property {number|null} self - Subject sid (null if no self identity)
@@ -124,6 +125,7 @@ export class State {
   /** @type {Subject|null} */ self = null
   /** @type {State|null} */ about_state = null  // Alternative resolution context (Eidos→World lookups)
   /** @type {boolean} */ locked = false
+  /** @type {number} */ _certainty = 1.0  // 0.0 to 1.0, for superposition states
   /** @type {State[]} */ _branches = []
   /** @type {Map<Subject, Belief|null>|null} */ _subject_index = null
   /** @type {Map<Subject, Map<Traittype, State|null>>} */ _rev_base = new Map()
@@ -140,8 +142,9 @@ export class State {
    * @param {Subject|null} [options.self] - Self identity (defaults to base.self)
    * @param {State|null} [options.about_state] - Alternative resolution context (Eidos→World lookups)
    * @param {boolean} [options.derivation] - True if this state is a derivation (computed view, non-mutating)
+   * @param {number} [options.certainty] - Certainty level 0.0-1.0 for superposition states (defaults to 1.0)
    */
-  constructor(mind, ground_state, base=null, {tt: tt_option, vt, self, about_state, derivation} = {}) {
+  constructor(mind, ground_state, base=null, {tt: tt_option, vt, self, about_state, derivation, certainty} = {}) {
     // Prevent direct instantiation - State is abstract
     // Only allow construction through subclasses (Temporal, Timeless, Convergence)
     if (new.target === State) {
@@ -213,7 +216,7 @@ export class State {
     }
 
     // Use shared initialization
-    this._init_properties(mind, ground_state, base, tt, effective_vt, effective_self, about_state ?? null)
+    this._init_properties(mind, ground_state, base, tt, effective_vt, effective_self, about_state ?? null, null, certainty ?? 1.0)
   }
 
   /**
@@ -228,8 +231,9 @@ export class State {
    * @param {Subject|null} self
    * @param {State|null} about_state
    * @param {number|null} [id] - ID for deserialization (null = generate new)
+   * @param {number} [certainty] - Certainty level 0.0-1.0 (defaults to 1.0)
    */
-  _init_properties(in_mind, ground_state, base, tt, vt, self, about_state, id = null) {
+  _init_properties(in_mind, ground_state, base, tt, vt, self, about_state, id = null, certainty = 1.0) {
     // Initialize ALL properties
     this._kind = 'State'  // Base class identifier (same for all State subclasses)
     this._id = id ?? next_id()  // Use provided ID or generate new one
@@ -240,6 +244,7 @@ export class State {
     this.vt = vt
     this.self = self
     this.about_state = about_state
+    this._certainty = certainty
     this._insert = []
     this._remove = []
 
@@ -464,9 +469,11 @@ export class State {
    * Create a new branched state from this state (low-level)
    * @param {State} ground_state - External world state this mind observes (required)
    * @param {number|null} [vt] - Valid time override (for temporal reasoning about past/future)
+   * @param {object} [opts] - Additional options
+   * @param {number} [opts.certainty] - Certainty level 0.0-1.0 for superposition states
    * @returns {State} New unlocked state
    */
-  branch(ground_state, vt) {
+  branch(ground_state, vt, opts = {}) {
     // Build options for State constructor
     const options = {}
 
@@ -479,6 +486,14 @@ export class State {
     // If vt is provided, use it (for memory/planning scenarios)
     if (vt !== undefined && vt !== null) {
       options.vt = vt
+    }
+
+    // Pass certainty: explicit override or inherit from base
+    if (opts.certainty !== undefined) {
+      options.certainty = opts.certainty
+    } else if (this._certainty !== 1.0) {
+      // Inherit non-default certainty from base state
+      options.certainty = this._certainty
     }
 
     // self is inherited from this.self via base.self in constructor (no need to pass explicitly)
@@ -771,6 +786,14 @@ export class State {
   }
 
   /**
+   * Certainty level for superposition states (0.0 to 1.0)
+   * @returns {number}
+   */
+  get certainty() {
+    return this._certainty
+  }
+
+  /**
    * System designation - compact debug string
    * @returns {string}
    */
@@ -810,6 +833,7 @@ export class State {
       _id: this._id,
       tt: this.tt,
       vt: this.vt,
+      certainty: this._certainty,
       base: this.base?._id ?? null,
       ground_state: this.ground_state?._id ?? null,
       self: this.self?.toJSON() ?? null,
@@ -922,7 +946,7 @@ export class State {
     state._type = 'State'
 
     const vt = data.vt ?? data.tt
-    state._init_properties(refs.in_mind, refs.ground_state, refs.base, data.tt, vt, refs.self, refs.about_state, data._id)
+    state._init_properties(refs.in_mind, refs.ground_state, refs.base, data.tt, vt, refs.self, refs.about_state, data._id, data.certainty)
     state._load_insert_from_json(data)
     state._load_remove_from_json(data)
     state._link_base()

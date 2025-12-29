@@ -59,7 +59,7 @@ export class Timeless extends State {
     state._type = 'Timeless'
 
     // Timeless: base=null, tt=null, vt=null, about_state=null
-    state._init_properties(refs.in_mind, refs.ground_state, null, null, null, refs.self, null, data._id)
+    state._init_properties(refs.in_mind, refs.ground_state, null, null, null, refs.self, null, data._id, data.certainty)
     state._load_insert_from_json(data)
     state._load_remove_from_json(data)
     // No _link_base() needed - Timeless has no base chain

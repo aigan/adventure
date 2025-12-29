@@ -1,5 +1,15 @@
 # Current Work
 
+## Active
+
+- [ ] **Recall Implementation** - Query what a mind knows about a subject ([plan](docs/plans/recall-implementation.md))
+  - New `Trait` class as first-class object with subject, type, value, source, certainty
+  - `recall()` function returns Trait iterator, flattens component hierarchy
+  - Handles superposition (multiple beliefs for same subject)
+  - Replaces limited `query_possibilities()`
+
+---
+
 ## Backlog
 
 - [ ] **Inspect handling server reload** - Wait for nonexisting states to come back after restart
