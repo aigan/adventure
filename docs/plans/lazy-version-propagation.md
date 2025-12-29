@@ -51,11 +51,18 @@ BeliefNode {
   branches: Set<Belief>     // NEW: Sibling versions (same subject)
   branch_metadata: {        // NEW: Why this branch exists
     origin_state: StateRef,
-    probability: number,
+    certainty: null,        // null = not a probability state (DEFAULT)
+                            // number = probability weight (0.0-1.0)
     constraints: {...}
   }
 }
 ```
+
+**Certainty semantics:**
+- `certainty: null` (default) — Not a probability state. The timeline/branch may still be uncertain for other reasons, but not probability-weighted.
+- `certainty: <number>` — Probability state. Must be > 0 and < 1. Represents genuine uncertainty about which branch is true, with this weight.
+  - Values at boundaries (0 or 1) indicate impossible/certain branches, which should be handled differently (pruned or promoted)
+  - assert(certainty > 0 && certainty < 1) when setting non-null certainty
 
 ### Resolution Flow
 
@@ -67,7 +74,7 @@ Query: npc_belief.get_trait(state, 'season')
 3. Check city_belief.traits.season → not found
 4. Walk bases: city_belief → country_culture_v1
 5. Check country_culture_v1.branches → [country_v2@T110, country_v3@T150]
-6. Call state.resolve_branches([v2, v3], context)
+6. Call state.pick_branch([v2, v3], context)
 7. Resolver filters by timestamp:
    - state.timestamp = T110
    - v2.origin_state.timestamp = T110 ✓
@@ -84,7 +91,7 @@ Query: npc_belief.get_trait(state, 'king_status')
 
 1-4. Same walk to country_culture_v1
 5. Check branches → [v2a@T110 (p=0.6), v2b@T110 (p=0.4)]
-6. Call state.resolve_branches([v2a, v2b], context)
+6. Call state.pick_branch([v2a, v2b], context)
 7. Resolver sees both valid (same timestamp, probability-weighted)
 8. Resolver returns superposition (can't decide)
 9. Return {
@@ -94,6 +101,32 @@ Query: npc_belief.get_trait(state, 'king_status')
        {path: v2b, value: 'alive', probability: 0.4}
      ]
    }
+```
+
+### Superposition with Same Values
+
+When multiple branches yield the **same value**, `recall_by_subject()` returns separate Trait objects:
+
+```javascript
+// Branch A (0.6): hammer.location = workshop (from belief_a)
+// Branch B (0.4): hammer.location = workshop (from belief_b)
+
+// Returns TWO Trait objects (not combined):
+Trait{value: workshop, certainty: 0.6, source: belief_a}
+Trait{value: workshop, certainty: 0.4, source: belief_b}
+```
+
+**Rationale**: Same value ≠ same trait. Different sources mean different provenance:
+- Different beliefs may have different bases, timestamps, or history
+- Caller can aggregate certainties if needed (sum to 1.0 when all agree)
+- Preserves information about where knowledge came from
+
+**Caller aggregation example**:
+```javascript
+const traits = [...mind.recall_by_subject(ground, hammer, tt, ['location'])]
+const by_value = Map.groupBy(traits, t => t.value?.sid ?? t.value)
+// by_value.get(workshop_sid) → [Trait{0.6}, Trait{0.4}]
+// Sum certainties: 0.6 + 0.4 = 1.0 (certain)
 ```
 
 ### Materialization Flow
@@ -132,9 +165,12 @@ Next NPC:
 
 **Changes**:
 - Add `branches: Set<Belief>` to Belief class
-- Add `branch_metadata: {origin_state, probability, constraints}` to Belief class
+- Add `branch_metadata: {origin_state, certainty, constraints}` to Belief class
+  - `certainty` defaults to `null` (not a probability state)
+  - Set to number only for probability branches
+  - assert(certainty === null || (certainty > 0 && certainty < 1)) when setting
 - Modify `Belief.from_template()` to register as branch when creating version of existing subject
-- Add `add_branch(belief, metadata)` method
+- Add `add_branch(belief, metadata)` method with certainty validation
 - Add `get_branches()` method
 
 **Tests**:
@@ -142,20 +178,24 @@ Next NPC:
 - Branch metadata captures origin_state reference
 - Multiple branches accumulate in set
 - Branches are not included in bases traversal
+- Setting certainty to 0 → throws assertion error
+- Setting certainty to 1 → throws assertion error
+- Setting certainty to 0.5 → valid
+- Setting certainty to null → valid (default)
 
 ### Phase 2: Implement State Resolver Interface
 
 **Files**: `public/worker/state.mjs`
 
 **Changes**:
-- Add `resolve_branches(branches, context)` method to State class
+- Add `pick_branch(branches, context)` method to State class
 - Implements temporal filtering (compare origin_state.timestamp with this.timestamp)
 - Returns single belief (filtered) or array of beliefs (superposition)
 - Context object includes query metadata for future extensions
 
 **Resolver logic**:
 ```javascript
-resolve_branches(branches, context) {
+pick_branch(branches, context) {
   // Temporal filtering
   const valid = [...branches].filter(b =>
     b.branch_metadata.origin_state.timestamp <= this.timestamp
@@ -164,14 +204,15 @@ resolve_branches(branches, context) {
   if (valid.length === 0) return null
   if (valid.length === 1) return valid[0]
 
-  // Multiple valid branches - check if we can decide
-  const probabilities = valid.map(b => b.branch_metadata.probability)
-  if (probabilities.some(p => p != null)) {
-    // Probability branches - return superposition
+  // Multiple valid branches - check if any are probability states
+  const is_probability = valid.some(b => b.branch_metadata.certainty !== null)
+
+  if (is_probability) {
+    // Probability branches - return all, caller handles via recall()
     return valid
   }
 
-  // Pick most recent by default
+  // Not probability states - pick most recent by default
   return valid.sort((a, b) =>
     b.branch_metadata.origin_state.timestamp -
     a.branch_metadata.origin_state.timestamp
@@ -192,7 +233,7 @@ resolve_branches(branches, context) {
 **Changes**:
 - Modify `get_trait(state, trait_name)` to detect branches during traversal
 - Walk bases chain, check each belief for non-empty `branches` set
-- Call `state.resolve_branches(belief.branches, context)` when found
+- Call `state.pick_branch(belief.branches, context)` when found
 - If resolver returns single belief, continue down that path
 - If resolver returns array, return superposition object
 - Add resolution caching with `_resolved_cache: Map<StateID, Map<trait_name, value>>`
@@ -228,7 +269,7 @@ materialize_path(belief, state) {
   // Walk bases and collect resolution decisions
   for (let current = belief; current; current = get_next_base(current)) {
     if (current.branches.size > 0) {
-      const resolved = state.resolve_branches(current.branches, {})
+      const resolved = state.pick_branch(current.branches, {})
       if (Array.isArray(resolved)) {
         throw new Error('Cannot materialize superposition - caller must collapse first')
       }
@@ -282,7 +323,7 @@ get_belief_by_subject(subject) {
     if (belief.subject === subject) {
       // Check if this belief has branches
       if (belief.branches.size > 0) {
-        const resolved = this.resolve_branches(belief.branches, {})
+        const resolved = this.pick_branch(belief.branches, {})
         if (!Array.isArray(resolved)) {
           return resolved  // Resolver decided
         }
@@ -439,3 +480,241 @@ collapse_trait(belief, trait_name, selected_branch) {
 - Resolution cache mitigates performance impact
 - Superposition return values require caller awareness
 - But enables scaling to millions of NPCs without version explosion
+
+---
+
+## Relationship to @resolution (December 2024 Update)
+
+### Separation of Concerns
+
+**Lazy propagation** and **@resolution** are orthogonal systems:
+
+| Aspect | Lazy Propagation | @resolution |
+|--------|------------------|-------------|
+| **Purpose** | Efficient shared belief updates | Record collapse of possibility space |
+| **Trigger** | Every trait query | Only when collapse happens |
+| **Storage** | `branches` Set on belief | `@resolution` trait + `Subject.resolutions` index |
+| **Persistence** | Computed at query time | Permanent record |
+| **Legacy support** | N/A | Yes - visible across timelines via Session.legacy |
+
+### Query Flow with Both Systems
+
+```
+Query: npc.get_trait(state, 'king_status')
+
+1. CHECK FOR RECORDED COLLAPSE (@resolution)
+   - Look up Subject.resolutions for this subject
+   - Check if resolution visible from current state (ancestry OR Session.legacy)
+   → If found: return resolved value, DONE
+
+2. NO COLLAPSE RECORDED → LAZY PROPAGATION
+   - Walk bases chain: npc → city → country
+   - Find branches on country
+   - Call state.pick_branch()
+
+3. RESOLVER DECISION
+   - Temporal branches (different timestamps) → pick by timestamp
+   - Probability branches (same timestamp) → return superposition
+
+4. SUPERPOSITION RETURNED TO CALLER
+   - Caller can examine possibilities
+   - Caller can trigger collapse (creates @resolution record)
+```
+
+### When Each System Activates
+
+**Lazy propagation only** (no @resolution needed):
+- "Winter arrived" → temporal branch, resolver picks by timestamp
+- No uncertainty, just version selection
+
+**@resolution needed** (after lazy prop returns superposition):
+- "King might be dead" → probability branches at same timestamp
+- Lazy prop returns superposition
+- Player observation triggers collapse
+- @resolution records the decision permanently
+
+### Updated Phase 6: Collapse Creates @resolution
+
+The `collapse_trait()` method should create a @resolution record:
+
+```javascript
+collapse_trait(belief, trait_name, selected_branch) {
+  // Create resolution belief with @resolution pointing to selected
+  const resolution = this.add_belief_from_template({
+    sid: belief.subject.sid,
+    bases: [belief],  // Links to original (with branches)
+    traits: {
+      '@resolution': selected_branch  // Points to selected branch
+    }
+  })
+
+  // Update Subject.resolutions index for O(1) lookup
+  belief.subject.resolutions.set(
+    this._id,  // Query state
+    resolution._id  // Resolution belief
+  )
+
+  // Materialize intermediate nodes if needed
+  return materialize_path(resolution, this)
+}
+```
+
+---
+
+## Interaction Matrix
+
+### Feature × Feature Interactions
+
+| | Lazy Prop | @resolution | @tracks | Session.legacy | Convergence |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Lazy Prop** | - | Sequential¹ | Orthogonal² | N/A | Compatible³ |
+| **@resolution** | Sequential¹ | - | Compatible⁴ | Required⁵ | Unified⁶ |
+| **@tracks** | Orthogonal² | Compatible⁴ | - | Compatible⁷ | Separate⁸ |
+| **Session.legacy** | N/A | Required⁵ | Compatible⁷ | - | Via @resolution |
+| **Convergence** | Compatible³ | Unified⁶ | Separate⁸ | Via @resolution | - |
+
+**Notes:**
+1. Lazy prop returns superposition → @resolution records collapse
+2. @tracks is for timeline fallback, lazy prop is for shared beliefs
+3. Convergence can contain beliefs with branches
+4. Theory timelines can have @resolution for collapsed possibilities
+5. @resolution enables legacy queries (cross-timeline resolution)
+6. Convergence collapse uses @resolution to record which branch
+7. Legacy can track @tracks timeline
+8. Convergence uses BFS, @tracks uses depth-first
+
+### Feature × Uncertainty Type Interactions
+
+| | State Uncertainty | Belief Uncertainty | Trait Uncertainty (UNKNOWN) |
+|---|:---:|:---:|:---:|
+| **Lazy Prop** | Via Convergence | branches Set | N/A (no value to branch) |
+| **@resolution** | Points to state | Points to belief | Points to belief with value |
+| **@tracks** | Fallback timeline | N/A | Query falls through |
+| **Session.legacy** | Check ancestry | Check ancestry | Check ancestry |
+| **Subject.resolutions** | Map<state_id, state_id> | Same | Same |
+
+### Uncertainty Type Details
+
+**State Uncertainty** (Convergence - multiple world branches):
+```
+world_state_5a: {certainty: 0.6, king: 'dead'}
+world_state_5b: {certainty: 0.4, king: 'alive'}
+convergence: [state_5a, state_5b]
+
+Resolution: @resolution → state_5a
+```
+
+**Belief Uncertainty** (multiple beliefs, same subject/vt):
+```
+belief_A: {subject: hammer, location: workshop}
+belief_B: {subject: hammer, location: shed}
+Both at same vt, same subject
+
+Resolution: new belief with @resolution → belief_A
+```
+
+**Trait Uncertainty** (UNKNOWN value):
+```
+belief_v1: {subject: cell, exit: UNKNOWN}
+
+Resolution: belief_v2 with {
+  base: belief_v1,
+  exit: 'north',
+  @resolution: belief_v1  // "resolves the unknown in v1"
+}
+```
+
+---
+
+## Test Matrix
+
+### Lazy Propagation Tests
+
+| Scenario | Setup | Action | Expected |
+|----------|-------|--------|----------|
+| LP-1: Temporal branch | country_v1 → country_v2 at T2 | Query at T1 | v1 traits |
+| LP-2: Temporal branch | country_v1 → country_v2 at T2 | Query at T2 | v2 traits |
+| LP-3: Multiple branches | v1 → v2@T2, v3@T3 | Query at T2 | v2 traits |
+| LP-4: Probability branch | v1 → v2a(p=0.6), v2b(p=0.4) | Query | Superposition |
+| LP-5: Materialization | NPC creates opinion | Walk chain | Intermediates created |
+| LP-6: Reuse materialized | Second NPC, same city | Walk chain | Reuse city_v2 |
+
+### @resolution Tests
+
+| Scenario | Setup | Action | Expected |
+|----------|-------|--------|----------|
+| RES-1: Collapse state | Convergence[5a, 5b] | Collapse to 5a | @resolution → 5a |
+| RES-2: Collapse belief | beliefs A, B same subject | Collapse to A | @resolution → A |
+| RES-3: Resolve unknown | belief with UNKNOWN trait | Resolve to value | @resolution → original |
+| RES-4: Query after collapse | After RES-1 | Query same state | Returns resolved |
+| RES-5: Query from legacy | After RES-1, new timeline | Query with legacy | Returns resolved |
+| RES-6: Query without legacy | After RES-1, fresh session | Query | Returns superposition |
+
+### @tracks + Timeline Tests
+
+| Scenario | Setup | Action | Expected |
+|----------|-------|--------|----------|
+| TRK-1: Local wins | new_state with local trait | Query | Local value |
+| TRK-2: Fallback | new_state without trait | Query | @tracks value |
+| TRK-3: Advance tracked | new_state, advance time | advance_tracked_timeline() | @tracks updated |
+| TRK-4: @tracks + lazy prop | Tracked state has branches | Query | Resolve via tracked |
+
+### Combined Feature Tests
+
+| Scenario | Features | Setup | Expected |
+|----------|----------|-------|----------|
+| COMB-1 | LP + @resolution | Probability branch → collapse | @resolution recorded, lazy query returns resolved |
+| COMB-2 | LP + @tracks | Shared belief in tracked timeline | Query walks @tracks, then resolves branches |
+| COMB-3 | @resolution + legacy | Collapse in old run, query in new | Legacy enables resolution lookup |
+| COMB-4 | LP + @resolution + @tracks | Theory with collapsed shared belief | Theory inherits via @tracks, sees resolved value |
+| COMB-5 | All + State uncertainty | Convergence with branched beliefs | Convergence collapse + belief branch resolution |
+| COMB-6 | All + UNKNOWN | Unknown in shared belief, theory | Resolution propagates via lazy + @tracks |
+
+### Edge Cases
+
+| Scenario | Setup | Expected |
+|----------|-------|----------|
+| EDGE-1: Double branch | country → v2 → v3 (sequential) | Resolver walks to v3 |
+| EDGE-2: Divergent branches | v1 → v2a, v1 → v2b (same time, no prob) | Error or pick one |
+| EDGE-3: Resolution of resolution | Collapse A, then collapse again | Second resolution recorded |
+| EDGE-4: Materialization with @resolution | Materialize path with existing collapse | Use resolved path |
+| EDGE-5: @tracks chain with branches | @tracks → @tracks → state with branches | Full resolution |
+| EDGE-6: Legacy + new branches | Legacy collapse, new timeline adds branches | Legacy resolution still valid |
+
+---
+
+## Open Questions for Test Design
+
+1. **Branch ordering**: When multiple non-probability branches exist at same timestamp, which wins?
+   - Current: "most recent by default" - but what defines "recent" if same timestamp?
+
+2. **Cascading @resolution**: If A resolves to B, and B has branches, is that a new resolution?
+   - Proposal: Yes, each uncertainty point gets its own @resolution
+
+3. **@resolution vs materialization**: Does @resolution require materialization?
+   - Proposal: No - @resolution is just a pointer, materialization is separate
+
+4. **Convergence + lazy prop**: Can Convergence components have branches?
+   - Proposal: Yes, query resolves branches within each component
+
+5. **Subject.resolutions cleanup**: When are old resolutions garbage collected?
+   - Deferred to branch lifecycle work
+
+---
+
+## Updated Success Criteria
+
+Original criteria (still valid):
+1. ✅ No cascade: Adding branch creates 1 belief, not thousands
+2. ✅ Lazy resolution: NPCs inherit without materialization
+3. ✅ Explicit control: Materialization only on explicit creation
+4. ✅ Superposition support: Probability branches return superposition
+5. ✅ Performance: O(changes) not O(NPCs)
+6. ✅ Backward compatible: Existing code unchanged
+
+New criteria (December 2024):
+7. ✅ @resolution separation: Lazy prop and @resolution are orthogonal
+8. ✅ Legacy support: @resolution visible via Session.legacy
+9. ✅ All uncertainty types: State, Belief, and UNKNOWN trait resolution
+10. ✅ @tracks compatibility: Works with timeline tracking
+11. ✅ Test coverage: All matrix scenarios have tests

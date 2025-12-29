@@ -2021,4 +2021,170 @@ describe('observation', () => {
       })
     })
   })
+
+  describe('Stage 2: Descriptors & Identity', () => {
+    beforeEach(() => {
+      // Register EventAwareness/EventPerception
+      DB.register({
+        content: { type: 'Thing', container: Array, exposure: 'internal' }
+      }, {
+        EventAwareness: {
+          bases: ['Thing'],
+          traits: { content: null }
+        },
+        EventPerception: {
+          bases: ['EventAwareness']
+        }
+      }, {})
+    })
+
+    it('2.1 player has separate beliefs distinguishing objects by color', () => {
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer_blue: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop', color: 'blue' }
+        },
+        hammer_red: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop', color: 'red' }
+        },
+        player: {
+          bases: ['Person'],
+          traits: { mind: {}, location: 'workshop' }
+        }
+      })
+
+      state.lock()
+      state = state.branch(Cosmos.logos_state(), 2)
+
+      const player = state.get_belief_by_label('player')
+      const hammer_blue = state.get_belief_by_label('hammer_blue')
+      const hammer_red = state.get_belief_by_label('hammer_red')
+      const player_state = state.get_active_state_by_host(player.subject)
+
+      // Player perceives both hammers
+      const perception = perceive(player_state, [hammer_blue, hammer_red])
+      learn_from(player_state, perception)
+
+      // Verify: Player has 2 separate beliefs
+      const blue_knowledge = recognize(player_state, hammer_blue)
+      const red_knowledge = recognize(player_state, hammer_red)
+
+      expect(blue_knowledge).to.have.lengthOf(1)
+      expect(red_knowledge).to.have.lengthOf(1)
+      expect(blue_knowledge[0]).to.not.equal(red_knowledge[0])
+
+      // Verify: Colors are distinguished
+      const color_tt = Traittype.get_by_label('color')
+      expect(blue_knowledge[0].get_trait(player_state, color_tt)).to.equal('blue')
+      expect(red_knowledge[0].get_trait(player_state, color_tt)).to.equal('red')
+    })
+
+    it('2.2 similar black hammers distinguished by size', () => {
+      // Register size traittype and SizedObject archetype
+      DB.register({
+        size: { type: 'string', values: ['small', 'large'], exposure: 'visual' }
+      }, {
+        SizedObject: {
+          bases: ['PortableObject'],
+          traits: { size: null }
+        }
+      }, {})
+
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer_large: {
+          bases: ['SizedObject'],
+          traits: { location: 'workshop', color: 'black', size: 'large' }
+        },
+        hammer_small: {
+          bases: ['SizedObject'],
+          traits: { location: 'workshop', color: 'black', size: 'small' }
+        },
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              hammer_large: ['color', 'size'],
+              hammer_small: ['color', 'size']
+            },
+            location: 'workshop'
+          }
+        }
+      })
+
+      state.lock()
+      state = state.branch(Cosmos.logos_state(), 2)
+
+      const player = state.get_belief_by_label('player')
+      const hammer_large = state.get_belief_by_label('hammer_large')
+      const hammer_small = state.get_belief_by_label('hammer_small')
+      const player_state = state.get_active_state_by_host(player.subject)
+
+      // Test identify() with only color (ambiguous)
+      const perceived_black = player_state.add_belief_from_template({
+        bases: ['SizedObject'],
+        traits: { '@about': null, color: 'black' }
+      })
+      const ambiguous = identify(player_state, perceived_black)
+      expect(ambiguous).to.have.lengthOf(2)  // Both match
+
+      // Test identify() with color + size (specific)
+      const perceived_large = player_state.add_belief_from_template({
+        bases: ['SizedObject'],
+        traits: { '@about': null, color: 'black', size: 'large' }
+      })
+      const specific = identify(player_state, perceived_large)
+      expect(specific).to.have.lengthOf(1)
+      expect(specific[0]).to.equal(hammer_large.subject)
+    })
+
+    it('2.5 query "black objects" returns all matches via recall_by_archetype', () => {
+      // Create player's mind directly to demonstrate query by descriptor
+      const player_mind = new Cosmos.Materia(Cosmos.logos(), 'player_mind')
+      const ground = Cosmos.logos_state()
+      const mind_state = player_mind.create_state(ground, { tt: 1 })
+
+      // Player knows about several objects with different colors
+      const hammer_black = mind_state.add_belief_from_template({
+        label: 'hammer_black',
+        bases: ['PortableObject'],
+        traits: { color: 'black' }
+      })
+      const hammer_blue = mind_state.add_belief_from_template({
+        label: 'hammer_blue',
+        bases: ['PortableObject'],
+        traits: { color: 'blue' }
+      })
+      const wrench_black = mind_state.add_belief_from_template({
+        label: 'wrench_black',
+        bases: ['PortableObject'],
+        traits: { color: 'black' }
+      })
+      mind_state.lock()
+
+      // Query all PortableObjects and filter by color
+      const results = [...player_mind.recall_by_archetype(
+        ground, 'PortableObject', 1, ['color']
+      )]
+
+      // Filter for black objects
+      const black_objects = results.filter(([subject, traits]) => {
+        const color_trait = traits.find(t => t.type.label === 'color')
+        return color_trait?.value === 'black'
+      })
+
+      expect(black_objects).to.have.lengthOf(2)
+      const subjects = black_objects.map(([s, _]) => s)
+      expect(subjects).to.include(hammer_black.subject)
+      expect(subjects).to.include(wrench_black.subject)
+    })
+  })
 })

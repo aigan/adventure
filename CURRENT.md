@@ -2,11 +2,16 @@
 
 ## Active
 
-- [ ] **Recall Implementation** - Query what a mind knows about a subject ([plan](docs/plans/recall-implementation.md))
-  - New `Trait` class as first-class object with subject, type, value, source, certainty
-  - `recall()` function returns Trait iterator, flattens component hierarchy
-  - Handles superposition (multiple beliefs for same subject)
-  - Replaces limited `query_possibilities()`
+- [ ] **Combinatorial Explosion Components** ([meta-plan](docs/plans/META-PLAN-combinatorial-explosion.md))
+  - Implementing all "Designed - Ready for Implementation" components
+  - Phase 1: Foundation ✅ Complete (Trait object, state.certainty)
+  - Phase 2: Lazy Version Propagation ([plan](docs/plans/lazy-version-propagation.md))
+  - Phase 3: @resolution Pattern (orthogonal to Phase 2)
+  - Phase 4: @tracks + Session.legacy
+  - Phase 5: Observation System ([plan](docs/plans/observation-events.md))
+  - Phase 6: Superposition API
+  - **Key insight**: Lazy prop (query-time) and @resolution (recorded collapse) are orthogonal
+  - **Deferred**: Branch lifecycle, @path_certainty cache, decision time
 
 ---
 
@@ -19,13 +24,6 @@
   - Priority targets: `session ↔ channel`, `worker ↔ narrator`, `traittype ↔ archetype`
   - Core data model cycle (`db ↔ belief ↔ state ↔ mind`) is fundamental, low priority
   - Use dpdm to track progress: `npx dpdm public/worker/worker.mjs --circular`
-- [ ] **Lazy Version Propagation with Group Minds** - Enable efficient shared belief updates ([plan](docs/plans/lazy-version-propagation.md))
-  - NPCs reference sibling group_mind states as bases
-  - Cultural knowledge updates create new group_mind states
-  - NPCs inherit old version until they observe/interact
-  - Materialization on explicit observation (not automatic cascade)
-  - Enables scaling to millions of NPCs inheriting cultural knowledge
-  - Architecture: `npc_state.base = world.group_mind.origin_state`
 - [ ] **Mind Template Syntax: Support Bases** - Enable specifying belief bases in declarative mind templates
   - Current limitation: `mind: {tavern: ['location']}` only supports labeled subjects
   - Need: Way to specify bases for beliefs created during learning

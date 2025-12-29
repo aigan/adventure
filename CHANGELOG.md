@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-12-29
+
+### Added
+- **Recall API for querying mind knowledge**
+  - `mind.recall_by_subject(ground, subject, tt, traits?)` - Direct lookup returning `Trait` iterator
+  - `mind.recall_by_archetype(ground, archetype, tt, traits)` - Search by archetype returning `[Subject, Trait[]]` pairs
+  - `Trait` class encapsulates subject, type, value, source belief, and combined certainty
+  - Dot notation paths for nested component access (e.g., `'handle.color'`)
+  - Superposition support: multiple `Trait` objects when belief branches exist
+  - Combined certainty = path certainty × belief certainty
+- **Stage 2: Descriptors & Identity tests** (Alpha 1)
+  - Test 2.1: Player distinguishes objects by color trait
+  - Test 2.2: Similar objects distinguished by size (ambiguous vs specific identification)
+  - Test 2.5: Query by descriptor via `recall_by_archetype` + trait filtering
+
 ## 2025-12-19
 
 ### Changed

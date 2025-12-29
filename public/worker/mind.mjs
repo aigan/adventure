@@ -696,14 +696,19 @@ export class Mind {
    * Recall traits for a known subject
    *
    * Yields requested traits for a subject across states at the given ground_state + tt.
-   * If superposition exists (multiple beliefs for same subject), yields multiple Traits
-   * of the same type with different values/certainties.
+   * If superposition exists (multiple branches with beliefs for same subject), yields
+   * multiple Traits of the same type with different values/certainties.
+   *
+   * **Same values are NOT combined**: If two branches yield the same value, two separate
+   * Trait objects are returned (each with its own certainty and source). This preserves
+   * provenance - different sources mean different beliefs even when values match.
+   * Caller can aggregate with `Map.groupBy(traits, t => t.value)` if needed.
    *
    * @param {State} ground_state - World/parent state context
    * @param {Subject} subject - Subject to recall traits for
    * @param {number} tt - Transaction time: when the mind recorded beliefs (what mind knows at this moment)
    * @param {string[]} [request_traits] - Trait labels to return (omit for all traits)
-   * @yields {Trait} Trait objects with combined certainty
+   * @yields {Trait} Trait objects with certainty (path × belief certainty)
    */
   *recall_by_subject(ground_state, subject, tt, request_traits) {
     assert(ground_state instanceof State, 'ground_state must be State', {ground_state})
@@ -808,11 +813,15 @@ export class Mind {
    * Searches for beliefs by archetype across states at the given ground_state + tt.
    * Groups by subject, returns requested traits for each subject.
    *
+   * **Same values are NOT combined**: If two branches yield the same trait value for a
+   * subject, the traits array contains separate Trait objects (each with its own certainty
+   * and source). This preserves provenance. Caller can aggregate if needed.
+   *
    * @param {State} ground_state - World/parent state context
    * @param {string|Archetype} archetype - Archetype to search for (label or instance)
    * @param {number} tt - Transaction time
    * @param {string[]} request_traits - Trait labels to return
-   * @yields {[Subject, Trait[]]} Subject and its traits
+   * @yields {[Subject, Trait[]]} Subject and its traits (may have multiple Traits per type)
    */
   *recall_by_archetype(ground_state, archetype, tt, request_traits) {
     assert(ground_state instanceof State, 'ground_state must be State', {ground_state})

@@ -71,6 +71,7 @@ export function _perceive_single(state, world_entity, about_state, modalities) {
   const observed_traits = {}
   const uncertain_tt = T['@uncertain_identity']
 
+  // FIXME: use traittype methods instead of if-else
   for (const traittype of observed_traittypes) {
     const value = world_entity.get_trait(about_state, traittype)
     if (value !== null) {
