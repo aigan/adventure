@@ -126,6 +126,7 @@ export class State {
   /** @type {State|null} */ about_state = null  // Alternative resolution context (Eidos→World lookups)
   /** @type {boolean} */ locked = false
   /** @type {number} */ _certainty = 1.0  // 0.0 to 1.0, for superposition states
+  /** @type {number|undefined} */ _cached_path_certainty = undefined  // Cached path certainty for locked states
   /** @type {State[]} */ _branches = []
   /** @type {Map<Subject, Belief|null>|null} */ _subject_index = null
   /** @type {Map<Subject, Map<Traittype, State|null>>} */ _rev_base = new Map()

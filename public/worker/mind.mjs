@@ -27,13 +27,13 @@ import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
 import { Traittype } from './traittype.mjs'
 import { Trait } from './trait.mjs'
+import { Archetype } from './archetype.mjs'
 import { learn_about } from './perception.mjs'
 
 /**
  * @typedef {import('./belief.mjs').BeliefJSON} BeliefJSON
  * @typedef {import('./state.mjs').StateJSON} StateJSON
  * @typedef {import('./subject.mjs').Subject} Subject
- * @typedef {import('./archetype.mjs').Archetype} Archetype
  * @typedef {import('./convergence.mjs').Convergence} Convergence
  */
 
@@ -710,14 +710,21 @@ export class Mind {
     assert(subject && typeof subject.sid === 'number', 'subject must be Subject', {subject})
     assert(typeof tt === 'number', 'tt must be number', {tt})
 
-    // Resolve request_traits to Traittype objects upfront
-    const traittypes = request_traits
-      ? request_traits.map(label => {
+    // Separate paths (with dots) from direct trait labels
+    const paths = request_traits?.filter(t => t.includes('.')) ?? []
+    const direct_labels = request_traits?.filter(t => !t.includes('.'))
+
+    // Resolve direct labels to Traittype objects
+    const traittypes = direct_labels
+      ? direct_labels.map(label => {
           const traittype = Traittype.get_by_label(label)
           assert(traittype, `Unknown traittype: ${label}`, {label})
           return traittype
         })
       : null  // null means all traits
+
+    // Cache @certainty traittype for belief-level certainty lookup
+    const certainty_traittype = Traittype.get_by_label('@certainty')
 
     // Use states_at_tt() to get outermost states at this tt
     for (const state of this.states_at_tt(ground_state, tt)) {
@@ -725,11 +732,23 @@ export class Mind {
       const belief = state.get_belief_by_subject(subject)
       if (!belief) continue
 
-      // Compute path certainty (walk state base chain for @certainty splits)
+      // Compute combined certainty: path_certainty × belief_certainty
       const path_certainty = this._compute_path_certainty(state)
-      const combined_certainty = path_certainty
+      const belief_certainty = certainty_traittype
+        ? (belief.get_own_trait_value(certainty_traittype) ?? 1.0)
+        : 1.0
+      const combined_certainty = path_certainty * belief_certainty
 
-      // Get traits to yield
+      // Yield path-based traits
+      for (const path of paths) {
+        const trait = belief.get_trait_path(state, path)
+        if (trait) {
+          trait.certainty *= combined_certainty
+          yield trait
+        }
+      }
+
+      // Get direct traits to yield
       const types_to_get = traittypes ?? belief.get_slots()
 
       for (const traittype of types_to_get) {
@@ -752,12 +771,18 @@ export class Mind {
 
   /**
    * Compute path certainty by walking state base chain
-   * Multiplies @certainty values at each split point
+   * Multiplies certainty values at each split point.
+   * Caches result on locked states to avoid recomputation.
    * @param {State} state - State to compute certainty for
    * @returns {number} Combined path certainty (0.0-1.0)
    * @private
    */
   _compute_path_certainty(state) {
+    // Return cached value for locked states
+    if (state.locked && state._cached_path_certainty !== undefined) {
+      return state._cached_path_certainty
+    }
+
     let certainty = 1.0
     /** @type {State|null} */
     let current = state
@@ -769,7 +794,117 @@ export class Mind {
       current = current.base
     }
 
+    // Cache on locked states
+    if (state.locked) {
+      state._cached_path_certainty = certainty
+    }
+
     return certainty
+  }
+
+  /**
+   * Recall traits for beliefs matching an archetype
+   *
+   * Searches for beliefs by archetype across states at the given ground_state + tt.
+   * Groups by subject, returns requested traits for each subject.
+   *
+   * @param {State} ground_state - World/parent state context
+   * @param {string|Archetype} archetype - Archetype to search for (label or instance)
+   * @param {number} tt - Transaction time
+   * @param {string[]} request_traits - Trait labels to return
+   * @yields {[Subject, Trait[]]} Subject and its traits
+   */
+  *recall_by_archetype(ground_state, archetype, tt, request_traits) {
+    assert(ground_state instanceof State, 'ground_state must be State', {ground_state})
+    assert(typeof tt === 'number', 'tt must be number', {tt})
+    assert(Array.isArray(request_traits), 'request_traits must be array', {request_traits})
+
+    // Resolve archetype
+    const arch = typeof archetype === 'string'
+      ? Archetype.get_by_label(archetype)
+      : archetype
+    assert(arch instanceof Archetype, `Archetype not found: ${archetype}`, {archetype})
+
+    // Separate paths (with dots) from direct trait labels
+    const paths = request_traits.filter(t => t.includes('.'))
+    const direct_labels = request_traits.filter(t => !t.includes('.'))
+
+    // Resolve direct labels to Traittype objects
+    const traittypes = direct_labels.map(label => {
+      const traittype = Traittype.get_by_label(label)
+      assert(traittype, `Unknown traittype: ${label}`, {label})
+      return traittype
+    })
+
+    // Cache @certainty traittype for belief-level certainty lookup
+    const certainty_traittype = Traittype.get_by_label('@certainty')
+
+    // Collect subjects and their traits across all states at tt
+    /** @type {Map<Subject, {belief: Belief, state: State, certainty: number}[]>} */
+    const subject_map = new Map()
+
+    for (const state of this.states_at_tt(ground_state, tt)) {
+      const path_certainty = this._compute_path_certainty(state)
+
+      for (const belief of state.get_beliefs()) {
+        // Check if belief has requested archetype
+        let has_archetype = false
+        for (const a of belief.get_archetypes()) {
+          if (a === arch) { has_archetype = true; break }
+        }
+        if (!has_archetype) continue
+
+        // Compute combined certainty: path_certainty × belief_certainty
+        const belief_certainty = certainty_traittype
+          ? (belief.get_own_trait_value(certainty_traittype) ?? 1.0)
+          : 1.0
+        const combined_certainty = path_certainty * belief_certainty
+
+        const subject = belief.subject
+        let entries = subject_map.get(subject)
+        if (!entries) {
+          entries = []
+          subject_map.set(subject, entries)
+        }
+        entries.push({ belief, state, certainty: combined_certainty })
+      }
+    }
+
+    // Yield [Subject, Trait[]] for each subject
+    for (const [subject, entries] of subject_map) {
+      const traits = []
+
+      for (const { belief, state, certainty } of entries) {
+        // Path-based traits
+        for (const path of paths) {
+          const trait = belief.get_trait_path(state, path)
+          if (trait) {
+            trait.certainty *= certainty
+            traits.push(trait)
+          }
+        }
+
+        // Direct traits
+        for (const traittype of traittypes) {
+          if (traittype.label.startsWith('@')) continue
+
+          const value = belief.get_trait(state, traittype)
+          if (value === undefined) continue
+
+          traits.push(new Trait({
+            subject,
+            type: traittype,
+            value,
+            source: belief,
+            certainty
+          }))
+        }
+      }
+
+      if (traits.length > 0) {
+        yield [subject, traits]
+      }
+    }
   }
 }
 

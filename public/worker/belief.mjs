@@ -20,6 +20,7 @@ import * as DB from './db.mjs'
 import { Subject } from './subject.mjs'
 import { Traittype } from './traittype.mjs'
 import { State } from './state.mjs'
+import { Trait } from './trait.mjs'
 
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
@@ -343,6 +344,39 @@ export class Belief {
     if (this.locked) this._set_cache(traittype, value)
 
     return value
+  }
+
+  /**
+   * Get trait value following a path through Subject references
+   * Enables dot notation like 'handle.color' for compositional access
+   * @param {State} state - State context for resolution
+   * @param {string|string[]} path - Path like 'handle.color' or ['handle', 'color']
+   * @returns {Trait|undefined} Trait with combined certainty, or undefined if path broken
+   */
+  get_trait_path(state, path) {
+    const segments = typeof path === 'string' ? path.split('.') : path
+    let belief = /** @type {Belief} */ (this)
+    let certainty = 1.0
+    const cert_tt = Traittype.get_by_label('@certainty')
+
+    // Walk intermediate segments (all but last)
+    for (const seg of segments.slice(0, -1)) {
+      const tt = Traittype.get_by_label(seg)
+      const subject = tt && belief.get_trait(state, tt)
+      if (!(subject instanceof Subject)) return undefined
+      const next = state.get_belief_by_subject(subject)
+      if (!next) return undefined
+      belief = next
+      if (cert_tt) certainty *= belief.get_trait(state, cert_tt) ?? 1.0
+    }
+
+    // Get final trait
+    const final_tt = Traittype.get_by_label(/** @type {string} */ (segments.at(-1)))
+    if (!final_tt) return undefined
+    const value = belief.get_trait(state, final_tt)
+    if (value === undefined) return undefined
+
+    return new Trait({ subject: belief.subject, type: final_tt, value, source: belief, certainty })
   }
 
   /**

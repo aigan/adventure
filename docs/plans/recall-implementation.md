@@ -63,7 +63,7 @@ Yields requested traits for a known subject (iterator allows early exit). If sup
 - [x] Compute combined certainty (path certainty only for now)
 - [x] Handle superposition (multiple beliefs → multiple Traits)
 
-**Tests**: `test/recall.test.mjs` (8 tests) ✅
+**Tests**: `test/recall.test.mjs` (8 tests, + 4 for recall_by_archetype = 12 total) ✅
 - [x] Single belief, single trait
 - [x] Single belief, multiple traits
 - [x] Superposition: two beliefs → two Traits for same type
@@ -71,7 +71,7 @@ Yields requested traits for a known subject (iterator allows early exit). If sup
 - [x] Omit request_traits → all traits returned
 - [x] Path certainty tests (certain, branched, nested)
 
-### Phase 3: recall_by_archetype (Search + Recall)
+### Phase 3: recall_by_archetype (Search + Recall) ✅
 
 **File**: `public/worker/mind.mjs`
 
@@ -82,41 +82,55 @@ Yields requested traits for a known subject (iterator allows early exit). If sup
 Searches for beliefs by archetype, groups by subject, returns requested traits for each.
 
 **Tasks**:
-- [ ] Find states at ground_state + tt (ordered by certainty)
-- [ ] Get beliefs by archetype across states
-- [ ] Group by subject
-- [ ] For each subject, build Trait[] for requested traits
-- [ ] Yield [Subject, Trait[]] pairs
+- [x] Find states at ground_state + tt (uses states_at_tt)
+- [x] Get beliefs by archetype across states
+- [x] Group by subject
+- [x] For each subject, build Trait[] for requested traits
+- [x] Yield [Subject, Trait[]] pairs
 
-**Tests**:
-- [ ] Find tools, get color/location traits
-- [ ] Multiple subjects of same archetype
-- [ ] Superposition within subject
-- [ ] No matches → empty iterator
+**Tests**: `test/recall.test.mjs` (4 tests) ✅
+- [x] Find tools, get color/location traits
+- [x] Multiple subjects of same archetype
+- [x] Superposition within subject
+- [x] No matches → empty iterator
 
-### Phase 4: Path Certainty
-
-**Tasks**:
-- [ ] Compute path_certainty by walking state base chain
-- [ ] Cache path_certainty on locked states
-- [ ] Combined: path_certainty × belief_certainty
-
-**Tests**:
-- [ ] Certain state → certainty 1.0
-- [ ] Branched state with 0.7 → traits have 0.7
-- [ ] Nested branches → certainty multiplies
-
-### Phase 5: Component Flattening (Optional)
-
-Handle @about refs to include component traits.
+### Phase 4: Path Certainty ✅
 
 **Tasks**:
-- [ ] Detect Subject trait values with @about pattern
-- [ ] Recurse into component beliefs
-- [ ] Include component traits in result (with component's subject)
+- [x] Compute path_certainty by walking state base chain
+- [x] Cache path_certainty on locked states
+- [x] Combined: path_certainty × belief_certainty
 
-**Tests**:
-- [ ] Hammer with handle/head → includes handle.color, head.material
+**Tests**: `test/recall.test.mjs` (path certainty + belief certainty sections)
+- [x] Certain state → certainty 1.0
+- [x] Branched state with 0.7 → traits have 0.7
+- [x] Nested branches → certainty multiplies
+
+### Phase 5: Component Trait Path Access ✅
+
+Dot notation access to nested component traits via `belief.get_trait_path(state, path)`.
+
+**File**: `public/worker/belief.mjs`
+
+```javascript
+// Get trait value following a path through Subject references
+// Returns Trait with combined certainty, or undefined if path broken
+belief.get_trait_path(state, 'handle.color') → Trait
+```
+
+**Tasks**:
+- [x] Add `get_trait_path(state, path)` to Belief class
+- [x] Update `recall_by_subject()` to handle dot notation in request_traits
+- [x] Update `recall_by_archetype()` to handle dot notation in request_traits
+
+**Tests**: `test/recall.test.mjs` (8 get_trait_path tests + 3 path-based recall tests)
+- [x] Single segment returns direct trait
+- [x] Two segments follows Subject reference (e.g., 'handle.color')
+- [x] Three segments follows nested references
+- [x] Returns undefined for broken path
+- [x] Accumulates certainty through path
+- [x] recall_by_subject with dot notation
+- [x] recall_by_archetype with dot notation
 
 ---
 
@@ -184,15 +198,18 @@ belief_certainty = belief's own @certainty (default 1.0)
 | `public/worker/trait.mjs` | Create | 1 ✅ |
 | `public/worker/cosmos.mjs` | Add export | 1 ✅ |
 | `test/trait.test.mjs` | Create | 1 ✅ |
-| `public/worker/mind.mjs` | Add recall methods | 2-4 |
-| `test/recall.test.mjs` | Create | 2-4 |
+| `public/worker/mind.mjs` | Add recall methods | 2-4 ✅ |
+| `public/worker/state.mjs` | Add _cached_path_certainty | 4 ✅ |
+| `public/worker/belief.mjs` | Add get_trait_path() | 5 ✅ |
+| `test/recall.test.mjs` | Create | 2-5 ✅ |
 
 ## Completion Checklist
 
 - [x] Phase 1: Trait class
 - [x] Phase 2: recall_by_subject
-- [ ] Phase 3: recall_by_archetype
-- [ ] Phase 4: Path certainty (done as part of Phase 2)
-- [ ] Phase 5: Component flattening (optional)
+- [x] Phase 3: recall_by_archetype
+- [x] Phase 4: Path certainty (done as part of Phase 2)
+- [x] Phase 4b: Belief certainty (combined certainty = path_certainty × belief_certainty)
+- [x] Phase 5: Component trait path access (get_trait_path, dot notation)
 - [ ] Update CHANGELOG.md
-- [ ] Remove deprecated query_possibilities/query_beliefs
+- [x] Remove deprecated query_possibilities/query_beliefs

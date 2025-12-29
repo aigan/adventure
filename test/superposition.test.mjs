@@ -12,7 +12,6 @@ import { expect } from 'chai'
 import { Materia, logos, logos_state, Traittype } from '../public/worker/cosmos.mjs'
 import { Convergence } from '../public/worker/convergence.mjs'
 import * as DB from '../public/worker/db.mjs'
-import { query_possibilities } from '../public/worker/perception.mjs'
 
 describe('Superposition Scenarios', () => {
   beforeEach(() => {
@@ -83,7 +82,7 @@ describe('Superposition Scenarios', () => {
       expect(state_b.certainty).to.equal(0.3)
     })
 
-    it('query_possibilities finds both alternatives', () => {
+    it('recall_by_archetype finds both alternatives', () => {
       const mind = new Materia(logos(), 'player')
       const ground = logos_state()
 
@@ -109,13 +108,18 @@ describe('Superposition Scenarios', () => {
       hammer_b.replace(state_b, { location: state_b.get_belief_by_label('shed').subject })
       state_b.lock()
 
-      // Query across both branches
-      const results = [...query_possibilities([state_a, state_b], { archetype: 'Tool' })]
+      // Query across both branches using recall_by_archetype
+      const results = [...mind.recall_by_archetype(ground, 'Tool', 2, ['location'])]
 
-      // Should find hammer in both branches
-      expect(results).to.have.length(2)
-      expect(results[0].score).to.equal(0.7)
-      expect(results[1].score).to.equal(0.3)
+      // Should find one subject (hammer) with two location traits
+      expect(results).to.have.length(1)
+      const [, traits] = results[0]
+      expect(traits).to.have.length(2)
+
+      // Certainties should match branch certainties
+      const certainties = traits.map(t => t.certainty).sort((a, b) => b - a)
+      expect(certainties[0]).to.equal(0.7)
+      expect(certainties[1]).to.equal(0.3)
     })
   })
 
