@@ -514,5 +514,79 @@ describe('inspect.mjs', () => {
       expect(stateHtml).to.include('#1062');
       expect(stateHtml).to.include('#1063');
     });
+
+    it('renders Fuzzy unknown value as question mark', () => {
+      const input = {
+        data: {
+          data: {
+            _id: 80,
+            archetypes: ['Location'],
+            label: 'tavern',
+            traits: {
+              location: {
+                _type: 'Fuzzy',
+                unknown: true
+              }
+            }
+          }
+        },
+        state_id: 1,
+        state_vt: 100,
+        mind_path: [],
+        sibling_states: [{ id: 1, is_current: true }],
+        parent_state_ids: [],
+        branch_ids: [],
+        mind: { id: 1, label: 'world' },
+        desig: 'test',
+        bases: []
+      };
+
+      render_entity(input);
+
+      const html = mockMain.innerHTML;
+      expect(html).to.include('location');
+      expect(html).to.include('❓');
+      expect(html).to.include('fuzzy-unknown');
+    });
+
+    it('renders Fuzzy superposition as table with probabilities', () => {
+      const input = {
+        data: {
+          data: {
+            _id: 81,
+            archetypes: ['Item'],
+            label: 'compass',
+            traits: {
+              direction: {
+                _type: 'Fuzzy',
+                alternatives: [
+                  { value: 'north', certainty: 0.6 },
+                  { value: 'east', certainty: 0.4 }
+                ]
+              }
+            }
+          }
+        },
+        state_id: 1,
+        state_vt: 100,
+        mind_path: [],
+        sibling_states: [{ id: 1, is_current: true }],
+        parent_state_ids: [],
+        branch_ids: [],
+        mind: { id: 1, label: 'world' },
+        desig: 'test',
+        bases: []
+      };
+
+      render_entity(input);
+
+      const html = mockMain.innerHTML;
+      expect(html).to.include('direction');
+      expect(html).to.include('fuzzy-superposition');
+      expect(html).to.include('north');
+      expect(html).to.include('60%');
+      expect(html).to.include('east');
+      expect(html).to.include('40%');
+    });
   });
 });

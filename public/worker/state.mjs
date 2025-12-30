@@ -28,6 +28,7 @@ import { Belief } from './belief.mjs'
 import { Serialize } from './serialize.mjs'
 import { Traittype, T } from './traittype.mjs'
 import { Archetype, A } from './archetype.mjs'
+import { Fuzzy } from './fuzzy.mjs'
 
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
@@ -683,7 +684,10 @@ export class State {
     assert(mind_traittype, "Traittype 'mind' not found in registry")
     const host_belief = host.get_belief_by_state(this)
     const host_mind = host_belief.get_trait(this, mind_traittype)
-    assert(host_mind, `Entity ${host.sid} has no mind trait`, {host_sid: host.sid, host_label: host.get_label()})
+    // Assert mind trait is certain (not null and not Fuzzy)
+    assert(host_mind && !(host_mind instanceof Fuzzy),
+      `Entity ${host.sid} has no certain mind trait`,
+      {host_sid: host.sid, host_label: host.get_label()})
 
     // Find the core state: latest state where tt <= this.vt
     // Walk up ground_state chain to find states from this world lineage
@@ -741,6 +745,10 @@ export class State {
       const mind_traittype = Traittype.get_by_label('mind')
       assert(mind_traittype, "Traittype 'mind' not found in registry")
       const host_mind = host_belief.get_trait(this, mind_traittype)
+      // Assert mind trait is certain
+      assert(host_mind && !(host_mind instanceof Fuzzy),
+        `Entity ${host.sid} has no certain mind trait`,
+        {host_sid: host.sid})
       return host_mind.get_or_create_open_state_for_ground(this, host_belief)
     }
 

@@ -21,6 +21,7 @@ export { Serialize, save_mind, load } from './serialize.mjs'
 export { Timeless } from './timeless.mjs'
 export { Logos, logos, logos_state, _reset_logos } from './logos.mjs'
 export { Eidos, eidos, _reset_eidos } from './eidos.mjs'
+export { Fuzzy, unknown, _reset_unknown } from './fuzzy.mjs'
 export { DB }
 
 // ============================================================================
@@ -31,6 +32,7 @@ export { DB }
 
 import { _reset_logos } from './logos.mjs'
 import { _reset_eidos } from './eidos.mjs'
+import { _reset_unknown } from './fuzzy.mjs'
 
 /**
  * Reset all singletons (for testing)
@@ -39,6 +41,7 @@ import { _reset_eidos } from './eidos.mjs'
 export function _reset_singletons() {
   _reset_logos()
   _reset_eidos()
+  _reset_unknown()
 }
 
 register_reset_hook(_reset_singletons)

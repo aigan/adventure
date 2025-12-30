@@ -1,5 +1,6 @@
 import { set_id_sequence } from './id_sequence.mjs'
 import { Mind } from './mind.mjs'
+import { Fuzzy, unknown } from './fuzzy.mjs'
 import * as DB from './db.mjs'
 import { register_reset_hook } from './reset.mjs'
 
@@ -35,6 +36,14 @@ export function deserialize_reference(value) {
         throw new Error(`Cannot resolve belief reference ${value._id} in trait`)
       }
       return belief
+    }
+
+    // Handle Fuzzy deserialization - use singleton for unknown
+    if (value._type === 'Fuzzy') {
+      if (value.unknown || !value.alternatives || value.alternatives.length === 0) {
+        return unknown()
+      }
+      return new Fuzzy({ alternatives: value.alternatives })
     }
 
     const kind = TYPE_TO_KIND[value._type]

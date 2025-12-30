@@ -262,7 +262,7 @@ describe('State', () => {
       const hammer = world_state.get_belief_by_label('hammer');
 
       expect(() => world_state.get_core_state_by_host(hammer.subject))
-        .to.throw('has no mind trait');
+        .to.throw('has no certain mind trait');
     });
 
     it('get_core_state_by_host() throws if multiple core states exist', () => {

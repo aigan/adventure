@@ -18,6 +18,7 @@ import { eidos } from './eidos.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
 import { learn_about } from './perception.mjs'
+import { unknown } from './fuzzy.mjs'
 
 /**
  * @typedef {import('./db.mjs').ArchetypeDefinition} ArchetypeDefinition
@@ -83,6 +84,11 @@ const traittypes = {
     type: 'string',
     container: Array,
   },
+  direction: {
+    type: 'string',
+    values: ['north', 'east', 'south', 'west'],
+    exposure: 'visual'
+  },
 };
 
 /** @type {Record<string, ArchetypeDefinition>} */
@@ -124,6 +130,10 @@ const archetypes = {
     bases: ['ObjectPhysical'],
   },
 
+  Compass: {
+    bases: ['PortableObject'],
+    traits: { direction: null }
+  },
 
   HammerHead: {
     bases: ['ObjectPhysical'],
@@ -198,7 +208,35 @@ export function init_world() {
 
     tavern: {
       bases: ['Location'],
-      traits: {location: 'village'}
+      traits: {location: unknown()}
+    },
+
+    compass: {
+      bases: ['Compass'],
+      traits: {
+        location: 'workshop',
+        direction: {
+          alternatives: [
+            { value: 'north', certainty: 0.6 },
+            { value: 'east', certainty: 0.25 },
+            { value: 'south', certainty: 0.15 }
+          ]
+        }
+      }
+    },
+
+    lost_key: {
+      bases: ['PortableObject'],
+      traits: {
+        color: 'rusty',
+        location: {
+          alternatives: [
+            { value: 'workshop', certainty: 0.5 },
+            { value: 'tavern', certainty: 0.3 },
+            { value: 'village', certainty: 0.2 }
+          ]
+        }
+      }
     },
 
     //hammer1_head: {

@@ -29,6 +29,7 @@ import { Subject } from './subject.mjs'
 import { Mind } from './mind.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
+import { Fuzzy } from './fuzzy.mjs'
 import { deserialize_reference } from './serialize.mjs'
 import { register_reset_hook } from './reset.mjs'
 
@@ -72,6 +73,12 @@ const literal_handler = (expected_type) => ({
    */
   resolve_trait_value_from_template(traittype, _belief, data) {
     if (data === null) return null
+    // Pass through Fuzzy values without validation (uncertainty is always valid)
+    if (data instanceof Fuzzy) return data
+    // Convert {alternatives: [...]} template syntax to Fuzzy
+    if (typeof data === 'object' && data !== null && 'alternatives' in data) {
+      return new Fuzzy({ alternatives: data.alternatives })
+    }
     if (typeof data !== expected_type) {
       throw new Error(`Expected ${expected_type} for trait '${traittype.label}', got ${typeof data}`)
     }
@@ -112,6 +119,7 @@ export class Traittype {
     'State': State,
     'Belief': Belief,
     'Subject': Subject,
+    'Fuzzy': Fuzzy,
     'string': literal_handler('string'),
     'number': literal_handler('number'),
     'boolean': literal_handler('boolean'),
@@ -241,6 +249,9 @@ export class Traittype {
    * @throws {Error} If value doesn't match expected type
    */
   validate_value(value) {
+    // Fuzzy is always valid (represents uncertainty)
+    if (value instanceof Fuzzy) return
+
     // null is always valid (shadowing)
     if (value === null) return
 
@@ -309,6 +320,21 @@ export class Traittype {
     if (archetype) return Archetype
 
     return null
+  }
+
+  /**
+   * Check if value is certain (not fuzzy/uncertain)
+   * Delegates to type_class.is_certain() if available
+   * @param {*} value - Value to check
+   * @returns {boolean} True if value is certain (not Fuzzy)
+   */
+  is_certain(value) {
+    if (value instanceof Fuzzy) return false
+    const type_class = this._get_type_class()
+    if (type_class?.is_certain) {
+      return type_class.is_certain(this, value)
+    }
+    return true  // Default: non-Fuzzy values are certain
   }
 
   /**
@@ -479,6 +505,8 @@ export class Traittype {
    * @returns {*} Fully serialized value
    */
   static serializeTraitValue(value) {
+    // Handle Fuzzy early
+    if (value instanceof Fuzzy) return value.toJSON()
     if (Array.isArray(value)) {
       return value.map(item => Traittype.serializeTraitValue(item))
     }
@@ -494,6 +522,10 @@ export class Traittype {
    */
   to_inspect_view(state, value) {
     assert(state instanceof State, "should be State", state, value);
+    // Handle Fuzzy early - delegates to Fuzzy.to_inspect_view
+    if (value instanceof Fuzzy) {
+      return value.to_inspect_view(state)
+    }
     // Handle null/undefined early
     if (value === null || value === undefined) {
       return value

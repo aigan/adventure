@@ -22,6 +22,7 @@ import { assert } from './debug.mjs'
 import * as DB from './db.mjs'
 import { Traittype } from './traittype.mjs'
 import { Subject } from './subject.mjs'
+import { Fuzzy } from './fuzzy.mjs'
 import { eidos } from './eidos.mjs'
 import { register_reset_hook } from './reset.mjs'
 
@@ -189,6 +190,18 @@ export class Archetype {
    */
   static resolve_trait_value_from_template(traittype, belief, data) {
     if (data === null) return null
+
+    // Handle Fuzzy instances directly
+    if (data instanceof Fuzzy) return data
+
+    // Handle {alternatives: [...]} template syntax - resolve each alternative's value
+    if (typeof data === 'object' && data !== null && 'alternatives' in data) {
+      const resolved_alternatives = data.alternatives.map((/** @type {{value: any, certainty: number}} */ alt) => ({
+        value: Archetype.resolve_trait_value_from_template(traittype, belief, alt.value),
+        certainty: alt.certainty
+      }))
+      return new Fuzzy({ alternatives: resolved_alternatives })
+    }
 
     // Handle Archetype objects (from archetype templates) - find corresponding prototype
     if (data instanceof Archetype) {

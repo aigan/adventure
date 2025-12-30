@@ -605,6 +605,22 @@ function format_trait_value(value, state_id, belief_mind_id) {
   }
 
   if (typeof value === 'object') {
+    // Handle Fuzzy values (uncertain/superposition)
+    if (value._type === 'Fuzzy') {
+      if (value.unknown || !value.alternatives || value.alternatives.length === 0) {
+        return '<span class="fuzzy-unknown" title="Unknown value">❓</span>';
+      }
+      // Superposition: show as table with values and probabilities
+      let html = '<table class="fuzzy-superposition">';
+      html += '<tr><th>Value</th><th>P</th></tr>';
+      for (const alt of value.alternatives) {
+        const alt_value = format_trait_value(alt.value, state_id, belief_mind_id);
+        const pct = Math.round(alt.certainty * 100);
+        html += `<tr><td>${alt_value}</td><td>${pct}%</td></tr>`;
+      }
+      html += '</table>';
+      return html;
+    }
     if (value._type === 'Archetype') {
       return `<a href="?archetype=${value.label}">[${value.label}]</a>`;
     }

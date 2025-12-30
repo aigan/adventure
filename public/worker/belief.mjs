@@ -21,6 +21,7 @@ import { Subject } from './subject.mjs'
 import { Traittype } from './traittype.mjs'
 import { State } from './state.mjs'
 import { Trait } from './trait.mjs'
+import { Fuzzy } from './fuzzy.mjs'
 
 /**
  * @typedef {import('./mind.mjs').Mind} Mind
@@ -367,7 +368,11 @@ export class Belief {
       const next = state.get_belief_by_subject(subject)
       if (!next) return undefined
       belief = next
-      if (cert_tt) certainty *= belief.get_trait(state, cert_tt) ?? 1.0
+      if (cert_tt) {
+        const cert = belief.get_trait(state, cert_tt)
+        // Skip Fuzzy certainty values - treat as 1.0 (no certainty reduction)
+        certainty *= (cert instanceof Fuzzy) ? 1.0 : (cert ?? 1.0)
+      }
     }
 
     // Get final trait

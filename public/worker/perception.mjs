@@ -18,6 +18,7 @@ import { Subject } from './subject.mjs'
 import { Belief } from './belief.mjs'
 import { Traittype, T } from './traittype.mjs'
 import { Archetype, A } from './archetype.mjs'
+import { Fuzzy } from './fuzzy.mjs'
 
 /**
  * @typedef {import('./state.mjs').State} State
@@ -74,7 +75,8 @@ export function _perceive_single(state, world_entity, about_state, modalities) {
   // FIXME: use traittype methods instead of if-else
   for (const traittype of observed_traittypes) {
     const value = world_entity.get_trait(about_state, traittype)
-    if (value !== null) {
+    // Skip null and Fuzzy (uncertain) values - only observe certain values
+    if (value !== null && !(value instanceof Fuzzy)) {
       // If value is a Subject (nested entity), recursively perceive it
       if (value instanceof Subject) {
         const nested_belief = value.get_belief_by_state(about_state)
@@ -138,7 +140,8 @@ export function _perceive_with_recognition(state, world_entity, world_state, mod
   for (const traittype of observed_traittypes) {
     let value = world_entity.get_trait(world_state, traittype)
 
-    if (value !== null) {
+    // Skip null and Fuzzy (uncertain) values - only observe certain values
+    if (value !== null && !(value instanceof Fuzzy)) {
       // If Subject-valued, recursively perceive it
       if (value instanceof Subject) {
         const nested_belief = value.get_belief_by_state(world_state)
@@ -665,7 +668,8 @@ export function learn_about(state, source_belief, options = {}) {
   for (const traittype of traittypes_to_copy) {
     if (!traittype) continue
     const value = source_belief.get_trait(source_state, traittype)
-    if (value !== null) {
+    // Skip null and Fuzzy (uncertain) values - only learn certain values
+    if (value !== null && !(value instanceof Fuzzy)) {
       trait_values[traittype.label] = _recursively_learn_trait_value(state, source_state, value)
     }
   }
@@ -696,7 +700,8 @@ export function integrate(state, source_state, source_belief, traittypes, existi
   for (const traittype of traittypes) {
     if (!traittype) continue
     const value = source_belief.get_trait(source_state, traittype)
-    if (value !== null) {
+    // Skip null and Fuzzy (uncertain) values - only integrate certain values
+    if (value !== null && !(value instanceof Fuzzy)) {
       trait_updates[traittype.label] = _recursively_learn_trait_value(state, source_state, value)
     }
   }
