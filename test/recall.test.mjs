@@ -10,10 +10,6 @@ describe('recall_by_subject', () => {
 
     const traittypes = {
       ...stdTypes,
-      '@certainty': {
-        type: 'number',
-        exposure: 'internal'
-      },
       color: 'string',
       weight: 'number',
       location: 'Subject',
@@ -23,7 +19,7 @@ describe('recall_by_subject', () => {
       Thing,
       Tool: {
         bases: ['Thing'],
-        traits: { '@certainty': null, color: null, weight: null, location: null }
+        traits: { color: null, weight: null, location: null }
       },
       Location: {
         bases: ['Thing']
@@ -557,8 +553,8 @@ describe('recall_by_subject', () => {
       // Branch with 70% path certainty
       const state_1 = state_0.branch(ground, 2, { certainty: 0.7 })
       const hammer = state_1.get_belief_by_label('hammer')
-      // Update with 80% belief certainty
-      hammer.replace(state_1, { '@certainty': 0.8, weight: 2 })
+      // Create branch with 80% belief certainty via branch_metadata
+      hammer.branch(state_1, { weight: 2 }, { certainty: 0.8 })
       state_1.lock()
 
       const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['weight'])
@@ -576,14 +572,14 @@ describe('recall_by_subject', () => {
       state_0.add_belief_from_template({
         label: 'hammer',
         bases: ['Tool'],
-        traits: { color: 'black' }  // No @certainty set
+        traits: { color: 'black' }
       })
       state_0.lock()
 
       // Branch with 70% certainty
       const state_1 = state_0.branch(ground, 2, { certainty: 0.7 })
       const hammer = state_1.get_belief_by_label('hammer')
-      hammer.replace(state_1, { weight: 2 })  // No @certainty set
+      hammer.replace(state_1, { weight: 2 })  // No branch_metadata.certainty
       state_1.lock()
 
       const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['weight'])
@@ -612,8 +608,8 @@ describe('recall_by_subject', () => {
       // Second branch: 50% certain
       const state_2 = state_1.branch(ground, 3, { certainty: 0.5 })
       const hammer = state_2.get_belief_by_label('hammer')
-      // Update with 60% belief certainty
-      hammer.replace(state_2, { '@certainty': 0.6, weight: 2 })
+      // Create branch with 60% belief certainty via branch_metadata
+      hammer.branch(state_2, { weight: 2 }, { certainty: 0.6 })
       state_2.lock()
 
       const notion = mind.recall_by_subject(ground, hammer.subject, 3, ['weight'])
@@ -638,8 +634,8 @@ describe('recall_by_subject', () => {
       // Branch with 70% path certainty
       const state_1 = state_0.branch(ground, 2, { certainty: 0.7 })
       const hammer = state_1.get_belief_by_label('hammer')
-      // Update with 80% belief certainty
-      hammer.replace(state_1, { '@certainty': 0.8, weight: 2 })
+      // Create branch with 80% belief certainty via branch_metadata
+      hammer.branch(state_1, { weight: 2 }, { certainty: 0.8 })
       state_1.lock()
 
       const notions = [...mind.recall_by_archetype(ground, 'Tool', 2, ['weight'])]
@@ -647,6 +643,66 @@ describe('recall_by_subject', () => {
 
       expect(notions).to.have.length(1)
       expect(notions[0].get(weight_tt).alternatives[0].certainty).to.be.closeTo(0.56, 0.001)
+    })
+
+    it('multiplies state × belief × trait certainty in Notion only', () => {
+      const mind = new Materia(logos(), 'player')
+      const ground = logos_state()
+      const location_tt = Traittype.get_by_label('location')
+
+      const state_0 = mind.create_state(ground, { tt: 1 })
+      const workshop = state_0.add_belief_from_template({
+        label: 'workshop',
+        bases: ['Location']
+      })
+      const shed = state_0.add_belief_from_template({
+        label: 'shed',
+        bases: ['Location']
+      })
+      const hammer = state_0.add_belief_from_template({
+        label: 'hammer',
+        bases: ['Tool'],
+        traits: { color: 'black' }
+      })
+      state_0.lock()
+
+      // State branch with 0.7 certainty (stored independently)
+      const state_1 = state_0.branch(ground, 2, { certainty: 0.7 })
+
+      // Verify state certainty is stored unchanged
+      expect(state_1.certainty).to.equal(0.7)
+
+      // Get hammer from new state and create belief branch with Fuzzy trait
+      const hammer_v1 = state_1.get_belief_by_label('hammer')
+
+      // Create branch with 0.8 belief certainty and Fuzzy location trait
+      const hammer_v2 = hammer_v1.branch(state_1, {
+        location: new Fuzzy({ alternatives: [
+          { value: workshop.subject, certainty: 0.5 },  // stored independently
+          { value: shed.subject, certainty: 0.3 }       // stored independently
+        ]})
+      }, { certainty: 0.8 })
+
+      state_1.lock()
+
+      // Verify stored values are unchanged
+      expect(state_1.certainty).to.equal(0.7)
+      expect(hammer_v2.branch_metadata.certainty).to.equal(0.8)
+      const stored_fuzzy = hammer_v2.get_trait(state_1, location_tt)
+      expect(stored_fuzzy.alternatives[0].certainty).to.equal(0.5)  // unchanged
+      expect(stored_fuzzy.alternatives[1].certainty).to.equal(0.3)  // unchanged
+
+      // Notion multiplies all three levels
+      const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['location'])
+      const fuzzy = notion.get(location_tt)
+
+      // Combined in Notion: 0.7 × 0.8 × 0.5 = 0.28 for workshop
+      // Combined in Notion: 0.7 × 0.8 × 0.3 = 0.168 for shed
+      expect(fuzzy.alternatives).to.have.length(2)
+      const workshop_alt = fuzzy.alternatives.find(a => a.value === workshop.subject)
+      const shed_alt = fuzzy.alternatives.find(a => a.value === shed.subject)
+      expect(workshop_alt.certainty).to.be.closeTo(0.28, 0.001)
+      expect(shed_alt.certainty).to.be.closeTo(0.168, 0.001)
     })
   })
 })
@@ -657,7 +713,6 @@ describe('get_trait_path', () => {
 
     const traittypes = {
       ...stdTypes,
-      '@certainty': { type: 'number', exposure: 'internal' },
       color: 'string',
       material: 'string',
       length: 'string',
@@ -669,15 +724,15 @@ describe('get_trait_path', () => {
       Thing,
       HammerHead: {
         bases: ['Thing'],
-        traits: { '@certainty': null, color: null, material: null, head: null }
+        traits: { color: null, material: null, head: null }
       },
       HammerHandle: {
         bases: ['Thing'],
-        traits: { '@certainty': null, color: null, material: null, length: null }
+        traits: { color: null, material: null, length: null }
       },
       Hammer: {
         bases: ['Thing'],
-        traits: { '@certainty': null, color: null, head: null, handle: null }
+        traits: { color: null, head: null, handle: null }
       }
     }
 

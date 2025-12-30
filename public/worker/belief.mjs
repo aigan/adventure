@@ -108,6 +108,18 @@ export class Belief {
     /** @type {boolean} - true when all inherited traits are cached */
     this._cached_all = false
 
+    /**
+     * Sibling versions of the same subject (lazy propagation branches)
+     * @type {Set<Belief>}
+     */
+    this.branches = new Set()
+
+    /**
+     * Metadata about this belief as a branch
+     * @type {{origin_state: State|null, certainty: number|null, constraints: Object}|null}
+     */
+    this.branch_metadata = null
+
     DB.register_belief_by_id(this)
     this.subject.beliefs.add(this)
     DB.register_belief_by_mind(this)
@@ -818,6 +830,45 @@ export class Belief {
   }
 
   /**
+   * Get branches of this belief
+   * @returns {Set<Belief>}
+   */
+  get_branches() {
+    return this.branches
+  }
+
+  /**
+   * Register a sibling version as a branch of this belief
+   * Used for lazy version propagation - allows temporal/probability branching
+   * @param {Belief} branch - The branch belief (same subject, different version)
+   * @param {{origin_state?: State|null, certainty?: number|null, constraints?: Object}} [metadata] - Branch metadata
+   */
+  add_branch(branch, metadata = {}) {
+    assert(branch instanceof Belief, 'add_branch requires Belief', {branch})
+    assert(branch.subject === this.subject, 'Branch must have same subject', {
+      this_sid: this.subject.sid,
+      branch_sid: branch.subject.sid
+    })
+
+    const { origin_state = null, certainty = null, constraints = {} } = metadata
+
+    // Validate certainty: must be null (not a probability) or strictly between 0 and 1
+    if (certainty !== null) {
+      assert(typeof certainty === 'number', 'certainty must be number or null', {certainty})
+      assert(certainty > 0 && certainty < 1,
+        'certainty must be > 0 and < 1 (probability weight), not boundary values',
+        {certainty, hint: 'Use null for non-probability branches, or value like 0.5 for probability'}
+      )
+    }
+
+    // Set branch metadata on the branch belief
+    branch.branch_metadata = { origin_state, certainty, constraints }
+
+    // Register branch in this belief's branches set
+    this.branches.add(branch)
+  }
+
+  /**
    * Generate a designation string for this belief
    * @param {State} state - State context for resolving `@about`
    * @returns {string} Designation string (e.g., "hammer [PortableObject] #42")
@@ -1025,6 +1076,8 @@ export class Belief {
     belief._locked = false
     belief._cache = new Map()
     belief._cached_all = false
+    belief.branches = new Set()
+    belief.branch_metadata = null
 
     // Resolve 'bases' (archetype labels or belief IDs)
     belief._bases = new Set()
@@ -1183,14 +1236,21 @@ export class Belief {
   }
 
   /**
-   * Create a new version of this belief with updated traits, in addition to the existing one
-   * True branching - both old and new beliefs exist in the state (superposition)
-   * Similar to State.branch() pattern - creates versioned belief with same subject
+   * Create a branch of this belief with optional probability metadata.
+   *
+   * Without metadata: Both old and new beliefs exist in state (superposition).
+   * With certainty: Original is REMOVED from state, branch is added with probability.
+   *   Use this to create multiple probability branches (values don't need to sum to 1.0).
+   *
    * @param {State} state - State context for the new belief (must be unlocked)
    * @param {Record<string, any>} traits - Trait updates (already resolved, not templates)
+   * @param {object} [metadata] - Optional branch metadata
+   * @param {number} [metadata.certainty] - Probability weight (0 < x < 1)
+   * @param {State} [metadata.origin_state] - State where branch was created (defaults to state)
+   * @param {object} [metadata.constraints] - Future: exclusion rules, validity periods
    * @returns {Belief} New belief with this belief as base
    */
-  branch(state, traits = {}) {
+  branch(state, traits = {}, { certainty, origin_state, constraints } = {}) {
     assert(state instanceof State, 'branch requires State parameter', {belief_id: this._id})
     assert(!state.locked, 'Cannot branch into locked state', {state_id: state._id, belief_id: this._id})
 
@@ -1203,7 +1263,20 @@ export class Belief {
       branched.add_trait(traittype, trait_value)
     }
 
-    // Insert into state automatically (convenience - mirrors from_template)
+    // If metadata provided, this is a probability branch
+    if (certainty !== undefined || origin_state !== undefined || constraints !== undefined) {
+      // Register in parent's branches Set
+      this.add_branch(branched, {
+        certainty,
+        origin_state: origin_state ?? state,
+        constraints: constraints ?? {}
+      })
+
+      // Remove original from state - branches replace it
+      state.remove_beliefs(this)
+    }
+
+    // Insert into state automatically
     state.insert_beliefs(branched)
 
     return branched

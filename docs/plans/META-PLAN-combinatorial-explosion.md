@@ -82,10 +82,14 @@ This plan coordinates the implementation of all **"Designed - Ready for Implemen
 | Component | Status | Fits Existing Design? | Notes |
 |-----------|--------|----------------------|-------|
 | Trait object (reified) | ✅ Complete | ✅ Yes | `public/worker/trait.mjs` - 102 lines |
+| Fuzzy class | ✅ Complete | ✅ Yes | `public/worker/fuzzy.mjs` - uncertain trait values with alternatives |
+| Notion class | ✅ Complete | ✅ Yes | `public/worker/notion.mjs` - materialized belief view |
+| unknown() singleton | ✅ Complete | ✅ Yes | `fuzzy.mjs` - Fuzzy with no alternatives |
 | @certainty at splits | ✅ Complete | ✅ Yes | `state.mjs:789` - getter, line 128 field |
+| Path certainty | ✅ Complete | ✅ Yes | `mind.mjs:844` - `_compute_path_certainty()` with caching |
 | ~~@path_certainty cache~~ | **DEFERRED** | - | Skip for v1 |
 
-**Files**: `public/worker/trait.mjs`, `public/worker/state.mjs`
+**Files**: `public/worker/trait.mjs`, `public/worker/fuzzy.mjs`, `public/worker/notion.mjs`, `public/worker/state.mjs`, `public/worker/mind.mjs`
 
 **Tests**: `test/trait.test.mjs` - 11 tests covering construction, defaults, sysdesig, toJSON
 
@@ -98,18 +102,21 @@ Reference: `docs/plans/lazy-version-propagation.md` (updated December 2024)
 
 | Sub-phase | Status | Fits Existing Design? | Notes |
 |-----------|--------|----------------------|-------|
-| 2.1 Branch tracking in Belief | Designed | ✅ Yes | Add `branches: Set<Belief>`, `branch_metadata` |
+| 2.1 Branch tracking in Belief | ✅ Complete | ✅ Yes | `branches: Set<Belief>`, `branch_metadata`, `add_branch()`, `branch()` with metadata |
+| 2.1a Certainty via branch_metadata | ✅ Complete | ✅ Yes | `@certainty` removed, use `branch_metadata.certainty`. `recall()` multiplies state × belief × trait certainty |
 | 2.2 State resolver interface | Designed | ✅ Yes | Add `resolve_branches()` - temporal filtering |
 | 2.3 Trait resolution with branches | Designed | ⚠️ Extends | Modify `get_trait()` to detect branches |
 | 2.4 Materialization on creation | Designed | ⚠️ Extends | Add `materialize_path()` helper |
 | 2.5 get_belief_by_subject with resolver | Designed | ⚠️ Extends | Check branches before returning |
-| 2.6 Superposition return | Designed | ✅ Yes | Return superposition for probability branches |
+| 2.6 Superposition return | Designed | ✅ Yes | Return `Fuzzy` via `Notion` for probability branches |
 | 2.7 Documentation | - | - | ✅ Updated with interaction matrix |
 
 **Key clarification**: Lazy prop handles **query-time** resolution (temporal filtering).
 Does NOT record collapse - that's @resolution's job.
 
-**Files**: `public/worker/belief.mjs`, `public/worker/state.mjs`
+**Already implemented**: `Mind.recall()` returns `Notion` with `Fuzzy` values when trait has uncertainty.
+
+**Files**: `public/worker/belief.mjs`, `public/worker/state.mjs`, `public/worker/mind.mjs`
 
 **Test matrix**: LP-1 through LP-6, COMB-1, COMB-2, EDGE-1 through EDGE-6
 
@@ -276,19 +283,22 @@ Reference: `docs/plans/observation-events.md`
 
 ## Files to Modify
 
-### Core (High Impact)
+### Already Implemented ✅
+- `public/worker/trait.mjs` - Reified Trait class
+- `public/worker/fuzzy.mjs` - Uncertain trait values with alternatives
+- `public/worker/notion.mjs` - Materialized belief view
+- `public/worker/mind.mjs` - `recall()` returns Notion, `_compute_path_certainty()`
+
+### Core (High Impact) - To Do
 - `public/worker/belief.mjs` - Branch tracking, materialization
 - `public/worker/state.mjs` - Resolver, perceive, identify, collapse
 - `public/worker/convergence.mjs` - Alternative yielding
 - `public/worker/subject.mjs` - Resolution index
 
-### Registry (Medium Impact)
+### Registry (Medium Impact) - To Do
 - `public/worker/db.mjs` - @resolution, @acquaintance, @source traits
 
-### New Files
-- `public/worker/trait.mjs` - Reified Trait class (optional, could be in belief.mjs)
-
-### Session (Medium Impact)
+### Session (Medium Impact) - To Do
 - `public/worker/session.mjs` - legacy field, cross-timeline resolution
 
 ---

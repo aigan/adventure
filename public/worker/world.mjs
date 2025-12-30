@@ -37,10 +37,6 @@ const traittypes = {
     type: 'boolean',
     exposure: 'internal'  // Not directly observable
   },
-  '@certainty': {
-    type: 'number',       // Float 0.0-1.0
-    exposure: 'internal'  // Epistemic state, not physically observable
-  },
   '@form': {
     type: 'string',
     values: ['solid', 'liquid', 'vapor', 'olfactory', 'auditory', 'intangible']

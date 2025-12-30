@@ -734,9 +734,6 @@ export class Mind {
         })
       : null  // null means all traits
 
-    // Cache @certainty traittype for belief-level certainty lookup
-    const certainty_traittype = Traittype.get_by_label('@certainty')
-
     // Collect all values with certainties: Map<Traittype, Map<value, certainty>>
     /** @type {Map<Traittype, Map<*, number>>} */
     const collected = new Map()
@@ -765,10 +762,25 @@ export class Mind {
 
       // Compute combined certainty: path_certainty × belief_certainty
       const path_certainty = this._compute_path_certainty(state)
-      const belief_certainty = certainty_traittype
-        ? (belief.get_own_trait_value(certainty_traittype) ?? 1.0)
-        : 1.0
+      const belief_certainty = belief.branch_metadata?.certainty ?? 1.0
       const combined_certainty = path_certainty * belief_certainty
+
+      /**
+       * Add value, expanding Fuzzy alternatives
+       * @param {Traittype} tt_obj
+       * @param {*} value
+       * @param {number} certainty
+       */
+      const add_with_fuzzy_expansion = (tt_obj, value, certainty) => {
+        if (value instanceof Fuzzy) {
+          // Expand Fuzzy alternatives, multiply each by combined certainty
+          for (const alt of value.alternatives) {
+            add_value(tt_obj, alt.value, certainty * alt.certainty)
+          }
+        } else {
+          add_value(tt_obj, value, certainty)
+        }
+      }
 
       // Process path-based traits
       for (const path of paths) {
@@ -779,7 +791,7 @@ export class Mind {
           const final_label = parts[parts.length - 1]
           const final_tt = Traittype.get_by_label(final_label)
           if (final_tt) {
-            add_value(final_tt, value, combined_certainty)
+            add_with_fuzzy_expansion(final_tt, value, combined_certainty)
           }
         }
       }
@@ -794,7 +806,7 @@ export class Mind {
         const value = belief.get_trait(state, traittype)
         if (value === undefined) continue  // Skip undefined (not set)
 
-        add_value(traittype, value, combined_certainty)
+        add_with_fuzzy_expansion(traittype, value, combined_certainty)
       }
     }
 

@@ -7,6 +7,21 @@
 - docs/SPECIFICATION.md - Data model specification
 - CURRENT.md (backlog) - Clarify shared belief architecture
 
+## Current Status (December 2024)
+
+**Implemented:**
+- ✅ `Fuzzy` class (`public/worker/fuzzy.mjs`) - uncertain trait values with alternatives
+- ✅ `Notion` class (`public/worker/notion.mjs`) - materialized belief view for a subject
+- ✅ `unknown()` singleton - represents undetermined value (Fuzzy with no alternatives)
+- ✅ `Mind.recall()` returns Notion with Fuzzy trait values when uncertain
+- ✅ Path certainty computation with caching (`Mind._compute_path_certainty()`)
+
+**Not Yet Implemented:**
+- Branch tracking on Beliefs (Phase 1)
+- State resolver interface (Phase 2)
+- Materialization on creation (Phase 4)
+- `get_branch_heads()` API (Phase 6)
+
 ## Context
 
 When country-level cultural knowledge updates (e.g., "it's winter now"), thousands of NPCs inherit this knowledge through city → country belief chains. Current architecture would require creating new versions for every intermediate node (cities, NPCs), causing version cascade.
@@ -33,10 +48,24 @@ With lazy propagation:
 
 1. **Beliefs are never dirty** - only nodes with branches need resolver evaluation
 2. **Single belief per subject** - `get_belief_by_subject()` returns one belief
-3. **Traits may have superposition** - `get_trait()` may return `{type: 'superposition', branches: [...]}`
+3. **Traits may be uncertain** - `recall()` returns `Notion` with `Fuzzy` values when uncertain
 4. **Lazy materialization** - only create versions when explicitly requested
-5. **Resolver decides or defers** - temporal/spatial cases return concrete values, probability cases return superposition
+5. **Resolver decides or defers** - temporal/spatial cases return concrete values, probability cases return `Fuzzy`
 6. **Materialization on explicit creation** - creating new belief version walks bases and materializes dirty intermediate nodes
+
+### Implemented Classes
+
+**Fuzzy** (`public/worker/fuzzy.mjs`):
+- Represents uncertain trait values with weighted alternatives
+- `alternatives: Array<{value: any, certainty: number}>` - possible values
+- `is_unknown` getter - true when no alternatives (undetermined value)
+- `unknown()` singleton - standard way to express "not yet determined"
+
+**Notion** (`public/worker/notion.mjs`):
+- Materialized view of what a Mind believes about a subject
+- `subject: Subject` - what entity this notion is about
+- `traits: Map<Traittype, null|*|Fuzzy>` - trait values (null, concrete, or Fuzzy)
+- Created by `Mind.recall()` to answer questions like "where is the black hammer?"
 
 ## Architecture Overview
 
@@ -87,46 +116,61 @@ Query: npc_belief.get_trait(state, 'season')
 ### Superposition Flow
 
 ```
-Query: npc_belief.get_trait(state, 'king_status')
+Query: mind.recall(state, subject, ['king_status'])
 
 1-4. Same walk to country_culture_v1
 5. Check branches → [v2a@T110 (p=0.6), v2b@T110 (p=0.4)]
 6. Call state.pick_branch([v2a, v2b], context)
 7. Resolver sees both valid (same timestamp, probability-weighted)
 8. Resolver returns superposition (can't decide)
-9. Return {
-     type: 'superposition',
-     branches: [
-       {path: v2a, value: 'dead', probability: 0.6},
-       {path: v2b, value: 'alive', probability: 0.4}
-     ]
+9. Return Notion with Fuzzy trait:
+   Notion {
+     subject: king_subject,
+     traits: Map {
+       king_status => Fuzzy {
+         alternatives: [
+           {value: 'dead', certainty: 0.6},
+           {value: 'alive', certainty: 0.4}
+         ]
+       }
+     }
    }
 ```
 
 ### Superposition with Same Values
 
-When multiple branches yield the **same value**, `recall_by_subject()` returns separate Trait objects:
+When multiple branches yield the **same value**, `Mind.recall()` aggregates them into a single Fuzzy with combined alternatives:
 
 ```javascript
 // Branch A (0.6): hammer.location = workshop (from belief_a)
 // Branch B (0.4): hammer.location = workshop (from belief_b)
 
-// Returns TWO Trait objects (not combined):
-Trait{value: workshop, certainty: 0.6, source: belief_a}
-Trait{value: workshop, certainty: 0.4, source: belief_b}
+// recall() returns Notion with Fuzzy containing both alternatives:
+Notion {
+  subject: hammer,
+  traits: Map {
+    location => Fuzzy {
+      alternatives: [
+        {value: workshop, certainty: 0.6},  // from belief_a
+        {value: workshop, certainty: 0.4}   // from belief_b
+      ]
+    }
+  }
+}
 ```
 
-**Rationale**: Same value ≠ same trait. Different sources mean different provenance:
-- Different beliefs may have different bases, timestamps, or history
-- Caller can aggregate certainties if needed (sum to 1.0 when all agree)
-- Preserves information about where knowledge came from
+**Current implementation** (`mind.mjs:805-830`): Collects values into a Map, creates Fuzzy when multiple alternatives exist. Same values from different sources remain as separate alternatives (preserving provenance).
 
 **Caller aggregation example**:
 ```javascript
-const traits = [...mind.recall_by_subject(ground, hammer, tt, ['location'])]
-const by_value = Map.groupBy(traits, t => t.value?.sid ?? t.value)
-// by_value.get(workshop_sid) → [Trait{0.6}, Trait{0.4}]
-// Sum certainties: 0.6 + 0.4 = 1.0 (certain)
+const notion = mind.recall(state, hammer, ['location'])
+const location = notion.get(location_tt)  // Fuzzy or concrete
+if (location instanceof Fuzzy) {
+  // Sum certainties for same value if needed
+  const by_value = Map.groupBy(location.alternatives, a => a.value?.sid ?? a.value)
+  // by_value.get(workshop_sid) → [{certainty: 0.6}, {certainty: 0.4}]
+  // Sum: 1.0 = certain
+}
 ```
 
 ### Materialization Flow
@@ -442,12 +486,20 @@ collapse_trait(belief, trait_name, selected_branch) {
 
 ## Current Status
 
-- [ ] Phase 1: Add branch tracking to beliefs
+### Foundation (Implemented)
+- [x] **Fuzzy class** - `public/worker/fuzzy.mjs` - uncertain trait values
+- [x] **Notion class** - `public/worker/notion.mjs` - materialized belief view
+- [x] **unknown() singleton** - represents undetermined values
+- [x] **Mind.recall()** - returns Notion with Fuzzy values for uncertainty
+- [x] **Path certainty** - `Mind._compute_path_certainty()` with caching
+
+### Phases (Pending)
+- [x] Phase 1: Add branch tracking to beliefs ✅ (December 2024)
 - [ ] Phase 2: Implement state resolver interface
 - [ ] Phase 3: Update trait resolution to walk branches
 - [ ] Phase 4: Materialization on explicit version creation
 - [ ] Phase 5: Update get_belief_by_subject() with resolver
-- [ ] Phase 6: Superposition handling in state operations
+- [ ] Phase 6: Superposition handling in state operations (uses Fuzzy/Notion)
 - [ ] Phase 7: Documentation and examples
 
 ## Success Criteria

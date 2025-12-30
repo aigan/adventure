@@ -1487,4 +1487,189 @@ describe('Belief', () => {
       }).to.not.throw()
     })
   })
+
+  describe('Branch Tracking', () => {
+    it('beliefs start with empty branches set', () => {
+      const state = createStateInNewMind()
+      const hammer = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+
+      expect(hammer.branches).to.be.instanceOf(Set)
+      expect(hammer.branches.size).to.equal(0)
+      expect(hammer.branch_metadata).to.be.null
+    })
+
+    it('add_branch registers sibling version', () => {
+      const state = createStateInNewMind()
+      const hammer_v1 = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+
+      // Create v2 with same subject
+      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
+      state.insert_beliefs(hammer_v2)
+
+      // Register v2 as branch of v1
+      hammer_v1.add_branch(hammer_v2)
+
+      expect(hammer_v1.branches.has(hammer_v2)).to.be.true
+      expect(hammer_v1.branches.size).to.equal(1)
+    })
+
+    it('branch_metadata captures origin_state', () => {
+      const state = createStateInNewMind()
+      const hammer_v1 = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+
+      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
+      state.insert_beliefs(hammer_v2)
+
+      hammer_v1.add_branch(hammer_v2, { origin_state: state })
+
+      expect(hammer_v2.branch_metadata).to.not.be.null
+      expect(hammer_v2.branch_metadata.origin_state).to.equal(state)
+      expect(hammer_v2.branch_metadata.certainty).to.be.null
+      expect(hammer_v2.branch_metadata.constraints).to.deep.equal({})
+    })
+
+    it('multiple branches accumulate in set', () => {
+      const state = createStateInNewMind()
+      const hammer_v1 = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+
+      const hammer_v2a = new Belief(state, hammer_v1.subject, [hammer_v1])
+      const hammer_v2b = new Belief(state, hammer_v1.subject, [hammer_v1])
+      state.insert_beliefs(hammer_v2a, hammer_v2b)
+
+      hammer_v1.add_branch(hammer_v2a, { certainty: 0.6 })
+      hammer_v1.add_branch(hammer_v2b, { certainty: 0.4 })
+
+      expect(hammer_v1.branches.size).to.equal(2)
+      expect(hammer_v1.branches.has(hammer_v2a)).to.be.true
+      expect(hammer_v1.branches.has(hammer_v2b)).to.be.true
+    })
+
+    it('branches are not included in bases traversal', () => {
+      const state = createStateInNewMind()
+      const hammer_v1 = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+
+      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
+      state.insert_beliefs(hammer_v2)
+      hammer_v1.add_branch(hammer_v2)
+
+      // Walk bases from v1 - should NOT include v2 (branches are separate from bases)
+      const bases_from_v1 = [...hammer_v1._bases]
+      expect(bases_from_v1).to.not.include(hammer_v2)
+
+      // get_archetypes should not include branches
+      const archetypes = [...hammer_v1.get_archetypes()]
+      expect(archetypes.map(a => a.label)).to.include('PortableObject')
+      // v2 is not an archetype, but verify branches don't interfere
+      expect(archetypes.every(a => a instanceof Archetype)).to.be.true
+    })
+
+    it('certainty=0 throws assertion error', () => {
+      const state = createStateInNewMind()
+      const hammer_v1 = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+
+      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
+      state.insert_beliefs(hammer_v2)
+
+      expect(() => {
+        hammer_v1.add_branch(hammer_v2, { certainty: 0 })
+      }).to.throw(/certainty must be > 0 and < 1/)
+    })
+
+    it('certainty=1 throws assertion error', () => {
+      const state = createStateInNewMind()
+      const hammer_v1 = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+
+      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
+      state.insert_beliefs(hammer_v2)
+
+      expect(() => {
+        hammer_v1.add_branch(hammer_v2, { certainty: 1 })
+      }).to.throw(/certainty must be > 0 and < 1/)
+    })
+
+    it('certainty=0.5 is valid', () => {
+      const state = createStateInNewMind()
+      const hammer_v1 = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+
+      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
+      state.insert_beliefs(hammer_v2)
+
+      hammer_v1.add_branch(hammer_v2, { certainty: 0.5 })
+
+      expect(hammer_v2.branch_metadata.certainty).to.equal(0.5)
+    })
+
+    it('certainty=null is valid (default, non-probability branch)', () => {
+      const state = createStateInNewMind()
+      const hammer_v1 = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+
+      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
+      state.insert_beliefs(hammer_v2)
+
+      hammer_v1.add_branch(hammer_v2, { certainty: null })
+
+      expect(hammer_v2.branch_metadata.certainty).to.be.null
+    })
+
+    it('get_branches returns branches set', () => {
+      const state = createStateInNewMind()
+      const hammer_v1 = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+
+      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
+      state.insert_beliefs(hammer_v2)
+      hammer_v1.add_branch(hammer_v2)
+
+      const branches = hammer_v1.get_branches()
+      expect(branches).to.equal(hammer_v1.branches)
+      expect(branches.has(hammer_v2)).to.be.true
+    })
+
+    it('add_branch requires same subject', () => {
+      const state = createStateInNewMind()
+      const hammer = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+
+      // Different subject
+      const wrench = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'wrench'
+      })
+
+      expect(() => {
+        hammer.add_branch(wrench)
+      }).to.throw(/Branch must have same subject/)
+    })
+  })
 });
