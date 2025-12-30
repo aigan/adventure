@@ -94,6 +94,7 @@ export class Logos extends Mind {
     }
 
     // Finalize belief traits
+    // @heavy - finalizing all beliefs in Logos (bounded - Logos is small)
     for (const belief of DB.get_beliefs_by_mind(logos_instance)) {
       // @ts-expect-error - _deserialized_traits is set dynamically during from_json()
       if (belief._deserialized_traits) {

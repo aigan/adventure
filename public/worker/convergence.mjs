@@ -87,6 +87,7 @@ export class Convergence extends State {
    * - Recursively traverses nested Convergence states
    * - Uses seen set to avoid duplicates (last component wins)
    * - Then yields own insert operations
+   * @heavy O(total beliefs across all components) - merges multiple states
    * @yields {Belief}
    */
   *get_beliefs() {
@@ -150,6 +151,7 @@ export class Convergence extends State {
   *_get_beliefs_from_state(state, seen) {
     // Delegate to state's get_beliefs() which handles base chain traversal
     // This ensures we get all beliefs including those inherited via state.base
+    // @heavy - convergence merges beliefs from multiple parent states
     for (const belief of state.get_beliefs()) {
       if (!seen.has(belief.subject.sid)) {
         seen.add(belief.subject.sid)

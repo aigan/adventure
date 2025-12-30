@@ -608,6 +608,7 @@ export class Belief {
 
   /**
    * Iterate over traits that have non-null values (excludes null/undefined traits)
+   * @heavy O(traits in belief + base chain) - iterates all traits
    * @returns {Generator<[Traittype, *]>} Yields [traittype, value] pairs for set traits only
    */
   *get_traits() {
@@ -788,7 +789,7 @@ export class Belief {
       // Handle array of Mind references
       if (Array.isArray(trait_value)) {
         for (const mind of trait_value) {
-          const child_states = mind.get_states_by_ground_state(state)
+          const child_states = mind.get_states_by_ground_state(state) // @heavy - lock cascade
           for (const child_state of child_states) {
             if (!child_state.locked) {
               child_state.lock()
@@ -798,7 +799,7 @@ export class Belief {
       }
       // Handle single Mind reference
       else {
-        const child_states = trait_value.get_states_by_ground_state(state)
+        const child_states = trait_value.get_states_by_ground_state(state) // @heavy - lock cascade
         for (const child_state of child_states) {
           if (!child_state.locked) {
             child_state.lock()  // This will cascade to state's beliefs, which cascade to their minds, etc.
@@ -951,6 +952,7 @@ export class Belief {
 
     // Build traits object from get_traits() (includes all traits, even nulls, for complete schema view)
     const traits_obj = /** @type {Record<string, any>} */ ({})
+    // @heavy - iterating all traits for inspection view
     for (const [traittype, v] of this.get_traits()) {
       traits_obj[traittype.label] = traittype.to_inspect_view(state, v)
     }

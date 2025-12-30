@@ -35,6 +35,7 @@ export function get_observable_traits(state, belief, modalities) {
   const observable_traits = []
 
   // Iterate through all traits on the belief
+  // @heavy - filtering traits by exposure modality
   for (const [traittype, _value] of belief.get_traits()) {
     // Skip if traittype has no exposure metadata
     if (!traittype.exposure) {
@@ -231,7 +232,7 @@ export function _perceive_with_recognition(state, world_entity, world_state, mod
       }
 
       // Null out knowledge traits not in perception
-      const knowledge_traits = knowledge.get_traits()
+      const knowledge_traits = knowledge.get_traits() // @heavy
       for (const [traittype, _value] of knowledge_traits) {
         if (traittype.label === '@about') continue  // Skip meta-trait
         if (!(traittype.label in observed_traits)) {
@@ -306,6 +307,7 @@ export function identify(state, perceived_belief, max_candidates = 3) {
 
   // Extract perceived traits (excluding @about)
   const perceived_traits = []
+  // @heavy - extracting traits for identification
   for (const [tt, v] of perceived_belief.get_traits()) {
     if (tt.label !== '@about') perceived_traits.push([tt, v])
   }
@@ -365,6 +367,7 @@ export function identify(state, perceived_belief, max_candidates = 3) {
   const archetype = _get_most_specific_archetype(state, perceived_belief)
   if (!archetype) return []  // No archetypes
 
+  // @heavy - scanning beliefs by archetype for identification
   for (const belief of state.get_beliefs_by_archetype(archetype)) {
     // Skip non-knowledge
     if (!about_tt) continue
@@ -442,6 +445,7 @@ export function _is_certain_particular(state, subject) {
 export function _all_traits_match(state, perceived, candidate) {
   const about_tt = Traittype.get_by_label('@about')
 
+  // @heavy - comparing all traits for matching
   for (const [traittype, perceived_value] of perceived.get_traits()) {
     if (traittype.label === '@about') continue
 
@@ -514,6 +518,7 @@ export function _identify_by_archetype(state, perceived_belief, max_candidates) 
   const archetype = _get_most_specific_archetype(state, perceived_belief)
   if (!archetype) return []
 
+  // @heavy - archetype-based identification fallback
   for (const belief of state.get_beliefs_by_archetype(archetype)) {
     const about = belief.get_trait(state, about_tt)
     if (!about) continue
@@ -770,6 +775,7 @@ export function _recursively_learn_trait_value(state, source_state, value) {
 export function match_traits(state, perceived, knowledge) {
   // FIXME: validate
   const perceived_traits = []
+  // @heavy - extracting traits for scoring
   for (const [tt, v] of perceived.get_traits()) {
     if (tt.label !== '@about') perceived_traits.push([tt, v])
   }

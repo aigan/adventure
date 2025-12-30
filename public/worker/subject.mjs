@@ -86,11 +86,12 @@ export class Subject {
 
   /**
    * Get all beliefs for a subject across time
+   * @heavy - yields from subject.beliefs which accumulates across all minds
    * @param {Subject} subject
    * @yields {Belief}
    */
   static *get_beliefs_by_subject(subject) {
-    yield* subject.beliefs
+    yield* subject.beliefs // @heavy
   }
 
   /**
@@ -122,6 +123,7 @@ export class Subject {
    */
   get_shared_belief_by_state(state) {
     // For timeless states (tt=null), get all beliefs; otherwise filter by tt
+    // @heavy - iterates subject's beliefs (either filtered by tt or all)
     const beliefs = state.tt != null ? this.beliefs_at_tt(state.tt) : Subject.get_beliefs_by_subject(this)
 
     // Shared beliefs are universals (mater=null) that can be used by any belief
@@ -257,6 +259,7 @@ export class Subject {
   *beliefs_at_tt(tt) {
     // Build valid set directly (beliefs with tt <= target)
     const valid_set = new Set()
+    // @heavy - filtering all beliefs by transaction time
     for (const b of this.beliefs) {
       if (b.get_tt() <= tt) valid_set.add(b)
     }

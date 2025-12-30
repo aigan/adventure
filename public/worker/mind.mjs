@@ -279,6 +279,7 @@ export class Mind {
 
   /**
    * Get states in this mind that have the specified ground_state
+   * @heavy O(1) lookup, but iterating result is O(states per ground)
    * @param {State} ground_state
    * @returns {Set<State>}
    */
@@ -395,7 +396,7 @@ export class Mind {
       _type: this._type,  // Use instance _type property for polymorphism
       _id: this._id,
       label: this.label,
-      belief: [...DB.get_beliefs_by_mind(this).map(b => b.toJSON())],
+      belief: [...DB.get_beliefs_by_mind(this).map(b => b.toJSON())], // @heavy - serialization
       state: [...this._states.values().map(s => s.toJSON())]
     }
   }
@@ -605,6 +606,7 @@ export class Mind {
 
     // CONSTRUCTION PATH: If ground_belief unlocked, check for existing unlocked state to reuse
     if (!ground_belief.locked) {
+      // @heavy - checking for reusable state
       const existing_states = this.get_states_by_ground_state(ground_state)
       for (const state of existing_states) {
         if (!state.locked) return state
@@ -679,6 +681,7 @@ export class Mind {
         // Append operations add knowledge
         for (const [label, trait_names] of Object.entries(value)) {
           const belief = ground_state.get_belief_by_label(label)
+          // @heavy - get_beliefs() only called in error path for debugging
           assert(belief, `Cannot find belief with label '${label}' in ground_state for mind.append operation`, {label, ground_state_id: ground_state._id, available_labels: [...ground_state.get_beliefs()].map(b => b.get_label()).filter(Boolean)})
           assert(trait_names.length > 0, `Empty trait_names array for mind.append operation on belief '${label}'`, {label, trait_names})
           learn_about(state, belief, {traits: trait_names})
@@ -894,6 +897,7 @@ export class Mind {
     const seen = new Set()
 
     for (const state of this.states_at_tt(ground_state, tt)) {
+      // @heavy - scanning beliefs matching archetype for recall
       for (const belief of state.get_beliefs_by_archetype(arch)) {
         const subject = belief.subject
         if (seen.has(subject)) continue

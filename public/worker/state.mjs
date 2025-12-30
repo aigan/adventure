@@ -399,7 +399,7 @@ export class State {
     // Cascade lock to nested mind states (direct lookup via child_minds)
     // O(1) lookup per child mind using _states_by_ground_state index
     for (const child_mind of this.in_mind._child_minds) {
-      const child_states = child_mind.get_states_by_ground_state(this)
+      const child_states = child_mind.get_states_by_ground_state(this) // @heavy - lock cascade
       for (const child_state of child_states) {
         if (!child_state.locked) {
           child_state.lock()
@@ -528,7 +528,7 @@ export class State {
         {belief_id: belief._id, expected_state: this._id, actual_state: belief.origin_state?._id})
 
       // Add to reverse index for all subject-reference traits (including inherited)
-      // TODO: EXPENSIVE - iterates all traits (own + inherited) for each belief
+      // @heavy - iterates all traits (own + inherited) for each belief
       for (const [traittype, value] of belief.get_traits()) {
         if (traittype.is_subject_reference) {
           for (const subject of belief.extract_subjects(value)) {
@@ -553,10 +553,10 @@ export class State {
     assert(!this.locked, 'Cannot modify locked state', {state_id: this._id, mind: this.in_mind.label})
 
     // Clean up reverse index for removed beliefs
-    // TODO: EXPENSIVE - iterates all traits (own + inherited) for each belief
+    // @heavy - iterates all traits (own + inherited) for each belief
     for (const belief of beliefs) {
       assert(belief instanceof Belief, 'fail', belief)
-      for (const [traittype, value] of belief.get_traits()) {
+      for (const [traittype, value] of belief.get_traits()) { // @heavy
         if (traittype.is_subject_reference) {
           for (const subject of belief.extract_subjects(value)) {
             this.rev_del(subject, traittype, belief)
@@ -608,6 +608,10 @@ export class State {
     return new_state
   }
 
+  /**
+   * @heavy O(beliefs in state + base chain) - iterates all beliefs
+   * @yields {Belief}
+   */
   *get_beliefs() {
     const removed = new Set()
 
@@ -640,6 +644,7 @@ export class State {
 
     // If unlocked, don't cache - just search with early termination
     if (!this.locked) {
+      // @heavy - searching for subject (no cache on unlocked state)
       for (const belief of this.get_beliefs()) {
         if (belief.subject === subject) return belief
       }
@@ -650,6 +655,7 @@ export class State {
     // Note: Progressive indexing with early termination was O(unique_subjects × n)
     if (!this._subject_index) {
       this._subject_index = new Map()
+      // @heavy - building subject index (once per locked state)
       for (const belief of this.get_beliefs()) {
         this._subject_index.set(belief.subject, belief)
       }
@@ -763,7 +769,7 @@ export class State {
   /**
    * Get beliefs in this state with a specific archetype
    *
-   * PERFORMANCE: O(n) scan across all beliefs in state chain.
+   * @heavy O(n) scan across all beliefs in state chain.
    * This traverses "all of time and space" for this mind.
    * See STYLE.md "Iteration vs Indexing" for when to index vs scan.
    *
@@ -771,6 +777,7 @@ export class State {
    * @returns {Generator<Belief>} Generator of beliefs with this archetype (allows early exit)
    */
   *get_beliefs_by_archetype(archetype) {
+    // @heavy - scanning all beliefs filtering by archetype
     for (const belief of this.get_beliefs()) {
       for (const a of belief.get_archetypes()) {
         if (a === archetype) {

@@ -72,6 +72,7 @@ export class Materia extends Mind {
    */
   *states_at_tt(ground_state, tt) {
     // Get states for this ground_state, then filter by tt
+    // @heavy - temporal query requires scanning all states for this ground
     const all_states = this.get_states_by_ground_state(ground_state)
     if (all_states.size === 0) return
 

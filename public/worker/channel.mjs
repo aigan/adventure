@@ -73,6 +73,7 @@ export const dispatch = {
 		assert(state.in_mind === mind_obj, `State ${state_id} does not belong to mind ${mind}`)
 
 		const data = []
+		// @heavy - building inspection view for UI
 		for (const belief of state.get_beliefs()) {
 			data.push({
 				id: belief._id,
@@ -144,6 +145,7 @@ export const dispatch = {
 		assert(state_obj instanceof State, `State not found: ${state_id}`)
 
 		const data = []
+		// @heavy - building inspection view for UI
 		for (const belief of state_obj.get_beliefs()) {
 			data.push({
 				id: belief._id,
@@ -548,6 +550,7 @@ export const dispatch = {
 
 		// Find belief by id in current state
 		let belief = null
+		// @heavy - searching for belief by id
 		for (const b of session.state.get_beliefs()) {
 			if (b._id === id) {
 				belief = b
@@ -700,6 +703,7 @@ export const dispatch = {
 
 		// Get child minds
 		const child_minds = []
+		// @heavy - iterating all minds to find children (debugging only)
 		const registries = /** @type {{mind_by_id: Map<number, Mind>}} */ (DB._reflect())
 		for (const child of registries.mind_by_id.values()) {
 			if (child._parent === mind_obj) {

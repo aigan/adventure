@@ -156,6 +156,7 @@ export class Archetype {
 
   /**
    * Iterate over traits with non-null values in this archetype's template (does not check bases)
+   * @heavy O(traits in archetype template) - iterates template traits
    * @returns {Generator<[Traittype, any]>} Yields [traittype, value] pairs for set traits only
    */
   *get_traits() {

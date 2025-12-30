@@ -21,6 +21,41 @@ Write short, readable code using modern JavaScript features. Prefer clarity over
 - ✓ When you realize a lookup is missing, ask about adjusting the design
 - ✗ Don't introduce workarounds that iterate to find things
 
+### @heavy Annotation
+
+Some methods iterate over collections and are O(n) where n could be millions in a scaled system. These "heavy" methods require explicit acknowledgment via `@heavy` comments to ensure developers consider performance implications.
+
+**Heavy methods** (require `@heavy` when called):
+- `.get_beliefs()` - iterates all beliefs in a state
+- `.get_beliefs_by_*()` - iterates beliefs filtering by mind/subject/archetype
+- `.get_traits()` - iterates all traits on a belief
+- `.get_states_by_*()` - iterates states for a ground state
+- `.beliefs` - direct access to subject's belief Set
+
+**At call sites** - add `// @heavy` comment on same or adjacent line:
+```javascript
+// @heavy - building inspection view for UI
+for (const belief of state.get_beliefs()) {
+  // ...
+}
+```
+Including a reason is recommended to document why the iteration is acceptable in this context (e.g., bounded by UI constraints, only in debugging code, etc.).
+
+**At method definitions** - document performance characteristics:
+```javascript
+/**
+ * @heavy O(beliefs in state) - iterates all beliefs in state and base chain
+ * @yields {Belief}
+ */
+*get_beliefs() {
+```
+
+**Consider before using heavy methods**:
+- Can you use an indexed lookup instead? (e.g., `get_belief_by_subject()`)
+- Is the collection bounded? (e.g., traits per belief is typically small)
+- Is this code on a hot path or only for debugging/inspection?
+- Could an index be added to avoid the iteration?
+
 ## Technical Constraints
 
 - ✓ Modern ES2024+ features, no compilation/build step required

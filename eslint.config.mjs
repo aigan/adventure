@@ -36,7 +36,7 @@ export default [
       "semi": "off",
       "jsdoc/check-alignment": "warn",
       "jsdoc/check-param-names": "error",
-      "jsdoc/check-tag-names": "error",
+      "jsdoc/check-tag-names": ["error", { "definedTags": ["heavy"] }],
       "jsdoc/check-types": "off",
       "jsdoc/no-undefined-types": "off",
       "jsdoc/reject-any-type": "off",
