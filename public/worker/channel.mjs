@@ -400,6 +400,7 @@ export const dispatch = {
 		// Find trait source (own vs inherited)
 		let source = 'inherited'
 		let source_belief_id = belief_obj._id
+		let source_belief_desig = belief_obj.sysdesig(state)
 		if (Object.prototype.hasOwnProperty.call(belief_obj._traits, trait)) {
 			source = 'own'
 		} else {
@@ -407,6 +408,7 @@ export const dispatch = {
 			for (const base of belief_obj._bases) {
 				if (base instanceof Belief && Object.prototype.hasOwnProperty.call(base._traits, trait)) {
 					source_belief_id = base._id
+					source_belief_desig = base.sysdesig(state)
 					break
 				}
 			}
@@ -482,6 +484,7 @@ export const dispatch = {
 			current_value,
 			source,
 			source_belief_id,
+			source_belief_desig,
 			history,
 		};
 

@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { Trait, Traittype, Subject, Belief, Materia } from '../public/worker/cosmos.mjs'
+import { Notion, Traittype, Subject, Belief, Materia, Fuzzy } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { stdTypes, Thing, setupAfterEachValidation } from './helpers.mjs'
@@ -35,7 +35,7 @@ describe('recall_by_subject', () => {
   setupAfterEachValidation()
 
   describe('basic recall', () => {
-    it('returns single trait for known subject', () => {
+    it('returns Notion with single trait for known subject', () => {
       const mind = new Materia(logos(), 'player')
       const ground = logos_state()
       const state = mind.create_state(ground, { tt: 1 })
@@ -47,16 +47,21 @@ describe('recall_by_subject', () => {
       })
       state.lock()
 
-      const traits = [...mind.recall_by_subject(ground, hammer.subject, 1, ['color'])]
+      const notion = mind.recall_by_subject(ground, hammer.subject, 1, ['color'])
+      const color_tt = Traittype.get_by_label('color')
 
-      expect(traits).to.have.length(1)
-      expect(traits[0].type.label).to.equal('color')
-      expect(traits[0].value).to.equal('black')
-      expect(traits[0].certainty).to.equal(1.0)
-      expect(traits[0].source).to.equal(hammer)
+      expect(notion).to.be.instanceOf(Notion)
+      expect(notion.subject).to.equal(hammer.subject)
+      expect(notion.traits.has(color_tt)).to.be.true
+
+      const color_value = notion.get(color_tt)
+      expect(color_value).to.be.instanceOf(Fuzzy)
+      expect(color_value.alternatives).to.have.length(1)
+      expect(color_value.alternatives[0].value).to.equal('black')
+      expect(color_value.alternatives[0].certainty).to.equal(1.0)
     })
 
-    it('returns multiple requested traits', () => {
+    it('returns Notion with multiple requested traits', () => {
       const mind = new Materia(logos(), 'player')
       const ground = logos_state()
       const state = mind.create_state(ground, { tt: 1 })
@@ -68,13 +73,13 @@ describe('recall_by_subject', () => {
       })
       state.lock()
 
-      const traits = [...mind.recall_by_subject(ground, hammer.subject, 1, ['color', 'weight'])]
+      const notion = mind.recall_by_subject(ground, hammer.subject, 1, ['color', 'weight'])
+      const color_tt = Traittype.get_by_label('color')
+      const weight_tt = Traittype.get_by_label('weight')
 
-      expect(traits).to.have.length(2)
-      const color = traits.find(t => t.type.label === 'color')
-      const weight = traits.find(t => t.type.label === 'weight')
-      expect(color.value).to.equal('black')
-      expect(weight.value).to.equal(2)
+      expect(notion.traits.size).to.equal(2)
+      expect(notion.get(color_tt).alternatives[0].value).to.equal('black')
+      expect(notion.get(weight_tt).alternatives[0].value).to.equal(2)
     })
 
     it('returns all traits when request_traits omitted', () => {
@@ -89,29 +94,32 @@ describe('recall_by_subject', () => {
       })
       state.lock()
 
-      const traits = [...mind.recall_by_subject(ground, hammer.subject, 1)]
+      const notion = mind.recall_by_subject(ground, hammer.subject, 1)
+      const color_tt = Traittype.get_by_label('color')
+      const weight_tt = Traittype.get_by_label('weight')
 
       // Should include color and weight (location is null/unset)
-      expect(traits.length).to.be.at.least(2)
-      expect(traits.some(t => t.type.label === 'color')).to.be.true
-      expect(traits.some(t => t.type.label === 'weight')).to.be.true
+      expect(notion.traits.size).to.be.at.least(2)
+      expect(notion.has(color_tt)).to.be.true
+      expect(notion.has(weight_tt)).to.be.true
     })
 
-    it('returns empty array for missing subject', () => {
+    it('returns empty Notion for missing subject', () => {
       const mind = new Materia(logos(), 'player')
       const ground = logos_state()
       const state = mind.create_state(ground, { tt: 1 })
       state.lock()
 
       const unknown_subject = new Subject()
-      const traits = [...mind.recall_by_subject(ground, unknown_subject, 1, ['color'])]
+      const notion = mind.recall_by_subject(ground, unknown_subject, 1, ['color'])
 
-      expect(traits).to.have.length(0)
+      expect(notion).to.be.instanceOf(Notion)
+      expect(notion.traits.size).to.equal(0)
     })
   })
 
   describe('superposition', () => {
-    it('returns multiple traits for same type from different branches', () => {
+    it('returns Fuzzy with multiple alternatives from different branches', () => {
       const mind = new Materia(logos(), 'player')
       const ground = logos_state()
 
@@ -144,18 +152,98 @@ describe('recall_by_subject', () => {
       hammer_b.replace(state_b, { location: shed.subject })
       state_b.lock()
 
-      // Recall location trait - should get both possibilities
-      const traits = [...mind.recall_by_subject(ground, hammer.subject, 2, ['location'])]
+      // Recall location trait - should get Fuzzy with both possibilities
+      const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['location'])
+      const location_tt = Traittype.get_by_label('location')
+      const location = notion.get(location_tt)
 
-      expect(traits).to.have.length(2)
+      expect(location).to.be.instanceOf(Fuzzy)
+      expect(location.alternatives).to.have.length(2)
 
-      const workshop_trait = traits.find(t => t.value?.sid === workshop.subject.sid)
-      const shed_trait = traits.find(t => t.value?.sid === shed.subject.sid)
+      const workshop_alt = location.alternatives.find(a => a.value?.sid === workshop.subject.sid)
+      const shed_alt = location.alternatives.find(a => a.value?.sid === shed.subject.sid)
 
-      expect(workshop_trait).to.exist
-      expect(shed_trait).to.exist
-      expect(workshop_trait.certainty).to.equal(0.7)
-      expect(shed_trait.certainty).to.equal(0.3)
+      expect(workshop_alt).to.exist
+      expect(shed_alt).to.exist
+      expect(workshop_alt.certainty).to.equal(0.7)
+      expect(shed_alt.certainty).to.equal(0.3)
+    })
+
+    it('combines certainties when multiple branches agree on same value', () => {
+      const mind = new Materia(logos(), 'player')
+      const ground = logos_state()
+
+      // Base state with hammer
+      const state_0 = mind.create_state(ground, { tt: 1 })
+      const workshop = state_0.add_belief_from_template({
+        label: 'workshop',
+        bases: ['Location']
+      })
+      const hammer = state_0.add_belief_from_template({
+        label: 'hammer',
+        bases: ['Tool'],
+        traits: { color: 'black' }
+      })
+      state_0.lock()
+
+      // Branch A: hammer in workshop (60% certain)
+      const state_a = state_0.branch(ground, 2, { certainty: 0.6 })
+      state_a.get_belief_by_label('hammer').replace(state_a, { location: workshop.subject })
+      state_a.lock()
+
+      // Branch B: hammer ALSO in workshop (30% certain) - same value!
+      const state_b = state_0.branch(ground, 2, { certainty: 0.3 })
+      state_b.get_belief_by_label('hammer').replace(state_b, { location: workshop.subject })
+      state_b.lock()
+
+      // Recall location - should combine certainties for same value
+      const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['location'])
+      const location_tt = Traittype.get_by_label('location')
+      const location = notion.get(location_tt)
+
+      expect(location).to.be.instanceOf(Fuzzy)
+      // Should have ONE alternative (same value combined), not two
+      expect(location.alternatives).to.have.length(1)
+      expect(location.alternatives[0].value.sid).to.equal(workshop.subject.sid)
+      // Certainties should be summed: 0.6 + 0.3 = 0.9
+      expect(location.alternatives[0].certainty).to.be.closeTo(0.9, 0.001)
+    })
+
+    it('caps combined certainty at 1.0', () => {
+      const mind = new Materia(logos(), 'player')
+      const ground = logos_state()
+
+      // Base state with hammer
+      const state_0 = mind.create_state(ground, { tt: 1 })
+      const workshop = state_0.add_belief_from_template({
+        label: 'workshop',
+        bases: ['Location']
+      })
+      const hammer = state_0.add_belief_from_template({
+        label: 'hammer',
+        bases: ['Tool'],
+        traits: { color: 'black' }
+      })
+      state_0.lock()
+
+      // Branch A: hammer in workshop (70% certain)
+      const state_a = state_0.branch(ground, 2, { certainty: 0.7 })
+      state_a.get_belief_by_label('hammer').replace(state_a, { location: workshop.subject })
+      state_a.lock()
+
+      // Branch B: hammer ALSO in workshop (60% certain)
+      const state_b = state_0.branch(ground, 2, { certainty: 0.6 })
+      state_b.get_belief_by_label('hammer').replace(state_b, { location: workshop.subject })
+      state_b.lock()
+
+      // Recall location - combined certainty should cap at 1.0
+      const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['location'])
+      const location_tt = Traittype.get_by_label('location')
+      const location = notion.get(location_tt)
+
+      expect(location.alternatives).to.have.length(1)
+      // 0.7 + 0.6 = 1.3 -> capped at 1.0
+      expect(location.alternatives[0].certainty).to.equal(1.0)
     })
   })
 
@@ -177,11 +265,11 @@ describe('recall_by_subject', () => {
       })
       state.lock()
 
-      const traits = [...mind.recall_by_subject(ground, hammer.subject, 1, ['location.color'])]
+      const notion = mind.recall_by_subject(ground, hammer.subject, 1, ['location.color'])
+      const color_tt = Traittype.get_by_label('color')
 
-      expect(traits).to.have.length(1)
-      expect(traits[0].value).to.equal('brown')
-      expect(traits[0].subject).to.equal(handle.subject)
+      expect(notion.has(color_tt)).to.be.true
+      expect(notion.get(color_tt).alternatives[0].value).to.equal('brown')
     })
 
     it('recall_by_subject with mixed paths and direct traits', () => {
@@ -201,18 +289,21 @@ describe('recall_by_subject', () => {
       })
       state.lock()
 
-      const traits = [...mind.recall_by_subject(ground, hammer.subject, 1, ['color', 'location.color'])]
+      const notion = mind.recall_by_subject(ground, hammer.subject, 1, ['color', 'location.color'])
+      const color_tt = Traittype.get_by_label('color')
 
-      expect(traits).to.have.length(2)
-      const direct = traits.find(t => t.subject.sid === hammer.subject.sid)
-      const path = traits.find(t => t.subject.sid === handle.subject.sid)
-      expect(direct.value).to.equal('black')
-      expect(path.value).to.equal('brown')
+      // Should have color trait with both values (direct 'black' and path 'brown')
+      expect(notion.has(color_tt)).to.be.true
+      const color = notion.get(color_tt)
+      expect(color).to.be.instanceOf(Fuzzy)
+      expect(color.alternatives).to.have.length(2)
+      expect(color.alternatives.map(a => a.value)).to.include('black')
+      expect(color.alternatives.map(a => a.value)).to.include('brown')
     })
   })
 
   describe('recall_by_archetype', () => {
-    it('finds tools and returns requested traits', () => {
+    it('finds tools and returns Notions with requested traits', () => {
       const mind = new Materia(logos(), 'player')
       const ground = logos_state()
       const state = mind.create_state(ground, { tt: 1 })
@@ -229,20 +320,21 @@ describe('recall_by_subject', () => {
       })
       state.lock()
 
-      const results = [...mind.recall_by_archetype(ground, 'Tool', 1, ['color', 'weight'])]
+      const notions = [...mind.recall_by_archetype(ground, 'Tool', 1, ['color', 'weight'])]
 
-      expect(results).to.have.length(2)
+      expect(notions).to.have.length(2)
 
       // Check we got both subjects
-      const subjects = results.map(([s, _]) => s)
+      const subjects = notions.map(n => n.subject)
       expect(subjects).to.include(hammer.subject)
       expect(subjects).to.include(wrench.subject)
 
       // Check traits for hammer
-      const [, hammer_traits] = results.find(([s, _]) => s === hammer.subject)
-      expect(hammer_traits).to.have.length(2)
-      expect(hammer_traits.find(t => t.type.label === 'color').value).to.equal('black')
-      expect(hammer_traits.find(t => t.type.label === 'weight').value).to.equal(2)
+      const hammer_notion = notions.find(n => n.subject === hammer.subject)
+      const color_tt = Traittype.get_by_label('color')
+      const weight_tt = Traittype.get_by_label('weight')
+      expect(hammer_notion.get(color_tt).alternatives[0].value).to.equal('black')
+      expect(hammer_notion.get(weight_tt).alternatives[0].value).to.equal(2)
     })
 
     it('returns empty iterator when no matches', () => {
@@ -251,9 +343,9 @@ describe('recall_by_subject', () => {
       const state = mind.create_state(ground, { tt: 1 })
       state.lock()
 
-      const results = [...mind.recall_by_archetype(ground, 'Tool', 1, ['color'])]
+      const notions = [...mind.recall_by_archetype(ground, 'Tool', 1, ['color'])]
 
-      expect(results).to.have.length(0)
+      expect(notions).to.have.length(0)
     })
 
     it('handles superposition within subject', () => {
@@ -287,17 +379,20 @@ describe('recall_by_subject', () => {
       state_b.get_belief_by_label('hammer').replace(state_b, { location: shed.subject })
       state_b.lock()
 
-      const results = [...mind.recall_by_archetype(ground, 'Tool', 2, ['location'])]
+      const notions = [...mind.recall_by_archetype(ground, 'Tool', 2, ['location'])]
 
-      expect(results).to.have.length(1) // One subject
-      const [subject, traits] = results[0]
-      expect(subject).to.equal(hammer.subject)
-      expect(traits).to.have.length(2) // Two location possibilities
+      expect(notions).to.have.length(1) // One subject
+      const notion = notions[0]
+      expect(notion.subject).to.equal(hammer.subject)
 
-      const workshop_trait = traits.find(t => t.value?.sid === workshop.subject.sid)
-      const shed_trait = traits.find(t => t.value?.sid === shed.subject.sid)
-      expect(workshop_trait.certainty).to.equal(0.7)
-      expect(shed_trait.certainty).to.equal(0.3)
+      const location_tt = Traittype.get_by_label('location')
+      const location = notion.get(location_tt)
+      expect(location.alternatives).to.have.length(2) // Two location possibilities
+
+      const workshop_alt = location.alternatives.find(a => a.value?.sid === workshop.subject.sid)
+      const shed_alt = location.alternatives.find(a => a.value?.sid === shed.subject.sid)
+      expect(workshop_alt.certainty).to.equal(0.7)
+      expect(shed_alt.certainty).to.equal(0.3)
     })
 
     it('multiple subjects of same archetype', () => {
@@ -322,10 +417,11 @@ describe('recall_by_subject', () => {
       })
       state.lock()
 
-      const results = [...mind.recall_by_archetype(ground, 'Tool', 1, ['color'])]
+      const notions = [...mind.recall_by_archetype(ground, 'Tool', 1, ['color'])]
+      const color_tt = Traittype.get_by_label('color')
 
-      expect(results).to.have.length(3)
-      const colors = results.flatMap(([_, traits]) => traits.map(t => t.value))
+      expect(notions).to.have.length(3)
+      const colors = notions.map(n => n.get(color_tt).alternatives[0].value)
       expect(colors).to.include('black')
       expect(colors).to.include('silver')
       expect(colors).to.include('red')
@@ -336,15 +432,6 @@ describe('recall_by_subject', () => {
       const ground = logos_state()
       const state = mind.create_state(ground, { tt: 1 })
 
-      const workshop = state.add_belief_from_template({
-        label: 'workshop',
-        bases: ['Location']
-      })
-      const shed = state.add_belief_from_template({
-        label: 'shed',
-        bases: ['Location']
-      })
-      // Give locations color for testing (abusing Location for simplicity)
       const paint = state.add_belief_from_template({
         label: 'red_paint',
         bases: ['Tool'],
@@ -367,11 +454,15 @@ describe('recall_by_subject', () => {
       })
       state.lock()
 
-      const results = [...mind.recall_by_archetype(ground, 'Tool', 1, ['location.color'])]
+      const notions = [...mind.recall_by_archetype(ground, 'Tool', 1, ['location.color'])]
+      const color_tt = Traittype.get_by_label('color')
 
       // Should return hammer and wrench (not the paint objects as they don't have location trait)
-      expect(results.length).to.be.at.least(2)
-      const colors = results.flatMap(([_, traits]) => traits.map(t => t.value))
+      expect(notions.length).to.be.at.least(2)
+      const colors = notions.flatMap(n => {
+        const c = n.get(color_tt)
+        return c ? c.alternatives.map(a => a.value) : []
+      })
       expect(colors).to.include('red')   // hammer's location.color
       expect(colors).to.include('blue')  // wrench's location.color
     })
@@ -390,9 +481,10 @@ describe('recall_by_subject', () => {
       })
       state.lock()
 
-      const traits = [...mind.recall_by_subject(ground, hammer.subject, 1, ['color'])]
+      const notion = mind.recall_by_subject(ground, hammer.subject, 1, ['color'])
+      const color_tt = Traittype.get_by_label('color')
 
-      expect(traits[0].certainty).to.equal(1.0)
+      expect(notion.get(color_tt).alternatives[0].certainty).to.equal(1.0)
     })
 
     it('returns reduced certainty for branched state', () => {
@@ -413,9 +505,10 @@ describe('recall_by_subject', () => {
       hammer.replace(state_1, { weight: 2 })
       state_1.lock()
 
-      const traits = [...mind.recall_by_subject(ground, hammer.subject, 2, ['weight'])]
+      const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['weight'])
+      const weight_tt = Traittype.get_by_label('weight')
 
-      expect(traits[0].certainty).to.equal(0.7)
+      expect(notion.get(weight_tt).alternatives[0].certainty).to.equal(0.7)
     })
 
     it('multiplies certainty for nested branches', () => {
@@ -440,10 +533,11 @@ describe('recall_by_subject', () => {
       hammer.replace(state_2, { weight: 2 })
       state_2.lock()
 
-      const traits = [...mind.recall_by_subject(ground, hammer.subject, 3, ['weight'])]
+      const notion = mind.recall_by_subject(ground, hammer.subject, 3, ['weight'])
+      const weight_tt = Traittype.get_by_label('weight')
 
       // 0.7 * 0.5 = 0.35
-      expect(traits[0].certainty).to.be.closeTo(0.35, 0.001)
+      expect(notion.get(weight_tt).alternatives[0].certainty).to.be.closeTo(0.35, 0.001)
     })
   })
 
@@ -467,10 +561,11 @@ describe('recall_by_subject', () => {
       hammer.replace(state_1, { '@certainty': 0.8, weight: 2 })
       state_1.lock()
 
-      const traits = [...mind.recall_by_subject(ground, hammer.subject, 2, ['weight'])]
+      const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['weight'])
+      const weight_tt = Traittype.get_by_label('weight')
 
-      // 0.7 (path) × 0.8 (belief) = 0.56
-      expect(traits[0].certainty).to.be.closeTo(0.56, 0.001)
+      // 0.7 (path) x 0.8 (belief) = 0.56
+      expect(notion.get(weight_tt).alternatives[0].certainty).to.be.closeTo(0.56, 0.001)
     })
 
     it('defaults belief certainty to 1.0 when not set', () => {
@@ -491,10 +586,11 @@ describe('recall_by_subject', () => {
       hammer.replace(state_1, { weight: 2 })  // No @certainty set
       state_1.lock()
 
-      const traits = [...mind.recall_by_subject(ground, hammer.subject, 2, ['weight'])]
+      const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['weight'])
+      const weight_tt = Traittype.get_by_label('weight')
 
       // path_certainty only (belief_certainty defaults to 1.0)
-      expect(traits[0].certainty).to.equal(0.7)
+      expect(notion.get(weight_tt).alternatives[0].certainty).to.equal(0.7)
     })
 
     it('belief certainty multiplies with nested state certainty', () => {
@@ -520,10 +616,11 @@ describe('recall_by_subject', () => {
       hammer.replace(state_2, { '@certainty': 0.6, weight: 2 })
       state_2.lock()
 
-      const traits = [...mind.recall_by_subject(ground, hammer.subject, 3, ['weight'])]
+      const notion = mind.recall_by_subject(ground, hammer.subject, 3, ['weight'])
+      const weight_tt = Traittype.get_by_label('weight')
 
-      // path: 0.7 × 0.5 = 0.35, combined: 0.35 × 0.6 = 0.21
-      expect(traits[0].certainty).to.be.closeTo(0.21, 0.001)
+      // path: 0.7 x 0.5 = 0.35, combined: 0.35 x 0.6 = 0.21
+      expect(notion.get(weight_tt).alternatives[0].certainty).to.be.closeTo(0.21, 0.001)
     })
 
     it('recall_by_archetype includes belief certainty', () => {
@@ -545,11 +642,11 @@ describe('recall_by_subject', () => {
       hammer.replace(state_1, { '@certainty': 0.8, weight: 2 })
       state_1.lock()
 
-      const results = [...mind.recall_by_archetype(ground, 'Tool', 2, ['weight'])]
+      const notions = [...mind.recall_by_archetype(ground, 'Tool', 2, ['weight'])]
+      const weight_tt = Traittype.get_by_label('weight')
 
-      expect(results).to.have.length(1)
-      const [, traits] = results[0]
-      expect(traits[0].certainty).to.be.closeTo(0.56, 0.001)
+      expect(notions).to.have.length(1)
+      expect(notions[0].get(weight_tt).alternatives[0].certainty).to.be.closeTo(0.56, 0.001)
     })
   })
 })
@@ -588,7 +685,7 @@ describe('get_trait_path', () => {
   })
   setupAfterEachValidation()
 
-  it('single segment returns direct trait', () => {
+  it('single segment returns direct trait value', () => {
     const mind = new Materia(logos(), 'player')
     const ground = logos_state()
     const state = mind.create_state(ground, { tt: 1 })
@@ -600,11 +697,9 @@ describe('get_trait_path', () => {
     })
     state.lock()
 
-    const trait = hammer.get_trait_path(state, 'color')
+    const value = hammer.get_trait_path(state, 'color')
 
-    expect(trait).to.exist
-    expect(trait.value).to.equal('black')
-    expect(trait.subject).to.equal(hammer.subject)
+    expect(value).to.equal('black')
   })
 
   it('two segments follows Subject reference', () => {
@@ -624,12 +719,9 @@ describe('get_trait_path', () => {
     })
     state.lock()
 
-    const trait = hammer.get_trait_path(state, 'handle.color')
+    const value = hammer.get_trait_path(state, 'handle.color')
 
-    expect(trait).to.exist
-    expect(trait.value).to.equal('brown')
-    expect(trait.subject).to.equal(handle.subject)
-    expect(trait.source).to.equal(handle)
+    expect(value).to.equal('brown')
   })
 
   it('three segments follows nested references', () => {
@@ -637,7 +729,7 @@ describe('get_trait_path', () => {
     const ground = logos_state()
     const state = mind.create_state(ground, { tt: 1 })
 
-    // head → tip (another part)
+    // head -> tip (another part)
     const tip = state.add_belief_from_template({
       label: 'tip',
       bases: ['HammerHead'],  // reuse archetype
@@ -655,11 +747,9 @@ describe('get_trait_path', () => {
     })
     state.lock()
 
-    const trait = hammer.get_trait_path(state, 'head.head.material')
+    const value = hammer.get_trait_path(state, 'head.head.material')
 
-    expect(trait).to.exist
-    expect(trait.value).to.equal('steel')
-    expect(trait.subject).to.equal(tip.subject)
+    expect(value).to.equal('steel')
   })
 
   it('returns undefined for broken path', () => {
@@ -674,8 +764,8 @@ describe('get_trait_path', () => {
     })
     state.lock()
 
-    const trait = hammer.get_trait_path(state, 'handle.color')
-    expect(trait).to.be.undefined
+    const value = hammer.get_trait_path(state, 'handle.color')
+    expect(value).to.be.undefined
   })
 
   it('returns undefined for non-Subject intermediate', () => {
@@ -691,60 +781,8 @@ describe('get_trait_path', () => {
     state.lock()
 
     // color is a string, not Subject - can't traverse further
-    const trait = hammer.get_trait_path(state, 'color.something')
-    expect(trait).to.be.undefined
-  })
-
-  it('accumulates certainty through path', () => {
-    const mind = new Materia(logos(), 'player')
-    const ground = logos_state()
-    const state = mind.create_state(ground, { tt: 1 })
-
-    const handle = state.add_belief_from_template({
-      label: 'handle',
-      bases: ['HammerHandle'],
-      traits: { '@certainty': 0.7, color: 'brown' }
-    })
-    const hammer = state.add_belief_from_template({
-      label: 'hammer',
-      bases: ['Hammer'],
-      traits: { handle: handle.subject }
-    })
-    state.lock()
-
-    const trait = hammer.get_trait_path(state, 'handle.color')
-
-    expect(trait).to.exist
-    expect(trait.certainty).to.be.closeTo(0.7, 0.001)
-  })
-
-  it('multiplies certainty through multiple hops', () => {
-    const mind = new Materia(logos(), 'player')
-    const ground = logos_state()
-    const state = mind.create_state(ground, { tt: 1 })
-
-    const tip = state.add_belief_from_template({
-      label: 'tip',
-      bases: ['HammerHead'],
-      traits: { '@certainty': 0.8, material: 'steel' }
-    })
-    const head = state.add_belief_from_template({
-      label: 'head',
-      bases: ['HammerHead'],
-      traits: { '@certainty': 0.9, head: tip.subject }
-    })
-    const hammer = state.add_belief_from_template({
-      label: 'hammer',
-      bases: ['Hammer'],
-      traits: { head: head.subject }
-    })
-    state.lock()
-
-    const trait = hammer.get_trait_path(state, 'head.head.material')
-
-    // 0.9 (head) × 0.8 (tip) = 0.72
-    expect(trait).to.exist
-    expect(trait.certainty).to.be.closeTo(0.72, 0.001)
+    const value = hammer.get_trait_path(state, 'color.something')
+    expect(value).to.be.undefined
   })
 
   it('works with array path argument', () => {
@@ -764,9 +802,8 @@ describe('get_trait_path', () => {
     })
     state.lock()
 
-    const trait = hammer.get_trait_path(state, ['handle', 'color'])
+    const value = hammer.get_trait_path(state, ['handle', 'color'])
 
-    expect(trait).to.exist
-    expect(trait.value).to.equal('brown')
+    expect(value).to.equal('brown')
   })
 })

@@ -18,7 +18,7 @@ import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
-import { Mind, Materia } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, Fuzzy } from '../public/worker/cosmos.mjs'
 import { eidos } from '../public/worker/eidos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
@@ -1406,6 +1406,47 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
         assert.lengthOf(instances, 1)
         assert.strictEqual(instances[0], player_sword)
+      })
+    })
+
+    describe('Fuzzy Subject References', () => {
+      it('tracks all Subject alternatives in Fuzzy trait values', () => {
+        DB.reset_registries()
+        setupStandardArchetypes()
+
+        const state = createStateInNewMind('world')
+
+        // Create two possible locations
+        const location_tt = Traittype.get_by_label('location')
+        const workshop = Belief.from_template(state, {
+          bases: ['Location'], traits: {}, label: 'workshop'
+        })
+        const storage = Belief.from_template(state, {
+          bases: ['Location'], traits: {}, label: 'storage'
+        })
+
+        // Create a tool with uncertain location (Fuzzy)
+        const hammer = Belief.from_template(state, {
+          bases: ['Tool'], traits: {}, label: 'hammer'
+        })
+        hammer._set_trait(location_tt, new Fuzzy({
+          alternatives: [
+            { value: workshop.subject, certainty: 0.6 },
+            { value: storage.subject, certainty: 0.4 }
+          ]
+        }))
+
+        state.lock()
+
+        // rev_trait should find hammer for BOTH locations
+        const at_workshop = [...workshop.rev_trait(state, location_tt)]
+        const at_storage = [...storage.rev_trait(state, location_tt)]
+
+        assert.lengthOf(at_workshop, 1, 'hammer should appear in workshop rev_trait')
+        assert.strictEqual(at_workshop[0], hammer)
+
+        assert.lengthOf(at_storage, 1, 'hammer should appear in storage rev_trait')
+        assert.strictEqual(at_storage[0], hammer)
       })
     })
 

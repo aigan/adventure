@@ -663,28 +663,22 @@ section.not-found .detail {
 	cursor: help;
 }
 
+.fuzzy-compact {
+	cursor: help;
+	opacity: 0.8;
+}
+
 .fuzzy-superposition {
 	display: inline-table;
 	border-collapse: collapse;
 	font-size: var(--font-size-rel-3);
-	background: var(--surface-2-muted);
 	border-radius: var(--radius-2);
 	overflow: hidden;
 }
 
-.fuzzy-superposition th,
 .fuzzy-superposition td {
 	padding: var(--space-3) var(--space-5);
 	text-align: left;
-}
-
-.fuzzy-superposition th {
-	background: var(--surface-4);
-	color: var(--accent-belief);
-	font-weight: 500;
-	font-size: var(--font-size-rel-2);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
 }
 
 .fuzzy-superposition td:last-child {
@@ -694,16 +688,16 @@ section.not-found .detail {
 }
 
 .fuzzy-superposition tr:nth-child(odd) td {
-	background: color-mix(in srgb, var(--surface-3) 50%, var(--surface-2-muted));
+	background: rgba(0, 0, 0, 0.1);
 }
 
 .fuzzy-superposition tr:nth-child(even) td {
-	background: var(--surface-2-muted);
+	background: rgba(0, 0, 0, 0.05);
 }
 
 /* Hover effect for individual alternatives */
 .fuzzy-superposition tbody tr:hover td {
-	background: var(--surface-5);
+	background: rgba(0, 0, 0, 0.15);
 }
 
 /* Disable parent trait row hover when hovering fuzzy table */

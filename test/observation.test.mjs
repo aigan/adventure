@@ -2171,18 +2171,21 @@ describe('observation', () => {
       mind_state.lock()
 
       // Query all PortableObjects and filter by color
-      const results = [...player_mind.recall_by_archetype(
+      const notions = [...player_mind.recall_by_archetype(
         ground, 'PortableObject', 1, ['color']
       )]
+      const color_tt = Traittype.get_by_label('color')
 
       // Filter for black objects
-      const black_objects = results.filter(([subject, traits]) => {
-        const color_trait = traits.find(t => t.type.label === 'color')
-        return color_trait?.value === 'black'
+      const black_objects = notions.filter(notion => {
+        const color = notion.get(color_tt)
+        // Get the first alternative's value (or the concrete value)
+        const value = color?.alternatives?.[0]?.value ?? color
+        return value === 'black'
       })
 
       expect(black_objects).to.have.lengthOf(2)
-      const subjects = black_objects.map(([s, _]) => s)
+      const subjects = black_objects.map(n => n.subject)
       expect(subjects).to.include(hammer_black.subject)
       expect(subjects).to.include(wrench_black.subject)
     })

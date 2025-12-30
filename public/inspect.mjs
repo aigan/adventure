@@ -592,15 +592,16 @@ function render_belief_not_found(dat) {
  * @param {any} value
  * @param {number} state_id
  * @param {number|undefined} belief_mind_id
+ * @param {boolean} [compact] - If true, show short representation for complex values
  * @returns {string}
  */
-function format_trait_value(value, state_id, belief_mind_id) {
+function format_trait_value(value, state_id, belief_mind_id, compact = false) {
   if (value === null || value === undefined) {
     return '-';
   }
 
   if (Array.isArray(value)) {
-    const items = value.map(item => format_trait_value(item, state_id, belief_mind_id));
+    const items = value.map(item => format_trait_value(item, state_id, belief_mind_id, compact));
     return items.join(', ');
   }
 
@@ -610,9 +611,13 @@ function format_trait_value(value, state_id, belief_mind_id) {
       if (value.unknown || !value.alternatives || value.alternatives.length === 0) {
         return '<span class="fuzzy-unknown" title="Unknown value">❓</span>';
       }
-      // Superposition: show as table with values and probabilities
+      // Compact mode: show count only
+      if (compact) {
+        const n = value.alternatives.length;
+        return `<span class="fuzzy-compact" title="${n} alternatives">☁️${n}</span>`;
+      }
+      // Full mode: show as table with values and probabilities
       let html = '<table class="fuzzy-superposition">';
-      html += '<tr><th>Value</th><th>P</th></tr>';
       for (const alt of value.alternatives) {
         const alt_value = format_trait_value(alt.value, state_id, belief_mind_id);
         const pct = Math.round(alt.certainty * 100);
@@ -789,8 +794,8 @@ function render_trait_view(dat){
     <span class="sep">›</span>
   `;
 
-  // Current trait chip
-  const value_display = format_trait_value(dat.current_value, dat.state_id, dat.belief_id);
+  // Current trait chip (compact mode for path bar)
+  const value_display = format_trait_value(dat.current_value, dat.state_id, dat.belief_id, true);
   path_html += `
     <span class="chip trait current">
       <span class="chip-label">${dat.trait_name}</span>
@@ -842,15 +847,16 @@ function render_trait_view(dat){
   // Main content
   let main_html = '';
 
-  // Current value section
+  // Current value section (full display, not compact)
+  const value_full = format_trait_value(dat.current_value, dat.state_id, dat.belief_id, false);
   main_html += '<section class="trait-value-display"><h3>Value</h3>';
-  main_html += `<div class="value-box"><span class="value-content">${value_display}</span></div>`;
+  main_html += `<div class="value-box"><span class="value-content">${value_full}</span></div>`;
   main_html += '</section>';
 
   // Source section
   main_html += '<section class="trait-source"><h3>Source</h3><dl class="compact">';
-  const source_note = dat.source === 'own' ? '(own trait)' : '(inherited)';
-  const source_link = `<a href="?belief=${dat.source_belief_id}&state=${dat.state_id}">${source_note}</a>`;
+  const source_note = dat.source === 'own' ? 'own' : 'inherited';
+  const source_link = `<a href="?belief=${dat.source_belief_id}&state=${dat.state_id}">${dat.source_belief_desig}</a> (${source_note})`;
   main_html += `<dt>Defined in</dt><dd>${source_link}</dd>`;
   main_html += '</dl></section>';
 

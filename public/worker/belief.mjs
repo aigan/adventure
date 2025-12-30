@@ -20,7 +20,6 @@ import * as DB from './db.mjs'
 import { Subject } from './subject.mjs'
 import { Traittype } from './traittype.mjs'
 import { State } from './state.mjs'
-import { Trait } from './trait.mjs'
 import { Fuzzy } from './fuzzy.mjs'
 
 /**
@@ -145,7 +144,7 @@ export class Belief {
 
   /**
    * Extract Subject references from a trait value
-   * @param {*} value - Trait value (Subject, array, primitive, etc.)
+   * @param {*} value - Trait value (Subject, array, Fuzzy, primitive, etc.)
    * @returns {Subject[]} Array of Subjects found in value
    */
   extract_subjects(value) {
@@ -153,6 +152,8 @@ export class Belief {
       return [value]
     } else if (Array.isArray(value)) {
       return value.filter(item => item instanceof Subject)
+    } else if (value instanceof Fuzzy) {
+      return value.alternatives.flatMap(alt => this.extract_subjects(alt.value))
     } else {
       return []
     }
@@ -352,13 +353,11 @@ export class Belief {
    * Enables dot notation like 'handle.color' for compositional access
    * @param {State} state - State context for resolution
    * @param {string|string[]} path - Path like 'handle.color' or ['handle', 'color']
-   * @returns {Trait|undefined} Trait with combined certainty, or undefined if path broken
+   * @returns {*|undefined} Trait value at end of path, or undefined if path broken
    */
   get_trait_path(state, path) {
     const segments = typeof path === 'string' ? path.split('.') : path
     let belief = /** @type {Belief} */ (this)
-    let certainty = 1.0
-    const cert_tt = Traittype.get_by_label('@certainty')
 
     // Walk intermediate segments (all but last)
     for (const seg of segments.slice(0, -1)) {
@@ -368,20 +367,12 @@ export class Belief {
       const next = state.get_belief_by_subject(subject)
       if (!next) return undefined
       belief = next
-      if (cert_tt) {
-        const cert = belief.get_trait(state, cert_tt)
-        // Skip Fuzzy certainty values - treat as 1.0 (no certainty reduction)
-        certainty *= (cert instanceof Fuzzy) ? 1.0 : (cert ?? 1.0)
-      }
     }
 
-    // Get final trait
+    // Get final trait value
     const final_tt = Traittype.get_by_label(/** @type {string} */ (segments.at(-1)))
     if (!final_tt) return undefined
-    const value = belief.get_trait(state, final_tt)
-    if (value === undefined) return undefined
-
-    return new Trait({ subject: belief.subject, type: final_tt, value, source: belief, certainty })
+    return belief.get_trait(state, final_tt)
   }
 
   /**

@@ -26,7 +26,8 @@ import * as DB from './db.mjs'
 import { State } from './state.mjs'
 import { Belief } from './belief.mjs'
 import { Traittype } from './traittype.mjs'
-import { Trait } from './trait.mjs'
+import { Notion } from './notion.mjs'
+import { Fuzzy } from './fuzzy.mjs'
 import { Archetype } from './archetype.mjs'
 import { learn_about } from './perception.mjs'
 
@@ -693,24 +694,26 @@ export class Mind {
   }
 
   /**
-   * Recall traits for a known subject
+   * Recall what this mind believes about a subject
    *
-   * Yields requested traits for a subject across states at the given ground_state + tt.
-   * If superposition exists (multiple branches with beliefs for same subject), yields
-   * multiple Traits of the same type with different values/certainties.
+   * Returns a Notion - a materialized view of beliefs combined across all states
+   * at the given tt. Certainties are combined (trait × belief × state).
    *
-   * **Same values are NOT combined**: If two branches yield the same value, two separate
-   * Trait objects are returned (each with its own certainty and source). This preserves
-   * provenance - different sources mean different beliefs even when values match.
-   * Caller can aggregate with `Map.groupBy(traits, t => t.value)` if needed.
+   * Trait values in the returned Notion are:
+   * - Concrete value: Single known value (no uncertainty)
+   * - Fuzzy: Multiple possibilities with certainties
+   * - null: Explicitly no value
+   *
+   * When multiple beliefs agree on the same value, their certainties are combined
+   * (summed, capped at 1.0) to increase confidence.
    *
    * @param {State} ground_state - World/parent state context
    * @param {Subject} subject - Subject to recall traits for
    * @param {number} tt - Transaction time: when the mind recorded beliefs (what mind knows at this moment)
    * @param {string[]} [request_traits] - Trait labels to return (omit for all traits)
-   * @yields {Trait} Trait objects with certainty (path × belief certainty)
+   * @returns {Notion} Materialized belief view for the subject
    */
-  *recall_by_subject(ground_state, subject, tt, request_traits) {
+  recall_by_subject(ground_state, subject, tt, request_traits) {
     assert(ground_state instanceof State, 'ground_state must be State', {ground_state})
     assert(subject && typeof subject.sid === 'number', 'subject must be Subject', {subject})
     assert(typeof tt === 'number', 'tt must be number', {tt})
@@ -731,9 +734,29 @@ export class Mind {
     // Cache @certainty traittype for belief-level certainty lookup
     const certainty_traittype = Traittype.get_by_label('@certainty')
 
+    // Collect all values with certainties: Map<Traittype, Map<value, certainty>>
+    /** @type {Map<Traittype, Map<*, number>>} */
+    const collected = new Map()
+
+    /**
+     * Add a value with certainty for a traittype
+     * @param {Traittype} tt_obj
+     * @param {*} value
+     * @param {number} certainty
+     */
+    const add_value = (tt_obj, value, certainty) => {
+      let value_map = collected.get(tt_obj)
+      if (!value_map) {
+        value_map = new Map()
+        collected.set(tt_obj, value_map)
+      }
+      // Combine certainties for same value (sum, capped at 1.0)
+      const existing = value_map.get(value) ?? 0
+      value_map.set(value, Math.min(existing + certainty, 1.0))
+    }
+
     // Use states_at_tt() to get outermost states at this tt
     for (const state of this.states_at_tt(ground_state, tt)) {
-
       const belief = state.get_belief_by_subject(subject)
       if (!belief) continue
 
@@ -744,16 +767,21 @@ export class Mind {
         : 1.0
       const combined_certainty = path_certainty * belief_certainty
 
-      // Yield path-based traits
+      // Process path-based traits
       for (const path of paths) {
-        const trait = belief.get_trait_path(state, path)
-        if (trait) {
-          trait.certainty *= combined_certainty
-          yield trait
+        const value = belief.get_trait_path(state, path)
+        if (value !== undefined && value !== null) {
+          // Get traittype from path (last segment)
+          const parts = path.split('.')
+          const final_label = parts[parts.length - 1]
+          const final_tt = Traittype.get_by_label(final_label)
+          if (final_tt) {
+            add_value(final_tt, value, combined_certainty)
+          }
         }
       }
 
-      // Get direct traits to yield
+      // Get direct traits
       const types_to_get = traittypes ?? belief.get_slots()
 
       for (const traittype of types_to_get) {
@@ -763,15 +791,43 @@ export class Mind {
         const value = belief.get_trait(state, traittype)
         if (value === undefined) continue  // Skip undefined (not set)
 
-        yield new Trait({
-          subject: belief.subject,
-          type: traittype,
-          value,
-          source: belief,
-          certainty: combined_certainty
-        })
+        add_value(traittype, value, combined_certainty)
       }
     }
+
+    // Build final traits Map
+    /** @type {Map<Traittype, null|*|Fuzzy>} */
+    const traits = new Map()
+
+    for (const [traittype, value_map] of collected) {
+      if (value_map.size === 0) {
+        continue
+      } else if (value_map.size === 1) {
+        // Single value
+        const [[value, certainty]] = value_map
+        if (value === null) {
+          traits.set(traittype, null)
+        } else {
+          // Return Fuzzy with single alternative (preserves certainty)
+          traits.set(traittype, new Fuzzy({
+            alternatives: [{ value, certainty }]
+          }))
+        }
+      } else {
+        // Multiple values - always Fuzzy
+        const alternatives = []
+        for (const [value, certainty] of value_map) {
+          if (value !== null) {
+            alternatives.push({ value, certainty })
+          }
+        }
+        if (alternatives.length > 0) {
+          traits.set(traittype, new Fuzzy({ alternatives }))
+        }
+      }
+    }
+
+    return new Notion({ subject, traits })
   }
 
   /**
@@ -808,20 +864,19 @@ export class Mind {
   }
 
   /**
-   * Recall traits for beliefs matching an archetype
+   * Recall beliefs matching an archetype
    *
    * Searches for beliefs by archetype across states at the given ground_state + tt.
-   * Groups by subject, returns requested traits for each subject.
+   * Yields a Notion for each subject that matches the archetype.
    *
-   * **Same values are NOT combined**: If two branches yield the same trait value for a
-   * subject, the traits array contains separate Trait objects (each with its own certainty
-   * and source). This preserves provenance. Caller can aggregate if needed.
+   * PERFORMANCE: O(n) scan across all beliefs. Yields lazily - caller can stop
+   * iteration early with .take(n) or break to avoid processing remaining subjects.
    *
    * @param {State} ground_state - World/parent state context
    * @param {string|Archetype} archetype - Archetype to search for (label or instance)
    * @param {number} tt - Transaction time
    * @param {string[]} request_traits - Trait labels to return
-   * @yields {[Subject, Trait[]]} Subject and its traits (may have multiple Traits per type)
+   * @yields {Notion} Notion for each subject matching the archetype
    */
   *recall_by_archetype(ground_state, archetype, tt, request_traits) {
     assert(ground_state instanceof State, 'ground_state must be State', {ground_state})
@@ -834,84 +889,20 @@ export class Mind {
       : archetype
     assert(arch instanceof Archetype, `Archetype not found: ${archetype}`, {archetype})
 
-    // Separate paths (with dots) from direct trait labels
-    const paths = request_traits.filter(t => t.includes('.'))
-    const direct_labels = request_traits.filter(t => !t.includes('.'))
-
-    // Resolve direct labels to Traittype objects
-    const traittypes = direct_labels.map(label => {
-      const traittype = Traittype.get_by_label(label)
-      assert(traittype, `Unknown traittype: ${label}`, {label})
-      return traittype
-    })
-
-    // Cache @certainty traittype for belief-level certainty lookup
-    const certainty_traittype = Traittype.get_by_label('@certainty')
-
-    // Collect subjects and their traits across all states at tt
-    /** @type {Map<Subject, {belief: Belief, state: State, certainty: number}[]>} */
-    const subject_map = new Map()
+    // Track seen subjects to avoid duplicates across states
+    /** @type {Set<Subject>} */
+    const seen = new Set()
 
     for (const state of this.states_at_tt(ground_state, tt)) {
-      const path_certainty = this._compute_path_certainty(state)
-
-      for (const belief of state.get_beliefs()) {
-        // Check if belief has requested archetype
-        let has_archetype = false
-        for (const a of belief.get_archetypes()) {
-          if (a === arch) { has_archetype = true; break }
-        }
-        if (!has_archetype) continue
-
-        // Compute combined certainty: path_certainty × belief_certainty
-        const belief_certainty = certainty_traittype
-          ? (belief.get_own_trait_value(certainty_traittype) ?? 1.0)
-          : 1.0
-        const combined_certainty = path_certainty * belief_certainty
-
+      for (const belief of state.get_beliefs_by_archetype(arch)) {
         const subject = belief.subject
-        let entries = subject_map.get(subject)
-        if (!entries) {
-          entries = []
-          subject_map.set(subject, entries)
+        if (seen.has(subject)) continue
+        seen.add(subject)
+
+        const notion = this.recall_by_subject(ground_state, subject, tt, request_traits)
+        if (notion.traits.size > 0) {
+          yield notion
         }
-        entries.push({ belief, state, certainty: combined_certainty })
-      }
-    }
-
-    // Yield [Subject, Trait[]] for each subject
-    for (const [subject, entries] of subject_map) {
-      const traits = []
-
-      for (const { belief, state, certainty } of entries) {
-        // Path-based traits
-        for (const path of paths) {
-          const trait = belief.get_trait_path(state, path)
-          if (trait) {
-            trait.certainty *= certainty
-            traits.push(trait)
-          }
-        }
-
-        // Direct traits
-        for (const traittype of traittypes) {
-          if (traittype.label.startsWith('@')) continue
-
-          const value = belief.get_trait(state, traittype)
-          if (value === undefined) continue
-
-          traits.push(new Trait({
-            subject,
-            type: traittype,
-            value,
-            source: belief,
-            certainty
-          }))
-        }
-      }
-
-      if (traits.length > 0) {
-        yield [subject, traits]
       }
     }
   }

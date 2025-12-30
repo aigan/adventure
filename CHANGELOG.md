@@ -2,15 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2025-12-30
+
+### Changed
+- **Replaced Trait class with Notion for recall API**
+  - `mind.recall_by_subject(ground, subject, tt, traits?)` now returns a single `Notion` (not a generator)
+  - `mind.recall_by_archetype(ground, archetype, tt, traits)` now yields `Notion` objects (not `[Subject, Trait[]]`)
+  - `Notion` class: contains `subject` and `traits` Map<Traittype, null|value|Fuzzy>
+  - Values in Notion are: `null` (explicit absence), concrete value, or `Fuzzy` (uncertain with alternatives)
+  - Same-value alternatives from multiple sources are combined (certainties summed, capped at 1.0)
+  - `belief.get_trait_path()` now returns value directly (not wrapped in Trait)
+- **Removed Trait class** - provenance tracking dropped in favor of simpler Fuzzy-based uncertainty
+
 ## 2025-12-29
 
 ### Added
 - **Recall API for querying mind knowledge**
-  - `mind.recall_by_subject(ground, subject, tt, traits?)` - Direct lookup returning `Trait` iterator
-  - `mind.recall_by_archetype(ground, archetype, tt, traits)` - Search by archetype returning `[Subject, Trait[]]` pairs
-  - `Trait` class encapsulates subject, type, value, source belief, and combined certainty
+  - `mind.recall_by_subject(ground, subject, tt, traits?)` - Direct lookup returning `Notion`
+  - `mind.recall_by_archetype(ground, archetype, tt, traits)` - Search by archetype returning `Notion` iterator
   - Dot notation paths for nested component access (e.g., `'handle.color'`)
-  - Superposition support: multiple `Trait` objects when belief branches exist
+  - Superposition support: `Fuzzy` values with multiple alternatives when belief branches exist
   - Combined certainty = path certainty × belief certainty
 - **Stage 2: Descriptors & Identity tests** (Alpha 1)
   - Test 2.1: Player distinguishes objects by color trait

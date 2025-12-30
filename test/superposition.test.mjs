@@ -9,7 +9,7 @@
  */
 
 import { expect } from 'chai'
-import { Materia, logos, logos_state, Traittype } from '../public/worker/cosmos.mjs'
+import { Materia, logos, logos_state, Traittype, Fuzzy } from '../public/worker/cosmos.mjs'
 import { Convergence } from '../public/worker/convergence.mjs'
 import * as DB from '../public/worker/db.mjs'
 
@@ -109,15 +109,19 @@ describe('Superposition Scenarios', () => {
       state_b.lock()
 
       // Query across both branches using recall_by_archetype
-      const results = [...mind.recall_by_archetype(ground, 'Tool', 2, ['location'])]
+      const notions = [...mind.recall_by_archetype(ground, 'Tool', 2, ['location'])]
 
-      // Should find one subject (hammer) with two location traits
-      expect(results).to.have.length(1)
-      const [, traits] = results[0]
-      expect(traits).to.have.length(2)
+      // Should find one subject (hammer) with Fuzzy location containing two alternatives
+      expect(notions).to.have.length(1)
+      const notion = notions[0]
+      const location_tt = Traittype.get_by_label('location')
+      const location = notion.get(location_tt)
+
+      expect(location).to.be.instanceOf(Fuzzy)
+      expect(location.alternatives).to.have.length(2)
 
       // Certainties should match branch certainties
-      const certainties = traits.map(t => t.certainty).sort((a, b) => b - a)
+      const certainties = location.alternatives.map(a => a.certainty).sort((a, b) => b - a)
       expect(certainties[0]).to.equal(0.7)
       expect(certainties[1]).to.equal(0.3)
     })
