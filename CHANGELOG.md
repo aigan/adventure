@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## 2025-12-30
 
+### Added
+- **Centralized icons registry** (`public/lib/icons.mjs`)
+  - All UI icons defined with glyph and title for hover tooltips
+  - `renderIcon(name)` generates `<span title="...">glyph</span>` for accessibility
+  - Icons: 🔒 locked, 🌊 promotions, ❓ fuzzy_unknown, ☁️ fuzzy_compact
+  - Mind types: 🌟 logos, 💠 eidos, 🌍 world, 👤 prototype, 🔮 npc
+  - Belief types: 🌱 eidos_belief, 📍 belief, ⭕ archetype, 🔺 child
+- **Promotions list in belief inspection** - shows all promotions with certainty percentages
+- **Children list in belief inspection** - shows beliefs that inherit from this one
+  - Scan-based via `get_children_for_inspect()`, marked as INSPECT-ONLY
+  - Excludes promotions (shown separately)
+
 ### Changed
 - **Replaced Trait class with Notion for recall API**
   - `mind.recall_by_subject(ground, subject, tt, traits?)` now returns a single `Notion` (not a generator)
@@ -13,6 +25,14 @@ All notable changes to this project will be documented in this file.
   - Same-value alternatives from multiple sources are combined (certainties summed, capped at 1.0)
   - `belief.get_trait_path()` now returns value directly (not wrapped in Trait)
 - **Removed Trait class** - provenance tracking dropped in favor of simpler Fuzzy-based uncertainty
+- **Backend uses boolean flags for icons** - `has_promotions: true` instead of emoji strings
+
+### Refactored
+- **Simplified trait lookup methods** in `belief.mjs`
+  - Extracted `_get_trait_from_promotions()` - handles promotion lookup with early returns
+  - Extracted `_apply_certainty()` - wraps values in Fuzzy when certainty is set
+  - `_get_inherited_trait()` reduced from ~120 to ~30 lines
+  - `_get_trait_skip_promotions()` reduced from ~55 to ~15 lines
 
 ## 2025-12-29
 

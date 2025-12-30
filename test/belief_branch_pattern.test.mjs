@@ -95,6 +95,8 @@ describe('Belief versioning: branch() and replace()', () => {
   })
 
   describe('branch()', () => {
+    // Note: branch() is now an alias for replace() - both remove old and insert new
+
     it('creates new belief while keeping old one in state', () => {
       const state = createStateInNewMind()
 
@@ -111,16 +113,15 @@ describe('Belief versioning: branch() and replace()', () => {
       // New belief has updated trait
       expect(hammer_v2.get_trait(state, color_tt)).to.equal('blue')
 
-      // Old belief has original trait
+      // Old belief still has original trait (it's just removed from state)
       expect(hammer.get_trait(state, color_tt)).to.equal('red')
 
       // They share the same subject
       expect(hammer_v2.subject).to.equal(hammer.subject)
 
-      // Both beliefs exist in state (superposition)
+      // Only new belief exists in state (old was removed)
       const beliefs = [...state.get_beliefs()]
-      expect(beliefs).to.have.lengthOf(2)
-      expect(beliefs).to.include(hammer)
+      expect(beliefs).to.have.lengthOf(1)
       expect(beliefs).to.include(hammer_v2)
     })
 
@@ -137,12 +138,11 @@ describe('Belief versioning: branch() and replace()', () => {
 
       const color_tt = Traittype.get_by_label('color')
 
-      // All three versions exist in state
+      // Only two versions in state (original removed, blue and green added)
       const beliefs = [...state.get_beliefs()]
-      expect(beliefs).to.have.lengthOf(3)
+      expect(beliefs).to.have.lengthOf(2)
 
-      // Each has correct color
-      expect(hammer.get_trait(state, color_tt)).to.equal('red')
+      // Each new version has correct color
       expect(hammer_blue.get_trait(state, color_tt)).to.equal('blue')
       expect(hammer_green.get_trait(state, color_tt)).to.equal('green')
 
@@ -162,7 +162,7 @@ describe('Belief versioning: branch() and replace()', () => {
       state.lock()
 
       expect(() => hammer.branch(state, { color: 'blue' }))
-        .to.throw(/Cannot branch into locked state/)
+        .to.throw(/Cannot replace into locked state/)
     })
   })
 
@@ -239,17 +239,17 @@ describe('Belief versioning: branch() and replace()', () => {
         label: 'hammer'
       })
 
-      // Branch with different handle
+      // Branch with different handle (now removes original, adds new)
       const hammer_alt = hammer.branch(state, { handle: handle2.subject })
 
       const handle_tt = Traittype.get_by_label('handle')
 
-      // Both versions exist
+      // Only new version exists in state (old was removed)
       const beliefs = [...state.get_beliefs()]
-      expect(beliefs).to.include(hammer)
+      expect(beliefs).to.not.include(hammer)
       expect(beliefs).to.include(hammer_alt)
 
-      // Each has correct handle
+      // Old belief still has its trait (just not in state)
       expect(hammer.get_trait(state, handle_tt)).to.equal(handle1.subject)
       expect(hammer_alt.get_trait(state, handle_tt)).to.equal(handle2.subject)
 
@@ -331,7 +331,7 @@ describe('Belief versioning: branch() and replace()', () => {
         traits: { head: head1.subject, handle: handle1.subject }
       })
 
-      // Create variant with both parts changed
+      // Create variant with both parts changed (removes original)
       const hammer_v2 = hammer.branch(state, {
         head: head2.subject,
         handle: handle2.subject
@@ -340,7 +340,7 @@ describe('Belief versioning: branch() and replace()', () => {
       const head_tt = Traittype.get_by_label('head')
       const handle_tt = Traittype.get_by_label('handle')
 
-      // Original unchanged
+      // Original still has its traits (just not in state)
       expect(hammer.get_trait(state, head_tt)).to.equal(head1.subject)
       expect(hammer.get_trait(state, handle_tt)).to.equal(handle1.subject)
 
@@ -348,9 +348,9 @@ describe('Belief versioning: branch() and replace()', () => {
       expect(hammer_v2.get_trait(state, head_tt)).to.equal(head2.subject)
       expect(hammer_v2.get_trait(state, handle_tt)).to.equal(handle2.subject)
 
-      // Both exist
+      // Only new version in state (old was removed)
       const beliefs = [...state.get_beliefs()]
-      expect(beliefs).to.include(hammer)
+      expect(beliefs).to.not.include(hammer)
       expect(beliefs).to.include(hammer_v2)
     })
   })

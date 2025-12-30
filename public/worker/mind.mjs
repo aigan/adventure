@@ -762,7 +762,7 @@ export class Mind {
 
       // Compute combined certainty: path_certainty × belief_certainty
       const path_certainty = this._compute_path_certainty(state)
-      const belief_certainty = belief.branch_metadata?.certainty ?? 1.0
+      const belief_certainty = belief.certainty ?? 1.0
       const combined_certainty = path_certainty * belief_certainty
 
       /**

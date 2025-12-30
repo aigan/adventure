@@ -11,6 +11,7 @@
 import * as DB from "./db.mjs"
 import { Subject } from "./subject.mjs"
 import { Traittype } from "./traittype.mjs"
+import { Archetype } from "./archetype.mjs"
 import { log, assert, sysdesig } from "./debug.mjs"
 import { Materia } from './materia.mjs'
 import { logos, logos_state } from './logos.mjs'
@@ -291,6 +292,28 @@ export function init_world() {
       traits: {color: 'gold'},
     },
   })
+
+  // Example: Branch resolution for inherited traits
+  // A merchant who might be at workshop (60%) or tavern (40%)
+  // Querying wandering_merchant.location returns Fuzzy via branch resolution
+  const workshop = state.get_belief_by_label('workshop')
+  const tavern = state.get_belief_by_label('tavern')
+  const Person = Archetype.get_by_label('Person')
+
+  // Create belief that will have probability alternatives
+  const merchant_location = Belief.from_template(state, {
+    bases: ['ObjectPhysical'],
+    label: 'merchant_location'
+  })
+  // replace() with promote: true removes original and registers promotions
+  merchant_location.replace(state, { location: workshop.subject }, { promote: true, certainty: 0.6 })
+  merchant_location.replace(state, { location: tavern.subject }, { promote: true, certainty: 0.4 })
+
+  // Create wandering_merchant with merchant_location as base
+  // When querying location, get_trait walks bases, finds promotions, returns Fuzzy
+  const wandering_merchant = Belief.from(state, [Person, merchant_location])
+  wandering_merchant.label = 'wandering_merchant'
+  DB.register_label('wandering_merchant', wandering_merchant.subject.sid)
 
   state.add_shared_from_template({
     Villager: {

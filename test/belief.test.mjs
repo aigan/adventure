@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, Fuzzy, save_mind, load } from '../public/worker/cosmos.mjs';
 import { eidos } from '../public/worker/eidos.mjs'
 import { logos } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
@@ -1496,85 +1496,73 @@ describe('Belief', () => {
         label: 'hammer'
       })
 
-      expect(hammer.branches).to.be.instanceOf(Set)
-      expect(hammer.branches.size).to.equal(0)
-      expect(hammer.branch_metadata).to.be.null
+      expect(hammer.promotions).to.be.instanceOf(Set)
+      expect(hammer.promotions.size).to.equal(0)
+      expect(hammer.certainty).to.be.null
+      expect(hammer.constraints).to.deep.equal({})
     })
 
-    it('add_branch registers sibling version', () => {
+    it('branch with promote registers promoted version', () => {
       const state = createStateInNewMind()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
       })
 
-      // Create v2 with same subject
-      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
-      state.insert_beliefs(hammer_v2)
+      // Create v2 as promotion
+      const hammer_v2 = hammer_v1.branch(state, {}, { promote: true })
 
-      // Register v2 as branch of v1
-      hammer_v1.add_branch(hammer_v2)
-
-      expect(hammer_v1.branches.has(hammer_v2)).to.be.true
-      expect(hammer_v1.branches.size).to.equal(1)
+      expect(hammer_v1.promotions.has(hammer_v2)).to.be.true
+      expect(hammer_v1.promotions.size).to.equal(1)
     })
 
-    it('branch_metadata captures origin_state', () => {
+    it('promoted belief has direct properties', () => {
       const state = createStateInNewMind()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
       })
 
-      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
-      state.insert_beliefs(hammer_v2)
+      const hammer_v2 = hammer_v1.branch(state, {}, { promote: true })
 
-      hammer_v1.add_branch(hammer_v2, { origin_state: state })
-
-      expect(hammer_v2.branch_metadata).to.not.be.null
-      expect(hammer_v2.branch_metadata.origin_state).to.equal(state)
-      expect(hammer_v2.branch_metadata.certainty).to.be.null
-      expect(hammer_v2.branch_metadata.constraints).to.deep.equal({})
+      // origin_state is already set by constructor
+      expect(hammer_v2.origin_state).to.equal(state)
+      expect(hammer_v2.certainty).to.be.null
+      expect(hammer_v2.constraints).to.deep.equal({})
     })
 
-    it('multiple branches accumulate in set', () => {
+    it('multiple promotions accumulate in set', () => {
       const state = createStateInNewMind()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
       })
 
-      const hammer_v2a = new Belief(state, hammer_v1.subject, [hammer_v1])
-      const hammer_v2b = new Belief(state, hammer_v1.subject, [hammer_v1])
-      state.insert_beliefs(hammer_v2a, hammer_v2b)
+      const hammer_v2a = hammer_v1.branch(state, {}, { promote: true, certainty: 0.6 })
+      const hammer_v2b = hammer_v1.branch(state, {}, { promote: true, certainty: 0.4 })
 
-      hammer_v1.add_branch(hammer_v2a, { certainty: 0.6 })
-      hammer_v1.add_branch(hammer_v2b, { certainty: 0.4 })
-
-      expect(hammer_v1.branches.size).to.equal(2)
-      expect(hammer_v1.branches.has(hammer_v2a)).to.be.true
-      expect(hammer_v1.branches.has(hammer_v2b)).to.be.true
+      expect(hammer_v1.promotions.size).to.equal(2)
+      expect(hammer_v1.promotions.has(hammer_v2a)).to.be.true
+      expect(hammer_v1.promotions.has(hammer_v2b)).to.be.true
     })
 
-    it('branches are not included in bases traversal', () => {
+    it('promotions are not included in bases traversal', () => {
       const state = createStateInNewMind()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
       })
 
-      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
-      state.insert_beliefs(hammer_v2)
-      hammer_v1.add_branch(hammer_v2)
+      const hammer_v2 = hammer_v1.branch(state, {}, { promote: true })
 
-      // Walk bases from v1 - should NOT include v2 (branches are separate from bases)
+      // Walk bases from v1 - should NOT include v2 (promotions are separate from bases)
       const bases_from_v1 = [...hammer_v1._bases]
       expect(bases_from_v1).to.not.include(hammer_v2)
 
-      // get_archetypes should not include branches
+      // get_archetypes should not include promotions
       const archetypes = [...hammer_v1.get_archetypes()]
       expect(archetypes.map(a => a.label)).to.include('PortableObject')
-      // v2 is not an archetype, but verify branches don't interfere
+      // v2 is not an archetype, but verify promotions don't interfere
       expect(archetypes.every(a => a instanceof Archetype)).to.be.true
     })
 
@@ -1585,11 +1573,8 @@ describe('Belief', () => {
         label: 'hammer'
       })
 
-      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
-      state.insert_beliefs(hammer_v2)
-
       expect(() => {
-        hammer_v1.add_branch(hammer_v2, { certainty: 0 })
+        hammer_v1.branch(state, {}, { promote: true, certainty: 0 })
       }).to.throw(/certainty must be > 0 and < 1/)
     })
 
@@ -1600,11 +1585,8 @@ describe('Belief', () => {
         label: 'hammer'
       })
 
-      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
-      state.insert_beliefs(hammer_v2)
-
       expect(() => {
-        hammer_v1.add_branch(hammer_v2, { certainty: 1 })
+        hammer_v1.branch(state, {}, { promote: true, certainty: 1 })
       }).to.throw(/certainty must be > 0 and < 1/)
     })
 
@@ -1615,61 +1597,398 @@ describe('Belief', () => {
         label: 'hammer'
       })
 
-      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
-      state.insert_beliefs(hammer_v2)
+      const hammer_v2 = hammer_v1.branch(state, {}, { promote: true, certainty: 0.5 })
 
-      hammer_v1.add_branch(hammer_v2, { certainty: 0.5 })
-
-      expect(hammer_v2.branch_metadata.certainty).to.equal(0.5)
+      expect(hammer_v2.certainty).to.equal(0.5)
     })
 
-    it('certainty=null is valid (default, non-probability branch)', () => {
+    it('certainty=null is valid (default, non-probability promotion)', () => {
       const state = createStateInNewMind()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
       })
 
-      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
-      state.insert_beliefs(hammer_v2)
+      const hammer_v2 = hammer_v1.branch(state, {}, { promote: true, certainty: null })
 
-      hammer_v1.add_branch(hammer_v2, { certainty: null })
-
-      expect(hammer_v2.branch_metadata.certainty).to.be.null
+      expect(hammer_v2.certainty).to.be.null
     })
 
-    it('get_branches returns branches set', () => {
+    it('get_promotions returns promotions set', () => {
       const state = createStateInNewMind()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
       })
 
-      const hammer_v2 = new Belief(state, hammer_v1.subject, [hammer_v1])
-      state.insert_beliefs(hammer_v2)
-      hammer_v1.add_branch(hammer_v2)
+      const hammer_v2 = hammer_v1.branch(state, {}, { promote: true })
 
-      const branches = hammer_v1.get_branches()
-      expect(branches).to.equal(hammer_v1.branches)
-      expect(branches.has(hammer_v2)).to.be.true
+      const promotions = hammer_v1.get_promotions()
+      expect(promotions).to.equal(hammer_v1.promotions)
+      expect(promotions.has(hammer_v2)).to.be.true
+    })
+  })
+
+  describe('Promotion Resolution', () => {
+    it('pick_promotion filters by transaction time', () => {
+      const state_1 = createStateInNewMind()
+      const location_tt = Traittype.get_by_label('location')
+
+      const workshop = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'workshop'
+      })
+      const shed = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'shed'
+      })
+      const hammer = Belief.from_template(state_1, {
+        bases: ['PortableObject'],
+        label: 'hammer',
+        traits: { location: workshop.subject }
+      })
+      state_1.lock()
+
+      // Create state_2 at tt=2
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      const hammer_v2 = hammer.branch(state_2, { location: shed.subject }, { promote: true })
+      state_2.lock()
+
+      // Query from state_1 (tt=1) - promotion created at tt=2 should not be visible
+      const resolved = state_1.pick_promotion(hammer.promotions, {})
+      expect(resolved).to.be.null
     })
 
-    it('add_branch requires same subject', () => {
-      const state = createStateInNewMind()
-      const hammer = Belief.from_template(state, {
+    it('pick_promotion returns single belief for temporal promotion', () => {
+      const state_1 = createStateInNewMind()
+      const location_tt = Traittype.get_by_label('location')
+
+      const workshop = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'workshop'
+      })
+      const shed = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'shed'
+      })
+      const hammer = Belief.from_template(state_1, {
         bases: ['PortableObject'],
-        label: 'hammer'
+        label: 'hammer',
+        traits: { location: workshop.subject }
+      })
+      state_1.lock()
+
+      // Create state_2 at tt=2 with temporal promotion (no certainty)
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      const hammer_v2 = hammer.branch(state_2, { location: shed.subject }, { promote: true })
+      state_2.lock()
+
+      // Query from state_2 - should see the promotion
+      const resolved = state_2.pick_promotion(hammer.promotions, {})
+      expect(resolved).to.equal(hammer_v2)
+    })
+
+    it('pick_promotion returns array for probability promotions', () => {
+      const state_1 = createStateInNewMind()
+      const location_tt = Traittype.get_by_label('location')
+
+      const workshop = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'workshop'
+      })
+      const shed = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'shed'
+      })
+      const hammer = Belief.from_template(state_1, {
+        bases: ['PortableObject'],
+        label: 'hammer',
+        traits: { location: workshop.subject }
+      })
+      state_1.lock()
+
+      // Create probability promotions at same tt
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      const hammer_v2a = hammer.branch(state_2, { location: workshop.subject }, { promote: true, certainty: 0.6 })
+      const hammer_v2b = hammer.branch(state_2, { location: shed.subject }, { promote: true, certainty: 0.4 })
+      state_2.lock()
+
+      // Query should return array (superposition)
+      const resolved = state_2.pick_promotion(hammer.promotions, {})
+      expect(Array.isArray(resolved)).to.be.true
+      expect(resolved).to.have.length(2)
+    })
+
+    it('get_trait returns Fuzzy for probability promotions', () => {
+      const state_1 = createStateInNewMind()
+      const location_tt = Traittype.get_by_label('location')
+
+      const workshop = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'workshop'
+      })
+      const shed = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'shed'
       })
 
-      // Different subject
-      const wrench = Belief.from_template(state, {
+      // Create base belief that will have promotions
+      const base_hammer = Belief.from_template(state_1, {
         bases: ['PortableObject'],
-        label: 'wrench'
+        label: 'base_hammer'
+      })
+      state_1.lock()
+
+      // Create state_2 with probability promotions
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      const promo_a = base_hammer.branch(state_2, { location: workshop.subject }, { promote: true, certainty: 0.6 })
+      const promo_b = base_hammer.branch(state_2, { location: shed.subject }, { promote: true, certainty: 0.4 })
+
+      // Create a child belief that inherits from base_hammer (which has promotions)
+      const hammer = Belief.from(state_2, [base_hammer], {})
+      state_2.lock()
+
+      // get_trait should return Fuzzy
+      const value = hammer.get_trait(state_2, location_tt)
+      expect(value).to.be.instanceOf(Fuzzy)
+      expect(value.alternatives).to.have.length(2)
+      expect(value.alternatives[0].certainty).to.equal(0.6)
+      expect(value.alternatives[1].certainty).to.equal(0.4)
+    })
+
+    it('get_trait resolves temporal promotion to concrete value', () => {
+      const state_1 = createStateInNewMind()
+      const location_tt = Traittype.get_by_label('location')
+
+      const workshop = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'workshop'
+      })
+      const shed = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'shed'
       })
 
-      expect(() => {
-        hammer.add_branch(wrench)
-      }).to.throw(/Branch must have same subject/)
+      // Create base belief
+      const base_hammer = Belief.from_template(state_1, {
+        bases: ['PortableObject'],
+        label: 'base_hammer',
+        traits: { location: workshop.subject }
+      })
+      state_1.lock()
+
+      // Create state_2 with temporal promotion (no certainty)
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      const promo = base_hammer.branch(state_2, { location: shed.subject }, { promote: true })
+
+      // Create a child belief that inherits from base_hammer
+      const hammer = Belief.from(state_2, [base_hammer], {})
+      state_2.lock()
+
+      // get_trait should return concrete value from resolved promotion
+      const value = hammer.get_trait(state_2, location_tt)
+      expect(value).to.not.be.instanceOf(Fuzzy)
+      expect(value).to.equal(shed.subject)
+    })
+
+    it('get_trait for unset trait does not recurse infinitely through promotions', () => {
+      // This tests the case where promotions don't have the queried trait,
+      // causing the promotion to walk back to its parent (which has promotions).
+      // Without skip_promotions protection, this would infinite loop.
+      const state_1 = createStateInNewMind()
+      const form_tt = Traittype.get_by_label('@form')
+      const location_tt = Traittype.get_by_label('location')
+
+      const workshop = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'workshop'
+      })
+      const tavern = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'tavern'
+      })
+
+      // Create base belief that will have promotions
+      // Note: @form is inherited from ObjectPhysical archetype, not set on belief
+      const merchant_location = Belief.from_template(state_1, {
+        bases: ['ObjectPhysical'],
+        label: 'merchant_location'
+      })
+
+      // Create probability promotions - they only set location, not @form
+      const promo_workshop = merchant_location.branch(state_1, { location: workshop.subject }, { promote: true, certainty: 0.6 })
+      const promo_tavern = merchant_location.branch(state_1, { location: tavern.subject }, { promote: true, certainty: 0.4 })
+
+      // Create wandering_merchant with merchant_location as base
+      const Person = Archetype.get_by_label('Person')
+      const wandering_merchant = Belief.from(state_1, [Person, merchant_location])
+      state_1.lock()
+
+      // Query @form - promotions don't have it, must walk to archetype
+      // This would infinite loop without skip_promotions protection
+      const form_value = wandering_merchant.get_trait(state_1, form_tt)
+      // setupStandardArchetypes defines @form: null on ObjectPhysical
+      expect(form_value).to.equal(null) // From ObjectPhysical archetype (null is the default)
+
+      // Query location - should still return Fuzzy from promotions
+      const location_value = wandering_merchant.get_trait(state_1, location_tt)
+      expect(location_value).to.be.instanceOf(Fuzzy)
+      expect(location_value.alternatives).to.have.length(2)
+    })
+  })
+
+  describe('Chained Promotions', () => {
+    // When a belief (wandering_merchant) has base (merchant_location) that has
+    // a promotion (v2) which in turn has another promotion (v3):
+    // Resolution order: wandering_merchant → merchant_location → v2 → v3
+
+    it('chained promotion resolution - gets trait from innermost promotion', () => {
+      const state_1 = createStateInNewMind()
+      const location_tt = Traittype.get_by_label('location')
+
+      const workshop = Belief.from_template(state_1, { bases: ['Location'], label: 'workshop' })
+      const tavern = Belief.from_template(state_1, { bases: ['Location'], label: 'tavern' })
+      const market = Belief.from_template(state_1, { bases: ['Location'], label: 'market' })
+
+      // Create base belief with initial location
+      const merchant_location = Belief.from_template(state_1, {
+        bases: ['ObjectPhysical'],
+        label: 'merchant_location',
+        traits: { location: 'workshop' }
+      })
+
+      // Create chained promotions: v2 → v3
+      const v2 = merchant_location.branch(state_1, { location: tavern.subject }, { promote: true })
+      const v3 = v2.branch(state_1, { location: market.subject }, { promote: true })
+
+      // Create wandering_merchant with merchant_location as base
+      const Person = Archetype.get_by_label('Person')
+      const wandering_merchant = Belief.from(state_1, [Person, merchant_location])
+      state_1.lock()
+
+      // Should get location from v3 (innermost in chain)
+      const value = wandering_merchant.get_trait(state_1, location_tt)
+      expect(value).to.equal(market.subject)
+    })
+
+    it('chained promotion - trait in middle promotion returned if not in innermost', () => {
+      const state_1 = createStateInNewMind()
+      const location_tt = Traittype.get_by_label('location')
+      const color_tt = Traittype.get_by_label('color')
+
+      const workshop = Belief.from_template(state_1, { bases: ['Location'], label: 'workshop' })
+      const tavern = Belief.from_template(state_1, { bases: ['Location'], label: 'tavern' })
+      const market = Belief.from_template(state_1, { bases: ['Location'], label: 'market' })
+
+      // Create base belief
+      const merchant_location = Belief.from_template(state_1, {
+        bases: ['ObjectPhysical'],
+        label: 'merchant_location',
+        traits: { location: 'workshop' }
+      })
+
+      // v2 has color=red, v3 only has location
+      const v2 = merchant_location.branch(state_1, { location: tavern.subject, color: 'red' }, { promote: true })
+      const v3 = v2.branch(state_1, { location: market.subject }, { promote: true })
+
+      const Person = Archetype.get_by_label('Person')
+      const wandering_merchant = Belief.from(state_1, [Person, merchant_location])
+      state_1.lock()
+
+      // color should come from v2 (v3 doesn't have it)
+      const color_value = wandering_merchant.get_trait(state_1, color_tt)
+      expect(color_value).to.equal('red')
+
+      // location should come from v3
+      const location_value = wandering_merchant.get_trait(state_1, location_tt)
+      expect(location_value).to.equal(market.subject)
+    })
+
+    it('chained promotion - trait only in base returned if not in any promotion', () => {
+      const state_1 = createStateInNewMind()
+      const location_tt = Traittype.get_by_label('location')
+      const color_tt = Traittype.get_by_label('color')
+
+      const workshop = Belief.from_template(state_1, { bases: ['Location'], label: 'workshop' })
+      const tavern = Belief.from_template(state_1, { bases: ['Location'], label: 'tavern' })
+      const market = Belief.from_template(state_1, { bases: ['Location'], label: 'market' })
+
+      // Create base belief with color
+      const merchant_location = Belief.from_template(state_1, {
+        bases: ['ObjectPhysical'],
+        label: 'merchant_location',
+        traits: { location: 'workshop', color: 'blue' }
+      })
+
+      // Promotions only update location, not color
+      const v2 = merchant_location.branch(state_1, { location: tavern.subject }, { promote: true })
+      const v3 = v2.branch(state_1, { location: market.subject }, { promote: true })
+
+      const Person = Archetype.get_by_label('Person')
+      const wandering_merchant = Belief.from(state_1, [Person, merchant_location])
+      state_1.lock()
+
+      // color should come from base (merchant_location), since promotions don't have it
+      const color_value = wandering_merchant.get_trait(state_1, color_tt)
+      expect(color_value).to.equal('blue')
+    })
+
+    it('chained promotion - falls back to archetype if trait not in chain', () => {
+      const state_1 = createStateInNewMind()
+      const form_tt = Traittype.get_by_label('@form')
+      const location_tt = Traittype.get_by_label('location')
+
+      const workshop = Belief.from_template(state_1, { bases: ['Location'], label: 'workshop' })
+      const tavern = Belief.from_template(state_1, { bases: ['Location'], label: 'tavern' })
+      const market = Belief.from_template(state_1, { bases: ['Location'], label: 'market' })
+
+      // Create base belief (ObjectPhysical has @form trait)
+      const merchant_location = Belief.from_template(state_1, {
+        bases: ['ObjectPhysical'],
+        label: 'merchant_location',
+        traits: { location: 'workshop' }
+      })
+
+      // Promotions don't have @form
+      const v2 = merchant_location.branch(state_1, { location: tavern.subject }, { promote: true })
+      const v3 = v2.branch(state_1, { location: market.subject }, { promote: true })
+
+      const Person = Archetype.get_by_label('Person')
+      const wandering_merchant = Belief.from(state_1, [Person, merchant_location])
+      state_1.lock()
+
+      // @form should come from ObjectPhysical archetype
+      const form_value = wandering_merchant.get_trait(state_1, form_tt)
+      expect(form_value).to.equal(null) // ObjectPhysical defines @form: null
+    })
+
+    it('chained probability promotions combine certainties', () => {
+      const state_1 = createStateInNewMind()
+      const location_tt = Traittype.get_by_label('location')
+
+      const workshop = Belief.from_template(state_1, { bases: ['Location'], label: 'workshop' })
+      const tavern = Belief.from_template(state_1, { bases: ['Location'], label: 'tavern' })
+
+      // Create base belief
+      const merchant_location = Belief.from_template(state_1, {
+        bases: ['ObjectPhysical'],
+        label: 'merchant_location',
+        traits: { location: 'workshop' }
+      })
+
+      // v2 has certainty 0.6, v3 (off v2) has certainty 0.5
+      // Expected combined: 0.6 * 0.5 = 0.3
+      const v2 = merchant_location.branch(state_1, { location: tavern.subject }, { promote: true, certainty: 0.6 })
+      const v3 = v2.branch(state_1, { location: workshop.subject }, { promote: true, certainty: 0.5 })
+
+      const Person = Archetype.get_by_label('Person')
+      const wandering_merchant = Belief.from(state_1, [Person, merchant_location])
+      state_1.lock()
+
+      // Should get Fuzzy with combined certainties
+      const value = wandering_merchant.get_trait(state_1, location_tt)
+      expect(value).to.be.instanceOf(Fuzzy)
+      // Should have alternatives from both v2 and v3's promotions
     })
   })
 });

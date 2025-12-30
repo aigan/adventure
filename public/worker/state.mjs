@@ -546,7 +546,7 @@ export class State {
   }
 
   /**
-   * Add beliefs to this state's remove list
+   * Add beliefs to this state's remove list, if not already in the list
    * @param {...Belief} beliefs - Beliefs to remove
    */
   remove_beliefs(...beliefs) {
@@ -556,6 +556,8 @@ export class State {
     // @heavy - iterates all traits (own + inherited) for each belief
     for (const belief of beliefs) {
       assert(belief instanceof Belief, 'fail', belief)
+      if (this._remove.indexOf(belief) >= 0) continue;
+
       for (const [traittype, value] of belief.get_traits()) { // @heavy
         if (traittype.is_subject_reference) {
           for (const subject of belief.extract_subjects(value)) {
@@ -563,9 +565,9 @@ export class State {
           }
         }
       }
-    }
 
-    this._remove.push(...beliefs)
+      this._remove.push(belief)
+    }
 
     // Notify listeners of state mutation (for inspect UI updates)
     if (typeof self !== 'undefined' && self.dispatchEvent) {
@@ -673,6 +675,44 @@ export class State {
     const subject = Subject.get_by_label(label)
     if (!subject) return null
     return this.get_belief_by_subject(subject)
+  }
+
+  /**
+   * Resolve which branch(es) to use from a set of belief branches.
+   *
+   * Used during trait resolution when walking bases and encountering
+   * a belief with non-empty promotions Set.
+   *
+   * @param {Set<Belief>} promotions - Promoted belief versions
+   * @param {object} context - Query context (for future extensions)
+   * @returns {Belief|Belief[]|null} Single belief (resolved), array (superposition), or null
+   */
+  pick_promotion(promotions, context = {}) {
+    // Filter by transaction time (when was this promotion created?)
+    const valid = [...promotions].filter(b => {
+      const origin = b.origin_state
+      if (!origin || origin.tt === null || this.tt === null) return false
+      return origin.tt <= this.tt
+    })
+
+    if (valid.length === 0) return null
+    if (valid.length === 1) return valid[0]
+
+    // Multiple valid promotions - check if any are probability states
+    const is_probability = valid.some(b => b.certainty !== null)
+
+    if (is_probability) {
+      // Probability promotions - return all for superposition
+      return valid
+    }
+
+    // Temporal promotions (no probability) - pick most recent by tt
+    // Note: valid array guaranteed to have non-null origin_state.tt from filter above
+    return valid.sort((a, b) => {
+      const a_tt = a.origin_state?.tt ?? 0
+      const b_tt = b.origin_state?.tt ?? 0
+      return b_tt - a_tt
+    })[0]
   }
 
   /**

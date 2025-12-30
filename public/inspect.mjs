@@ -1,4 +1,5 @@
 import { log, assert } from "./lib/debug.mjs";
+import { renderIcon } from "./lib/icons.mjs";
 
 // Browser-specific initialization
 /** @type {BroadcastChannel|null} */
@@ -74,15 +75,15 @@ function get_mind_label_with_icon(mind, parent_type) {
   const base_label = mind.label || `Mind #${mind.id}`;
 
   if (mind.type === 'Logos') {
-    return '🌟';  // Only icon for logos
+    return renderIcon('logos');  // Only icon for logos
   } else if (mind.type === 'Eidos') {
-    return `💠 ${base_label}`;  // Icon + label for eidos
+    return `${renderIcon('eidos')} ${base_label}`;  // Icon + label for eidos
   } else if (parent_type === 'Logos') {
-    return `🌍 ${base_label}`;  // Icon + label for world minds (children of logos)
+    return `${renderIcon('world')} ${base_label}`;  // Icon + label for world minds (children of logos)
   } else if (parent_type === 'Eidos') {
-    return `👤 ${base_label}`;  // Icon + label for prototype minds (children of eidos)
+    return `${renderIcon('prototype')} ${base_label}`;  // Icon + label for prototype minds (children of eidos)
   } else if (parent_type === 'Materia') {
-    return `🔮 ${base_label}`;  // Icon + label for NPC minds (children of materia)
+    return `${renderIcon('npc')} ${base_label}`;  // Icon + label for NPC minds (children of materia)
   }
   return base_label;
 }
@@ -295,13 +296,13 @@ function render_entity_list(dat){
   $header.innerHTML = `${current_mind_label} beliefs (State #${dat.state.id})`;
 
   // Determine belief icon based on mind hierarchy
-  // 🌱 for eidos beliefs, 📍 for materia beliefs
+  // eidos_belief for eidos beliefs, belief for materia beliefs
   const current_mind = mind_path.length > 0 ? mind_path[mind_path.length - 1] : null;
   const in_eidos = current_mind && (
     current_mind.type === 'Eidos' ||
     mind_path.some((/** @type {any} */ m) => m.type === 'Eidos')
   );
-  const belief_icon = in_eidos ? '🌱' : '📍';
+  const belief_icon = in_eidos ? renderIcon('eidos_belief') : renderIcon('belief');
 
   // Table of beliefs
   let rows = '';
@@ -364,7 +365,7 @@ function render_entity(dat){
     current_mind.type === 'Eidos' ||
     mind_path.some((/** @type {any} */ m) => m.type === 'Eidos')
   );
-  const belief_icon = in_eidos ? '🌱' : '📍';
+  const belief_icon = in_eidos ? renderIcon('eidos_belief') : renderIcon('belief');
   const belief_label = belief_data.label || `#${belief_data._id}`;
   const archetype_label = belief_data.archetypes?.[0] || '';
   path_html += `
@@ -445,12 +446,30 @@ function render_entity(dat){
     const base_links = dat.bases.map((/** @type {any} */ b) => {
       if (b.id) {
         const vt_span = dat.state_vt ? `<span class="vt">:${dat.state_vt}</span>` : '';
-        const lock_icon = belief_data.locked !== false ? ' 🔒' : '';
-        return `<a href="?belief=${b.id}&state=${state_id}">[${belief_data.archetypes?.[0] || ''}] ${b.label || ''} #${b.id}${vt_span}${lock_icon}</a>`;
+        const lock_icon = belief_data.locked !== false ? renderIcon('locked') : '';
+        const promo_icon = b.has_promotions ? renderIcon('promotions') : '';
+        return `<a href="?belief=${b.id}&state=${state_id}">[${belief_data.archetypes?.[0] || ''}] ${b.label || ''} #${b.id}${vt_span}${lock_icon}</a>${promo_icon}`;
       }
       return `<a href="?archetype=${b.label}">${b.label}</a>`;
     }).join(', ');
     main_html += `<dt>Base</dt><dd>${base_links}</dd>`;
+  }
+
+  // Promotions
+  if (belief_data.promotions?.length > 0) {
+    const promo_links = belief_data.promotions.map((/** @type {any} */ p) => {
+      const certainty_display = p.certainty !== null ? ` (${Math.round(p.certainty * 100)}%)` : '';
+      return `<a href="?belief=${p._id}&state=${state_id}">${renderIcon('promotions')} ${p.label || '#' + p._id}${certainty_display}</a>`;
+    }).join(', ');
+    main_html += `<dt>Promotions</dt><dd>${promo_links}</dd>`;
+  }
+
+  // Children (beliefs that inherit from this one)
+  if (belief_data.children?.length > 0) {
+    const child_links = belief_data.children.map((/** @type {any} */ c) => {
+      return `<a href="?belief=${c._id}&state=${state_id}">${renderIcon('child')} ${c.label || '#' + c._id}</a>`;
+    }).join(', ');
+    main_html += `<dt>Children</dt><dd>${child_links}</dd>`;
   }
 
   main_html += '</dl></section>';
@@ -540,7 +559,7 @@ function render_belief_not_found(dat) {
   const archetype_label = dat.archetypes?.[0] || '';
   path_html += `
     <span class="chip belief current">
-      📍 #${dat.belief_id} <span class="type">[${archetype_label}]</span>
+      ${renderIcon('belief')} #${dat.belief_id} <span class="type">[${archetype_label}]</span>
     </span>
   `;
 
@@ -609,12 +628,12 @@ function format_trait_value(value, state_id, belief_mind_id, compact = false) {
     // Handle Fuzzy values (uncertain/superposition)
     if (value._type === 'Fuzzy') {
       if (value.unknown || !value.alternatives || value.alternatives.length === 0) {
-        return '<span class="fuzzy-unknown" title="Unknown value">❓</span>';
+        return `<span class="fuzzy-unknown">${renderIcon('fuzzy_unknown')}</span>`;
       }
       // Compact mode: show count only
       if (compact) {
         const n = value.alternatives.length;
-        return `<span class="fuzzy-compact" title="${n} alternatives">☁️${n}</span>`;
+        return `<span class="fuzzy-compact">${renderIcon('fuzzy_compact')}${n}</span>`;
       }
       // Full mode: show as table with values and probabilities
       let html = '<table class="fuzzy-superposition">';
@@ -694,10 +713,9 @@ function render_archetype(dat){
   }
 
   // Archetype chip
-  const archetype_icon = '⭕';
   path_html += `
     <span class="chip belief current">
-      ${archetype_icon} ${archetype_data.label} <span class="type">[Archetype]</span>
+      ${renderIcon('archetype')} ${archetype_data.label} <span class="type">[Archetype]</span>
     </span>
   `;
 
@@ -786,7 +804,7 @@ function render_trait_view(dat){
     current_mind.type === 'Eidos' ||
     mind_path.some((/** @type {any} */ m) => m.type === 'Eidos')
   );
-  const belief_icon = in_eidos ? '🌱' : '📍';
+  const belief_icon = in_eidos ? renderIcon('eidos_belief') : renderIcon('belief');
   path_html += `
     <a href="?belief=${dat.belief_id}&state=${dat.state_id}" class="chip belief">
       ${belief_icon} ${belief_label}
@@ -907,10 +925,9 @@ function render_archetype_trait_view(dat){
 
   // Archetype chip
   const archetype_label = dat.archetype_label;
-  const archetype_icon = '⭕';
   path_html += `
     <a href="?archetype=${encodeURIComponent(archetype_label)}" class="chip belief">
-      ${archetype_icon} ${archetype_label} <span class="type">[Archetype]</span>
+      ${renderIcon('archetype')} ${archetype_label} <span class="type">[Archetype]</span>
     </a>
     <span class="sep">›</span>
   `;
@@ -1053,16 +1070,16 @@ function render_mind_info(dat){
 
       // Determine icon based on child's type
       if (child.type === 'Eidos') {
-        child_label = `💠 ${child_label}`;
+        child_label = `${renderIcon('eidos')} ${child_label}`;
       } else if (child.type === 'Materia' && mind_data.type === 'Logos') {
         // World minds (materia children of logos)
-        child_label = `🌍 ${child_label}`;
+        child_label = `${renderIcon('world')} ${child_label}`;
       } else if (child.type === 'Materia' && mind_data.type === 'Eidos') {
         // Prototype minds (materia children of eidos)
-        child_label = `👤 ${child_label}`;
+        child_label = `${renderIcon('prototype')} ${child_label}`;
       } else if (child.type === 'Materia') {
         // NPC minds (materia children of materia)
-        child_label = `🔮 ${child_label}`;
+        child_label = `${renderIcon('npc')} ${child_label}`;
       }
       const child_link = `<a href="?mind=${child.id}">${child_label}</a>`;
       main_html += `<tr><td><a href="?mind=${child.id}">#${child.id}</a></td><td>${child_link}</td></tr>`;
@@ -1087,7 +1104,7 @@ function render_mind_info(dat){
       const state_link = `<a href="?state=${state.id}">#${state.id}</a>`;
       const tt_display = state.tt !== null ? state.tt : '-';
       const vt_display = state.vt !== null ? state.vt : '-';
-      const locked_display = state.locked ? '🔒' : '-';
+      const locked_display = state.locked ? renderIcon('locked') : '-';
       const base_display = state.base_id ? `<a href="?state=${state.base_id}">#${state.base_id}</a>` : '-';
 
       main_html += `<tr>

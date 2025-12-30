@@ -109,16 +109,22 @@ export class Belief {
     this._cached_all = false
 
     /**
-     * Sibling versions of the same subject (lazy propagation branches)
+     * Promoted versions that propagate to children of this belief
      * @type {Set<Belief>}
      */
-    this.branches = new Set()
+    this.promotions = new Set()
 
     /**
-     * Metadata about this belief as a branch
-     * @type {{origin_state: State|null, certainty: number|null, constraints: Object}|null}
+     * Probability weight for this belief as a promotion (null = not a probability)
+     * @type {number|null}
      */
-    this.branch_metadata = null
+    this.certainty = null
+
+    /**
+     * Constraints for this belief as a promotion (future: exclusion rules, validity periods)
+     * @type {Object}
+     */
+    this.constraints = {}
 
     DB.register_belief_by_id(this)
     this.subject.beliefs.add(this)
@@ -310,13 +316,19 @@ export class Belief {
    * Then walks the inheritance chain breadth-first to find the first defined value
    * @param {State} state - State context (used by Traittype for derived values)
    * @param {Traittype} traittype - Traittype to get
+   * @param {Set<Belief>} [skip_promotions] - Beliefs whose promotions should be skipped (prevents infinite recursion)
    * @returns {*} trait value (Subject, not Belief), or null if not found
    * @private
    */
-  _get_inherited_trait(state, traittype) {
-    let value = traittype.get_derived_value(this)
-    if (value !== undefined) return value
+  _get_inherited_trait(state, traittype, skip_promotions = new Set()) {
+    const derived = traittype.get_derived_value(this)
+    if (derived !== undefined) return derived
 
+    // Check this belief's own promotions first (before walking bases)
+    const own_promo = this._get_trait_from_promotions(state, this, traittype, skip_promotions)
+    if (own_promo !== undefined) return own_promo
+
+    // Walk bases breadth-first
     const queue = [...this._bases]
     const seen = new Set()
 
@@ -325,14 +337,146 @@ export class Belief {
       if (seen.has(base)) continue
       seen.add(base)
 
-      value = base.get_own_trait_value(traittype)
-      if (value !== undefined) return value
+      // Check base's promotions first
+      if (base instanceof Belief) {
+        const base_promo = this._get_trait_from_promotions(state, base, traittype, skip_promotions)
+        if (base_promo !== undefined) return base_promo
+      }
 
-      // Continue to next level
+      const own = base.get_own_trait_value(traittype)
+      if (own !== undefined) return own
+
       queue.push(...base._bases)
     }
 
     return null
+  }
+
+  /**
+   * Get trait value from a belief's promotions (lazy propagation)
+   * @param {State} state
+   * @param {Belief} belief - Belief whose promotions to check
+   * @param {Traittype} traittype
+   * @param {Set<Belief>} skip_promotions
+   * @returns {*} Trait value if found, undefined if not
+   * @private
+   */
+  _get_trait_from_promotions(state, belief, traittype, skip_promotions) {
+    if (belief.promotions.size === 0) return undefined
+    if (skip_promotions.has(belief)) return undefined
+
+    const promotion = state.pick_promotion(belief.promotions, {})
+    if (!promotion) return undefined
+
+    const new_skip = new Set(skip_promotions)
+    new_skip.add(belief)
+
+    // Multiple probability promotions - collect values from each
+    if (Array.isArray(promotion)) {
+      const result = this._collect_fuzzy_from_promotions(state, promotion, traittype, new_skip)
+      if (result instanceof Fuzzy && result.alternatives.length > 0) return result
+      if (result !== undefined && !(result instanceof Fuzzy)) return result
+      return undefined
+    }
+
+    // Single promotion - get trait from it
+    const value = promotion._get_trait_skip_promotions(state, traittype, new_skip)
+    if (value === undefined) return undefined
+
+    return this._apply_certainty(value, promotion.certainty)
+  }
+
+  /**
+   * Apply certainty to a trait value, wrapping in Fuzzy if needed
+   * @param {*} value - The trait value
+   * @param {number|null} certainty - Certainty to apply (null = no wrapping)
+   * @returns {*} Original value if certainty is null, otherwise Fuzzy
+   * @private
+   */
+  _apply_certainty(value, certainty) {
+    if (certainty === null) return value
+
+    if (value instanceof Fuzzy) {
+      return new Fuzzy({
+        alternatives: value.alternatives.map(alt => ({
+          value: alt.value,
+          certainty: alt.certainty * certainty
+        }))
+      })
+    }
+
+    return new Fuzzy({
+      alternatives: [{ value, certainty }]
+    })
+  }
+
+  /**
+   * Collect trait values from probability promotions into Fuzzy
+   * @param {State} state
+   * @param {Belief[]} promotions - Array of probability promotions
+   * @param {Traittype} traittype
+   * @param {Set<Belief>} skip_promotions - Beliefs whose promotions should be skipped (prevents infinite recursion)
+   * @returns {Fuzzy|*} Fuzzy if values differ, or the common value if all promotions agree
+   * @private
+   */
+  _collect_fuzzy_from_promotions(state, promotions, traittype, skip_promotions) {
+    const alternatives = []
+
+    for (const promotion of promotions) {
+      // Only include traits the promotion actually sets (not inherited from before the split)
+      // If trait comes from archetype/shared ancestor, it shouldn't have promotion's certainty
+      if (!promotion._traits.has(traittype)) continue
+
+      const value = promotion._traits.get(traittype)
+      const certainty = promotion.certainty ?? 1.0
+
+      if (value instanceof Fuzzy) {
+        // Expand nested Fuzzy, multiply certainties
+        for (const alt of value.alternatives) {
+          alternatives.push({ value: alt.value, certainty: certainty * alt.certainty })
+        }
+      } else if (value !== undefined && value !== null) {
+        alternatives.push({ value, certainty })
+      }
+    }
+
+    // If no promotions set this trait, return undefined so caller falls through
+    // to find the trait from the common ancestor (without certainty)
+    if (alternatives.length === 0) {
+      return undefined
+    }
+
+    return new Fuzzy({ alternatives })
+  }
+
+  /**
+   * Get trait value, skipping promotion resolution for specified beliefs
+   * Used to prevent infinite recursion when resolving promotions
+   * @param {State} state
+   * @param {Traittype} traittype
+   * @param {Set<Belief>} skip_promotions - Beliefs whose promotions should be skipped
+   * @returns {*}
+   * @private
+   */
+  _get_trait_skip_promotions(state, traittype, skip_promotions) {
+    // Check own promotions first (enables chained promotions)
+    const promo = this._get_trait_from_promotions(state, this, traittype, skip_promotions)
+    if (promo !== undefined) return promo
+
+    // Check own traits
+    const own = this._traits.get(traittype)
+    if (own !== undefined) return own
+
+    // Check cache
+    const cached = this._get_cached(traittype)
+    if (cached !== undefined) return cached
+
+    // Walk bases with skip_promotions
+    const value = this._get_inherited_trait(state, traittype, skip_promotions)
+    if (this.locked && !(value instanceof Fuzzy)) {
+      this._set_cache(traittype, value)
+    }
+    return value
   }
 
   /**
@@ -355,7 +499,10 @@ export class Belief {
     if (value !== undefined) return value
 
     value = this._get_inherited_trait(state, traittype)
-    if (this.locked) this._set_cache(traittype, value)
+    // Don't cache Fuzzy values - they're context-dependent (state.pick_promotion varies)
+    if (this.locked && !(value instanceof Fuzzy)) {
+      this._set_cache(traittype, value)
+    }
 
     return value
   }
@@ -830,43 +977,13 @@ export class Belief {
   }
 
   /**
-   * Get branches of this belief
+   * Get promotions of this belief
    * @returns {Set<Belief>}
    */
-  get_branches() {
-    return this.branches
+  get_promotions() {
+    return this.promotions
   }
 
-  /**
-   * Register a sibling version as a branch of this belief
-   * Used for lazy version propagation - allows temporal/probability branching
-   * @param {Belief} branch - The branch belief (same subject, different version)
-   * @param {{origin_state?: State|null, certainty?: number|null, constraints?: Object}} [metadata] - Branch metadata
-   */
-  add_branch(branch, metadata = {}) {
-    assert(branch instanceof Belief, 'add_branch requires Belief', {branch})
-    assert(branch.subject === this.subject, 'Branch must have same subject', {
-      this_sid: this.subject.sid,
-      branch_sid: branch.subject.sid
-    })
-
-    const { origin_state = null, certainty = null, constraints = {} } = metadata
-
-    // Validate certainty: must be null (not a probability) or strictly between 0 and 1
-    if (certainty !== null) {
-      assert(typeof certainty === 'number', 'certainty must be number or null', {certainty})
-      assert(certainty > 0 && certainty < 1,
-        'certainty must be > 0 and < 1 (probability weight), not boundary values',
-        {certainty, hint: 'Use null for non-probability branches, or value like 0.5 for probability'}
-      )
-    }
-
-    // Set branch metadata on the branch belief
-    branch.branch_metadata = { origin_state, certainty, constraints }
-
-    // Register branch in this belief's branches set
-    this.branches.add(branch)
-  }
 
   /**
    * Generate a designation string for this belief
@@ -962,7 +1079,7 @@ export class Belief {
   toJSON() {
     const t_about = Traittype.get_by_label('@about')
     const about_trait = t_about ? this._traits.get(t_about) : null
-    return {
+    const result = /** @type {{_type: string, _id: number, sid: number, label: string|null, about: any, archetypes: string[], bases: (string|number)[], traits: any, origin_state: number|null, has_promotions?: boolean}} */ ({
       _type: 'Belief',
       _id: this._id,
       sid: this.subject.sid,
@@ -974,7 +1091,11 @@ export class Belief {
         this._traits.entries().map(([traittype, v]) => [traittype.label, Traittype.serializeTraitValue(v)])
       ),
       origin_state: this.origin_state?._id ?? null
+    })
+    if (this.promotions.size > 0) {
+      result.has_promotions = true
     }
+    return result
   }
 
   /**
@@ -986,29 +1107,57 @@ export class Belief {
   }
 
   /**
+   * Find beliefs that have this belief as a base (excluding promotions)
+   * INSPECT-ONLY: expensive scan, only for debugging/inspection UI
+   * @returns {Array<{_id: number, label: string|null}>}
+   */
+  get_children_for_inspect() {
+    if (!this.in_mind) return []
+    const children = []
+    // @heavy - iterates all beliefs in mind to find children
+    for (const belief of DB.get_beliefs_by_mind(this.in_mind)) {
+      // Check if this belief is in their bases (but not a promotion)
+      if (belief._bases.has(this) && !this.promotions.has(belief)) {
+        children.push({
+          _id: belief._id,
+          label: belief.get_label()
+        })
+      }
+    }
+    return children
+  }
+
+  /**
    * Create base reference for inspect UI
-   * @returns {{label: string|null, id: number}}
+   * @returns {{label: string|null, id: number, has_promotions?: boolean}}
    */
   to_inspect_base() {
-    return {label: this.get_label(), id: this._id}
+    const result = /** @type {{label: string|null, id: number, has_promotions?: boolean}} */ ({label: this.get_label(), id: this._id})
+    if (this.promotions.size > 0) {
+      result.has_promotions = true
+    }
+    return result
   }
 
   /**
    * Create shallow inspection view of this belief for the inspect UI
    * @param {State} state - State context for resolving trait sids
-   * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string|null, type: string, id?: number}>, bases: Array<{label: string|null, id?: number}>, traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean}} Shallow representation with references, including mind context and what this knowledge is about (for cross-mind knowledge beliefs)
+   * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string|null, type: string, id?: number}>, bases: Array<{label: string|null, id?: number}>, traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean, has_promotions?: boolean, promotions?: Array<{_id: number, label: string|null, certainty: number|null}>, children?: Array<{_id: number, label: string|null}>}} Shallow representation with references, including mind context and what this knowledge is about (for cross-mind knowledge beliefs)
    */
   to_inspect_view(state) {
     assert(state instanceof State, "should be State", state);
 
-    // Build traits object from get_traits() (includes all traits, even nulls, for complete schema view)
+    // Build traits object using get_trait() for each slot to resolve promotions
     const traits_obj = /** @type {Record<string, any>} */ ({})
-    // @heavy - iterating all traits for inspection view
-    for (const [traittype, v] of this.get_traits()) {
-      traits_obj[traittype.label] = traittype.to_inspect_view(state, v)
+    // @heavy - iterating all trait slots for inspection view
+    for (const traittype of this.get_slots()) {
+      const v = this.get_trait(state, traittype)
+      if (v != null) {
+        traits_obj[traittype.label] = traittype.to_inspect_view(state, v)
+      }
     }
 
-    const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string|null, type: string, id?: number}>, bases: Array<{label: string|null, id?: number}>, traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean}} */ ({
+    const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string|null, type: string, id?: number}>, bases: Array<{label: string|null, id?: number}>, traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean, has_promotions?: boolean, promotions?: Array<{_id: number, label: string|null, certainty: number|null}>, children?: Array<{_id: number, label: string|null}>}} */ ({
       _type: 'Belief',
       _id: this._id,
       label: this.get_label(),
@@ -1034,6 +1183,23 @@ export class Belief {
     if (!this.locked) {
       result.locked = false
     }
+
+    // Indicate if belief has promotions (lazy version propagation)
+    if (this.promotions.size > 0) {
+      result.has_promotions = true
+      result.promotions = [...this.promotions].map(p => ({
+        _id: p._id,
+        label: p.get_label(),
+        certainty: p.certainty
+      }))
+    }
+
+    // @heavy - scan for children (beliefs that inherit from this one)
+    const children = this.get_children_for_inspect()
+    if (children.length > 0) {
+      result.children = children
+    }
+
     return result
   }
 
@@ -1076,8 +1242,9 @@ export class Belief {
     belief._locked = false
     belief._cache = new Map()
     belief._cached_all = false
-    belief.branches = new Set()
-    belief.branch_metadata = null
+    belief.promotions = new Set()
+    belief.certainty = null
+    belief.constraints = {}
 
     // Resolve 'bases' (archetype labels or belief IDs)
     belief._bases = new Set()
@@ -1225,61 +1392,63 @@ export class Belief {
    * Works even when this belief is locked (creates new belief, doesn't modify old)
    * @param {State} state - State context for the new belief (must be unlocked)
    * @param {Record<string, any>} traits - Trait updates (already resolved, not templates)
+   * @param {object} [options] - Optional promotion options
+   * @param {boolean} [options.promote] - Whether to register as promotion (propagates to children)
+   * @param {number} [options.certainty] - Probability weight (0 < x < 1, null = not probability)
+   * @param {object} [options.constraints] - Future: exclusion rules, validity periods
    * @returns {Belief} New belief with this belief as base
    */
-  replace(state, traits = {}) {
+  replace(state, traits = {}, { promote, certainty, constraints } = {}) {
     assert(state instanceof State, 'replace requires State parameter', {belief_id: this._id})
     assert(!state.locked, 'Cannot replace into locked state', {state_id: state._id, belief_id: this._id})
 
+    // Remove this belief from state (idempotent - skips if already removed)
     state.remove_beliefs(this)
-    return this.branch(state, traits)
-  }
 
-  /**
-   * Create a branch of this belief with optional probability metadata.
-   *
-   * Without metadata: Both old and new beliefs exist in state (superposition).
-   * With certainty: Original is REMOVED from state, branch is added with probability.
-   *   Use this to create multiple probability branches (values don't need to sum to 1.0).
-   *
-   * @param {State} state - State context for the new belief (must be unlocked)
-   * @param {Record<string, any>} traits - Trait updates (already resolved, not templates)
-   * @param {object} [metadata] - Optional branch metadata
-   * @param {number} [metadata.certainty] - Probability weight (0 < x < 1)
-   * @param {State} [metadata.origin_state] - State where branch was created (defaults to state)
-   * @param {object} [metadata.constraints] - Future: exclusion rules, validity periods
-   * @returns {Belief} New belief with this belief as base
-   */
-  branch(state, traits = {}, { certainty, origin_state, constraints } = {}) {
-    assert(state instanceof State, 'branch requires State parameter', {belief_id: this._id})
-    assert(!state.locked, 'Cannot branch into locked state', {state_id: state._id, belief_id: this._id})
-
-    const branched = new Belief(state, this.subject, [this])
+    const replaced = new Belief(state, this.subject, [this])
 
     // Add traits directly (no template resolution)
     for (const [trait_label, trait_value] of Object.entries(traits)) {
       const traittype = Traittype.get_by_label(trait_label)
       assert(traittype instanceof Traittype, `Traittype '${trait_label}' not found`, {trait_label})
-      branched.add_trait(traittype, trait_value)
+      replaced.add_trait(traittype, trait_value)
     }
 
-    // If metadata provided, this is a probability branch
-    if (certainty !== undefined || origin_state !== undefined || constraints !== undefined) {
-      // Register in parent's branches Set
-      this.add_branch(branched, {
-        certainty,
-        origin_state: origin_state ?? state,
-        constraints: constraints ?? {}
-      })
+    // If promote is set, register as promotion
+    if (promote) {
+      // Validate certainty: must be null/undefined (not a probability) or strictly between 0 and 1
+      if (certainty != null) {
+        assert(typeof certainty === 'number', 'certainty must be number or null', {certainty})
+        assert(certainty > 0 && certainty < 1,
+          'certainty must be > 0 and < 1 (probability weight), not boundary values',
+          {certainty, hint: 'Use null for non-probability promotions, or value like 0.5 for probability'}
+        )
+      }
 
-      // Remove original from state - branches replace it
-      state.remove_beliefs(this)
+      // Set direct properties on the promoted belief
+      // Note: origin_state is already set in constructor
+      replaced.certainty = certainty ?? null
+      replaced.constraints = constraints ?? {}
+
+      // Register in parent's promotions set
+      this.promotions.add(replaced)
     }
 
     // Insert into state automatically
-    state.insert_beliefs(branched)
+    state.insert_beliefs(replaced)
 
-    return branched
+    return replaced
+  }
+
+  /**
+   * @deprecated Use replace() instead. branch() is an alias for backwards compatibility.
+   * @param {State} state
+   * @param {Record<string, any>} traits
+   * @param {object} options
+   * @returns {Belief}
+   */
+  branch(state, traits = {}, options = {}) {
+    return this.replace(state, traits, options)
   }
 
 }

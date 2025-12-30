@@ -69,7 +69,9 @@ With lazy propagation:
 
 ## Architecture Overview
 
-### Branch Tracking
+### Promotion Tracking
+
+**Terminology**: "Promotions" are beliefs that propagate to children of their base. This is distinct from general "branching" (any belief with bases). Promotions enable lazy version propagation.
 
 ```javascript
 BeliefNode {
@@ -77,13 +79,12 @@ BeliefNode {
   _id: number               // Version ID (unique per version)
   traits: Map<string, value>
   bases: Set<Belief|Archetype>
-  branches: Set<Belief>     // NEW: Sibling versions (same subject)
-  branch_metadata: {        // NEW: Why this branch exists
-    origin_state: StateRef,
-    certainty: null,        // null = not a probability state (DEFAULT)
-                            // number = probability weight (0.0-1.0)
-    constraints: {...}
-  }
+  promotions: Set<Belief>   // Beliefs that propagate to children of this belief
+
+  // Direct properties (instead of branch_metadata sub-object):
+  origin_state: State|null  // State where this was created (for temporal filtering)
+  certainty: number|null    // Probability weight (null = not a probability promotion)
+  constraints: Object       // Future: exclusion rules, validity periods
 }
 ```
 
@@ -92,6 +93,12 @@ BeliefNode {
 - `certainty: <number>` — Probability state. Must be > 0 and < 1. Represents genuine uncertainty about which branch is true, with this weight.
   - Values at boundaries (0 or 1) indicate impossible/certain branches, which should be handled differently (pruned or promoted)
   - assert(certainty > 0 && certainty < 1) when setting non-null certainty
+
+**Separation of concerns:**
+- `promote: true` — registers in `parent.promotions`, will propagate to children of parent
+- `certainty` — probability weight (orthogonal to promotion)
+- `origin_state` — temporal filtering (always = state parameter, not configurable)
+- `replace()` — handles removal, NOT `branch()`
 
 ### Resolution Flow
 
@@ -102,12 +109,12 @@ Query: npc_belief.get_trait(state, 'season')
 2. Walk bases: npc_belief → city_belief
 3. Check city_belief.traits.season → not found
 4. Walk bases: city_belief → country_culture_v1
-5. Check country_culture_v1.branches → [country_v2@T110, country_v3@T150]
-6. Call state.pick_branch([v2, v3], context)
+5. Check country_culture_v1.promotions → [country_v2@T110, country_v3@T150]
+6. Call state.pick_promotion([v2, v3], context)
 7. Resolver filters by timestamp:
-   - state.timestamp = T110
-   - v2.origin_state.timestamp = T110 ✓
-   - v3.origin_state.timestamp = T150 ✗
+   - state.tt = T110
+   - v2.origin_state.tt = T110 ✓
+   - v3.origin_state.tt = T150 ✗
 8. Resolver returns country_v2 (single choice)
 9. Continue: country_v2.traits.season → 'winter'
 10. Return 'winter' (concrete value)
@@ -119,8 +126,8 @@ Query: npc_belief.get_trait(state, 'season')
 Query: mind.recall(state, subject, ['king_status'])
 
 1-4. Same walk to country_culture_v1
-5. Check branches → [v2a@T110 (p=0.6), v2b@T110 (p=0.4)]
-6. Call state.pick_branch([v2a, v2b], context)
+5. Check promotions → [v2a@T110 (p=0.6), v2b@T110 (p=0.4)]
+6. Call state.pick_promotion([v2a, v2b], context)
 7. Resolver sees both valid (same timestamp, probability-weighted)
 8. Resolver returns superposition (can't decide)
 9. Return Notion with Fuzzy trait:
@@ -139,7 +146,7 @@ Query: mind.recall(state, subject, ['king_status'])
 
 ### Superposition with Same Values
 
-When multiple branches yield the **same value**, `Mind.recall()` aggregates them into a single Fuzzy with combined alternatives:
+When multiple promotions yield the **same value**, `Mind.recall()` aggregates them into a single Fuzzy with combined alternatives:
 
 ```javascript
 // Branch A (0.6): hammer.location = workshop (from belief_a)
@@ -186,7 +193,7 @@ npc_v2 = Belief.from_template(npc_mind, {
 
 Materialization process:
 1. Walk npc_v1 → city_v1 → country_v1
-2. Detect country_v1.branches → [country_v2]
+2. Detect country_v1.promotions → [country_v2]
 3. Resolver picks country_v2 (temporal filter)
 4. Create city_v2 {sid: city_v1.sid, bases: [city_v1, country_v2]}
 5. Update npc_v2.bases = [npc_v1, city_v2]
@@ -194,7 +201,7 @@ Materialization process:
 
 Next NPC:
 1. Walk npc2_v1 → city_v1 → country_v1
-2. Detect country_v1.branches → [country_v2]
+2. Detect country_v1.promotions → [country_v2]
 3. Resolver picks country_v2
 4. Find existing city_v2 (same subject, inherits from country_v2)
 5. Reuse city_v2! Update npc2_v2.bases = [npc2_v1, city_v2]
@@ -203,95 +210,130 @@ Next NPC:
 
 ## Implementation Phases
 
-### Phase 1: Add Branch Tracking to Beliefs
+### Phase 1: Add Promotion Tracking to Beliefs ✅ COMPLETE
 
 **Files**: `public/worker/belief.mjs`
 
-**Changes**:
-- Add `branches: Set<Belief>` to Belief class
-- Add `branch_metadata: {origin_state, certainty, constraints}` to Belief class
-  - `certainty` defaults to `null` (not a probability state)
-  - Set to number only for probability branches
-  - assert(certainty === null || (certainty > 0 && certainty < 1)) when setting
-- Modify `Belief.from_template()` to register as branch when creating version of existing subject
-- Add `add_branch(belief, metadata)` method with certainty validation
-- Add `get_branches()` method
+**Changes** (implemented with new terminology):
+- Add `promotions: Set<Belief>` to Belief class
+- Add direct properties instead of metadata object:
+  - `origin_state: State|null` - state where promotion was created
+  - `certainty: number|null` - probability weight (null = not probability)
+  - `constraints: Object` - future extensibility
+- Update `branch()` to support `promote: true` option:
+  ```javascript
+  branch(state, traits = {}, { promote, certainty, constraints } = {}) {
+    const branched = new Belief(state, this.subject, [this])
+    // ... add traits ...
+    if (promote) {
+      branched.origin_state = state
+      branched.certainty = certainty ?? null
+      branched.constraints = constraints ?? {}
+      this.promotions.add(branched)
+    }
+    state.insert_beliefs(branched)
+    return branched
+  }
+  ```
+- Remove old `add_branch()` method and `branch_metadata` object
 
 **Tests**:
-- Create belief v1, create v2 with same subject → v1.branches contains v2
-- Branch metadata captures origin_state reference
-- Multiple branches accumulate in set
-- Branches are not included in bases traversal
+- Create belief v1, branch with promote:true → v1.promotions contains v2
+- Direct properties capture origin_state, certainty, constraints
+- Multiple promotions accumulate in set
+- Promotions are not included in bases traversal
 - Setting certainty to 0 → throws assertion error
 - Setting certainty to 1 → throws assertion error
 - Setting certainty to 0.5 → valid
 - Setting certainty to null → valid (default)
 
-### Phase 2: Implement State Resolver Interface
+### Phase 2: Implement State Resolver Interface ✅ COMPLETE
 
 **Files**: `public/worker/state.mjs`
 
 **Changes**:
-- Add `pick_branch(branches, context)` method to State class
-- Implements temporal filtering (compare origin_state.timestamp with this.timestamp)
+- Add `pick_promotion(promotions, context)` method to State class
+- Implements temporal filtering (compare `origin_state.tt` with `this.tt`)
 - Returns single belief (filtered) or array of beliefs (superposition)
 - Context object includes query metadata for future extensions
 
 **Resolver logic**:
 ```javascript
-pick_branch(branches, context) {
-  // Temporal filtering
-  const valid = [...branches].filter(b =>
-    b.branch_metadata.origin_state.timestamp <= this.timestamp
-  )
+pick_promotion(promotions, context) {
+  // Temporal filtering - uses direct property
+  const valid = [...promotions].filter(b => {
+    const origin = b.origin_state
+    if (!origin || origin.tt === null || this.tt === null) return false
+    return origin.tt <= this.tt
+  })
 
   if (valid.length === 0) return null
   if (valid.length === 1) return valid[0]
 
-  // Multiple valid branches - check if any are probability states
-  const is_probability = valid.some(b => b.branch_metadata.certainty !== null)
+  // Multiple valid - check if any are probability states
+  const is_probability = valid.some(b => b.certainty !== null)
 
   if (is_probability) {
-    // Probability branches - return all, caller handles via recall()
+    // Probability promotions - return all, caller handles via recall()
     return valid
   }
 
   // Not probability states - pick most recent by default
-  return valid.sort((a, b) =>
-    b.branch_metadata.origin_state.timestamp -
-    a.branch_metadata.origin_state.timestamp
-  )[0]
+  return valid.sort((a, b) => {
+    const a_tt = a.origin_state?.tt ?? 0
+    const b_tt = b.origin_state?.tt ?? 0
+    return b_tt - a_tt
+  })[0]
 }
 ```
 
 **Tests**:
-- Query with temporal branches → filters by timestamp
-- Query with probability branches → returns array (superposition)
+- Query with temporal promotions → filters by timestamp
+- Query with probability promotions → returns array (superposition)
 - Query with spatial constraints → resolver can use context
-- Empty branch set → returns null
+- Empty promotion set → returns null
 
-### Phase 3: Update Trait Resolution to Walk Branches
+### Phase 3: Update Trait Resolution to Walk Promotions ✅ COMPLETE
 
 **Files**: `public/worker/belief.mjs`
 
 **Changes**:
-- Modify `get_trait(state, trait_name)` to detect branches during traversal
-- Walk bases chain, check each belief for non-empty `branches` set
-- Call `state.pick_branch(belief.branches, context)` when found
+- Modify `_get_inherited_trait(state, traittype)` to detect promotions during traversal
+- Walk bases chain, check each belief for non-empty `promotions` set
+- Call `state.pick_promotion(belief.promotions, context)` when found
 - If resolver returns single belief, continue down that path
-- If resolver returns array, return superposition object
-- Add resolution caching with `_resolved_cache: Map<StateID, Map<trait_name, value>>`
+- If resolver returns array, collect into `Fuzzy` via `_collect_fuzzy_from_promotions()`
+- Add `skip_promotions: Set<Belief>` parameter to prevent infinite recursion
 
-**Cache strategy**:
-- Cache concrete values only (superpositions are context-dependent)
-- Invalidate when new branch added to any belief in inheritance chain
-- Cache per state ID (different states may resolve differently)
+**Key implementation**:
+```javascript
+_get_inherited_trait(state, traittype, skip_promotions = new Set()) {
+  for (const base of this._bases) {
+    if (base instanceof Belief && base.promotions.size > 0 && !skip_promotions.has(base)) {
+      const resolved = state.pick_promotion(base.promotions, {})
+      if (Array.isArray(resolved)) {
+        const new_skip = new Set(skip_promotions)
+        new_skip.add(base)
+        const fuzzy = this._collect_fuzzy_from_promotions(state, resolved, traittype, new_skip)
+        if (fuzzy.alternatives.length > 0) {
+          return fuzzy
+        }
+        // Fall through to continue searching archetypes
+      } else if (resolved) {
+        const value = resolved._get_trait_skip_promotions(state, traittype, skip_promotions)
+        if (value !== undefined) return value
+      }
+    }
+    // ... continue with archetype lookup
+  }
+}
+```
 
 **Tests**:
-- Trait inherits from belief with temporal branch → returns concrete value from correct branch
-- Trait inherits from belief with probability branches → returns `{type: 'superposition', ...}`
-- Resolution cache returns same result on repeated queries
-- Cache invalidates when new branch added
+- Trait inherits from belief with temporal promotion → returns concrete value from correct promotion
+- Trait inherits from belief with probability promotions → returns `Fuzzy`
+- Infinite recursion prevented via skip_promotions Set
+- Falls through to archetypes when promotions don't have the trait
 - Deep inheritance (5+ levels) resolves correctly
 
 ### Phase 4: Materialization on Explicit Version Creation
@@ -300,7 +342,7 @@ pick_branch(branches, context) {
 
 **Changes**:
 - Add `materialize_path(belief, state)` helper function
-- Walks bases chain and resolves all branches
+- Walks bases chain and resolves all promotions
 - Creates intermediate beliefs if needed
 - Returns materialized belief with clean inheritance chain
 - Modify `Belief.from_template()` to call `materialize_path()` when creating versioned belief
@@ -312,8 +354,8 @@ materialize_path(belief, state) {
 
   // Walk bases and collect resolution decisions
   for (let current = belief; current; current = get_next_base(current)) {
-    if (current.branches.size > 0) {
-      const resolved = state.pick_branch(current.branches, {})
+    if (current.promotions.size > 0) {
+      const resolved = state.pick_promotion(current.promotions, {})
       if (Array.isArray(resolved)) {
         throw new Error('Cannot materialize superposition - caller must collapse first')
       }
@@ -344,7 +386,7 @@ materialize_path(belief, state) {
 ```
 
 **Tests**:
-- Creating npc_v2 when country has branch → creates city_v2 inheriting from country_v2
+- Creating npc_v2 when country has promotion → creates city_v2 inheriting from country_v2
 - Multiple NPCs creating versions → reuse same city_v2
 - Materialization respects resolver decisions (temporal filtering)
 - Attempting to materialize superposition → throws error
@@ -355,19 +397,19 @@ materialize_path(belief, state) {
 **Files**: `public/worker/state.mjs`
 
 **Changes**:
-- Modify `get_belief_by_subject()` to check for branches
-- If belief has branches, call resolver
+- Modify `get_belief_by_subject()` to check for promotions
+- If belief has promotions, call resolver
 - Return resolved belief instead of base belief
-- Maintain backward compatibility (no branches → return as before)
+- Maintain backward compatibility (no promotions → return as before)
 
 **Implementation**:
 ```javascript
 get_belief_by_subject(subject) {
   for (const belief of this.get_beliefs()) {
     if (belief.subject === subject) {
-      // Check if this belief has branches
-      if (belief.branches.size > 0) {
-        const resolved = this.pick_branch(belief.branches, {})
+      // Check if this belief has promotions
+      if (belief.promotions.size > 0) {
+        const resolved = this.pick_promotion(belief.promotions, {})
         if (!Array.isArray(resolved)) {
           return resolved  // Resolver decided
         }
@@ -382,30 +424,30 @@ get_belief_by_subject(subject) {
 ```
 
 **Tests**:
-- Query subject with temporal branches → returns appropriate version
+- Query subject with temporal promotions → returns appropriate version
 - Query subject in different state timestamps → returns different versions
-- Query subject with probability branches → returns base (defers to trait level)
-- Query subject without branches → works as before
+- Query subject with probability promotions → returns base (defers to trait level)
+- Query subject without promotions → works as before
 
 ### Phase 6: Superposition Handling in State Operations
 
 **Files**: `public/worker/state.mjs`
 
 **Changes**:
-- Add `collapse_trait(belief, trait_name, selected_branch)` method
-- Creates new belief version inheriting from selected branch path
+- Add `collapse_trait(belief, trait_name, selected_promotion)` method
+- Creates new belief version inheriting from selected promotion path
 - Calls `materialize_path()` to ensure clean inheritance
 - If state locked, branches state; if unlocked, inserts into current state
 
 **Implementation**:
 ```javascript
-collapse_trait(belief, trait_name, selected_branch) {
+collapse_trait(belief, trait_name, selected_promotion) {
   assert(!this.locked, 'Cannot collapse in locked state without branching')
 
-  // Create new belief inheriting from selected branch
+  // Create new belief inheriting from selected promotion
   const new_belief = Belief.from_template(this.in_mind, {
     sid: belief.subject.sid,
-    bases: [selected_branch.path]
+    bases: [selected_promotion.path]
   }, this)
 
   // Materialize intermediate nodes
@@ -419,7 +461,7 @@ collapse_trait(belief, trait_name, selected_branch) {
 ```
 
 **Tests**:
-- Collapse superposition → creates new belief with selected branch
+- Collapse superposition → creates new belief with selected promotion
 - Collapsed belief materializes intermediate nodes
 - Multiple collapses reuse materialized intermediates
 - Locked state handling (future: branch state)
@@ -436,15 +478,15 @@ collapse_trait(belief, trait_name, selected_branch) {
 
 **Example scenarios**:
 1. **Temporal update**: Country announces winter
-   - Create country_v2 with season='winter'
+   - Create country_v2 with season='winter' via `branch(state, {season: 'winter'}, {promote: true})`
    - Query NPC → resolver picks v2 based on timestamp
    - No materialization needed
 
-2. **Probability branch**: King dies with p=0.6
-   - Create country_v2a (dead, p=0.6) and country_v2b (alive, p=0.4)
-   - Query NPC → returns superposition
-   - Story template picks dramatic branch
-   - Materialize city/NPC versions for that branch
+2. **Probability promotion**: King dies with p=0.6
+   - Create country_v2a (dead, p=0.6) and country_v2b (alive, p=0.4) via `branch(state, {...}, {promote: true, certainty: 0.6})`
+   - Query NPC → returns superposition (Fuzzy)
+   - Story template picks dramatic promotion
+   - Materialize city/NPC versions for that promotion
 
 3. **Multiple NPCs**: 100 NPCs in same city
    - First NPC materializes city_v2
@@ -461,9 +503,9 @@ collapse_trait(belief, trait_name, selected_branch) {
 ### Backward Compatibility
 
 **No breaking changes**:
-- Existing code without branches continues to work unchanged
-- `get_trait()` returns concrete values for beliefs without branches
-- New branch tracking is additive (empty set = no branches)
+- Existing code without promotions continues to work unchanged
+- `get_trait()` returns concrete values for beliefs without promotions
+- New promotion tracking is additive (empty set = no promotions)
 - Resolution cache is transparent optimization
 
 **Gradual adoption**:
@@ -474,13 +516,13 @@ collapse_trait(belief, trait_name, selected_branch) {
 
 ### Integration Points
 
-**Where branches are created**:
-- Story template creates probability branches for narrative choices
-- Time progression creates temporal branches for knowledge updates
+**Where promotions are created**:
+- Story template creates probability promotions for narrative choices via `branch(..., {promote: true, certainty})`
+- Time progression creates temporal promotions for knowledge updates via `branch(..., {promote: true})`
 - Defragmentation process creates optimized intermediate nodes
 
 **Where superposition is handled**:
-- Story templates examine and select from branches
+- Story templates examine and select from promotions
 - NPC reasoning may sample probabilistically
 - Player observation forces collapse to single timeline
 
@@ -493,10 +535,10 @@ collapse_trait(belief, trait_name, selected_branch) {
 - [x] **Mind.recall()** - returns Notion with Fuzzy values for uncertainty
 - [x] **Path certainty** - `Mind._compute_path_certainty()` with caching
 
-### Phases (Pending)
-- [x] Phase 1: Add branch tracking to beliefs ✅ (December 2024)
-- [ ] Phase 2: Implement state resolver interface
-- [ ] Phase 3: Update trait resolution to walk branches
+### Phases
+- [x] Phase 1: Add promotion tracking to beliefs ✅ (December 2024)
+- [x] Phase 2: Implement state resolver interface ✅ (December 2024)
+- [x] Phase 3: Update trait resolution to walk promotions ✅ (December 2024)
 - [ ] Phase 4: Materialization on explicit version creation
 - [ ] Phase 5: Update get_belief_by_subject() with resolver
 - [ ] Phase 6: Superposition handling in state operations (uses Fuzzy/Notion)
@@ -504,17 +546,17 @@ collapse_trait(belief, trait_name, selected_branch) {
 
 ## Success Criteria
 
-1. **No cascade**: Adding branch to country_culture creates 1 new belief, not thousands
+1. **No cascade**: Adding promotion to country_culture creates 1 new belief, not thousands
 2. **Lazy resolution**: NPCs get updated knowledge without materializing intermediate versions
 3. **Explicit control**: Materialization only happens on explicit belief creation
-4. **Superposition support**: Probability branches return superposition for caller to decide
+4. **Superposition support**: Probability promotions return superposition for caller to decide
 5. **Performance**: Memory usage O(changes) not O(NPCs), resolution cached efficiently
 6. **Backward compatible**: Existing code works unchanged, new features are opt-in
 
 ## Notes
 
 **Key clarification from discussion**:
-- Only nodes with branches are "dirty" (need resolution)
+- Only nodes with promotions are "dirty" (need resolution)
 - Intermediate nodes (cities) are NOT dirty - they inherit from dirty nodes
 - This prevents cascade while enabling lazy propagation
 
@@ -528,7 +570,7 @@ collapse_trait(belief, trait_name, selected_branch) {
 - Enables narrative-driven collapse instead of arbitrary selection
 
 **Design trade-offs**:
-- Adds complexity to trait resolution (walk + resolve branches)
+- Adds complexity to trait resolution (walk + resolve promotions)
 - Resolution cache mitigates performance impact
 - Superposition return values require caller awareness
 - But enables scaling to millions of NPCs without version explosion
@@ -545,7 +587,7 @@ collapse_trait(belief, trait_name, selected_branch) {
 |--------|------------------|-------------|
 | **Purpose** | Efficient shared belief updates | Record collapse of possibility space |
 | **Trigger** | Every trait query | Only when collapse happens |
-| **Storage** | `branches` Set on belief | `@resolution` trait + `Subject.resolutions` index |
+| **Storage** | `promotions` Set on belief | `@resolution` trait + `Subject.resolutions` index |
 | **Persistence** | Computed at query time | Permanent record |
 | **Legacy support** | N/A | Yes - visible across timelines via Session.legacy |
 
@@ -561,12 +603,12 @@ Query: npc.get_trait(state, 'king_status')
 
 2. NO COLLAPSE RECORDED → LAZY PROPAGATION
    - Walk bases chain: npc → city → country
-   - Find branches on country
-   - Call state.pick_branch()
+   - Find promotions on country
+   - Call state.pick_promotion()
 
 3. RESOLVER DECISION
-   - Temporal branches (different timestamps) → pick by timestamp
-   - Probability branches (same timestamp) → return superposition
+   - Temporal promotions (different timestamps) → pick by timestamp
+   - Probability promotions (same timestamp) → return superposition
 
 4. SUPERPOSITION RETURNED TO CALLER
    - Caller can examine possibilities
@@ -576,11 +618,11 @@ Query: npc.get_trait(state, 'king_status')
 ### When Each System Activates
 
 **Lazy propagation only** (no @resolution needed):
-- "Winter arrived" → temporal branch, resolver picks by timestamp
+- "Winter arrived" → temporal promotion, resolver picks by timestamp
 - No uncertainty, just version selection
 
 **@resolution needed** (after lazy prop returns superposition):
-- "King might be dead" → probability branches at same timestamp
+- "King might be dead" → probability promotions at same timestamp
 - Lazy prop returns superposition
 - Player observation triggers collapse
 - @resolution records the decision permanently
@@ -590,13 +632,13 @@ Query: npc.get_trait(state, 'king_status')
 The `collapse_trait()` method should create a @resolution record:
 
 ```javascript
-collapse_trait(belief, trait_name, selected_branch) {
+collapse_trait(belief, trait_name, selected_promotion) {
   // Create resolution belief with @resolution pointing to selected
   const resolution = this.add_belief_from_template({
     sid: belief.subject.sid,
-    bases: [belief],  // Links to original (with branches)
+    bases: [belief],  // Links to original (with promotions)
     traits: {
-      '@resolution': selected_branch  // Points to selected branch
+      '@resolution': selected_promotion  // Points to selected promotion
     }
   })
 
@@ -639,7 +681,7 @@ collapse_trait(belief, trait_name, selected_branch) {
 
 | | State Uncertainty | Belief Uncertainty | Trait Uncertainty (UNKNOWN) |
 |---|:---:|:---:|:---:|
-| **Lazy Prop** | Via Convergence | branches Set | N/A (no value to branch) |
+| **Lazy Prop** | Via Convergence | promotions Set | N/A (no value to branch) |
 | **@resolution** | Points to state | Points to belief | Points to belief with value |
 | **@tracks** | Fallback timeline | N/A | Query falls through |
 | **Session.legacy** | Check ancestry | Check ancestry | Check ancestry |
@@ -684,12 +726,14 @@ Resolution: belief_v2 with {
 
 | Scenario | Setup | Action | Expected |
 |----------|-------|--------|----------|
-| LP-1: Temporal branch | country_v1 → country_v2 at T2 | Query at T1 | v1 traits |
-| LP-2: Temporal branch | country_v1 → country_v2 at T2 | Query at T2 | v2 traits |
-| LP-3: Multiple branches | v1 → v2@T2, v3@T3 | Query at T2 | v2 traits |
-| LP-4: Probability branch | v1 → v2a(p=0.6), v2b(p=0.4) | Query | Superposition |
+| LP-1: Temporal promotion | country_v1 → country_v2 at T2 | Query at T1 | v1 traits |
+| LP-2: Temporal promotion | country_v1 → country_v2 at T2 | Query at T2 | v2 traits |
+| LP-3: Multiple promotions | v1 → v2@T2, v3@T3 | Query at T2 | v2 traits |
+| LP-4: Probability promotion | v1 → v2a(p=0.6), v2b(p=0.4) | Query | Superposition |
 | LP-5: Materialization | NPC creates opinion | Walk chain | Intermediates created |
 | LP-6: Reuse materialized | Second NPC, same city | Walk chain | Reuse city_v2 |
+| LP-7: Chained promotions | merchant_location → v2 (promote) → v3 (promote) | Query wandering_merchant | v3 → v2 → base |
+| LP-8: Chained with trait | v2 has trait, v3 doesn't | Query wandering_merchant | v2's trait value |
 
 ### @resolution Tests
 
@@ -709,58 +753,63 @@ Resolution: belief_v2 with {
 | TRK-1: Local wins | new_state with local trait | Query | Local value |
 | TRK-2: Fallback | new_state without trait | Query | @tracks value |
 | TRK-3: Advance tracked | new_state, advance time | advance_tracked_timeline() | @tracks updated |
-| TRK-4: @tracks + lazy prop | Tracked state has branches | Query | Resolve via tracked |
+| TRK-4: @tracks + lazy prop | Tracked state has promotions | Query | Resolve via tracked |
 
 ### Combined Feature Tests
 
 | Scenario | Features | Setup | Expected |
 |----------|----------|-------|----------|
-| COMB-1 | LP + @resolution | Probability branch → collapse | @resolution recorded, lazy query returns resolved |
-| COMB-2 | LP + @tracks | Shared belief in tracked timeline | Query walks @tracks, then resolves branches |
+| COMB-1 | LP + @resolution | Probability promotion → collapse | @resolution recorded, lazy query returns resolved |
+| COMB-2 | LP + @tracks | Shared belief in tracked timeline | Query walks @tracks, then resolves promotions |
 | COMB-3 | @resolution + legacy | Collapse in old run, query in new | Legacy enables resolution lookup |
 | COMB-4 | LP + @resolution + @tracks | Theory with collapsed shared belief | Theory inherits via @tracks, sees resolved value |
-| COMB-5 | All + State uncertainty | Convergence with branched beliefs | Convergence collapse + belief branch resolution |
+| COMB-5 | All + State uncertainty | Convergence with promoted beliefs | Convergence collapse + belief promotion resolution |
 | COMB-6 | All + UNKNOWN | Unknown in shared belief, theory | Resolution propagates via lazy + @tracks |
 
 ### Edge Cases
 
 | Scenario | Setup | Expected |
 |----------|-------|----------|
-| EDGE-1: Double branch | country → v2 → v3 (sequential) | Resolver walks to v3 |
-| EDGE-2: Divergent branches | v1 → v2a, v1 → v2b (same time, no prob) | Error or pick one |
+| EDGE-1: Chained promotions | base → v2 (promote) → v3 (promote) | Resolver walks: v3 → v2 → base |
+| EDGE-2: Divergent promotions | v1 → v2a, v1 → v2b (same time, no prob) | Error or pick one |
 | EDGE-3: Resolution of resolution | Collapse A, then collapse again | Second resolution recorded |
 | EDGE-4: Materialization with @resolution | Materialize path with existing collapse | Use resolved path |
-| EDGE-5: @tracks chain with branches | @tracks → @tracks → state with branches | Full resolution |
-| EDGE-6: Legacy + new branches | Legacy collapse, new timeline adds branches | Legacy resolution still valid |
+| EDGE-5: @tracks chain with promotions | @tracks → @tracks → state with promotions | Full resolution |
+| EDGE-6: Legacy + new promotions | Legacy collapse, new timeline adds promotions | Legacy resolution still valid |
+| EDGE-7: Promotion with promotion | v2 has promotion v3, child inherits | Walk: child → v3 → v2 → base |
+| EDGE-8: Trait in middle promotion | v2 has trait, v3 doesn't | Return v2's trait, not continue to base |
 
 ---
 
 ## Open Questions for Test Design
 
-1. **Branch ordering**: When multiple non-probability branches exist at same timestamp, which wins?
+1. **Promotion ordering**: When multiple non-probability promotions exist at same timestamp, which wins?
    - Current: "most recent by default" - but what defines "recent" if same timestamp?
 
-2. **Cascading @resolution**: If A resolves to B, and B has branches, is that a new resolution?
+2. **Cascading @resolution**: If A resolves to B, and B has promotions, is that a new resolution?
    - Proposal: Yes, each uncertainty point gets its own @resolution
 
 3. **@resolution vs materialization**: Does @resolution require materialization?
    - Proposal: No - @resolution is just a pointer, materialization is separate
 
-4. **Convergence + lazy prop**: Can Convergence components have branches?
-   - Proposal: Yes, query resolves branches within each component
+4. **Convergence + lazy prop**: Can Convergence components have promotions?
+   - Proposal: Yes, query resolves promotions within each component
 
 5. **Subject.resolutions cleanup**: When are old resolutions garbage collected?
-   - Deferred to branch lifecycle work
+   - Deferred to promotion lifecycle work
+
+6. **Chained promotions resolution order**: When v2 has promotion v3, should child see v3's traits first?
+   - Yes: walk promotions before continuing to base (v3 → v2 → base)
 
 ---
 
 ## Updated Success Criteria
 
 Original criteria (still valid):
-1. ✅ No cascade: Adding branch creates 1 belief, not thousands
+1. ✅ No cascade: Adding promotion creates 1 belief, not thousands
 2. ✅ Lazy resolution: NPCs inherit without materialization
 3. ✅ Explicit control: Materialization only on explicit creation
-4. ✅ Superposition support: Probability branches return superposition
+4. ✅ Superposition support: Probability promotions return superposition
 5. ✅ Performance: O(changes) not O(NPCs)
 6. ✅ Backward compatible: Existing code unchanged
 
@@ -770,3 +819,4 @@ New criteria (December 2024):
 9. ✅ All uncertainty types: State, Belief, and UNKNOWN trait resolution
 10. ✅ @tracks compatibility: Works with timeline tracking
 11. ✅ Test coverage: All matrix scenarios have tests
+12. ✅ Chained promotions: Promotions that have promotions resolve correctly

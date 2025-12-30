@@ -312,6 +312,68 @@ describe('Channel Message Handlers', () => {
       expect(messages[0].bases.some(b => b.label === 'PortableObject' && !b.id)).to.be.true;
     });
 
+    it('shows has_promotions icon on bases with promotions', () => {
+      const mind = new Materia(logos(), 'promo_test_mind');
+      const state = mind.create_state(logos().origin_state, {tt: 1});
+
+      // Create locations
+      const workshop = state.add_belief_from_template({
+        bases: ['Location'], label: 'workshop'
+      });
+      const tavern = state.add_belief_from_template({
+        bases: ['Location'], label: 'tavern'
+      });
+
+      // Create base belief for location variations
+      const merchant_loc = state.add_belief_from_template({
+        bases: ['ObjectPhysical'], label: 'merchant_location'
+      });
+
+      // Create promotions with certainty
+      const location_tt = Traittype.get_by_label('location');
+      merchant_loc.replace(state, { location: workshop.subject }, { promote: true, certainty: 0.6 });
+      merchant_loc.replace(state, { location: tavern.subject }, { promote: true, certainty: 0.4 });
+
+      // Create child that inherits from merchant_loc
+      const merchant = Belief.from(state, [Archetype.get_by_label('Actor'), merchant_loc]);
+      merchant.label = 'wandering_merchant';
+
+      messages.length = 0;
+
+      Channel.dispatch.query_belief({
+        belief: String(merchant._id),
+        state_id: String(state._id),
+        client_id: 1
+      });
+
+      expect(messages).to.have.lengthOf(1);
+      expect(messages[0].bases).to.be.an('array');
+
+      // Find the merchant_location base
+      const merchant_loc_base = messages[0].bases.find(b => b.label === 'merchant_location');
+      expect(merchant_loc_base).to.exist;
+      expect(merchant_loc_base.has_promotions).to.equal(true);
+    });
+
+    it('shows has_promotions flag on belief with promotions in to_inspect_view', () => {
+      const mind = new Materia(logos(), 'promo_view_mind');
+      const state = mind.create_state(logos().origin_state, {tt: 1});
+
+      // Create base belief
+      const obj = state.add_belief_from_template({
+        bases: ['ObjectPhysical'], label: 'test_obj'
+      });
+
+      // Create promotions
+      obj.replace(state, { color: 'red' }, { promote: true, certainty: 0.6 });
+      obj.replace(state, { color: 'blue' }, { promote: true, certainty: 0.4 });
+
+      // Query the original object (which is removed from state but still accessible)
+      // The has_promotions should show when viewing a belief that HAS promotions
+      const view = obj.to_inspect_view(state);
+      expect(view.has_promotions).to.equal(true);
+    });
+
     it('returns mind trait correctly for Person with mind', () => {
       const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});

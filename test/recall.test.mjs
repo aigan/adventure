@@ -553,8 +553,8 @@ describe('recall_by_subject', () => {
       // Branch with 70% path certainty
       const state_1 = state_0.branch(ground, 2, { certainty: 0.7 })
       const hammer = state_1.get_belief_by_label('hammer')
-      // Create branch with 80% belief certainty via branch_metadata
-      hammer.branch(state_1, { weight: 2 }, { certainty: 0.8 })
+      // Create promotion with 80% belief certainty
+      hammer.branch(state_1, { weight: 2 }, { promote: true, certainty: 0.8 })
       state_1.lock()
 
       const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['weight'])
@@ -608,8 +608,8 @@ describe('recall_by_subject', () => {
       // Second branch: 50% certain
       const state_2 = state_1.branch(ground, 3, { certainty: 0.5 })
       const hammer = state_2.get_belief_by_label('hammer')
-      // Create branch with 60% belief certainty via branch_metadata
-      hammer.branch(state_2, { weight: 2 }, { certainty: 0.6 })
+      // Create promotion with 60% belief certainty
+      hammer.branch(state_2, { weight: 2 }, { promote: true, certainty: 0.6 })
       state_2.lock()
 
       const notion = mind.recall_by_subject(ground, hammer.subject, 3, ['weight'])
@@ -634,8 +634,8 @@ describe('recall_by_subject', () => {
       // Branch with 70% path certainty
       const state_1 = state_0.branch(ground, 2, { certainty: 0.7 })
       const hammer = state_1.get_belief_by_label('hammer')
-      // Create branch with 80% belief certainty via branch_metadata
-      hammer.branch(state_1, { weight: 2 }, { certainty: 0.8 })
+      // Create promotion with 80% belief certainty
+      hammer.branch(state_1, { weight: 2 }, { promote: true, certainty: 0.8 })
       state_1.lock()
 
       const notions = [...mind.recall_by_archetype(ground, 'Tool', 2, ['weight'])]
@@ -675,19 +675,19 @@ describe('recall_by_subject', () => {
       // Get hammer from new state and create belief branch with Fuzzy trait
       const hammer_v1 = state_1.get_belief_by_label('hammer')
 
-      // Create branch with 0.8 belief certainty and Fuzzy location trait
+      // Create promotion with 0.8 belief certainty and Fuzzy location trait
       const hammer_v2 = hammer_v1.branch(state_1, {
         location: new Fuzzy({ alternatives: [
           { value: workshop.subject, certainty: 0.5 },  // stored independently
           { value: shed.subject, certainty: 0.3 }       // stored independently
         ]})
-      }, { certainty: 0.8 })
+      }, { promote: true, certainty: 0.8 })
 
       state_1.lock()
 
       // Verify stored values are unchanged
       expect(state_1.certainty).to.equal(0.7)
-      expect(hammer_v2.branch_metadata.certainty).to.equal(0.8)
+      expect(hammer_v2.certainty).to.equal(0.8)
       const stored_fuzzy = hammer_v2.get_trait(state_1, location_tt)
       expect(stored_fuzzy.alternatives[0].certainty).to.equal(0.5)  // unchanged
       expect(stored_fuzzy.alternatives[1].certainty).to.equal(0.3)  // unchanged
