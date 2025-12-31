@@ -21,9 +21,11 @@
 
 import { expect } from 'chai'
 import { Traittype } from '../public/worker/traittype.mjs'
+import { Materia, save_mind, load } from '../public/worker/cosmos.mjs'
+import { logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { eidos } from '../public/worker/eidos.mjs'
-import { setupAfterEachValidation } from './helpers.mjs'
+import { setupAfterEachValidation, setupStandardArchetypes } from './helpers.mjs'
 
 describe('Composable Traits', () => {
   beforeEach(() => {
@@ -200,4 +202,140 @@ describe('Composable Traits', () => {
 
   // Note: Mind composition tests are in integration.test.mjs (P1.1 test)
   // as they require a full world setup with shared beliefs
+
+  describe('save/load round-trip', () => {
+    // Helper to setup composable inventory
+    function setupInventoryArchetypes() {
+      DB.register(
+        {
+          '@about': {type: 'Subject', mind: 'parent'},
+          location: 'Location',
+          inventory: {
+            type: 'PortableObject',
+            container: Array,
+            composable: true
+          }
+        },
+        {
+          Thing: { traits: {'@about': null} },
+          PortableObject: { bases: ['Thing'] },
+          Location: { bases: ['Thing'], traits: { location: null } },
+          Person: {
+            bases: ['Thing'],
+            traits: { inventory: null }
+          }
+        },
+        {
+          token: { bases: ['PortableObject'] },
+          hammer: { bases: ['PortableObject'] },
+          Villager: {
+            bases: ['Person'],
+            traits: { inventory: ['token'] }
+          },
+          Blacksmith: {
+            bases: ['Person', 'Villager'],
+            traits: { inventory: ['hammer'] }
+          }
+        }
+      )
+    }
+
+    it('preserves composable array traits after save/load', () => {
+      setupInventoryArchetypes()
+
+      // Create a world mind instead of using eidos directly
+      const world = Materia.create_world()
+      const world_state = world.create_state(logos_state(), {tt: 1})
+
+      // Create items with unique labels (not matching shared prototypes)
+      const my_token = world_state.add_belief_from_template({
+        bases: ['PortableObject'],
+        label: 'my_token'
+      })
+      const my_hammer = world_state.add_belief_from_template({
+        bases: ['PortableObject'],
+        label: 'my_hammer'
+      })
+
+      // Create person with own inventory
+      const warrior = world_state.add_belief_from_template({
+        bases: ['Person'],
+        traits: {
+          inventory: [my_token.subject, my_hammer.subject]
+        },
+        label: 'warrior'
+      })
+
+      world_state.lock()
+
+      // Verify inventory works before save
+      const inventory_tt = Traittype.get_by_label('inventory')
+      const inv_before = warrior.get_trait(world_state, inventory_tt)
+      expect(inv_before).to.have.lengthOf(2)
+
+      // Save and reload
+      const json = save_mind(world)
+      DB.reset_registries()
+      setupInventoryArchetypes()
+      const loaded_world = load(json)
+
+      // Verify inventory works after load
+      const loaded_state = [...loaded_world._states][0]
+      const loaded_warrior = loaded_state.get_belief_by_label('warrior')
+      const loaded_inventory_tt = Traittype.get_by_label('inventory')
+      const inv_after = loaded_warrior.get_trait(loaded_state, loaded_inventory_tt)
+
+      expect(inv_after).to.be.an('array')
+      expect(inv_after).to.have.lengthOf(2)
+    })
+
+    it('composition works after save/load with world mind', () => {
+      setupInventoryArchetypes()
+
+      const world = Materia.create_world()
+      const world_state = world.create_state(logos_state(), {tt: 1})
+
+      // Create items
+      const sword = world_state.add_belief_from_template({
+        bases: ['PortableObject'],
+        label: 'sword'
+      })
+
+      const shield = world_state.add_belief_from_template({
+        bases: ['PortableObject'],
+        label: 'shield'
+      })
+
+      // Create character with inventory
+      const warrior = world_state.add_belief_from_template({
+        bases: ['Person'],
+        traits: {
+          inventory: [sword.subject, shield.subject]
+        },
+        label: 'warrior'
+      })
+
+      world_state.lock()
+
+      // Save and reload
+      const json = save_mind(world)
+      DB.reset_registries()
+      setupInventoryArchetypes()
+      const loaded_world = load(json)
+
+      // Verify inventory trait works after load
+      const loaded_state = [...loaded_world._states][0]
+      const loaded_warrior = loaded_state.get_belief_by_label('warrior')
+      const inventory_tt = Traittype.get_by_label('inventory')
+      const loaded_inv = loaded_warrior.get_trait(loaded_state, inventory_tt)
+
+      expect(loaded_inv).to.be.an('array')
+      expect(loaded_inv).to.have.lengthOf(2)
+      const labels = loaded_inv.map(s => {
+        const b = loaded_state.get_belief_by_subject(s)
+        return b ? b.get_label() : null
+      }).sort()
+      expect(labels).to.deep.equal(['shield', 'sword'])
+    })
+  })
 })

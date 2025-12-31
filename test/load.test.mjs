@@ -1,8 +1,9 @@
 import { expect } from 'chai';
-import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load, Convergence, eidos } from '../public/worker/cosmos.mjs';
+import { Mind, Materia, State, Belief, Archetype, Traittype, save_mind, load, Convergence, eidos, Fuzzy } from '../public/worker/cosmos.mjs';
+import { unknown } from '../public/worker/fuzzy.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs';
+import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation, saveAndReload } from './helpers.mjs';
 
 describe('Save/Load functionality', () => {
   beforeEach(() => {
@@ -22,6 +23,9 @@ describe('Save/Load functionality', () => {
         traits: {}, label: 'workshop',
         bases: ['Location'],
       });
+
+      // Lock before save
+      world_state.lock();
 
       // Save
       const json = save_mind(world_mind);
@@ -61,6 +65,9 @@ describe('Save/Load functionality', () => {
         traits: {location: workshop.subject,}, label: 'hammer',
       });
 
+      // Lock before save
+      world_state.lock();
+
       // Save and reload
       const json = save_mind(world_mind);
       DB.reset_registries();
@@ -99,6 +106,9 @@ describe('Save/Load functionality', () => {
       const state2 = state1.tick_with_template(room1, 2, {
         location: room2.subject  // room1_v2 → room2 in state2
       });
+
+      // Lock before save (tick_with_template already locked state1)
+      state2.lock();
 
       // Save and reload
       const json = save_mind(world_mind);
@@ -149,6 +159,7 @@ describe('Save/Load functionality', () => {
       const state2 = state1.branch(logos().origin_state, 2);
       state2.lock();
       const state3 = state2.branch(logos().origin_state, 3);
+      state3.lock();
 
       // Save and reload
       const json = save_mind(state1.in_mind);
@@ -247,6 +258,9 @@ describe('Save/Load functionality', () => {
 
       const max_id = Math.max(state.in_mind._id, state._id, workshop._id);
 
+      // Lock before save
+      state.lock();
+
       // Save and reload
       const json = save_mind(state.in_mind);
       DB.reset_registries();
@@ -270,6 +284,10 @@ describe('Save/Load functionality', () => {
       // Create player mind with ground_state
       const player_mind = new Materia(world_mind, 'player_mind');
       const player_state = player_mind.create_state(world_state);
+
+      // Lock before save
+      player_state.lock();
+      world_state.lock();
 
       // Save and reload both minds
       const world_json = save_mind(world_mind);
@@ -341,6 +359,9 @@ describe('Save/Load functionality', () => {
       state = state.tick_with_template(room1, state.vt + 1, {
         location: 'room2'
       });
+
+      // Lock before save
+      state.lock();
 
       // First save
       const json1 = save_mind(world_mind);
@@ -454,6 +475,71 @@ describe('Save/Load functionality', () => {
 
       // Compare JSON strings - should be identical
       expect(json2).to.equal(json1);
+    });
+
+    it('preserves Fuzzy trait value through save/load', () => {
+      const world_mind = new Materia(logos(), 'world');
+      const world_state = world_mind.create_state(logos().origin_state, { tt: 1 });
+
+      world_state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: {
+          color: new Fuzzy({
+            alternatives: [
+              { value: 'red', certainty: 0.6 },
+              { value: 'blue', certainty: 0.4 }
+            ]
+          })
+        },
+        label: 'fuzzy_ball'
+      });
+
+      world_state.lock();
+
+      // Save and reload
+      const loaded_mind = saveAndReload(world_mind);
+
+      // Get loaded belief
+      const loaded_state = [...loaded_mind._states][0];
+      const loaded_ball = loaded_state.get_belief_by_label('fuzzy_ball');
+      expect(loaded_ball).to.exist;
+
+      // Verify Fuzzy trait preserved
+      const color_tt = Traittype.get_by_label('color');
+      const color = loaded_ball.get_trait(loaded_state, color_tt);
+      expect(color).to.be.instanceOf(Fuzzy);
+      expect(color.alternatives).to.have.length(2);
+      expect(color.alternatives[0]).to.deep.equal({ value: 'red', certainty: 0.6 });
+      expect(color.alternatives[1]).to.deep.equal({ value: 'blue', certainty: 0.4 });
+    });
+
+    it('preserves unknown() trait value through save/load', () => {
+      const world_mind = new Materia(logos(), 'world');
+      const world_state = world_mind.create_state(logos().origin_state, { tt: 1 });
+
+      world_state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: {
+          color: unknown()
+        },
+        label: 'mystery_ball'
+      });
+
+      world_state.lock();
+
+      // Save and reload
+      const loaded_mind = saveAndReload(world_mind);
+
+      // Get loaded belief
+      const loaded_state = [...loaded_mind._states][0];
+      const loaded_ball = loaded_state.get_belief_by_label('mystery_ball');
+
+      // Verify unknown() preserved as singleton
+      const color_tt = Traittype.get_by_label('color');
+      const color = loaded_ball.get_trait(loaded_state, color_tt);
+      expect(color).to.be.instanceOf(Fuzzy);
+      expect(color.is_unknown).to.be.true;
+      expect(color).to.equal(unknown());
     });
   });
 });

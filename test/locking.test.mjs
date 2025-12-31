@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { Mind, Materia, State, Temporal, Belief, Traittype } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, State, Temporal, Belief, Traittype, save_mind, load } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { setupStandardArchetypes, setupAfterEachValidation } from './helpers.mjs'
@@ -308,6 +308,52 @@ describe('Locking Constraints', () => {
           bases: ['PortableObject']
         })
       }).to.throw('Cannot modify locked state')
+    })
+  })
+
+  describe('save/load round-trip', () => {
+    it('loaded states are locked (preserves base.locked invariant)', () => {
+      const world_mind = new Materia(logos(), 'world')
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1})
+
+      const workshop = world_state.add_belief_from_template({
+        bases: ['Location'],
+        label: 'workshop'
+      })
+
+      const hammer = world_state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: { location: workshop.subject },
+        label: 'hammer'
+      })
+
+      world_state.lock()
+
+      // Save and reload
+      const json = save_mind(world_mind)
+      DB.reset_registries()
+      setupStandardArchetypes()
+      const loaded_mind = load(json)
+
+      // Get loaded state - should be locked (invariant preserved)
+      const loaded_state = [...loaded_mind._states][0]
+      expect(loaded_state.locked).to.be.true
+
+      // Loaded beliefs should also be locked
+      const loaded_hammer = loaded_state.get_belief_by_label('hammer')
+      expect(loaded_hammer.locked).to.be.true
+
+      // Cannot modify locked loaded state
+      expect(() => {
+        loaded_state.add_belief_from_template({
+          bases: ['Location'],
+          label: 'shed'
+        })
+      }).to.throw('Cannot modify locked state')
+
+      // Branching still works after load
+      const state2 = loaded_state.branch(logos().origin_state, 2)
+      expect(state2.locked).to.be.false
     })
   })
 })

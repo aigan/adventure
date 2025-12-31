@@ -15,8 +15,38 @@ All notable changes to this project will be documented in this file.
 - **Children list in belief inspection** - shows beliefs that inherit from this one
   - Scan-based via `get_children_for_inspect()`, marked as INSPECT-ONLY
   - Excludes promotions (shown separately)
+- **Save/load round-trip tests** added to multiple test files
+  - `belief.test.mjs` - promotions, certainty, base chain, trait resolution
+  - `state.test.mjs` - state certainty, base chain, about_state reference
+  - `locking.test.mjs` - locking works after load
+  - `reverse_trait.test.mjs` - rev_trait works with state chains after load
+  - `composable_traits.test.mjs` - composable array traits preserved
+  - `composable_mind.test.mjs` - mind trait and NPC knowledge preserved
+  - `learn_about.test.mjs` - @about trait reference, learn_about after world load
+  - `temporal_reasoning.test.mjs` - tt/vt preserved, states_at_tt works, temporal coordination
+  - `load.test.mjs` - Fuzzy trait values, unknown() singleton preserved
+  - `mind.test.mjs` - mind hierarchy, in_eidos property
+  - `subject.test.mjs` - subject identity, beliefs_at_tt after load
+  - `rev_base.test.mjs` - rev_base traversal after load
+  - `reverse_trait_convergence.test.mjs` - Convergence rev_trait after load
+  - `saveAndReload()` helper in `test/helpers.mjs`
+
+### Fixed
+- **Belief.promotions serialization** - now saves promotion IDs and restores Set after load
+  - Added `_finalize_promotions_from_json()` for deferred resolution
+  - Added to both `Mind.from_json()` and `Materia.from_json()`
+- **Belief.certainty serialization** - now preserved across save/load
+- **Reverse trait index** - now rebuilt during JSON load via `_finalize_traits_from_json()`
+  - Calls `origin_state.rev_add()` for Subject trait values
+- **States locked after load** - preserves `base.locked` invariant
+  - All states and their beliefs are locked after loading
+  - Uses `state.lock()` to cascade to beliefs in `_insert`
+  - Must happen before loading nested minds (they reference parent states as ground_state)
 
 ### Changed
+- **Serialization enforces locked states** - `State.toJSON()` asserts state is locked during `save_mind()`
+  - Prevents serializing unlocked data, which would violate invariants on load
+  - Assertion only active during `Serialize.active` to allow toJSON() for testing/inspection
 - **Replaced Trait class with Notion for recall API**
   - `mind.recall_by_subject(ground, subject, tt, traits?)` now returns a single `Notion` (not a generator)
   - `mind.recall_by_archetype(ground, archetype, tt, traits)` now yields `Notion` objects (not `[Subject, Trait[]]`)

@@ -1,8 +1,8 @@
 import { expect } from 'chai'
-import { Mind, Materia, State, Temporal, Belief, Traittype } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, State, Temporal, Belief, Traittype, save_mind, load } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
-import { setupAfterEachValidation } from './helpers.mjs'
+import { setupAfterEachValidation, setupStandardArchetypes } from './helpers.mjs'
 
 describe('Temporal Reasoning', () => {
   beforeEach(() => {
@@ -813,6 +813,123 @@ describe('Temporal Reasoning', () => {
       expect(() => {
         state1.branch(logos().origin_state, null)
       }).to.throw(/vt must be provided/)
+    })
+  })
+
+  describe('save/load round-trip', () => {
+    it('preserves tt and vt after save/load', () => {
+      setupArchetypes()
+
+      const world_mind = new Materia(logos(), 'world')
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
+
+      world_state.add_belief_from_template({
+        bases: ['Location'],
+        traits: {},
+        label: 'tavern'
+      })
+
+      world_state.lock()
+
+      // Create state at different tt
+      const world_state2 = world_state.branch(world_state.ground_state, 200)
+      world_state2.lock()
+
+      // Verify tt before save
+      expect(world_state.tt).to.equal(100)
+      expect(world_state2.tt).to.equal(200)
+
+      // Save and reload
+      const json = save_mind(world_mind)
+      DB.reset_registries()
+      setupArchetypes()
+      const loaded_world = load(json)
+
+      // Find states by tt
+      const states = [...loaded_world._states].sort((a, b) => a.tt - b.tt)
+      expect(states).to.have.lengthOf(2)
+      expect(states[0].tt).to.equal(100)
+      expect(states[0].vt).to.equal(100)
+      expect(states[1].tt).to.equal(200)
+      expect(states[1].vt).to.equal(200)
+    })
+
+    it('states_at_tt works correctly after save/load', () => {
+      setupArchetypes()
+
+      const world_mind = new Materia(logos(), 'world')
+      const world_state1 = world_mind.create_state(logos().origin_state, {tt: 100})
+      world_state1.lock()
+
+      const world_state2 = world_state1.branch(world_state1.ground_state, 200)
+      world_state2.lock()
+
+      const world_state3 = world_state2.branch(world_state2.ground_state, 300)
+      world_state3.lock()
+
+      // Save and reload
+      const json = save_mind(world_mind)
+      DB.reset_registries()
+      setupArchetypes()
+      const loaded_world = load(json)
+
+      // Verify states_at_tt works correctly
+      const ground = logos().origin_state
+      expect([...loaded_world.states_at_tt(ground, 50)]).to.deep.equal([])
+
+      const states_at_100 = [...loaded_world.states_at_tt(ground, 100)]
+      expect(states_at_100).to.have.lengthOf(1)
+      expect(states_at_100[0].tt).to.equal(100)
+
+      const states_at_200 = [...loaded_world.states_at_tt(ground, 200)]
+      expect(states_at_200).to.have.lengthOf(1)
+      expect(states_at_200[0].tt).to.equal(200)
+
+      const states_at_999 = [...loaded_world.states_at_tt(ground, 999)]
+      expect(states_at_999).to.have.lengthOf(1)
+      expect(states_at_999[0].tt).to.equal(300)
+    })
+
+    it('child mind preserves temporal coordination after save/load', () => {
+      setupArchetypes()
+
+      const world_mind = new Materia(logos(), 'world')
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
+
+      const npc = world_state.add_belief_from_template({
+        label: 'npc',
+        bases: ['Person'],
+        traits: {
+          mind: {}  // Auto-create mind
+        }
+      })
+
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
+      const initial_npc_state = [...npc_mind.states_at_tt(world_state, 100)][0]
+      initial_npc_state.lock()
+      world_state.lock()
+
+      // Verify fork invariant before save
+      expect(initial_npc_state.tt).to.equal(world_state.vt)
+
+      // Save world and reload
+      const json = save_mind(world_mind)
+      DB.reset_registries()
+      setupArchetypes()
+      const loaded_world = load(json)
+
+      // Find loaded state
+      const loaded_world_state = [...loaded_world._states][0]
+      expect(loaded_world_state.tt).to.equal(100)
+
+      // Verify child mind coordination
+      const loaded_npc = loaded_world_state.get_belief_by_label('npc')
+      const loaded_npc_mind = loaded_npc.get_trait(loaded_world_state, Traittype.get_by_label('mind'))
+
+      // Find child state and verify fork invariant preserved
+      const loaded_npc_states = [...loaded_npc_mind.states_at_tt(loaded_world_state, 100)]
+      expect(loaded_npc_states).to.have.lengthOf(1)
+      expect(loaded_npc_states[0].tt).to.equal(loaded_world_state.vt)
     })
   })
 })

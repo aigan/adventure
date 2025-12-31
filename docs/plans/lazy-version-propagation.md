@@ -820,3 +820,46 @@ New criteria (December 2024):
 10. ✅ @tracks compatibility: Works with timeline tracking
 11. ✅ Test coverage: All matrix scenarios have tests
 12. ✅ Chained promotions: Promotions that have promotions resolve correctly
+
+---
+
+## TODO
+
+### Documentation
+
+- [ ] Update SPECIFICATION.md to document promotions purpose and semantics:
+  - Promotions are for shared/cultural beliefs that evolve over time
+  - Primary use case: eidos beliefs (universals) that change (e.g., village event becomes common knowledge)
+  - Common case: temporal promotions resolve to **concrete values** (not Fuzzy)
+  - Special case: probability promotions (with certainty values) resolve to Fuzzy
+  - The original belief is removed from state; promotions are visible
+  - Trait resolution walks bases, encounters promotions, resolver picks appropriate version
+
+- [ ] Update IMPLEMENTATION.md with promotion mechanics:
+  - `replace(..., {promote: true})` removes original, inserts promotion, registers in `promotions` Set
+  - Trait resolution walks bases, encounters belief with promotions, calls `pick_promotion()`
+  - Temporal promotions: resolver filters by timestamp, returns single concrete value
+  - Probability promotions: `_collect_fuzzy_from_promotions()` gathers alternatives into Fuzzy
+
+- [ ] Add clear summary of how to use promotion to respective function in code
+
+### Missing Save/Load Tests
+
+Cross-reference with Test Matrix (LP-* scenarios):
+
+- [ ] LP-1/LP-2: Temporal promotion resolves to concrete value after save/load
+  - Create promotion at T2, query at T1 → v1 traits, query at T2 → v2 traits
+  - This is the **common case** - most promotions are temporal, not probability
+
+- [ ] LP-3: Multiple temporal promotions at different timestamps after save/load
+  - v1 → v2@T2, v3@T3, query at T2 → v2 traits
+
+- [ ] LP-7/LP-8: Chained promotions work after save/load
+  - base → v2 (promote) → v3 (promote), trait in middle promotion
+
+- [ ] Eidos → Materia inheritance pattern after save/load
+  - Shared belief in eidos with promotion
+  - Particular in materia inherits from eidos belief
+  - After save/load, particular still resolves traits through eidos promotion
+
+- [ ] Single probability promotion edge case (currently returns Fuzzy incorrectly for archetype traits)

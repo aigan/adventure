@@ -9,7 +9,7 @@
  */
 
 import { expect } from 'chai'
-import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs'
+import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation, saveAndReload } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { Mind, Materia } from '../public/worker/cosmos.mjs'
@@ -638,6 +638,48 @@ describe('State.rev_base() and Convergence.rev_base()', () => {
       // Both should have skip pointers created
       expect(room1_next).to.have.lengthOf(1)
       expect(room2_next).to.have.lengthOf(1)
+    })
+  })
+
+  describe('save/load round-trip', () => {
+    it('rev_base traversal works after save/load', () => {
+      const state1 = createStateInNewMind('world')
+
+      const room = state1.add_belief_from_template({
+        bases: ['Location'],
+        traits: {},
+        label: 'room'
+      })
+
+      const person = state1.add_belief_from_template({
+        bases: ['Actor'],
+        traits: { location: room.subject },
+        label: 'person'
+      })
+
+      state1.lock()
+
+      // Create version chain
+      const state2 = state1.branch(state1.ground_state, 2)
+      const room2 = state2.add_belief_from_template({
+        bases: ['Location'],
+        traits: {},
+        label: 'room2'
+      })
+      state2.replace_beliefs(Belief.from_template(state2, {
+        bases: [person],
+        traits: { location: room2.subject }
+      }))
+      state2.lock()
+
+      const loaded_mind = saveAndReload(state1.in_mind)
+      const loaded_state2 = [...loaded_mind._states].find(s => s.tt === 2)
+      const loaded_room = loaded_state2.get_belief_by_label('room')
+
+      // rev_base should work after load
+      const location_tt = Traittype.get_by_label('location')
+      const next_states = loaded_state2.rev_base(loaded_room.subject, location_tt)
+      expect(next_states).to.be.an('array')
     })
   })
 })

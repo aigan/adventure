@@ -9,7 +9,7 @@
  */
 
 import { expect } from 'chai'
-import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs'
+import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation, saveAndReload } from './helpers.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
@@ -390,6 +390,66 @@ describe('Convergence + rev_trait() Integration', () => {
         'Should find all 20 beliefs from large Convergence')
       expect(duration).to.be.lessThan(10,
         'Should complete in < 10ms for 20 components')
+    })
+  })
+
+  describe('save/load round-trip', () => {
+    it('Convergence rev_trait works after save/load', () => {
+      const world_mind = new Materia(logos(), 'world')
+      const world_state = world_mind.create_state(logos_state())
+
+      const location = world_state.add_belief_from_template({
+        bases: ['Location'],
+        traits: {},
+        label: 'location'
+      })
+
+      // Create NPC with mind trait to save child mind
+      const npc_mind = new Materia(world_mind, 'npc')
+
+      // Create two component states with beliefs
+      const comp1 = npc_mind.create_state(world_state)
+      comp1.add_belief_from_template({
+        bases: ['Location'],
+        traits: { '@about': location.subject },
+        label: 'knowledge1'
+      })
+      comp1.lock()
+
+      const comp2 = npc_mind.create_state(world_state)
+      comp2.add_belief_from_template({
+        bases: ['Location'],
+        traits: { '@about': location.subject },
+        label: 'knowledge2'
+      })
+      comp2.lock()
+
+      // Create Convergence
+      const conv_state = new Convergence(npc_mind, world_state, [comp1, comp2])
+      conv_state.lock()
+
+      // Attach NPC mind to world so it gets saved
+      world_state.add_belief_from_template({
+        bases: ['Person'],
+        traits: { mind: npc_mind },
+        label: 'npc'
+      })
+      world_state.lock()
+
+      const loaded_mind = saveAndReload(world_mind)
+      const loaded_world_state = [...loaded_mind._states][0]
+      const loaded_location = loaded_world_state.get_belief_by_label('location')
+
+      // Find the NPC mind and its Convergence state
+      const loaded_npc_mind = [...loaded_mind._child_minds][0]
+      expect(loaded_npc_mind).to.exist
+      const loaded_conv = [...loaded_npc_mind._states].find(s => s._type === 'Convergence')
+      expect(loaded_conv).to.exist
+
+      // rev_trait should work through Convergence after load
+      const about_tt = Traittype.get_by_label('@about')
+      const beliefs = [...loaded_location.rev_trait(loaded_conv, about_tt)]
+      expect(beliefs).to.have.lengthOf(2)
     })
   })
 })

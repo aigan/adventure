@@ -553,4 +553,100 @@ describe('State', () => {
       expect(player_state.ground_state).to.equal(world_state);
     });
   });
+
+  describe('save/load round-trip', () => {
+    beforeEach(() => {
+      DB.reset_registries()
+      setupStandardArchetypes()
+    })
+
+    it('preserves state certainty', () => {
+      const mind = new Materia(logos(), 'test')
+      const state = mind.create_state(logos().origin_state, {tt: 1, certainty: 0.75})
+
+      state.add_belief_from_template({
+        bases: ['Location'],
+        label: 'workshop'
+      })
+
+      state.lock()
+
+      // Save and reload
+      const json = save_mind(mind)
+      DB.reset_registries()
+      setupStandardArchetypes()
+      const loaded_mind = load(json)
+
+      // Get loaded state
+      const loaded_state = [...loaded_mind._states][0]
+      expect(loaded_state.certainty).to.equal(0.75)
+    })
+
+    it('preserves state base chain', () => {
+      const mind = new Materia(logos(), 'test')
+      const state1 = mind.create_state(logos().origin_state, {tt: 1})
+
+      state1.add_belief_from_template({
+        bases: ['Location'],
+        label: 'workshop'
+      })
+
+      state1.lock()
+
+      // Branch to create state2
+      const state2 = state1.branch(logos().origin_state, 2)
+      state2.add_belief_from_template({
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+      state2.lock()
+
+      // Save and reload
+      const json = save_mind(mind)
+      DB.reset_registries()
+      setupStandardArchetypes()
+      const loaded_mind = load(json)
+
+      // Find the loaded states
+      const loaded_states = [...loaded_mind._states]
+      const loaded_state1 = loaded_states.find(s => s.tt === 1)
+      const loaded_state2 = loaded_states.find(s => s.tt === 2)
+
+      // Base chain should be preserved
+      expect(loaded_state2.base).to.equal(loaded_state1)
+    })
+
+    it('preserves about_state reference', () => {
+      // Create two states, where state2 references state1 as about_state
+      const mind = new Materia(logos(), 'test')
+      const state1 = mind.create_state(logos().origin_state, {tt: 1})
+
+      state1.add_belief_from_template({
+        bases: ['Location'],
+        label: 'workshop'
+      })
+      state1.lock()
+
+      // Create state2 with about_state reference
+      const state2 = mind.create_state(logos().origin_state, {tt: 2, about_state: state1})
+      state2.lock()
+
+      const state1_id = state1._id
+      const state2_id = state2._id
+
+      // Save and reload
+      const json = save_mind(mind)
+      DB.reset_registries()
+      setupStandardArchetypes()
+      load(json)
+
+      // Get loaded states
+      const loaded_state1 = DB.get_state_by_id(state1_id)
+      const loaded_state2 = DB.get_state_by_id(state2_id)
+
+      // about_state should be restored
+      expect(loaded_state2.about_state).to.not.be.null
+      expect(loaded_state2.about_state).to.equal(loaded_state1)
+    })
+  })
 });

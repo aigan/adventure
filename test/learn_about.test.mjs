@@ -3,7 +3,7 @@ import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, save_mind,
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { learn_about } from '../public/worker/perception.mjs';
-import { createMindWithBeliefs, setupStandardArchetypes, setupMinimalArchetypes, stdTypes, Thing, setupAfterEachValidation } from './helpers.mjs';
+import { createMindWithBeliefs, setupStandardArchetypes, setupMinimalArchetypes, stdTypes, Thing, setupAfterEachValidation, saveAndReload } from './helpers.mjs';
 
 describe('learn_about', () => {
   beforeEach(() => {
@@ -633,6 +633,103 @@ describe('learn_about', () => {
 
       // Should NOT have location (has exposure metadata but wrong modality: spatial)
       expect(hammer_knowledge._traits.has(Traittype.get_by_label('location'))).to.be.false;
+    });
+  });
+
+  describe('save/load round-trip', () => {
+    it('preserves @about trait reference within same mind after save/load', () => {
+      // Use a single mind for simpler save/load test
+      const world_mind = new Materia(logos(), 'world');
+      const world_state = world_mind.create_state(logos_state(), {tt: 1});
+
+      const workshop = world_state.add_belief_from_template({
+        bases: ['Location'],
+        label: 'workshop'
+      });
+
+      const hammer = world_state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: { location: workshop.subject },
+        label: 'hammer'
+      });
+
+      // Create knowledge belief with @about trait directly (no cross-mind)
+      const knowledge = world_state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: {
+          '@about': hammer.subject,
+          location: workshop.subject
+        },
+        label: 'hammer_knowledge'
+      });
+
+      world_state.lock();
+
+      // Verify @about is set before save
+      const about_tt = Traittype.get_by_label('@about');
+      expect(knowledge.get_trait(world_state, about_tt)).to.equal(hammer.subject);
+
+      // Save and reload
+      const json = save_mind(world_mind);
+      DB.reset_registries();
+      setupStandardArchetypes();
+      const loaded_world = load(json);
+
+      // Verify @about reference works after load
+      const loaded_state = [...loaded_world._states][0];
+      const loaded_about_tt = Traittype.get_by_label('@about');
+      const loaded_knowledge = loaded_state.get_belief_by_label('hammer_knowledge');
+      const loaded_hammer = loaded_state.get_belief_by_label('hammer');
+
+      expect(loaded_knowledge).to.exist;
+      const loaded_about = loaded_knowledge.get_trait(loaded_state, loaded_about_tt);
+      expect(loaded_about).to.be.instanceOf(Subject);
+      expect(loaded_about.sid).to.equal(loaded_hammer.subject.sid);
+    });
+
+    it('learn_about works correctly after parent world save/load', () => {
+      const world_mind = new Materia(logos(), 'world');
+      const world_state = world_mind.create_state(logos_state(), {tt: 1});
+
+      world_state.add_belief_from_template({
+        bases: ['Location'],
+        traits: {},
+        label: 'tavern'
+      });
+
+      world_state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: { color: 'red' },
+        label: 'hammer'
+      });
+
+      world_state.lock();
+
+      // Save and reload world
+      const json = save_mind(world_mind);
+      DB.reset_registries();
+      setupStandardArchetypes();
+      const loaded_world = load(json);
+
+      // Create NPC mind in loaded world
+      const loaded_world_state = [...loaded_world._states][0];
+      const npc_mind = new Materia(loaded_world, 'npc');
+      const npc_state = npc_mind.create_state(loaded_world_state);
+
+      const loaded_hammer = loaded_world_state.get_belief_by_label('hammer');
+
+      // Learn about hammer in loaded world
+      const hammer_knowledge = learn_about(npc_state, loaded_hammer, {traits: ['color']});
+
+      // Verify learning works after world was loaded
+      expect(hammer_knowledge).to.exist;
+      expect(hammer_knowledge.in_mind).to.equal(npc_mind);
+
+      const color_tt = Traittype.get_by_label('color');
+      expect(hammer_knowledge.get_trait(npc_state, color_tt)).to.equal('red');
+
+      const about_tt = Traittype.get_by_label('@about');
+      expect(hammer_knowledge.get_trait(npc_state, about_tt)).to.equal(loaded_hammer.subject);
     });
   });
 });

@@ -6,10 +6,10 @@
  */
 
 import { expect } from 'chai'
-import { Mind, Materia, State, Belief, Traittype, Subject } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, State, Belief, Traittype, Subject, save_mind, load } from '../public/worker/cosmos.mjs'
 import { eidos } from '../public/worker/eidos.mjs'
 import * as DB from '../public/worker/db.mjs'
-import { createStateInNewMind, stdTypes, Thing, setupAfterEachValidation } from './helpers.mjs'
+import { createStateInNewMind, stdTypes, Thing, setupAfterEachValidation, setupStandardArchetypes } from './helpers.mjs'
 
 describe('Trait Inheritance - Comprehensive Coverage', () => {
 
@@ -1033,6 +1033,192 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const traits = [...bare.get_traits()]
         expect(traits.length).to.equal(0)
       })
+    })
+  })
+
+  // ====================
+  // SAVE/LOAD ROUND-TRIP
+  // ====================
+
+  describe('save/load round-trip', () => {
+    function setupInheritanceArchetypes() {
+      DB.reset_registries()
+      DB.register({
+        ...stdTypes,
+        color: 'string',
+        weight: 'number',
+        inventory: {
+          type: 'Subject',
+          container: Array,
+          composable: true
+        }
+      }, {
+        Thing,
+        PortableObject: { bases: ['Thing'] },
+        HasInventory: {
+          traits: { inventory: null }
+        },
+        Colored: {
+          bases: ['Thing'],
+          traits: { color: null }
+        }
+      }, {})
+    }
+
+    it('single-base inheritance works after save/load', () => {
+      setupInheritanceArchetypes()
+      const state = createStateInNewMind('test')
+
+      // Create base belief with trait
+      const base = state.add_belief_from_template({
+        bases: ['Colored'],
+        traits: { color: 'red' },
+        label: 'base'
+      })
+
+      // Create child that inherits from base
+      const child = state.add_belief_from_template({
+        bases: [base],
+        traits: {},
+        label: 'child'
+      })
+
+      state.lock()
+
+      // Verify inheritance works before save
+      const color_tt = Traittype.get_by_label('color')
+      expect(child.get_trait(state, color_tt)).to.equal('red')
+
+      // Save and reload
+      const json = save_mind(state.in_mind)
+      DB.reset_registries()
+      setupInheritanceArchetypes()
+      const loaded_mind = load(json)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_child = loaded_state.get_belief_by_label('child')
+
+      // Verify inheritance works after load
+      const loaded_color_tt = Traittype.get_by_label('color')
+      expect(loaded_child.get_trait(loaded_state, loaded_color_tt)).to.equal('red')
+    })
+
+    it('multi-level inheritance works after save/load', () => {
+      setupInheritanceArchetypes()
+      const state = createStateInNewMind('test')
+
+      const grandparent = state.add_belief_from_template({
+        bases: ['Colored'],
+        traits: { color: 'blue' },
+        label: 'grandparent'
+      })
+
+      const parent = state.add_belief_from_template({
+        bases: [grandparent],
+        traits: {},
+        label: 'parent'
+      })
+
+      const child = state.add_belief_from_template({
+        bases: [parent],
+        traits: {},
+        label: 'child'
+      })
+
+      state.lock()
+
+      // Save and reload
+      const json = save_mind(state.in_mind)
+      DB.reset_registries()
+      setupInheritanceArchetypes()
+      const loaded_mind = load(json)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_child = loaded_state.get_belief_by_label('child')
+
+      // Child should inherit color through parent from grandparent
+      const loaded_color_tt = Traittype.get_by_label('color')
+      expect(loaded_child.get_trait(loaded_state, loaded_color_tt)).to.equal('blue')
+    })
+
+    it('composable array inheritance works after save/load', () => {
+      setupInheritanceArchetypes()
+      const state = createStateInNewMind('test')
+
+      const sword = state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: {},
+        label: 'sword'
+      })
+
+      const shield = state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: {},
+        label: 'shield'
+      })
+
+      const warrior = state.add_belief_from_template({
+        bases: ['HasInventory'],
+        traits: { inventory: [sword.subject] },
+        label: 'warrior'
+      })
+
+      const knight = state.add_belief_from_template({
+        bases: [warrior],
+        traits: { inventory: [shield.subject] },
+        label: 'knight'
+      })
+
+      state.lock()
+
+      // Verify composition before save
+      const inventory_tt = Traittype.get_by_label('inventory')
+      const inv_before = knight.get_trait(state, inventory_tt)
+      expect(inv_before).to.be.an('array')
+      expect(inv_before).to.have.lengthOf(2)
+
+      // Save and reload
+      const json = save_mind(state.in_mind)
+      DB.reset_registries()
+      setupInheritanceArchetypes()
+      const loaded_mind = load(json)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_knight = loaded_state.get_belief_by_label('knight')
+
+      // Composition should work after load
+      const loaded_inventory_tt = Traittype.get_by_label('inventory')
+      const inv_after = loaded_knight.get_trait(loaded_state, loaded_inventory_tt)
+      expect(inv_after).to.be.an('array')
+      expect(inv_after).to.have.lengthOf(2)
+    })
+
+    it('trait shadowing works after save/load', () => {
+      setupInheritanceArchetypes()
+      const state = createStateInNewMind('test')
+
+      const base = state.add_belief_from_template({
+        bases: ['Colored'],
+        traits: { color: 'red' },
+        label: 'base'
+      })
+
+      const override = state.add_belief_from_template({
+        bases: [base],
+        traits: { color: 'green' },  // Shadows red
+        label: 'override'
+      })
+
+      state.lock()
+
+      // Save and reload
+      const json = save_mind(state.in_mind)
+      DB.reset_registries()
+      setupInheritanceArchetypes()
+      const loaded_mind = load(json)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_override = loaded_state.get_belief_by_label('override')
+
+      // Own value should shadow inherited
+      const loaded_color_tt = Traittype.get_by_label('color')
+      expect(loaded_override.get_trait(loaded_state, loaded_color_tt)).to.equal('green')
     })
   })
 })

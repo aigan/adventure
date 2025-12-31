@@ -1,8 +1,7 @@
 import { expect } from 'chai'
-import { Notion, Traittype, Subject, Belief, Materia, Fuzzy } from '../public/worker/cosmos.mjs'
-import { logos, logos_state } from '../public/worker/logos.mjs'
+import { Notion, Traittype, Subject, Belief, Materia, Fuzzy, logos, logos_state } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
-import { stdTypes, Thing, setupAfterEachValidation } from './helpers.mjs'
+import { stdTypes, Thing, setupAfterEachValidation, saveAndReload } from './helpers.mjs'
 
 describe('recall_by_subject', () => {
   beforeEach(() => {
@@ -860,5 +859,74 @@ describe('get_trait_path', () => {
     const value = hammer.get_trait_path(state, ['handle', 'color'])
 
     expect(value).to.equal('brown')
+  })
+})
+
+describe('save/load round-trip', () => {
+  // Custom setup that includes the archetypes used in this test file
+  function setupRecallArchetypes() {
+    DB.reset_registries()
+    DB.register({
+      ...stdTypes,
+      color: 'string',
+      weight: 'number',
+      location: 'Subject',
+    }, {
+      Thing,
+      Tool: { bases: ['Thing'], traits: { color: null, weight: null, location: null } },
+      Location: { bases: ['Thing'] }
+    }, {})
+  }
+
+  it('recall_by_subject works after save/load', () => {
+    setupRecallArchetypes()
+    const mind = new Materia(logos(), 'player')
+    const ground = logos_state()
+    const state = mind.create_state(ground, { tt: 1 })
+
+    const hammer = state.add_belief_from_template({
+      label: 'hammer',
+      bases: ['Tool'],
+      traits: { color: 'red', weight: 5 }
+    })
+    state.lock()
+
+    const loaded_mind = saveAndReload(mind, setupRecallArchetypes)
+    const loaded_ground = loaded_mind._parent.origin_state // logos_state after load
+    const loaded_state = [...loaded_mind._states][0]
+    const loaded_hammer = loaded_state.get_belief_by_label('hammer')
+
+    // recall_by_subject should work - re-fetch traittype after reload
+    const color_tt = Traittype.get_by_label('color')
+    const notion = loaded_mind.recall_by_subject(loaded_ground, loaded_hammer.subject, 1)
+    const color_fuzzy = notion.get(color_tt)
+    expect(color_fuzzy).to.be.instanceOf(Fuzzy)
+    expect(color_fuzzy.alternatives[0].value).to.equal('red')
+  })
+
+  it('recall_by_archetype works after save/load', () => {
+    setupRecallArchetypes()
+    const mind = new Materia(logos(), 'player')
+    const ground = logos_state()
+    const state = mind.create_state(ground, { tt: 1 })
+
+    state.add_belief_from_template({
+      label: 'hammer',
+      bases: ['Tool'],
+      traits: { color: 'red' }
+    })
+    state.add_belief_from_template({
+      label: 'wrench',
+      bases: ['Tool'],
+      traits: { color: 'blue' }
+    })
+    state.lock()
+
+    const loaded_mind = saveAndReload(mind, setupRecallArchetypes)
+    const loaded_ground = loaded_mind._parent.origin_state // logos_state after load
+
+    // recall_by_archetype should work - use string labels as per API
+    const tools = [...loaded_mind.recall_by_archetype(loaded_ground, 'Tool', 1, ['color'])]
+    expect(tools).to.have.lengthOf(2)
   })
 })

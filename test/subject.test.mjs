@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { Mind, Materia, Belief, Subject } from '../public/worker/cosmos.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { setupMinimalArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs';
+import { setupMinimalArchetypes, createStateInNewMind, setupAfterEachValidation, saveAndReload } from './helpers.mjs';
 
 describe('Subject', () => {
   beforeEach(() => {
@@ -89,6 +89,54 @@ describe('Subject', () => {
       const nonexistent_subject = Subject.get_or_create_by_sid(999, null);  // Global subject for test
 
       expect([...nonexistent_subject.beliefs_at_tt(100)]).to.deep.equal([]);
+    });
+  });
+
+  describe('save/load round-trip', () => {
+    it('preserves subject identity after save/load', () => {
+      const mind = new Materia(logos(), 'test');
+      const state = mind.create_state(logos().origin_state, { tt: 1 });
+
+      const hammer = Belief.from_template(state, {
+        traits: {},
+        bases: ['PortableObject'],
+        label: 'hammer'
+      });
+      const original_sid = hammer.subject.sid;
+      state.lock();
+
+      const loaded_mind = saveAndReload(mind);
+      const loaded_state = [...loaded_mind._states][0];
+      const loaded_hammer = loaded_state.get_belief_by_label('hammer');
+
+      expect(loaded_hammer.subject.sid).to.equal(original_sid);
+    });
+
+    it('beliefs_at_tt works after save/load', () => {
+      const mind = new Materia(logos(), 'test');
+      const state1 = mind.create_state(logos().origin_state, { tt: 100 });
+      const hammer_v1 = Belief.from_template(state1, {
+        traits: {},
+        bases: ['PortableObject'],
+        label: 'hammer'
+      });
+      state1.lock();
+
+      const state2 = state1.branch(logos().origin_state, 200);
+      Belief.from_template(state2, {
+        sid: hammer_v1.subject.sid,
+        bases: [hammer_v1],
+        traits: { color: 'red' }
+      });
+      state2.lock();
+
+      const loaded_mind = saveAndReload(mind);
+      const loaded_state2 = [...loaded_mind._states].find(s => s.tt === 200);
+      const loaded_hammer = loaded_state2.get_belief_by_label('hammer');
+
+      // beliefs_at_tt should work
+      const beliefs = [...loaded_hammer.subject.beliefs_at_tt(200)];
+      expect(beliefs).to.have.lengthOf(1);
     });
   });
 });

@@ -18,7 +18,7 @@ import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { Archetype } from '../public/worker/archetype.mjs'
-import { Mind, Materia, Fuzzy } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, Fuzzy, save_mind, load } from '../public/worker/cosmos.mjs'
 import { eidos } from '../public/worker/eidos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
@@ -1531,6 +1531,107 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         assert.lengthOf(occupants_b, 1)
         assert.strictEqual(occupants_b[0], npc_b)
       })
+    })
+  })
+
+  describe('save/load round-trip', () => {
+    it('rev_trait works after save/load', () => {
+      const state = createStateInNewMind()
+
+      const room = Belief.from_template(state, {
+        bases: ['Location'],
+        label: 'room'
+      })
+
+      const npc1 = Belief.from_template(state, {
+        bases: ['Actor'],
+        traits: { location: room.subject },
+        label: 'npc1'
+      })
+
+      const npc2 = Belief.from_template(state, {
+        bases: ['Actor'],
+        traits: { location: room.subject },
+        label: 'npc2'
+      })
+
+      state.lock()
+
+      // Verify rev_trait works before save
+      const location_tt = Traittype.get_by_label('location')
+      const occupants_before = [...room.rev_trait(state, location_tt)]
+      assert.lengthOf(occupants_before, 2)
+
+      // Save and reload
+      const json = save_mind(state.in_mind)
+      DB.reset_registries()
+      setupStandardArchetypes()
+      const loaded_mind = load(json)
+
+      // Get fresh Traittype after reset
+      const location_tt_new = Traittype.get_by_label('location')
+
+      // Get loaded state and room
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_room = loaded_state.get_belief_by_label('room')
+
+      // rev_trait should work after load
+      const occupants_after = [...loaded_room.rev_trait(loaded_state, location_tt_new)]
+      assert.lengthOf(occupants_after, 2)
+
+      // Should find the correct NPCs
+      const labels = occupants_after.map(b => b.get_label()).sort()
+      assert.deepEqual(labels, ['npc1', 'npc2'])
+    })
+
+    it('rev_trait with state chain works after save/load', () => {
+      const mind = new Materia(logos(), 'test')
+      const state1 = mind.create_state(logos().origin_state, { tt: 1 })
+
+      const room = Belief.from_template(state1, {
+        bases: ['Location'],
+        label: 'room'
+      })
+
+      const npc = Belief.from_template(state1, {
+        bases: ['Actor'],
+        traits: { location: room.subject },
+        label: 'npc'
+      })
+
+      state1.lock()
+
+      // Create state2 with additional NPC
+      const state2 = state1.branch(logos().origin_state, 2)
+      const npc2 = Belief.from_template(state2, {
+        bases: ['Actor'],
+        traits: { location: room.subject },
+        label: 'npc2'
+      })
+
+      state2.lock()
+
+      // Save and reload
+      const json = save_mind(mind)
+      DB.reset_registries()
+      setupStandardArchetypes()
+      load(json)
+
+      // Get fresh Traittype after reset
+      const location_tt = Traittype.get_by_label('location')
+
+      // Get loaded states
+      const loaded_state1 = DB.get_state_by_id(state1._id)
+      const loaded_state2 = DB.get_state_by_id(state2._id)
+      const loaded_room = loaded_state1.get_belief_by_label('room')
+
+      // state1 should have 1 occupant
+      const occupants1 = [...loaded_room.rev_trait(loaded_state1, location_tt)]
+      assert.lengthOf(occupants1, 1)
+
+      // state2 should have 2 occupants (inherited + new)
+      const occupants2 = [...loaded_room.rev_trait(loaded_state2, location_tt)]
+      assert.lengthOf(occupants2, 2)
     })
   })
 })

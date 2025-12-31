@@ -18,7 +18,7 @@ import { logos, logos_state } from '../public/worker/logos.mjs'
 import { eidos } from '../public/worker/eidos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { learn_about } from '../public/worker/perception.mjs';
-import { createMindWithBeliefs, setupStandardArchetypes, setupAfterEachValidation } from './helpers.mjs';
+import { createMindWithBeliefs, setupStandardArchetypes, setupAfterEachValidation, saveAndReload } from './helpers.mjs';
 
 describe('Integration', () => {
   beforeEach(() => {
@@ -1246,6 +1246,200 @@ describe('Integration', () => {
 
       // Since Player didn't add any new traits, should just inherit from Villager
       // (no new belief created in Player's state, just inherited through base chain)
+    });
+  });
+
+  describe('save/load round-trip', () => {
+    function setupIntegrationArchetypes() {
+      DB.register({
+        '@about': { type: 'Subject', mind: 'parent' },
+        location: 'Location',
+        mind: 'Mind',
+        color: 'string',
+        name: 'string',
+      }, {
+        Thing: { traits: { '@about': null } },
+        ObjectPhysical: {
+          bases: ['Thing'],
+          traits: { location: null, color: null }
+        },
+        Mental: {
+          bases: ['Thing'],
+          traits: { mind: null }
+        },
+        Location: {
+          bases: ['ObjectPhysical']
+        },
+        PortableObject: {
+          bases: ['ObjectPhysical']
+        },
+        Person: {
+          bases: ['ObjectPhysical', 'Mental']
+        }
+      }, {});
+    }
+
+    it('mind template knowledge works after save/load', () => {
+      DB.reset_registries();
+      setupIntegrationArchetypes();
+
+      // Create world with workshop
+      const world_mind = new Materia(logos(), 'world');
+      const world_state = world_mind.create_state(logos().origin_state, {tt: 1});
+
+      world_state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop', color: 'blue' }
+        }
+      });
+
+      // Create player with mind template (without using shared prototypes)
+      world_state.add_beliefs_from_template({
+        player: {
+          bases: ['Person'],
+          traits: {
+            location: 'workshop',
+            mind: {
+              workshop: ['location'],
+              hammer: ['color']
+            }
+          }
+        }
+      });
+
+      world_state.lock();
+
+      // Verify player has knowledge before save
+      const player = world_state.get_belief_by_label('player');
+      const player_mind = player.get_trait(world_state, Traittype.get_by_label('mind'));
+      expect(player_mind).to.be.instanceOf(Mind);
+      const player_state = player_mind.origin_state;
+      const beliefs_before = [...player_state.get_beliefs()];
+      expect(beliefs_before.length).to.be.at.least(2);
+
+      // Save and reload
+      const json = save_mind(world_mind);
+      DB.reset_registries();
+      setupIntegrationArchetypes();
+      const loaded_mind = load(json);
+      const loaded_state = [...loaded_mind._states][0];
+
+      // Verify player has mind after load
+      const loaded_player = loaded_state.get_belief_by_label('player');
+      expect(loaded_player).to.exist;
+      const loaded_player_mind = loaded_player.get_trait(loaded_state, Traittype.get_by_label('mind'));
+      expect(loaded_player_mind).to.be.instanceOf(Mind);
+
+      // Branch to work with unlocked state
+      const working_state = loaded_state.branch(logos_state(), 2);
+
+      // Verify player can access knowledge (use get_active_state_by_host after branching)
+      const working_player = working_state.get_belief_by_label('player');
+      const loaded_player_state = working_state.get_active_state_by_host(working_player.subject);
+      const beliefs = [...loaded_player_state.get_beliefs()];
+      expect(beliefs.length).to.be.at.least(2);
+
+      // Verify workshop knowledge exists
+      const loaded_workshop = loaded_state.get_belief_by_label('workshop');
+      const workshop_knowledge = beliefs.find(b => {
+        const about = b.get_trait(loaded_player_state, Traittype.get_by_label('@about'));
+        return about && about.sid === loaded_workshop.subject.sid;
+      });
+      expect(workshop_knowledge).to.exist;
+
+      // Verify hammer knowledge exists
+      const loaded_hammer = loaded_state.get_belief_by_label('hammer');
+      const hammer_knowledge = beliefs.find(b => {
+        const about = b.get_trait(loaded_player_state, Traittype.get_by_label('@about'));
+        return about && about.sid === loaded_hammer.subject.sid;
+      });
+      expect(hammer_knowledge).to.exist;
+    });
+
+    it('belief base chain works after save/load', () => {
+      DB.reset_registries();
+      setupIntegrationArchetypes();
+
+      // Create world with entities
+      const world_mind = new Materia(logos(), 'world');
+      const world_state = world_mind.create_state(logos_state(), {tt: 1});
+
+      world_state.add_beliefs_from_template({
+        tavern: { bases: ['Location'] },
+        workshop: { bases: ['Location'] }
+      });
+
+      // Create base prototype in the world itself (not eidos)
+      const villager_proto = world_state.add_belief_from_template({
+        bases: ['Person'],
+        traits: {
+          mind: { tavern: ['location'] }
+        },
+        label: 'VillagerProto'
+      });
+      villager_proto.lock(world_state);
+
+      world_state.lock();
+
+      // Branch and create smith that inherits from villager
+      const world_state2 = world_state.branch(logos_state(), 2);
+
+      const smith = world_state2.add_belief_from_template({
+        bases: [villager_proto],
+        traits: {
+          mind: { workshop: ['location'] }
+        },
+        label: 'smith'
+      });
+
+      smith.lock(world_state2);
+      world_state2.lock();
+
+      // Verify smith has knowledge from both self and base
+      const smith_mind = smith.get_trait(world_state2, Traittype.get_by_label('mind'));
+      expect(smith_mind).to.be.instanceOf(Mind);
+      const smith_state = smith_mind.origin_state;
+      const smith_beliefs = [...smith_state.get_beliefs()];
+      expect(smith_beliefs.length).to.be.at.least(2);
+
+      // Save and reload
+      const json = save_mind(world_mind);
+      DB.reset_registries();
+      setupIntegrationArchetypes();
+      const loaded_mind = load(json);
+      const loaded_state = [...loaded_mind._states].find(s => s.tt === 2);
+
+      // Branch to work with unlocked state
+      const working_state = loaded_state.branch(logos_state(), 3);
+
+      // Verify smith still has knowledge after load
+      const loaded_smith = working_state.get_belief_by_label('smith');
+      expect(loaded_smith).to.exist;
+      const loaded_smith_mind = loaded_smith.get_trait(working_state, Traittype.get_by_label('mind'));
+      expect(loaded_smith_mind).to.be.instanceOf(Mind);
+
+      const loaded_smith_state = working_state.get_active_state_by_host(loaded_smith.subject);
+      const loaded_beliefs = [...loaded_smith_state.get_beliefs()];
+      expect(loaded_beliefs.length).to.be.at.least(2);
+
+      // Verify both tavern and workshop knowledge exist
+      const loaded_tavern = working_state.get_belief_by_label('tavern');
+      const loaded_workshop = working_state.get_belief_by_label('workshop');
+      const about_tt = Traittype.get_by_label('@about');
+
+      const tavern_knowledge = loaded_beliefs.find(b => {
+        const about = b.get_trait(loaded_smith_state, about_tt);
+        return about && about.sid === loaded_tavern.subject.sid;
+      });
+      const workshop_knowledge = loaded_beliefs.find(b => {
+        const about = b.get_trait(loaded_smith_state, about_tt);
+        return about && about.sid === loaded_workshop.subject.sid;
+      });
+
+      expect(tavern_knowledge).to.exist;
+      expect(workshop_knowledge).to.exist;
     });
   });
 });

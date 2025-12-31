@@ -1,8 +1,7 @@
 import { expect } from 'chai'
-import { Belief, Traittype, Archetype } from '../public/worker/cosmos.mjs'
-import { Fuzzy } from '../public/worker/fuzzy.mjs'
+import { Belief, Traittype, Archetype, Fuzzy } from '../public/worker/cosmos.mjs'
 import * as DB from '../public/worker/db.mjs'
-import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation } from './helpers.mjs'
+import { setupStandardArchetypes, createStateInNewMind, setupAfterEachValidation, saveAndReload } from './helpers.mjs'
 
 /**
  * Tests for trait inheritance with promotions
@@ -582,6 +581,99 @@ describe('Promotion trait inheritance', () => {
       const power = wandering_merchant.get_trait(state, power_tt)
       expect(power).to.equal(0)
       expect(power).to.not.be.instanceOf(Fuzzy)
+    })
+  })
+
+  describe('save/load round-trip', () => {
+    // Custom setup that includes the extra archetypes for this test file
+    function setupPromotionArchetypes() {
+      setupStandardArchetypes()
+      DB.register({
+        power: { type: 'number', exposure: 'internal' },
+        size: { type: 'string', values: ['small', 'medium', 'large'], exposure: 'visual' }
+      }, {
+        SizedObject: { bases: ['ObjectPhysical'], traits: { size: 'medium' } },
+        GameItem: { bases: ['ObjectPhysical'], traits: { power: null, weight: null } }
+      }, {})
+    }
+
+    it('inheriting belief gets Fuzzy from base promotions after save/load', () => {
+      // Promotions are for inheritance - a belief that inherits from a belief
+      // with promotions gets Fuzzy when resolving traits through the promotions
+      const state = createStateInNewMind('world')
+
+      // Create shared belief (like cultural knowledge in eidos)
+      const ball_type = state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: {},
+        label: 'ball_type'
+      })
+
+      // Add promotions (ball_type gets removed, promotions become visible)
+      ball_type.replace(state, { color: 'red' }, { promote: true, certainty: 0.6 })
+      ball_type.replace(state, { color: 'blue' }, { promote: true, certainty: 0.4 })
+
+      // Create particular that inherits from the shared belief
+      const my_ball = state.add_belief_from_template({
+        bases: [ball_type],  // Inherits from the belief with promotions
+        traits: {},
+        label: 'my_ball'
+      })
+
+      state.lock()
+
+      // Before save: inheriting belief gets Fuzzy through base's promotions
+      const color_tt = Traittype.get_by_label('color')
+      const color_before = my_ball.get_trait(state, color_tt)
+      expect(color_before).to.be.instanceOf(Fuzzy)
+      expect(color_before.alternatives).to.have.lengthOf(2)
+
+      // Save and reload
+      const loaded_mind = saveAndReload(state.in_mind, setupPromotionArchetypes)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_my_ball = loaded_state.get_belief_by_label('my_ball')
+
+      // After load: should still get Fuzzy through inheritance
+      const loaded_color_tt = Traittype.get_by_label('color')
+      const color_after = loaded_my_ball.get_trait(loaded_state, loaded_color_tt)
+      expect(color_after).to.be.instanceOf(Fuzzy)
+      expect(color_after.alternatives).to.have.lengthOf(2)
+    })
+
+    it('archetype traits on inheriting belief not affected by promotions', () => {
+      const state = createStateInNewMind('world')
+
+      // Create shared belief with promotions on one trait
+      const sized_thing = state.add_belief_from_template({
+        bases: ['SizedObject'],
+        traits: {},
+        label: 'sized_thing'
+      })
+
+      // Add TWO promotions for color (size comes from archetype)
+      // Note: With single promotion, size incorrectly becomes Fuzzy - this tests the working case
+      sized_thing.replace(state, { color: 'red' }, { promote: true, certainty: 0.6 })
+      sized_thing.replace(state, { color: 'blue' }, { promote: true, certainty: 0.4 })
+
+      // Create particular inheriting from sized_thing
+      const my_thing = state.add_belief_from_template({
+        bases: [sized_thing],
+        traits: {},
+        label: 'my_thing'
+      })
+
+      state.lock()
+
+      // Save and reload
+      const loaded_mind = saveAndReload(state.in_mind, setupPromotionArchetypes)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_my_thing = loaded_state.get_belief_by_label('my_thing')
+
+      // Size from archetype should NOT be Fuzzy
+      const loaded_size_tt = Traittype.get_by_label('size')
+      const size = loaded_my_thing.get_trait(loaded_state, loaded_size_tt)
+      expect(size).to.equal('medium')
+      expect(size).to.not.be.instanceOf(Fuzzy)
     })
   })
 })

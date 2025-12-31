@@ -5,7 +5,8 @@ import { logos, logos_state } from '../public/worker/logos.mjs'
 import { Belief } from '../public/worker/belief.mjs'
 import { Traittype } from '../public/worker/traittype.mjs'
 import { perceive, identify, learn_from, recognize, learn_about } from '../public/worker/perception.mjs'
-import { setupStandardArchetypes, createMindWithBeliefs, get_knowledge_about, setupAfterEachValidation } from './helpers.mjs'
+import { setupStandardArchetypes, createMindWithBeliefs, get_knowledge_about, setupAfterEachValidation, saveAndReload } from './helpers.mjs'
+import { save_mind, load } from '../public/worker/cosmos.mjs'
 
 describe('observation', () => {
   beforeEach(() => {
@@ -2188,6 +2189,143 @@ describe('observation', () => {
       const subjects = black_objects.map(n => n.subject)
       expect(subjects).to.include(hammer_black.subject)
       expect(subjects).to.include(wrench_black.subject)
+    })
+  })
+
+  describe('save/load round-trip', () => {
+    beforeEach(() => {
+      // Register EventAwareness/EventPerception
+      DB.register({
+        content: { type: 'Thing', container: Array, exposure: 'internal' }
+      }, {
+        EventAwareness: {
+          bases: ['Thing'],
+          traits: { content: null }
+        },
+        EventPerception: {
+          bases: ['EventAwareness']
+        }
+      }, {})
+    })
+
+    it('recognize works after save/load', () => {
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop', color: 'blue' }
+        },
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: { hammer: ['color'] },
+            location: 'workshop'
+          }
+        }
+      })
+
+      state.lock()
+      state = state.branch(Cosmos.logos_state(), 2)
+
+      // Verify recognize works before save
+      const player = state.get_belief_by_label('player')
+      const hammer = state.get_belief_by_label('hammer')
+      const player_state = state.get_active_state_by_host(player.subject)
+      const knowledge_before = recognize(player_state, hammer)
+      expect(knowledge_before).to.have.lengthOf(1)
+
+      state.lock()
+
+      // Save and reload
+      const json = save_mind(world_mind)
+      DB.reset_registries()
+      setupStandardArchetypes()
+      DB.register({
+        content: { type: 'Thing', container: Array, exposure: 'internal' }
+      }, {
+        EventAwareness: { bases: ['Thing'], traits: { content: null } },
+        EventPerception: { bases: ['EventAwareness'] }
+      }, {})
+      const loaded_mind = load(json)
+      const loaded_state = [...loaded_mind._states].find(s => s.tt === 2)
+
+      // Branch to work with unlocked state
+      const working_state = loaded_state.branch(Cosmos.logos_state(), 3)
+
+      // Verify recognize works after load
+      const loaded_player = working_state.get_belief_by_label('player')
+      const loaded_hammer = working_state.get_belief_by_label('hammer')
+      const loaded_player_state = working_state.get_active_state_by_host(loaded_player.subject)
+      const knowledge_after = recognize(loaded_player_state, loaded_hammer)
+      expect(knowledge_after).to.have.lengthOf(1)
+
+      // Verify trait is preserved
+      const color_tt = Traittype.get_by_label('color')
+      expect(knowledge_after[0].get_trait(loaded_player_state, color_tt)).to.equal('blue')
+    })
+
+    it('perceive and learn_from work after save/load', () => {
+      const world_mind = new Cosmos.Materia(Cosmos.logos(), 'world')
+      let state = world_mind.create_state(Cosmos.logos_state(), {tt: 1})
+
+      state.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop', color: 'blue' }
+        },
+        wrench: {
+          bases: ['PortableObject'],
+          traits: { location: 'workshop', color: 'red' }
+        },
+        player: {
+          bases: ['Person'],
+          traits: {
+            mind: {},  // Player doesn't know anything yet
+            location: 'workshop'
+          }
+        }
+      })
+
+      state.lock()
+
+      // Save and reload
+      const json = save_mind(world_mind)
+      DB.reset_registries()
+      setupStandardArchetypes()
+      DB.register({
+        content: { type: 'Thing', container: Array, exposure: 'internal' }
+      }, {
+        EventAwareness: { bases: ['Thing'], traits: { content: null } },
+        EventPerception: { bases: ['EventAwareness'] }
+      }, {})
+      const loaded_mind = load(json)
+      const loaded_state = [...loaded_mind._states][0]
+
+      // Branch to work with unlocked state
+      const working_state = loaded_state.branch(Cosmos.logos_state(), 2)
+
+      const loaded_player = working_state.get_belief_by_label('player')
+      const loaded_hammer = working_state.get_belief_by_label('hammer')
+      const loaded_player_state = working_state.get_active_state_by_host(loaded_player.subject)
+
+      // Player doesn't know about hammer yet
+      const knowledge_before = recognize(loaded_player_state, loaded_hammer)
+      expect(knowledge_before).to.have.lengthOf(0)
+
+      // Perceive and learn after load
+      const perception = perceive(loaded_player_state, [loaded_hammer])
+      learn_from(loaded_player_state, perception)
+
+      // Now player should know about hammer
+      const knowledge_after = recognize(loaded_player_state, loaded_hammer)
+      expect(knowledge_after).to.have.lengthOf(1)
+
+      const color_tt = Traittype.get_by_label('color')
+      expect(knowledge_after[0].get_trait(loaded_player_state, color_tt)).to.equal('blue')
     })
   })
 })

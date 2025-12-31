@@ -1991,4 +1991,165 @@ describe('Belief', () => {
       // Should have alternatives from both v2 and v3's promotions
     })
   })
+
+  describe('save/load round-trip', () => {
+    it('preserves promotions after save/load', () => {
+      const state = createStateInNewMind()
+      const hammer = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+      const hammer_id = hammer._id  // Save ID for later lookup
+
+      // Create promoted versions
+      const hammer_v2 = hammer.branch(state, { color: 'red' }, { promote: true })
+      const hammer_v3 = hammer.branch(state, { color: 'blue' }, { promote: true })
+
+      // Verify promotions before save
+      expect(hammer.promotions.size).to.equal(2)
+      expect(hammer.promotions.has(hammer_v2)).to.be.true
+      expect(hammer.promotions.has(hammer_v3)).to.be.true
+
+      state.lock()
+
+      // Save and reload
+      const json = save_mind(state.in_mind)
+      DB.reset_registries()
+      setupStandardArchetypes()
+      load(json)
+
+      // Get loaded base hammer by ID (not get_belief_by_label, since branch removes base from state)
+      const loaded_hammer = DB.get_belief_by_id(hammer_id)
+
+      // Promotions should be restored
+      expect(loaded_hammer.promotions.size).to.equal(2)
+
+      // Get the loaded promotion beliefs
+      const loaded_promotions = [...loaded_hammer.promotions]
+      const loaded_colors = loaded_promotions.map(p => p._traits.get(Traittype.get_by_label('color')))
+      expect(loaded_colors).to.include('red')
+      expect(loaded_colors).to.include('blue')
+    })
+
+    it('preserves certainty on promoted beliefs', () => {
+      const state = createStateInNewMind()
+      const hammer = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        label: 'hammer'
+      })
+
+      // Create promoted versions with certainty
+      const hammer_v2a = hammer.branch(state, { color: 'red' }, { promote: true, certainty: 0.6 })
+      const hammer_v2b = hammer.branch(state, { color: 'blue' }, { promote: true, certainty: 0.4 })
+
+      expect(hammer_v2a.certainty).to.equal(0.6)
+      expect(hammer_v2b.certainty).to.equal(0.4)
+
+      state.lock()
+
+      // Save and reload
+      const json = save_mind(state.in_mind)
+      DB.reset_registries()
+      setupStandardArchetypes()
+      const loaded_mind = load(json)
+
+      // Find the loaded promotion beliefs by their original IDs
+      const loaded_v2a = DB.get_belief_by_id(hammer_v2a._id)
+      const loaded_v2b = DB.get_belief_by_id(hammer_v2b._id)
+
+      // Certainty should be restored
+      expect(loaded_v2a.certainty).to.equal(0.6)
+      expect(loaded_v2b.certainty).to.equal(0.4)
+    })
+
+    it('preserves belief base chain after save/load', () => {
+      const state = createStateInNewMind()
+
+      // Create belief chain: v1 -> v2 -> v3
+      const hammer_v1 = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        traits: { color: 'grey' },
+        label: 'hammer'
+      })
+
+      const hammer_v2 = Belief.from_template(state, {
+        sid: hammer_v1.subject.sid,
+        bases: [hammer_v1],
+        traits: { color: 'red' }
+      })
+
+      const hammer_v3 = Belief.from_template(state, {
+        sid: hammer_v1.subject.sid,
+        bases: [hammer_v2],
+        traits: { color: 'blue' }
+      })
+
+      state.lock()
+
+      // Save and reload
+      const json = save_mind(state.in_mind)
+      DB.reset_registries()
+      setupStandardArchetypes()
+      load(json)
+
+      // Get loaded beliefs by original IDs
+      const loaded_v1 = DB.get_belief_by_id(hammer_v1._id)
+      const loaded_v2 = DB.get_belief_by_id(hammer_v2._id)
+      const loaded_v3 = DB.get_belief_by_id(hammer_v3._id)
+
+      // Base chain should be restored
+      expect([...loaded_v2._bases]).to.include(loaded_v1)
+      expect([...loaded_v3._bases]).to.include(loaded_v2)
+
+      // Trait inheritance should work
+      const color_tt = Traittype.get_by_label('color')
+      expect(loaded_v3._traits.get(color_tt)).to.equal('blue')
+    })
+
+    it('promotion trait resolution works after save/load', () => {
+      const state = createStateInNewMind()
+
+      const workshop = Belief.from_template(state, { bases: ['Location'], label: 'workshop' })
+      const shed = Belief.from_template(state, { bases: ['Location'], label: 'shed' })
+
+      // Create base belief with promotions
+      const hammer = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        traits: { location: workshop.subject },
+        label: 'hammer'
+      })
+      const hammer_id = hammer._id  // Save ID for later lookup
+
+      // Create probability promotions
+      hammer.branch(state, { location: workshop.subject }, { promote: true, certainty: 0.6 })
+      hammer.branch(state, { location: shed.subject }, { promote: true, certainty: 0.4 })
+
+      // Create child belief that inherits from hammer
+      const my_hammer = Belief.from(state, [hammer], {})
+
+      state.lock()
+
+      // Save and reload
+      const json = save_mind(state.in_mind)
+      DB.reset_registries()
+      setupStandardArchetypes()
+      const loaded_mind = load(json)
+
+      // Get fresh Traittype after reset (old reference is stale)
+      const location_tt = Traittype.get_by_label('location')
+
+      // Get loaded beliefs by ID (not get_belief_by_label, since branch removes base from state)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_hammer = DB.get_belief_by_id(hammer_id)
+      const loaded_my_hammer = DB.get_belief_by_id(my_hammer._id)
+
+      // Promotions should be restored
+      expect(loaded_hammer.promotions.size).to.equal(2)
+
+      // get_trait should return Fuzzy from promotions
+      const value = loaded_my_hammer.get_trait(loaded_state, location_tt)
+      expect(value).to.be.instanceOf(Fuzzy)
+      expect(value.alternatives).to.have.length(2)
+    })
+  })
 });

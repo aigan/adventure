@@ -1,6 +1,9 @@
 import { expect } from 'chai'
 import { Fuzzy, unknown, _reset_unknown } from '../public/worker/fuzzy.mjs'
-import { deserialize_reference } from '../public/worker/serialize.mjs'
+import { deserialize_reference, load, save_mind } from '../public/worker/serialize.mjs'
+import { Traittype } from '../public/worker/traittype.mjs'
+import * as DB from '../public/worker/db.mjs'
+import { createStateInNewMind, setupStandardArchetypes, saveAndReload, setupAfterEachValidation } from './helpers.mjs'
 
 describe('Fuzzy', () => {
   beforeEach(() => {
@@ -202,6 +205,165 @@ describe('Fuzzy', () => {
       expect(restored).to.be.instanceOf(Fuzzy)
       expect(restored.is_unknown).to.be.false
       expect(restored.alternatives).to.deep.equal(original.alternatives)
+    })
+  })
+
+  describe('save/load with cosmos', () => {
+    beforeEach(() => {
+      DB.reset_registries()
+      setupStandardArchetypes()
+    })
+    setupAfterEachValidation()
+
+    it('Fuzzy from promotions persists after save/load', () => {
+      // Promotions are for inheritance - a belief that inherits from a belief
+      // with promotions gets Fuzzy when resolving traits through the promotions
+      const state = createStateInNewMind('world')
+
+      // Create shared belief (like cultural knowledge in eidos)
+      const ball_type = state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: {},
+        label: 'ball_type'
+      })
+
+      // Add promotions (ball_type gets removed, promotions become visible)
+      ball_type.replace(state, { color: 'red' }, { promote: true, certainty: 0.6 })
+      ball_type.replace(state, { color: 'blue' }, { promote: true, certainty: 0.4 })
+
+      // Create particular that inherits from the shared belief
+      const my_ball = state.add_belief_from_template({
+        bases: [ball_type],  // Inherits from the belief with promotions
+        traits: {},
+        label: 'my_ball'
+      })
+
+      state.lock()
+
+      // Before save: inheriting belief gets Fuzzy through base's promotions
+      const color_tt = Traittype.get_by_label('color')
+      const color_before = my_ball.get_trait(state, color_tt)
+      expect(color_before).to.be.instanceOf(Fuzzy)
+      expect(color_before.alternatives).to.have.lengthOf(2)
+
+      // Save and reload
+      const loaded_mind = saveAndReload(state.in_mind, setupStandardArchetypes)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_my_ball = loaded_state.get_belief_by_label('my_ball')
+
+      // After load: should still get Fuzzy through inheritance
+      const loaded_color_tt = Traittype.get_by_label('color')
+      const color_after = loaded_my_ball.get_trait(loaded_state, loaded_color_tt)
+      expect(color_after).to.be.instanceOf(Fuzzy)
+      expect(color_after.alternatives).to.have.lengthOf(2)
+    })
+
+    it('archetype traits not affected by promotions after save/load', () => {
+      // Register additional archetypes for this test
+      DB.register({
+        size: { type: 'string', values: ['small', 'medium', 'large'], exposure: 'visual' }
+      }, {
+        SizedObject: { bases: ['ObjectPhysical'], traits: { size: 'medium' } }
+      }, {})
+
+      const state = createStateInNewMind('world')
+
+      // Create shared belief with promotions on one trait
+      const sized_thing = state.add_belief_from_template({
+        bases: ['SizedObject'],
+        traits: {},
+        label: 'sized_thing'
+      })
+
+      // Add TWO promotions for color (size comes from archetype)
+      sized_thing.replace(state, { color: 'red' }, { promote: true, certainty: 0.6 })
+      sized_thing.replace(state, { color: 'blue' }, { promote: true, certainty: 0.4 })
+
+      // Create particular inheriting from sized_thing
+      const my_thing = state.add_belief_from_template({
+        bases: [sized_thing],
+        traits: {},
+        label: 'my_thing'
+      })
+
+      state.lock()
+
+      // Save and reload
+      function setupWithSizedObject() {
+        setupStandardArchetypes()
+        DB.register({
+          size: { type: 'string', values: ['small', 'medium', 'large'], exposure: 'visual' }
+        }, {
+          SizedObject: { bases: ['ObjectPhysical'], traits: { size: 'medium' } }
+        }, {})
+      }
+
+      const loaded_mind = saveAndReload(state.in_mind, setupWithSizedObject)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_my_thing = loaded_state.get_belief_by_label('my_thing')
+
+      // Size from archetype should NOT be Fuzzy
+      const loaded_size_tt = Traittype.get_by_label('size')
+      const size = loaded_my_thing.get_trait(loaded_state, loaded_size_tt)
+      expect(size).to.equal('medium')
+      expect(size).to.not.be.instanceOf(Fuzzy)
+    })
+
+    it('explicit Fuzzy trait value persists after save/load', () => {
+      const state = createStateInNewMind('world')
+
+      // Create belief with explicit Fuzzy trait
+      state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: {
+          color: new Fuzzy({
+            alternatives: [
+              { value: 'red', certainty: 0.6 },
+              { value: 'blue', certainty: 0.4 }
+            ]
+          })
+        },
+        label: 'fuzzy_ball'
+      })
+
+      state.lock()
+
+      // Save and reload
+      const loaded_mind = saveAndReload(state.in_mind, setupStandardArchetypes)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_ball = loaded_state.get_belief_by_label('fuzzy_ball')
+
+      // Verify Fuzzy trait preserved
+      const color_tt = Traittype.get_by_label('color')
+      const color = loaded_ball.get_trait(loaded_state, color_tt)
+      expect(color).to.be.instanceOf(Fuzzy)
+      expect(color.alternatives).to.have.length(2)
+      expect(color.alternatives[0]).to.deep.equal({ value: 'red', certainty: 0.6 })
+    })
+
+    it('unknown() trait value persists after save/load', () => {
+      const state = createStateInNewMind('world')
+
+      // Create belief with unknown() trait
+      state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: { color: unknown() },
+        label: 'mystery_ball'
+      })
+
+      state.lock()
+
+      // Save and reload
+      const loaded_mind = saveAndReload(state.in_mind, setupStandardArchetypes)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_ball = loaded_state.get_belief_by_label('mystery_ball')
+
+      // Verify unknown() preserved as singleton
+      const color_tt = Traittype.get_by_label('color')
+      const color = loaded_ball.get_trait(loaded_state, color_tt)
+      expect(color).to.be.instanceOf(Fuzzy)
+      expect(color.is_unknown).to.be.true
+      expect(color).to.equal(unknown())
     })
   })
 })

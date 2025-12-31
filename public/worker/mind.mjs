@@ -433,6 +433,13 @@ export class Mind {
       state.in_mind.register_state(state)
     }
 
+    // Lock all states after loading (preserves base.locked invariant)
+    // Must be done before loading nested minds (they reference these as ground_state)
+    // Uses lock() to also lock beliefs in _insert
+    for (const state of mind._states) {
+      state.lock()
+    }
+
     // Load nested minds AFTER parent states (so ground_state references can be resolved)
     if (data.nested_minds) {
       for (const nested_mind_data of data.nested_minds) {
@@ -460,6 +467,15 @@ export class Mind {
       const belief = DB.get_belief_by_id(belief_data._id)
       if (belief) {
         belief._finalize_traits_from_json()
+      }
+    }
+
+    // Finalize promotions AFTER all beliefs are loaded and finalized
+    // This resolves promotion IDs to belief references
+    for (const belief_data of data.belief) {
+      const belief = DB.get_belief_by_id(belief_data._id)
+      if (belief) {
+        belief._finalize_promotions_from_json()
       }
     }
 

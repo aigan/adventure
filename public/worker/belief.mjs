@@ -51,6 +51,8 @@ import { Fuzzy } from './fuzzy.mjs'
  * @property {(string|number)[]} bases - Base archetype labels or belief _ids
  * @property {Object<string, SerializedTraitValue>} traits - Trait values (sids, primitives, or references)
  * @property {number|null} origin_state - State _id where this belief was created (null for shared beliefs)
+ * @property {number[]} [promotions] - Belief _ids registered as promotions of this belief
+ * @property {number} [certainty] - Probability weight (0 < x < 1) for promoted beliefs
  */
 
 /**
@@ -1079,7 +1081,7 @@ export class Belief {
   toJSON() {
     const t_about = Traittype.get_by_label('@about')
     const about_trait = t_about ? this._traits.get(t_about) : null
-    const result = /** @type {{_type: string, _id: number, sid: number, label: string|null, about: any, archetypes: string[], bases: (string|number)[], traits: any, origin_state: number|null, has_promotions?: boolean}} */ ({
+    const result = /** @type {{_type: string, _id: number, sid: number, label: string|null, about: any, archetypes: string[], bases: (string|number)[], traits: any, origin_state: number|null, promotions?: number[], certainty?: number}} */ ({
       _type: 'Belief',
       _id: this._id,
       sid: this.subject.sid,
@@ -1092,8 +1094,13 @@ export class Belief {
       ),
       origin_state: this.origin_state?._id ?? null
     })
+    // Save promotions as array of belief IDs
     if (this.promotions.size > 0) {
-      result.has_promotions = true
+      result.promotions = [...this.promotions].map(p => p._id)
+    }
+    // Save certainty if set (for probability beliefs)
+    if (this.certainty !== null) {
+      result.certainty = this.certainty
     }
     return result
   }
@@ -1216,13 +1223,47 @@ export class Belief {
     for (const [trait_name, trait_value] of temp) {
       const traittype = Traittype.get_by_label(trait_name)
       if (traittype) {
-        this._traits.set(traittype, traittype.deserialize_value(this, trait_value))
+        const value = traittype.deserialize_value(this, trait_value)
+        this._traits.set(traittype, value)
+
+        // Build reverse index for Subject trait values
+        if (this.origin_state && value instanceof Subject) {
+          this.origin_state.rev_add(value, traittype, this)
+        } else if (this.origin_state && Array.isArray(value)) {
+          // Handle arrays of Subjects
+          for (const item of value) {
+            if (item instanceof Subject) {
+              this.origin_state.rev_add(item, traittype, this)
+            }
+          }
+        }
       }
       // If no traittype found, skip (invalid trait)
     }
     // Clean up temporary storage
     // @ts-expect-error - cleaning up dynamically set property
     delete this._deserialized_traits
+  }
+
+  /**
+   * Finalize promotions after JSON deserialization - resolve belief ID references
+   * Called after all beliefs are loaded from JSON
+   */
+  _finalize_promotions_from_json() {
+    // @ts-expect-error - _promotion_ids is set dynamically in from_json()
+    const promotion_ids = this._promotion_ids
+    if (!promotion_ids) return
+
+    for (const promotion_id of promotion_ids) {
+      const promotion = DB.get_belief_by_id(promotion_id)
+      if (promotion) {
+        this.promotions.add(promotion)
+      }
+    }
+
+    // Clean up temporary storage
+    // @ts-expect-error - cleaning up dynamically set property
+    delete this._promotion_ids
   }
 
   /**
@@ -1243,8 +1284,10 @@ export class Belief {
     belief._cache = new Map()
     belief._cached_all = false
     belief.promotions = new Set()
-    belief.certainty = null
+    belief.certainty = data.certainty ?? null
     belief.constraints = {}
+    // Store promotion IDs for deferred resolution (after all beliefs are loaded)
+    belief._promotion_ids = data.promotions ?? null
 
     // Resolve 'bases' (archetype labels or belief IDs)
     belief._bases = new Set()

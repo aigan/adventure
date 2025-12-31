@@ -4,7 +4,7 @@ import { T } from '../public/worker/traittype.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import { eidos } from '../public/worker/eidos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { stdTypes, Thing, createStateInNewMind, setupStandardArchetypes, setupAfterEachValidation } from './helpers.mjs';
+import { stdTypes, Thing, createStateInNewMind, setupStandardArchetypes, setupAfterEachValidation, saveAndReload } from './helpers.mjs';
 
 describe('Mind', () => {
   beforeEach(() => {
@@ -349,6 +349,43 @@ describe('Mind', () => {
     it('is false for world minds (children of Logos)', () => {
       const world = new Materia(logos(), 'world')
       expect(world.in_eidos).to.be.false
+    })
+  })
+
+  describe('save/load round-trip', () => {
+    it('preserves mind hierarchy after save/load', () => {
+      const world_mind = new Materia(logos(), 'world')
+      const world_state = world_mind.create_state(logos().origin_state, { tt: 1 })
+
+      // Create child mind and attach to belief (minds saved via trait references)
+      const player_mind = new Materia(world_mind, 'player_mind')
+      const player_state = player_mind.create_state(world_state)
+      player_state.lock()
+
+      world_state.add_belief_from_template({
+        bases: ['Person'],
+        traits: { mind: player_mind },
+        label: 'player'
+      })
+      world_state.lock()
+
+      const loaded_mind = saveAndReload(world_mind)
+
+      expect(loaded_mind.label).to.equal('world')
+      expect(loaded_mind._child_minds.size).to.equal(1)
+      const loaded_player = [...loaded_mind._child_minds][0]
+      expect(loaded_player.label).to.equal('player_mind')
+      expect(loaded_player._parent).to.equal(loaded_mind)
+    })
+
+    it('preserves in_eidos property after save/load', () => {
+      const world_mind = new Materia(logos(), 'world')
+      const world_state = world_mind.create_state(logos().origin_state, { tt: 1 })
+      world_state.lock()
+
+      const loaded_mind = saveAndReload(world_mind)
+
+      expect(loaded_mind.in_eidos).to.be.false
     })
   })
 });

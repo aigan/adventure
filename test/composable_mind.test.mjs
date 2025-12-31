@@ -15,7 +15,7 @@
  */
 
 import { expect } from 'chai'
-import { Mind, Materia, Belief, Subject, Traittype } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, Belief, Subject, Traittype, save_mind, load } from '../public/worker/cosmos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs'
 import { setupAfterEachValidation } from './helpers.mjs'
@@ -1039,5 +1039,136 @@ describe('Composable Mind Trait', () => {
       expect(beliefs.length).to.be.at.least(1)
     })
 
+  })
+
+  describe('save/load round-trip', () => {
+    // Helper to setup for save/load tests
+    function setupMindComposition() {
+      DB.register({
+        '@about': {type: 'Subject', mind: 'parent'},
+        location: 'Location',
+        mind: {type: 'Mind', composable: true},
+      }, {
+        Thing: {traits: {'@about': null}},
+        Location: {bases: ['Thing'], traits: {location: null}},
+        Mental: {bases: ['Thing'], traits: {mind: null}},
+        Person: {bases: ['Mental']},
+      }, {})
+    }
+
+    it('preserves mind trait after save/load', () => {
+      DB.reset_registries()
+      setupMindComposition()
+
+      const world = Materia.create_world()
+      const world_state = world.create_state(logos_state(), {tt: 1})
+
+      const tavern = world_state.add_belief_from_template({
+        bases: ['Location'],
+        label: 'tavern'
+      })
+
+      // Create NPC with own mind (not inherited from shared prototype)
+      const npc = world_state.add_belief_from_template({
+        bases: ['Person'],
+        traits: {
+          mind: { tavern: ['location'] }  // Own mind with knowledge
+        },
+        label: 'npc'
+      })
+
+      world_state.lock()
+
+      // Verify mind trait works before save
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
+      expect(npc_mind).to.be.instanceOf(Mind)
+
+      // Save and reload
+      const json = save_mind(world)
+      DB.reset_registries()
+      setupMindComposition()
+      const loaded_world = load(json)
+
+      // Verify mind trait works after load
+      const loaded_state = [...loaded_world._states][0]
+      const loaded_npc = loaded_state.get_belief_by_label('npc')
+      const mind_tt = Traittype.get_by_label('mind')
+      const loaded_npc_mind = loaded_npc.get_trait(loaded_state, mind_tt)
+
+      expect(loaded_npc_mind).to.be.instanceOf(Mind)
+      // Verify the mind has states (origin_state may be undefined for fresh mind)
+      expect(loaded_npc_mind._states.size).to.be.at.least(1)
+      const npc_state = [...loaded_npc_mind._states][0]
+      const beliefs = [...npc_state.get_beliefs()]
+      expect(beliefs.length).to.be.at.least(1)
+    })
+
+    it('NPC mind persists knowledge after save/load', () => {
+      DB.reset_registries()
+      setupMindComposition()
+
+      const world = Materia.create_world()
+      const world_state = world.create_state(logos_state(), {tt: 1})
+
+      const tavern = world_state.add_belief_from_template({
+        bases: ['Location'],
+        label: 'tavern'
+      })
+
+      const workshop = world_state.add_belief_from_template({
+        bases: ['Location'],
+        label: 'workshop'
+      })
+
+      // Create NPC with explicit mind knowledge
+      const npc = world_state.add_belief_from_template({
+        bases: ['Person'],
+        traits: {
+          mind: {
+            tavern: ['location'],
+            workshop: ['location']
+          }
+        },
+        label: 'npc'
+      })
+
+      world_state.lock()
+
+      // Verify mind knowledge before save
+      const npc_mind = npc.get_trait(world_state, Traittype.get_by_label('mind'))
+      expect(npc_mind).to.be.instanceOf(Mind)
+      const beliefs_before = [...npc_mind.origin_state.get_beliefs()]
+      expect(beliefs_before.length).to.be.at.least(2)
+
+      // Save and reload
+      const json = save_mind(world)
+      DB.reset_registries()
+      setupMindComposition()
+      const loaded_world = load(json)
+
+      // Verify mind knowledge after load
+      const loaded_state = [...loaded_world._states][0]
+      const loaded_npc = loaded_state.get_belief_by_label('npc')
+      const mind_tt = Traittype.get_by_label('mind')
+      const loaded_npc_mind = loaded_npc.get_trait(loaded_state, mind_tt)
+
+      expect(loaded_npc_mind).to.be.instanceOf(Mind)
+      expect(loaded_npc_mind._states.size).to.be.at.least(1)
+
+      // Get beliefs from the NPC's state
+      const loaded_npc_state = [...loaded_npc_mind._states][0]
+      const beliefs_after = [...loaded_npc_state.get_beliefs()]
+      expect(beliefs_after.length).to.be.at.least(2)
+
+      // Verify knowledge about both locations
+      const loaded_tavern = loaded_state.get_belief_by_label('tavern')
+      const loaded_workshop = loaded_state.get_belief_by_label('workshop')
+
+      const has_tavern = beliefs_after.some(b => b.get_about(loaded_npc_state)?.subject === loaded_tavern.subject)
+      const has_workshop = beliefs_after.some(b => b.get_about(loaded_npc_state)?.subject === loaded_workshop.subject)
+
+      expect(has_tavern).to.be.true
+      expect(has_workshop).to.be.true
+    })
   })
 })

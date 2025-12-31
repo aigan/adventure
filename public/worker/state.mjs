@@ -875,9 +875,18 @@ export class State {
    * @returns {StateJSON}
    */
   toJSON() {
-    // Register in_mind as dependency if we're in a serialization context
-    if (Serialize.active && this.in_mind) {
-      Serialize.add_dependency(this.in_mind)
+    // Only enforce locked requirement during save_mind() serialization
+    // (allows toJSON() for testing/inspection on unlocked states)
+    if (Serialize.active) {
+      assert(this.locked, 'Cannot serialize unlocked state', {
+        state_id: this._id,
+        mind: this.in_mind?.label
+      })
+
+      // Register in_mind as dependency
+      if (this.in_mind) {
+        Serialize.add_dependency(this.in_mind)
+      }
     }
 
     return {

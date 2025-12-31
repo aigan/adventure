@@ -16,7 +16,8 @@ import { expect } from 'chai';
 import { Mind, Materia, Traittype } from '../public/worker/cosmos.mjs';
 import { eidos } from '../public/worker/eidos.mjs'
 import * as DB from '../public/worker/db.mjs';
-import { createStateInNewMind, stdTypes, Thing, setupAfterEachValidation } from './helpers.mjs';
+import { createStateInNewMind, stdTypes, Thing, setupAfterEachValidation, saveAndReload } from './helpers.mjs';
+import { load, save_mind, logos_state } from '../public/worker/cosmos.mjs';
 
 describe('get_traits() composable trait consistency', () => {
   beforeEach(() => {
@@ -217,5 +218,107 @@ describe('get_traits() composable trait consistency', () => {
     // Verify we got the expected composed result
     expect(inventory_from_get_traits).to.be.an('array');
     expect(inventory_from_get_traits).to.have.lengthOf(2, 'Should have sword + shield');
+  });
+
+  describe('save/load round-trip', () => {
+
+    function setupComposableArchetypes() {
+      const traittypes = {
+        ...stdTypes,
+        inventory: {
+          type: 'Subject',
+          container: Array,
+          composable: true,
+          exposure: 'spatial'
+        }
+      };
+
+      const archetypes = {
+        Thing,
+        PortableObject: {
+          bases: ['Thing'],
+        },
+        HasInventory: {
+          traits: {
+            inventory: null,
+          },
+        },
+      };
+
+      DB.register(traittypes, archetypes, {});
+    }
+
+    it('composable traits composed from multiple bases work after save/load', () => {
+      setupComposableArchetypes();
+
+      const state = createStateInNewMind('test', 1);
+
+      // Create items
+      const sword = state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: {}, label: 'sword'
+      });
+
+      const shield = state.add_belief_from_template({
+        bases: ['PortableObject'],
+        traits: {}, label: 'shield'
+      });
+
+      // Create TWO base prototypes in same mind - lock them before using as bases
+      const warrior_proto = state.add_belief_from_template({
+        bases: ['HasInventory'],
+        traits: {
+          inventory: [sword.subject]  // Has sword
+        },
+        label: 'WarriorProto'
+      });
+      warrior_proto.lock(state);
+
+      const defender_proto = state.add_belief_from_template({
+        bases: ['HasInventory'],
+        traits: {
+          inventory: [shield.subject]  // Has shield
+        },
+        label: 'DefenderProto'
+      });
+      defender_proto.lock(state);
+
+      // Lock state first, then branch for knight
+      state.lock();
+      const state2 = state.branch(logos_state(), 2);
+
+      // Create belief that inherits from BOTH prototypes
+      const knight = state2.add_belief_from_template({
+        bases: [warrior_proto, defender_proto],
+        traits: {},
+        label: 'knight'
+      });
+      knight.lock(state2);
+      state2.lock();
+
+      // Save and reload
+      const json = save_mind(state2.in_mind);
+      DB.reset_registries();
+      setupComposableArchetypes();
+      const loaded_mind = load(json);
+      // Get the state with tt=2 (where knight was created)
+      const loaded_state = [...loaded_mind._states].find(s => s.tt === 2);
+      const loaded_knight = loaded_state.get_belief_by_label('knight');
+
+      // get_trait() composes from both bases after load
+      const inventory_traittype = Traittype.get_by_label('inventory');
+      const inventory_from_get_trait = loaded_knight.get_trait(loaded_state, inventory_traittype);
+      expect(inventory_from_get_trait).to.be.an('array');
+      expect(inventory_from_get_trait).to.have.lengthOf(2, 'get_trait() composes sword + shield after load');
+
+      // get_traits() should match get_trait() after load
+      const traits_map = new Map();
+      for (const [traittype, value] of loaded_knight.get_traits()) {
+        traits_map.set(traittype.label, value);
+      }
+      const inventory_from_get_traits = traits_map.get('inventory');
+      expect(inventory_from_get_traits).to.deep.equal(inventory_from_get_trait,
+        'get_traits() and get_trait() match after save/load');
+    });
   });
 });

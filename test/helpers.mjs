@@ -517,3 +517,16 @@ export function get_knowledge_about(player_state, knowledge_subject) {
 
   return knowledge.get_trait(player_state, about_tt)
 }
+
+/**
+ * Save a mind to JSON, reset registries, reload, and return the loaded mind
+ * Useful for testing save/load round-trip behavior
+ * @param {Mind} mind - Mind to save and reload
+ * @returns {Mind} Reloaded mind
+ */
+export function saveAndReload(mind, setupFn = setupStandardArchetypes) {
+  const json = save_mind(mind)
+  DB.reset_registries()
+  setupFn()
+  return load(json)
+}

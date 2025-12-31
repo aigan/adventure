@@ -545,4 +545,100 @@ describe('Mind Trait', () => {
       });
     }).to.throw("Cannot learn about 'non_existent': belief not found");
   });
+
+  describe('save/load round-trip', () => {
+    function setupMindArchetypes() {
+      DB.reset_registries()
+      DB.register({
+        ...stdTypes,
+        location: 'Location',
+        mind: 'Mind',
+        coordinates: 'string',
+      }, {
+        Thing,
+        ObjectPhysical: {
+          bases: ['Thing'],
+          traits: { location: null }
+        },
+        Location: {
+          bases: ['ObjectPhysical'],
+          traits: { coordinates: null }
+        },
+        Mental: {
+          traits: { mind: null }
+        },
+        Person: {
+          bases: ['ObjectPhysical', 'Mental']
+        }
+      }, {})
+    }
+
+    it('mind trait with learned knowledge persists after save/load', () => {
+      setupMindArchetypes()
+
+      const world_mind = new Materia(logos(), 'world')
+      const world_state = world_mind.create_state(logos_state(), { tt: 1 })
+
+      const tavern = world_state.add_belief_from_template({
+        bases: ['Location'],
+        traits: { coordinates: '50,30' },
+        label: 'tavern'
+      })
+
+      const npc_body = world_state.add_belief_from_template({
+        bases: ['Person'],
+        traits: {},
+        label: 'npc_body'
+      })
+
+      // NPC learns about tavern via mind template
+      const npc = Belief.from_template(world_state, {
+        bases: [npc_body],
+        traits: {
+          mind: {
+            tavern: ['coordinates']
+          }
+        },
+        label: 'npc'
+      })
+      world_state.replace_beliefs(npc)
+      world_state.lock()
+
+      // Verify mind was created with knowledge
+      const mind_tt = Traittype.get_by_label('mind')
+      const npc_mind = npc.get_trait(world_state, mind_tt)
+      expect(npc_mind).to.be.instanceOf(Mind)
+
+      const npc_state = [...npc_mind._states][0]
+      const beliefs_before = [...npc_state.get_beliefs()]
+      expect(beliefs_before.length).to.be.at.least(1)
+
+      // Save and reload
+      const json = save_mind(world_mind)
+      DB.reset_registries()
+      setupMindArchetypes()
+      const loaded_world = load(json)
+      const loaded_world_state = [...loaded_world._states][0]
+      const loaded_npc = loaded_world_state.get_belief_by_label('npc')
+
+      // Verify mind trait persists
+      const loaded_mind_tt = Traittype.get_by_label('mind')
+      const loaded_npc_mind = loaded_npc.get_trait(loaded_world_state, loaded_mind_tt)
+      expect(loaded_npc_mind).to.be.instanceOf(Mind)
+
+      // Verify knowledge persists
+      const loaded_npc_state = [...loaded_npc_mind._states][0]
+      const beliefs_after = [...loaded_npc_state.get_beliefs()]
+      expect(beliefs_after.length).to.equal(beliefs_before.length)
+
+      // Verify learned trait value
+      const tavern_knowledge = beliefs_after.find(b => {
+        const about = b.get_trait(loaded_npc_state, Traittype.get_by_label('@about'))
+        return about && about.sid === loaded_world_state.get_belief_by_label('tavern').subject.sid
+      })
+      expect(tavern_knowledge).to.exist
+      const coords_tt = Traittype.get_by_label('coordinates')
+      expect(tavern_knowledge.get_trait(loaded_npc_state, coords_tt)).to.equal('50,30')
+    })
+  })
 });

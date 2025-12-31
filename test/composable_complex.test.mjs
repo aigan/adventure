@@ -5,7 +5,7 @@
 
 import { expect } from 'chai'
 import * as DB from '../public/worker/db.mjs'
-import { Mind, Materia, Belief, Traittype } from '../public/worker/cosmos.mjs'
+import { Mind, Materia, Belief, Traittype, save_mind, load } from '../public/worker/cosmos.mjs'
 import { eidos } from '../public/worker/eidos.mjs'
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import { setupAfterEachValidation } from './helpers.mjs'
@@ -628,6 +628,126 @@ describe('Composable Traits - Complex Scenarios', () => {
       expect(inv2).to.have.lengthOf(3)
       const labels2 = inv2.map(b => b.get_label()).sort()
       expect(labels2).to.deep.equal(['hammer', 'sword', 'token'])
+    })
+  })
+
+  describe('save/load round-trip', () => {
+    function setupComplexArchetypes() {
+      DB.reset_registries()
+      DB.register({
+        inventory: {
+          type: 'Subject',
+          container: Array,
+          composable: true
+        }
+      }, {
+        Thing: {},
+        PortableObject: { bases: ['Thing'] },
+        Person: {
+          bases: ['Thing'],
+          traits: { inventory: null }
+        }
+      }, {
+        token: { bases: ['PortableObject'] },
+        sword: { bases: ['PortableObject'] },
+        shield: { bases: ['PortableObject'] }
+      })
+    }
+
+    it('multi-level composition works after save/load', () => {
+      setupComplexArchetypes()
+
+      const world_mind = new Materia(logos(), 'world')
+      const state = world_mind.create_state(logos_state(), { tt: 1 })
+
+      // Get prototypes from eidos
+      const eidos_state = eidos().origin_state
+      const token = eidos_state.get_belief_by_label('token')
+      const sword = eidos_state.get_belief_by_label('sword')
+      const shield = eidos_state.get_belief_by_label('shield')
+
+      // Grandparent with token
+      const base = state.add_belief_from_template({
+        bases: ['Person'],
+        traits: { inventory: [token.subject] },
+        label: 'base'
+      })
+
+      // Parent adds sword
+      const parent = state.add_belief_from_template({
+        bases: [base],
+        traits: { inventory: [sword.subject] },
+        label: 'parent'
+      })
+
+      // Child adds shield (should have all 3)
+      const child = state.add_belief_from_template({
+        bases: [parent],
+        traits: { inventory: [shield.subject] },
+        label: 'child'
+      })
+
+      state.lock()
+
+      // Verify before save
+      const inv_tt = Traittype.get_by_label('inventory')
+      const inv_before = child.get_trait(state, inv_tt)
+      expect(inv_before).to.have.lengthOf(3)
+
+      // Save and reload
+      const json = save_mind(world_mind)
+      DB.reset_registries()
+      setupComplexArchetypes()
+      const loaded_mind = load(json)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_child = loaded_state.get_belief_by_label('child')
+
+      // Verify composition works after load
+      const loaded_inv_tt = Traittype.get_by_label('inventory')
+      const inv_after = loaded_child.get_trait(loaded_state, loaded_inv_tt)
+      expect(inv_after).to.have.lengthOf(3)
+    })
+
+    it('null blocking works after save/load', () => {
+      setupComplexArchetypes()
+
+      const world_mind = new Materia(logos(), 'world')
+      const state = world_mind.create_state(logos_state(), { tt: 1 })
+
+      // Get prototype from eidos
+      const eidos_state = eidos().origin_state
+      const sword = eidos_state.get_belief_by_label('sword')
+
+      const warrior = state.add_belief_from_template({
+        bases: ['Person'],
+        traits: { inventory: [sword.subject] },
+        label: 'warrior'
+      })
+
+      // Pacifist blocks inventory with null
+      const pacifist = state.add_belief_from_template({
+        bases: [warrior],
+        traits: { inventory: null },
+        label: 'pacifist'
+      })
+
+      state.lock()
+
+      // Verify null blocks before save
+      const inv_tt = Traittype.get_by_label('inventory')
+      expect(pacifist.get_trait(state, inv_tt)).to.be.null
+
+      // Save and reload
+      const json = save_mind(world_mind)
+      DB.reset_registries()
+      setupComplexArchetypes()
+      const loaded_mind = load(json)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_pacifist = loaded_state.get_belief_by_label('pacifist')
+
+      // Null should still block after load
+      const loaded_inv_tt = Traittype.get_by_label('inventory')
+      expect(loaded_pacifist.get_trait(loaded_state, loaded_inv_tt)).to.be.null
     })
   })
 })
