@@ -1,7 +1,5 @@
 import { expect } from 'chai';
-import { Mind, Materia, State, Belief, Archetype, Traittype, Session, save_mind, load } from '../public/worker/cosmos.mjs';
-import { logos, logos_state } from '../public/worker/logos.mjs'
-import * as DB from '../public/worker/db.mjs';
+import { Mind, Materia, State, Belief, Archetype, Traittype, Session, save_mind, load, logos, logos_state, eidos, DB } from '../public/worker/cosmos.mjs';
 import { learn_about } from '../public/worker/perception.mjs';
 import { stdTypes, Thing, setupBrowserMocks, cleanupBrowserMocks, MockBroadcastChannel, setupAfterEachValidation } from './helpers.mjs';
 
@@ -313,8 +311,9 @@ describe('Channel Message Handlers', () => {
     });
 
     it('shows has_promotions icon on bases with promotions', () => {
-      const mind = new Materia(logos(), 'promo_test_mind');
-      const state = mind.create_state(logos().origin_state, {tt: 1});
+      // Promotions can only be in Eidos hierarchy
+      const mind = new Materia(eidos(), 'promo_test_mind');
+      const state = mind.create_state(eidos().origin_state, {tt: 1});
 
       // Create locations
       const workshop = state.add_belief_from_template({
@@ -356,8 +355,9 @@ describe('Channel Message Handlers', () => {
     });
 
     it('shows has_promotions flag on belief with promotions in to_inspect_view', () => {
-      const mind = new Materia(logos(), 'promo_view_mind');
-      const state = mind.create_state(logos().origin_state, {tt: 1});
+      // Promotions can only be in Eidos hierarchy
+      const mind = new Materia(eidos(), 'promo_view_mind');
+      const state = mind.create_state(eidos().origin_state, {tt: 1});
 
       // Create base belief
       const obj = state.add_belief_from_template({

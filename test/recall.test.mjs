@@ -1,6 +1,5 @@
 import { expect } from 'chai'
-import { Notion, Traittype, Subject, Belief, Materia, Fuzzy, logos, logos_state } from '../public/worker/cosmos.mjs'
-import * as DB from '../public/worker/db.mjs'
+import { Notion, Traittype, Subject, Belief, Materia, Fuzzy, logos, logos_state, eidos, DB } from '../public/worker/cosmos.mjs'
 import { stdTypes, Thing, setupAfterEachValidation, saveAndReload } from './helpers.mjs'
 
 describe('recall_by_subject', () => {
@@ -538,8 +537,9 @@ describe('recall_by_subject', () => {
 
   describe('belief certainty', () => {
     it('returns combined certainty from path and belief', () => {
-      const mind = new Materia(logos(), 'player')
-      const ground = logos_state()
+      // Promotions can only be in Eidos hierarchy
+      const mind = new Materia(eidos(), 'player')
+      const ground = eidos().origin_state
 
       const state_0 = mind.create_state(ground, { tt: 1 })
       state_0.add_belief_from_template({
@@ -589,8 +589,9 @@ describe('recall_by_subject', () => {
     })
 
     it('belief certainty multiplies with nested state certainty', () => {
-      const mind = new Materia(logos(), 'player')
-      const ground = logos_state()
+      // Promotions can only be in Eidos hierarchy
+      const mind = new Materia(eidos(), 'player')
+      const ground = eidos().origin_state
 
       const state_0 = mind.create_state(ground, { tt: 1 })
       state_0.add_belief_from_template({
@@ -619,8 +620,9 @@ describe('recall_by_subject', () => {
     })
 
     it('recall_by_archetype includes belief certainty', () => {
-      const mind = new Materia(logos(), 'player')
-      const ground = logos_state()
+      // Promotions can only be in Eidos hierarchy
+      const mind = new Materia(eidos(), 'player')
+      const ground = eidos().origin_state
 
       const state_0 = mind.create_state(ground, { tt: 1 })
       state_0.add_belief_from_template({
@@ -645,8 +647,9 @@ describe('recall_by_subject', () => {
     })
 
     it('multiplies state × belief × trait certainty in Notion only', () => {
-      const mind = new Materia(logos(), 'player')
-      const ground = logos_state()
+      // Promotions can only be in Eidos hierarchy
+      const mind = new Materia(eidos(), 'player')
+      const ground = eidos().origin_state
       const location_tt = Traittype.get_by_label('location')
 
       const state_0 = mind.create_state(ground, { tt: 1 })

@@ -1,9 +1,6 @@
 import { expect } from 'chai';
-import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, Fuzzy, save_mind, load } from '../public/worker/cosmos.mjs';
-import { eidos } from '../public/worker/eidos.mjs'
-import { logos } from '../public/worker/logos.mjs'
-import * as DB from '../public/worker/db.mjs';
-import { createMindWithBeliefs, createStateInNewMind, setupStandardArchetypes, validateStateBeliefs, setupAfterEachValidation } from './helpers.mjs';
+import { Mind, Materia, State, Belief, Subject, Archetype, Traittype, Fuzzy, save_mind, load, eidos, logos, DB } from '../public/worker/cosmos.mjs';
+import { createMindWithBeliefs, createStateInNewMind, createEidosState, setupStandardArchetypes, validateStateBeliefs, setupAfterEachValidation } from './helpers.mjs';
 
 describe('Belief', () => {
   beforeEach(() => {
@@ -1503,7 +1500,8 @@ describe('Belief', () => {
     })
 
     it('branch with promote registers promoted version', () => {
-      const state = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
@@ -1517,7 +1515,8 @@ describe('Belief', () => {
     })
 
     it('promoted belief has direct properties', () => {
-      const state = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
@@ -1532,7 +1531,8 @@ describe('Belief', () => {
     })
 
     it('multiple promotions accumulate in set', () => {
-      const state = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
@@ -1547,7 +1547,8 @@ describe('Belief', () => {
     })
 
     it('promotions are not included in bases traversal', () => {
-      const state = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
@@ -1567,7 +1568,8 @@ describe('Belief', () => {
     })
 
     it('certainty=0 throws assertion error', () => {
-      const state = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
@@ -1579,7 +1581,8 @@ describe('Belief', () => {
     })
 
     it('certainty=1 throws assertion error', () => {
-      const state = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
@@ -1591,7 +1594,8 @@ describe('Belief', () => {
     })
 
     it('certainty=0.5 is valid', () => {
-      const state = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
@@ -1603,7 +1607,8 @@ describe('Belief', () => {
     })
 
     it('certainty=null is valid (default, non-probability promotion)', () => {
-      const state = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
@@ -1615,7 +1620,8 @@ describe('Belief', () => {
     })
 
     it('get_promotions returns promotions set', () => {
-      const state = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
@@ -1631,7 +1637,9 @@ describe('Belief', () => {
 
   describe('Promotion Resolution', () => {
     it('pick_promotion filters by transaction time', () => {
-      const state_1 = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
       const location_tt = Traittype.get_by_label('location')
 
       const workshop = Belief.from_template(state_1, {
@@ -1660,7 +1668,9 @@ describe('Belief', () => {
     })
 
     it('pick_promotion returns single belief for temporal promotion', () => {
-      const state_1 = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
       const location_tt = Traittype.get_by_label('location')
 
       const workshop = Belief.from_template(state_1, {
@@ -1689,7 +1699,9 @@ describe('Belief', () => {
     })
 
     it('pick_promotion returns array for probability promotions', () => {
-      const state_1 = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
       const location_tt = Traittype.get_by_label('location')
 
       const workshop = Belief.from_template(state_1, {
@@ -1720,7 +1732,9 @@ describe('Belief', () => {
     })
 
     it('get_trait returns Fuzzy for probability promotions', () => {
-      const state_1 = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
       const location_tt = Traittype.get_by_label('location')
 
       const workshop = Belief.from_template(state_1, {
@@ -1757,7 +1771,9 @@ describe('Belief', () => {
     })
 
     it('get_trait resolves temporal promotion to concrete value', () => {
-      const state_1 = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
       const location_tt = Traittype.get_by_label('location')
 
       const workshop = Belief.from_template(state_1, {
@@ -1795,7 +1811,8 @@ describe('Belief', () => {
       // This tests the case where promotions don't have the queried trait,
       // causing the promotion to walk back to its parent (which has promotions).
       // Without skip_promotions protection, this would infinite loop.
-      const state_1 = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state_1 = createEidosState()
       const form_tt = Traittype.get_by_label('@form')
       const location_tt = Traittype.get_by_label('location')
 
@@ -1843,7 +1860,8 @@ describe('Belief', () => {
     // Resolution order: wandering_merchant → merchant_location → v2 → v3
 
     it('chained promotion resolution - gets trait from innermost promotion', () => {
-      const state_1 = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state_1 = createEidosState()
       const location_tt = Traittype.get_by_label('location')
 
       const workshop = Belief.from_template(state_1, { bases: ['Location'], label: 'workshop' })
@@ -1872,7 +1890,8 @@ describe('Belief', () => {
     })
 
     it('chained promotion - trait in middle promotion returned if not in innermost', () => {
-      const state_1 = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state_1 = createEidosState()
       const location_tt = Traittype.get_by_label('location')
       const color_tt = Traittype.get_by_label('color')
 
@@ -1905,7 +1924,8 @@ describe('Belief', () => {
     })
 
     it('chained promotion - trait only in base returned if not in any promotion', () => {
-      const state_1 = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state_1 = createEidosState()
       const location_tt = Traittype.get_by_label('location')
       const color_tt = Traittype.get_by_label('color')
 
@@ -1934,7 +1954,8 @@ describe('Belief', () => {
     })
 
     it('chained promotion - falls back to archetype if trait not in chain', () => {
-      const state_1 = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state_1 = createEidosState()
       const form_tt = Traittype.get_by_label('@form')
       const location_tt = Traittype.get_by_label('location')
 
@@ -1963,7 +1984,8 @@ describe('Belief', () => {
     })
 
     it('chained probability promotions combine certainties', () => {
-      const state_1 = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy
+      const state_1 = createEidosState()
       const location_tt = Traittype.get_by_label('location')
 
       const workshop = Belief.from_template(state_1, { bases: ['Location'], label: 'workshop' })
@@ -1994,7 +2016,9 @@ describe('Belief', () => {
 
   describe('save/load round-trip', () => {
     it('preserves promotions after save/load', () => {
-      const state = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy - use sub-mind of eidos
+      const shared_mind = new Materia(eidos(), 'shared')
+      const state = shared_mind.create_state(eidos().origin_state, {tt: 1})
       const hammer = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
@@ -2032,7 +2056,9 @@ describe('Belief', () => {
     })
 
     it('preserves certainty on promoted beliefs', () => {
-      const state = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy - use sub-mind of eidos
+      const shared_mind = new Materia(eidos(), 'shared')
+      const state = shared_mind.create_state(eidos().origin_state, {tt: 1})
       const hammer = Belief.from_template(state, {
         bases: ['PortableObject'],
         label: 'hammer'
@@ -2048,7 +2074,7 @@ describe('Belief', () => {
       state.lock()
 
       // Save and reload
-      const json = save_mind(state.in_mind)
+      const json = save_mind(shared_mind)
       DB.reset_registries()
       setupStandardArchetypes()
       const loaded_mind = load(json)
@@ -2107,7 +2133,9 @@ describe('Belief', () => {
     })
 
     it('promotion trait resolution works after save/load', () => {
-      const state = createStateInNewMind()
+      // Promotions can only be in Eidos hierarchy - use sub-mind of eidos
+      const shared_mind = new Materia(eidos(), 'shared')
+      const state = shared_mind.create_state(eidos().origin_state, {tt: 1})
 
       const workshop = Belief.from_template(state, { bases: ['Location'], label: 'workshop' })
       const shed = Belief.from_template(state, { bases: ['Location'], label: 'shed' })
@@ -2130,7 +2158,7 @@ describe('Belief', () => {
       state.lock()
 
       // Save and reload
-      const json = save_mind(state.in_mind)
+      const json = save_mind(shared_mind)
       DB.reset_registries()
       setupStandardArchetypes()
       const loaded_mind = load(json)

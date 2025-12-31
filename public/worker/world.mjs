@@ -296,20 +296,29 @@ export function init_world() {
   // Example: Branch resolution for inherited traits
   // A merchant who might be at workshop (60%) or tavern (40%)
   // Querying wandering_merchant.location returns Fuzzy via branch resolution
+  //
+  // IMPORTANT: Promotions can only be created in Eidos hierarchy (shared beliefs).
+  // So we create the merchant_location belief in an Eidos sub-mind, then
+  // have the world's wandering_merchant inherit from it.
   const workshop = state.get_belief_by_label('workshop')
   const tavern = state.get_belief_by_label('tavern')
   const Person = Archetype.get_by_label('Person')
 
-  // Create belief that will have probability alternatives
-  const merchant_location = Belief.from_template(state, {
+  // Create shared belief in Eidos hierarchy for promotions
+  const shared_mind = new Materia(eidos(), 'shared_behaviors')
+  const shared_state = shared_mind.create_state(eidos().origin_state, { tt: 1 })
+
+  // Create belief that will have probability alternatives (in Eidos)
+  const merchant_location = Belief.from_template(shared_state, {
     bases: ['ObjectPhysical'],
     label: 'merchant_location'
   })
   // replace() with promote: true removes original and registers promotions
-  merchant_location.replace(state, { location: workshop.subject }, { promote: true, certainty: 0.6 })
-  merchant_location.replace(state, { location: tavern.subject }, { promote: true, certainty: 0.4 })
+  merchant_location.replace(shared_state, { location: workshop.subject }, { promote: true, certainty: 0.6 })
+  merchant_location.replace(shared_state, { location: tavern.subject }, { promote: true, certainty: 0.4 })
+  shared_state.lock()
 
-  // Create wandering_merchant with merchant_location as base
+  // Create wandering_merchant in world state with merchant_location (from Eidos) as base
   // When querying location, get_trait walks bases, finds promotions, returns Fuzzy
   const wandering_merchant = Belief.from(state, [Person, merchant_location])
   wandering_merchant.label = 'wandering_merchant'

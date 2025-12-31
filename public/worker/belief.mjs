@@ -335,20 +335,27 @@ export class Belief {
     const seen = new Set()
 
     while (queue.length > 0) {
-      const base = /** @type {Belief|Archetype} */ (queue.shift())
-      if (seen.has(base)) continue
-      seen.add(base)
+      const node = /** @type {Belief|Archetype} */ (queue.shift())
+      if (seen.has(node)) continue
+      seen.add(node)
 
-      // Check base's promotions first
-      if (base instanceof Belief) {
-        const base_promo = this._get_trait_from_promotions(state, base, traittype, skip_promotions)
-        if (base_promo !== undefined) return base_promo
+      // Check node's promotions first
+      if (node instanceof Belief) {
+        // Propagation: if node is in skip_promotions, add its bases too
+        if (skip_promotions.has(node)) {
+          for (const b of node._bases) {
+            if (b instanceof Belief) skip_promotions.add(b)
+          }
+        } else {
+          const value = this._get_trait_from_promotions(state, node, traittype, skip_promotions)
+          if (value !== undefined) return value
+        }
       }
 
-      const own = base.get_own_trait_value(traittype)
+      const own = node.get_own_trait_value(traittype)
       if (own !== undefined) return own
 
-      queue.push(...base._bases)
+      queue.push(...node._bases)
     }
 
     return null
@@ -356,10 +363,22 @@ export class Belief {
 
   /**
    * Get trait value from a belief's promotions (lazy propagation)
+   *
+   * Resolution algorithm: Only the FIRST promotion encountered is resolved.
+   * When resolving B→C, we add B AND B.bases to skip_promotions, preventing
+   * any deeper promotions from being followed.
+   *
+   * Rules:
+   * 1. When processing a node with promotions (not in skip_promotions):
+   *    resolve promotion, add node + its bases to skip_promotions
+   * 2. When processing a node in skip_promotions:
+   *    skip its promotions, add its bases to skip_promotions (propagate)
+   * 3. Chained promotions (v1→v2→v3) work because resolved belief is not in skip_promotions
+   *
    * @param {State} state
    * @param {Belief} belief - Belief whose promotions to check
    * @param {Traittype} traittype
-   * @param {Set<Belief>} skip_promotions
+   * @param {Set<Belief>} skip_promotions - Beliefs whose promotions to skip
    * @returns {*} Trait value if found, undefined if not
    * @private
    */
@@ -370,8 +389,12 @@ export class Belief {
     const promotion = state.pick_promotion(belief.promotions, {})
     if (!promotion) return undefined
 
+    // Add belief AND its bases to skip_promotions (first promotion only rule)
     const new_skip = new Set(skip_promotions)
     new_skip.add(belief)
+    for (const base of belief._bases) {
+      if (base instanceof Belief) new_skip.add(base)
+    }
 
     // Multiple probability promotions - collect values from each
     if (Array.isArray(promotion)) {
@@ -1459,6 +1482,11 @@ export class Belief {
 
     // If promote is set, register as promotion
     if (promote) {
+      // Promotions can only be created in Eidos hierarchy (shared beliefs)
+      assert(this.in_mind?.in_eidos,
+        'Promotions can only be created in Eidos hierarchy (shared beliefs)',
+        {mind: this.in_mind?.label, belief_id: this._id, belief_label: this.get_label()})
+
       // Validate certainty: must be null/undefined (not a probability) or strictly between 0 and 1
       if (certainty != null) {
         assert(typeof certainty === 'number', 'certainty must be number or null', {certainty})

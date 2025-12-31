@@ -1,8 +1,5 @@
 import { expect } from 'chai'
-import { Fuzzy, unknown, _reset_unknown } from '../public/worker/fuzzy.mjs'
-import { deserialize_reference, load, save_mind } from '../public/worker/serialize.mjs'
-import { Traittype } from '../public/worker/traittype.mjs'
-import * as DB from '../public/worker/db.mjs'
+import { Fuzzy, Traittype, Materia, Belief, eidos, unknown, _reset_unknown, deserialize_reference, save_mind, load, DB } from '../public/worker/cosmos.mjs'
 import { createStateInNewMind, setupStandardArchetypes, saveAndReload, setupAfterEachValidation } from './helpers.mjs'
 
 describe('Fuzzy', () => {
@@ -218,36 +215,38 @@ describe('Fuzzy', () => {
     it('Fuzzy from promotions persists after save/load', () => {
       // Promotions are for inheritance - a belief that inherits from a belief
       // with promotions gets Fuzzy when resolving traits through the promotions
-      const state = createStateInNewMind('world')
+      // Promotions can only be in Eidos hierarchy
+      const shared_mind = new Materia(eidos(), 'shared')
+      const shared_state = shared_mind.create_state(eidos().origin_state, {tt: 1})
 
       // Create shared belief (like cultural knowledge in eidos)
-      const ball_type = state.add_belief_from_template({
+      const ball_type = Belief.from_template(shared_state, {
         bases: ['PortableObject'],
         traits: {},
         label: 'ball_type'
       })
 
       // Add promotions (ball_type gets removed, promotions become visible)
-      ball_type.replace(state, { color: 'red' }, { promote: true, certainty: 0.6 })
-      ball_type.replace(state, { color: 'blue' }, { promote: true, certainty: 0.4 })
+      ball_type.replace(shared_state, { color: 'red' }, { promote: true, certainty: 0.6 })
+      ball_type.replace(shared_state, { color: 'blue' }, { promote: true, certainty: 0.4 })
 
       // Create particular that inherits from the shared belief
-      const my_ball = state.add_belief_from_template({
+      const my_ball = Belief.from_template(shared_state, {
         bases: [ball_type],  // Inherits from the belief with promotions
         traits: {},
         label: 'my_ball'
       })
 
-      state.lock()
+      shared_state.lock()
 
       // Before save: inheriting belief gets Fuzzy through base's promotions
       const color_tt = Traittype.get_by_label('color')
-      const color_before = my_ball.get_trait(state, color_tt)
+      const color_before = my_ball.get_trait(shared_state, color_tt)
       expect(color_before).to.be.instanceOf(Fuzzy)
       expect(color_before.alternatives).to.have.lengthOf(2)
 
       // Save and reload
-      const loaded_mind = saveAndReload(state.in_mind, setupStandardArchetypes)
+      const loaded_mind = saveAndReload(shared_mind, setupStandardArchetypes)
       const loaded_state = [...loaded_mind._states][0]
       const loaded_my_ball = loaded_state.get_belief_by_label('my_ball')
 
@@ -266,27 +265,29 @@ describe('Fuzzy', () => {
         SizedObject: { bases: ['ObjectPhysical'], traits: { size: 'medium' } }
       }, {})
 
-      const state = createStateInNewMind('world')
+      // Promotions can only be in Eidos hierarchy
+      const shared_mind = new Materia(eidos(), 'shared')
+      const shared_state = shared_mind.create_state(eidos().origin_state, {tt: 1})
 
       // Create shared belief with promotions on one trait
-      const sized_thing = state.add_belief_from_template({
+      const sized_thing = Belief.from_template(shared_state, {
         bases: ['SizedObject'],
         traits: {},
         label: 'sized_thing'
       })
 
       // Add TWO promotions for color (size comes from archetype)
-      sized_thing.replace(state, { color: 'red' }, { promote: true, certainty: 0.6 })
-      sized_thing.replace(state, { color: 'blue' }, { promote: true, certainty: 0.4 })
+      sized_thing.replace(shared_state, { color: 'red' }, { promote: true, certainty: 0.6 })
+      sized_thing.replace(shared_state, { color: 'blue' }, { promote: true, certainty: 0.4 })
 
       // Create particular inheriting from sized_thing
-      const my_thing = state.add_belief_from_template({
+      const my_thing = Belief.from_template(shared_state, {
         bases: [sized_thing],
         traits: {},
         label: 'my_thing'
       })
 
-      state.lock()
+      shared_state.lock()
 
       // Save and reload
       function setupWithSizedObject() {
@@ -298,7 +299,7 @@ describe('Fuzzy', () => {
         }, {})
       }
 
-      const loaded_mind = saveAndReload(state.in_mind, setupWithSizedObject)
+      const loaded_mind = saveAndReload(shared_mind, setupWithSizedObject)
       const loaded_state = [...loaded_mind._states][0]
       const loaded_my_thing = loaded_state.get_belief_by_label('my_thing')
 

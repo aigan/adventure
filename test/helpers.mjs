@@ -6,6 +6,7 @@
  */
 
 import { Mind, Materia, State, Belief, Archetype, Traittype, Subject, save_mind, load, logos, logos_state } from '../public/worker/cosmos.mjs';
+import { eidos } from '../public/worker/eidos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { sysdesig } from '../public/worker/debug.mjs';
 
@@ -97,6 +98,15 @@ export function createStateInNewMind(label = 'test', tt = 1, parent_mind = logos
   const mind = new Materia(parent_mind, label);
   const ground_state = parent_mind === logos() ? logos_state() : parent_mind.origin_state;
   return mind.create_state(ground_state, {tt});
+}
+
+/**
+ * Helper to create a timed state in Eidos (for shared beliefs/promotions)
+ * @param {number} tt - Transaction time (defaults to 1)
+ * @returns {State} State in Eidos (access mind via state.in_mind)
+ */
+export function createEidosState(tt = 1) {
+  return eidos().create_timed_state(tt);
 }
 
 /**
