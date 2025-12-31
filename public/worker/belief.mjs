@@ -1017,7 +1017,7 @@ export class Belief {
    * @param {Belief} node - Current node to check
    * @param {Belief[]} path - Path from start to current node (exclusive)
    * @param {Set<Belief>} visited - Already visited nodes
-   * @returns {{resolved: Belief, path: Belief[]}|null}
+   * @returns {{resolved: Belief|Belief[], path: Belief[]}|null}
    * @private
    */
   static _find_first_promotion(state, node, path, visited) {
@@ -1027,7 +1027,8 @@ export class Belief {
     // Check if this node has a promotion
     if (node.promotions.size > 0) {
       const resolved = state.pick_promotion(node.promotions, {})
-      if (!Array.isArray(resolved) && resolved) {
+      // Return both single and array (probability) results
+      if (resolved) {
         return { resolved, path: [...path, node] }
       }
     }
@@ -1044,6 +1045,73 @@ export class Belief {
   }
 
   /**
+   * Join traits from multiple probability promotions into a Map of possibly-Fuzzy values.
+   *
+   * When probability promotions exist, we need to create a single belief that captures
+   * all the uncertainty. This helper collects traits from all promotions and joins them:
+   * - If all promotions have same value → plain value
+   * - If promotions differ → Fuzzy with alternatives weighted by promotion certainty
+   *
+   * @param {State} state - State context for get_trait()
+   * @param {Belief[]} promotions - Array of probability promotions (must have same subject)
+   * @returns {Map<Traittype, any>} - Joined traits (values may be Fuzzy)
+   * @private
+   */
+  static _join_traits_from_promotions(state, promotions) {
+    // Assertions per plan
+    const subject = promotions[0].subject
+    assert(promotions.every(p => p.subject === subject), 'All promotions must have same subject')
+
+    const first_tt = promotions[0].origin_state?.tt
+    assert(promotions.every(p => p.origin_state?.tt === first_tt), 'All promotions must have same tt')
+
+    const first_constraints = /** @type {Record<string, any>} */ (promotions[0].constraints ?? {})
+    // Simple constraints equality check (they're objects, typically empty)
+    assert(promotions.every(p => {
+      const c = /** @type {Record<string, any>} */ (p.constraints ?? {})
+      const keys1 = Object.keys(first_constraints)
+      const keys2 = Object.keys(c)
+      if (keys1.length !== keys2.length) return false
+      return keys1.every(k => first_constraints[k] === c[k])
+    }), 'All promotions must have same constraints')
+
+    // Collect all trait slots from all promotions
+    const all_slots = new Set()
+    for (const promo of promotions) {
+      for (const [tt] of promo.get_trait_entries()) {
+        all_slots.add(tt)
+      }
+    }
+
+    const joined = new Map()
+    for (const tt of all_slots) {
+      const alternatives = []
+      for (const promo of promotions) {
+        const value = promo.get_trait(state, tt)  // May be Fuzzy
+        const certainty = promo.certainty ?? 1.0
+
+        if (value instanceof Fuzzy && !value.is_unknown) {
+          // Expand and multiply certainties
+          for (const alt of value.alternatives) {
+            alternatives.push({ value: alt.value, certainty: certainty * alt.certainty })
+          }
+        } else if (value != null && !(value instanceof Fuzzy)) {
+          alternatives.push({ value, certainty })
+        }
+        // Skip null and unknown values
+      }
+
+      if (alternatives.length > 0) {
+        // Check if all same value - no need for Fuzzy
+        const first_value = alternatives[0].value
+        const all_same = alternatives.every(a => a.value === first_value)
+        joined.set(tt, all_same ? first_value : new Fuzzy({ alternatives }))
+      }
+    }
+    return joined
+  }
+
+  /**
    * Walk bases chain to find first promotion, create intermediate versions.
    *
    * Example: city → country → region, where ONLY region has promotion → region_v2
@@ -1052,6 +1120,9 @@ export class Belief {
    * 2. Find region has promotion → region_v2
    * 3. Create country_v2 = [country, region_v2]
    * 4. Return country_v2 (so city_v2.bases = [city, country_v2])
+   *
+   * For probability promotions (array from pick_promotion), joins traits into
+   * a single belief with Fuzzy values to preserve uncertainty.
    *
    * Currently called only when creating promotions. Future optimization: call when
    * creating any new belief in Eidos to give it cleaner inheritance without nested
@@ -1073,13 +1144,50 @@ export class Belief {
 
       const { resolved, path } = result
 
+      // Handle single vs probability (array) promotions
+      const promotions = Array.isArray(resolved) ? resolved : [resolved]
+      let current_resolved
+
+      if (promotions.length === 1) {
+        // Single promotion - use directly
+        current_resolved = promotions[0]
+      } else {
+        // Multiple probability promotions - join traits into single belief
+        // The node with promotions is the last in path
+        const node_with_promotions = path[path.length - 1]
+
+        // Join traits from all promotions into Fuzzy values
+        const joined_traits = Belief._join_traits_from_promotions(state, promotions)
+
+        // Create joined belief with original node as base (inherits non-overridden traits)
+        // Uses same subject since all promotions represent same entity
+        const joined = new Belief(state, promotions[0].subject, [node_with_promotions])
+        // Not a promotion itself - certainty is captured IN the Fuzzy trait values
+        joined.certainty = null
+        // All promotions have same constraints (asserted in helper)
+        joined.constraints = promotions[0].constraints
+
+        // Set joined traits
+        for (const [tt, value] of joined_traits) {
+          joined.add_trait(tt, value)
+        }
+
+        state.insert_beliefs(joined)
+        current_resolved = joined
+      }
+
       // Create intermediate versions bottom-up
       // path = [country, region] for city → country → region
       // We create: country_v2 = [country, region_v2]
-      let current_resolved = resolved
       for (let i = path.length - 2; i >= 0; i--) {
         const intermediate = path[i]
+        // Remove intermediate from state to avoid duplicate subjects
+        state.remove_beliefs(intermediate)
+        /** @type {Belief} */
         const intermediate_v2 = new Belief(state, intermediate.subject, [intermediate, current_resolved])
+        // Copy certainty and constraints from resolved promotion
+        intermediate_v2.certainty = current_resolved.certainty
+        intermediate_v2.constraints = current_resolved.constraints
         state.insert_beliefs(intermediate_v2)
         current_resolved = intermediate_v2
       }
@@ -1586,8 +1694,9 @@ export class Belief {
 
       // Set direct properties on the promoted belief
       // Note: origin_state is already set in constructor
-      replaced.certainty = certainty ?? null
-      replaced.constraints = constraints ?? {}
+      // Auto-copy certainty/constraints from this belief if not explicitly provided
+      replaced.certainty = certainty ?? this.certainty
+      replaced.constraints = constraints ?? this.constraints
 
       // Register in parent's promotions set
       this.promotions.add(replaced)

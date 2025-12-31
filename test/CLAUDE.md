@@ -40,6 +40,7 @@ mocha --grep "caching"                    # Pattern match
 - `temporal_reasoning.test.mjs` - Time-based queries
 - `logos.test.mjs` - Root mind behavior
 - `load.test.mjs` - Serialization round-trips
+- `promotion.test.mjs` - Promotions: Eidos constraint, probability, temporal, inheritance
 
 ### UI/Communication
 - `channel.test.mjs` - BroadcastChannel, inspection
