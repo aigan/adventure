@@ -1009,6 +1009,86 @@ export class Belief {
     return this.promotions
   }
 
+  /**
+   * DFS to find first promotion in bases chain.
+   * Returns the resolved promotion and path from start to it.
+   *
+   * @param {State} state - State context for pick_promotion()
+   * @param {Belief} node - Current node to check
+   * @param {Belief[]} path - Path from start to current node (exclusive)
+   * @param {Set<Belief>} visited - Already visited nodes
+   * @returns {{resolved: Belief, path: Belief[]}|null}
+   * @private
+   */
+  static _find_first_promotion(state, node, path, visited) {
+    if (visited.has(node)) return null
+    visited.add(node)
+
+    // Check if this node has a promotion
+    if (node.promotions.size > 0) {
+      const resolved = state.pick_promotion(node.promotions, {})
+      if (!Array.isArray(resolved) && resolved) {
+        return { resolved, path: [...path, node] }
+      }
+    }
+
+    // Continue searching in bases
+    for (const base of node._bases) {
+      if (base instanceof Belief) {
+        const result = Belief._find_first_promotion(state, base, [...path, node], visited)
+        if (result) return result
+      }
+    }
+
+    return null
+  }
+
+  /**
+   * Walk bases chain to find first promotion, create intermediate versions.
+   *
+   * Example: city → country → region, where ONLY region has promotion → region_v2
+   * When city creates a promotion:
+   * 1. Walk bases: country → region
+   * 2. Find region has promotion → region_v2
+   * 3. Create country_v2 = [country, region_v2]
+   * 4. Return country_v2 (so city_v2.bases = [city, country_v2])
+   *
+   * Currently called only when creating promotions. Future optimization: call when
+   * creating any new belief in Eidos to give it cleaner inheritance without nested
+   * promotions to resolve at trait lookup time.
+   *
+   * @param {State} state - State context for pick_promotion()
+   * @returns {Belief|null} - Intermediate belief to include, or null if no promotions
+   * @private
+   */
+  _materialize_promotion_chain(state) {
+    const visited = new Set()
+
+    // Search from each immediate Belief base
+    for (const base of this._bases) {
+      if (!(base instanceof Belief)) continue
+
+      const result = Belief._find_first_promotion(state, base, [], visited)
+      if (!result) continue
+
+      const { resolved, path } = result
+
+      // Create intermediate versions bottom-up
+      // path = [country, region] for city → country → region
+      // We create: country_v2 = [country, region_v2]
+      let current_resolved = resolved
+      for (let i = path.length - 2; i >= 0; i--) {
+        const intermediate = path[i]
+        const intermediate_v2 = new Belief(state, intermediate.subject, [intermediate, current_resolved])
+        state.insert_beliefs(intermediate_v2)
+        current_resolved = intermediate_v2
+      }
+
+      return current_resolved
+    }
+
+    return null
+  }
 
   /**
    * Generate a designation string for this belief
@@ -1471,7 +1551,15 @@ export class Belief {
     // Remove this belief from state (idempotent - skips if already removed)
     state.remove_beliefs(this)
 
-    const replaced = new Belief(state, this.subject, [this])
+    // For Eidos promotions, materialize intermediate versions for any promotions in bases chain
+    // This ensures the new belief has a "clean" inheritance chain without nested promotions
+    /** @type {Array<Belief|Archetype>} */
+    let bases = [this]
+    if (promote && this.in_mind?.in_eidos) {
+      const materialized = this._materialize_promotion_chain(state)
+      if (materialized) bases = [this, materialized]
+    }
+    const replaced = new Belief(state, this.subject, bases)
 
     // Add traits directly (no template resolution)
     for (const [trait_label, trait_value] of Object.entries(traits)) {

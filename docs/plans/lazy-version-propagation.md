@@ -15,12 +15,14 @@
 - ✅ `unknown()` singleton - represents undetermined value (Fuzzy with no alternatives)
 - ✅ `Mind.recall()` returns Notion with Fuzzy trait values when uncertain
 - ✅ Path certainty computation with caching (`Mind._compute_path_certainty()`)
+- ✅ Promotion tracking on Beliefs (Phase 1)
+- ✅ State resolver interface `pick_promotion()` (Phase 2)
+- ✅ Trait resolution walks promotions (Phase 3)
+- ✅ Materialization on creation - Eidos-only constraint + opportunistic flattening (Phase 4)
 
 **Not Yet Implemented:**
-- Branch tracking on Beliefs (Phase 1)
-- State resolver interface (Phase 2)
-- Materialization on creation (Phase 4)
-- `get_branch_heads()` API (Phase 6)
+- Phase 6: Superposition handling (`collapse_trait()` for explicit collapse)
+- Phase 7: Documentation and examples
 
 ## Context
 
@@ -336,98 +338,97 @@ _get_inherited_trait(state, traittype, skip_promotions = new Set()) {
 - Falls through to archetypes when promotions don't have the trait
 - Deep inheritance (5+ levels) resolves correctly
 
-### Phase 4: Materialization on Explicit Version Creation
+### Phase 4: Materialization on Explicit Version Creation ✅ COMPLETE
 
-**Files**: `public/worker/belief.mjs`, `public/worker/state.mjs`
+**Files**: `public/worker/belief.mjs`
 
-**Changes**:
-- Add `materialize_path(belief, state)` helper function
-- Walks bases chain and resolves all promotions
-- Creates intermediate beliefs if needed
-- Returns materialized belief with clean inheritance chain
-- Modify `Belief.from_template()` to call `materialize_path()` when creating versioned belief
+**Implemented** (December 2024):
 
-**Materialization algorithm**:
+Phase 4 is split into two parts:
+- **Phase 4a**: Eidos-only constraint for promotions
+- **Phase 4b**: Opportunistic flattening when creating promotions
+
+**Phase 4a: Eidos-only Constraint**
+- Promotions can only be created in Eidos hierarchy (shared beliefs)
+- Assertion in `replace()` checks `this.in_mind?.in_eidos`
+- Tests in `test/promotion_constraints.test.mjs` (13 tests)
+
+**Phase 4b: Opportunistic Flattening**
+- `_find_first_promotion(state, node, path, visited)` - DFS to find first promotion in bases chain
+- `_materialize_promotion_chain(state)` - Creates intermediate versions bottom-up when gaps exist
+- Called when creating promotions via `replace(..., {promote: true})`
+- Future optimization: could also be called when creating any new belief in Eidos
+
+**Algorithm**:
 ```javascript
-materialize_path(belief, state) {
-  const chain = []
+// Example: city → country → region, where ONLY region has promotion → region_v2
+// When city creates a promotion:
+// 1. Walk bases: country → region
+// 2. Find region has promotion → region_v2
+// 3. Create country_v2 = [country, region_v2]
+// 4. Return country_v2 (so city_v2.bases = [city, country_v2])
 
-  // Walk bases and collect resolution decisions
-  for (let current = belief; current; current = get_next_base(current)) {
-    if (current.promotions.size > 0) {
-      const resolved = state.pick_promotion(current.promotions, {})
-      if (Array.isArray(resolved)) {
-        throw new Error('Cannot materialize superposition - caller must collapse first')
-      }
-      chain.push({base: current, resolved})
-    } else {
-      chain.push({base: current, resolved: null})
+static _find_first_promotion(state, node, path, visited) {
+  if (visited.has(node)) return null
+  visited.add(node)
+
+  if (node.promotions.size > 0) {
+    const resolved = state.pick_promotion(node.promotions, {})
+    if (!Array.isArray(resolved) && resolved) {
+      return { resolved, path: [...path, node] }
     }
   }
 
-  // Create materialized intermediate nodes bottom-up
-  const materialized = []
-  for (const {base, resolved} of chain.reverse()) {
-    if (resolved) {
-      // Check if materialized version already exists
-      const existing = state.get_belief_by_subject(base.subject)
-      if (existing && existing.bases.has(resolved)) {
-        materialized.push(existing)
-      } else {
-        // Create new materialized belief
-        const new_belief = Belief.from({...})
-        materialized.push(new_belief)
-      }
+  for (const base of node._bases) {
+    if (base instanceof Belief) {
+      const result = Belief._find_first_promotion(state, base, [...path, node], visited)
+      if (result) return result
     }
   }
-
-  return materialized[0]
+  return null
 }
-```
 
-**Tests**:
-- Creating npc_v2 when country has promotion → creates city_v2 inheriting from country_v2
-- Multiple NPCs creating versions → reuse same city_v2
-- Materialization respects resolver decisions (temporal filtering)
-- Attempting to materialize superposition → throws error
-- Materialized beliefs are inserted into state
+_materialize_promotion_chain(state) {
+  const visited = new Set()
+  for (const base of this._bases) {
+    if (!(base instanceof Belief)) continue
 
-### Phase 5: Update `get_belief_by_subject()` with Resolver
+    const result = Belief._find_first_promotion(state, base, [], visited)
+    if (!result) continue
 
-**Files**: `public/worker/state.mjs`
+    const { resolved, path } = result
 
-**Changes**:
-- Modify `get_belief_by_subject()` to check for promotions
-- If belief has promotions, call resolver
-- Return resolved belief instead of base belief
-- Maintain backward compatibility (no promotions → return as before)
-
-**Implementation**:
-```javascript
-get_belief_by_subject(subject) {
-  for (const belief of this.get_beliefs()) {
-    if (belief.subject === subject) {
-      // Check if this belief has promotions
-      if (belief.promotions.size > 0) {
-        const resolved = this.pick_promotion(belief.promotions, {})
-        if (!Array.isArray(resolved)) {
-          return resolved  // Resolver decided
-        }
-        // Resolver returned superposition - return base belief
-        // Caller will discover superposition at trait level
-      }
-      return belief
+    // Create intermediate versions bottom-up
+    let current_resolved = resolved
+    for (let i = path.length - 2; i >= 0; i--) {
+      const intermediate = path[i]
+      const intermediate_v2 = new Belief(state, intermediate.subject, [intermediate, current_resolved])
+      state.insert_beliefs(intermediate_v2)
+      current_resolved = intermediate_v2
     }
+    return current_resolved
   }
   return null
 }
 ```
 
-**Tests**:
-- Query subject with temporal promotions → returns appropriate version
-- Query subject in different state timestamps → returns different versions
-- Query subject with probability promotions → returns base (defers to trait level)
-- Query subject without promotions → works as before
+**Tests** (`test/promotion_flattening.test.mjs`, 11 tests):
+- Gap scenario: only deep base has promotion → creates intermediate versions
+- Trait resolution works through materialized chain
+- Chained promotions to get fully resolved bases
+- Skips archetypes - only resolves Belief bases
+- Skips superposition - cannot flatten probability branches
+- Does not flatten when base has no promotions
+- Private beliefs (non-Eidos) do not flatten
+
+### Phase 5: Update `get_belief_by_subject()` with Resolver — NOT NEEDED
+
+**Reason**: When `replace(..., {promote: true})` is called, the original belief is removed from state via `state.remove_beliefs(this)`. So `get_belief_by_subject()` naturally returns the latest version because:
+- Original belief (with `promotions` set) is removed from state
+- Promotion is inserted into state
+- Query by subject → returns the promotion directly
+
+No changes to `get_belief_by_subject()` are required.
 
 ### Phase 6: Superposition Handling in State Operations
 
@@ -539,8 +540,8 @@ collapse_trait(belief, trait_name, selected_promotion) {
 - [x] Phase 1: Add promotion tracking to beliefs ✅ (December 2024)
 - [x] Phase 2: Implement state resolver interface ✅ (December 2024)
 - [x] Phase 3: Update trait resolution to walk promotions ✅ (December 2024)
-- [ ] Phase 4: Materialization on explicit version creation
-- [ ] Phase 5: Update get_belief_by_subject() with resolver
+- [x] Phase 4: Materialization on explicit version creation ✅ (December 2024)
+- [x] Phase 5: NOT NEEDED — `replace()` removes original from state, so queries return latest
 - [ ] Phase 6: Superposition handling in state operations (uses Fuzzy/Notion)
 - [ ] Phase 7: Documentation and examples
 

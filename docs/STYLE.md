@@ -71,6 +71,14 @@ Including a reason is recommended to document why the iteration is acceptable in
 - ✓ Descriptive names - no abbreviations unless obvious
 - ✓ Boolean variables start with `is_`, `has_`, `can_`, etc.
 - ✓ **Class vs instance naming**: Type/class names are capitalized (e.g., `Session`), instance variables are lowercase (e.g., `session`)
+- ✗ **Never use "resolve" in function names** - it's overloaded and unclear. Use specific verbs:
+  - `get_*` - retrieve/lookup existing value
+  - `find_*` - search for something
+  - `pick_*` - select from alternatives
+  - `follow_*` - traverse references/chains
+  - `flatten_*` - simplify nested structures
+  - `validate_*` - check correctness
+  - `convert_*` / `to_*` - transform between types
 
 ## Formatting
 
