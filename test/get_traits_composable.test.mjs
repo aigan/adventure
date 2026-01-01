@@ -118,11 +118,13 @@ describe('get_traits() composable trait consistency', () => {
     const inventory_from_get_traits = traits_map.get('inventory');
 
     expect(inventory_from_get_traits).to.be.an('array');
-    expect(inventory_from_get_traits).to.have.lengthOf(2,
+    expect(inventory_from_get_traits).to.have.lengthOf(
+      2,
       'get_traits() should compose from all bases like get_trait() does');
 
     // Both methods should return identical values
-    expect(inventory_from_get_traits).to.deep.equal(inventory_from_get_trait,
+    expect(inventory_from_get_traits).to.deep.equal(
+      inventory_from_get_trait,
       'get_traits() and get_trait() should return identical composed values');
   });
 
@@ -212,7 +214,8 @@ describe('get_traits() composable trait consistency', () => {
     const inventory_from_get_traits = traits_map.get('inventory');
 
     // Both should return the same composed array
-    expect(inventory_from_get_traits).to.deep.equal(inventory_from_get_trait,
+    expect(inventory_from_get_traits).to.deep.equal(
+      inventory_from_get_trait,
       'get_traits() should return same value as get_trait() for inherited composable trait');
 
     // Verify we got the expected composed result

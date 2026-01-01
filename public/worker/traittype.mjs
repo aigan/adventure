@@ -443,11 +443,12 @@ export class Traittype {
    * @returns {*} Derived value or undefined if no derivation needed
    */
   get_derived_value(belief) {
+    if (belief instanceof Archetype) return undefined // FIXME: generalize
     if (this.composable) {
       const values = belief.collect_latest_value_from_all_bases(this)
 
       if (values.length < 2) {
-        return values[0] ?? null
+        return values[0]
       }
 
       return this.compose(belief, values)

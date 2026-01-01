@@ -323,6 +323,7 @@ export class Belief {
    * @private
    */
   _get_inherited_trait(state, traittype, skip_promotions = new Set()) {
+    // FIXME: replace get_derived_value() with direct implementation
     const derived = traittype.get_derived_value(this)
     if (derived !== undefined) return derived
 
@@ -732,7 +733,29 @@ export class Belief {
    */
   *get_defined_traits() {
     const yielded = new Set()
+    const belief = this;
+    
+    /**
+     * @param {Belief|Archetype} node
+     * @returns {Generator<[Traittype, any], void, void>}
+     */
+    const all_traits = function*(node) {
+      //log([node.origin_state], 'get all traits for', node)
+      for (const [traittype, trait_value] of node.get_trait_entries()) {
+        //log('  ', traittype.label)
+        if (yielded.has(traittype)) continue
 
+        let value = trait_value
+        const derived_value = traittype.get_derived_value(belief)
+        if (derived_value !== undefined) log([belief.origin_state], 'derived', derived_value)
+        if (derived_value !== undefined) value = derived_value
+        if (belief.locked) belief._set_cache(traittype, value)
+
+        yield [traittype, value]
+        yielded.add(traittype)
+      }
+    }
+    
     // Yield own traits first
     for (const [traittype, value] of this._traits) {
       yield [traittype, value]
@@ -746,26 +769,31 @@ export class Belief {
     if (this._cached_all) return
 
     // Walk bases chain for inherited traits
-    const queue = [...this._bases]
+    /** @type {(Belief|Archetype)[]} */
+    const queue = [this]
     const seen = new Set()
 
     while (queue.length > 0) {
       const base = /** @type {Belief|Archetype} */ (queue.shift())
+      //log([belief.origin_state], 'get tratis for', base)
+
       if (seen.has(base)) continue
       seen.add(base)
 
+      yield* all_traits(base)
+
       // Yield base's own traits
-      for (const [traittype, trait_value] of base.get_trait_entries()) {
-        if (yielded.has(traittype)) continue
-
-        let value = trait_value
-        const derived_value = traittype.get_derived_value(this)
-        if (derived_value !== undefined) value = derived_value
-        if (this.locked) this._set_cache(traittype, value)
-
-        yield [traittype, value]
-        yielded.add(traittype)
-      }
+      //for (const [traittype, trait_value] of base.get_trait_entries()) {
+      //  if (yielded.has(traittype)) continue
+      //
+      //  let value = trait_value
+      //  const derived_value = traittype.get_derived_value(this)
+      //  if (derived_value !== undefined) value = derived_value
+      //  if (this.locked) this._set_cache(traittype, value)
+      //
+      //  yield [traittype, value]
+      //  yielded.add(traittype)
+      //}
 
       // If base belief has fully cached traits, use its cache instead of walking deeper
       if (!(base instanceof Belief && base._cached_all)) {
@@ -796,9 +824,106 @@ export class Belief {
    * @returns {Generator<[Traittype, *]>} Yields [traittype, value] pairs for set traits only
    */
   *get_traits() {
-    for (const pair of this.get_defined_traits()) {
+    for (const pair of this.get_defined_traits_v2()) {
       if (pair[1] != null) yield pair
     }
+  }
+
+  /**
+   * Single-pass trait iteration with inline composable handling
+   * Caches inherited traits when belief is locked
+   * @returns {Generator<[Traittype, any]>}
+   */
+  *get_defined_traits_v2() {
+    const yielded = new Set()
+    const composables = new Map()  // traittype → values[]
+    let has_promotions = false  // Track if any promotions encountered (invalidates caching)
+
+    // Yield cached traits first
+    for (const [traittype, value] of this._cache) {
+      yield /** @type {[Traittype, any]} */ ([traittype, value])
+      yielded.add(traittype)
+    }
+    if (this._cached_all) return
+
+    // BFS walk starting from this
+    /** @type {(Belief|Archetype)[]} */
+    const queue = [this]
+    const seen = new Set()
+
+    while (queue.length > 0) {
+      const node = /** @type {Belief|Archetype} */ (queue.shift())
+      if (seen.has(node)) continue
+      seen.add(node)
+
+      // If node has promotions, resolve and process
+      if (node instanceof Belief && node.promotions.size > 0) {
+        has_promotions = true  // Promotions are state-dependent, don't cache
+        // FIXME: pick_promotion() should always return array
+        const promotion = this.origin_state.pick_promotion(node.promotions, {})
+        if (promotion) {
+          if (Array.isArray(promotion)) {
+            // Probability promotions - collect Fuzzy values for each traittype
+            const promo_traittypes = new Set()
+            for (const p of promotion) {
+              for (const [tt] of p.get_trait_entries()) promo_traittypes.add(tt)
+            }
+            for (const traittype of promo_traittypes) {
+              if (yielded.has(traittype)) continue
+              const alternatives = []
+              for (const p of promotion) {
+                const v = p._traits.get(traittype)
+                if (v !== undefined && v !== null) {
+                  alternatives.push({ value: v, certainty: p.certainty ?? 1.0 })
+                }
+              }
+              if (alternatives.length > 0) {
+                const fuzzy = new Fuzzy({ alternatives })
+                // Don't cache - promotion values are state-dependent
+                yield /** @type {[Traittype, any]} */ ([traittype, fuzzy])
+                yielded.add(traittype)
+              }
+            }
+          } else {
+            // Single promotion - add to front of queue
+            queue.unshift(promotion)
+          }
+        }
+      }
+
+      for (const [traittype, value] of node.get_trait_entries()) {
+        if (yielded.has(traittype)) continue
+
+        if (traittype.composable && node !== this) {
+          // Accumulate composable values from inherited nodes only
+          if (!composables.has(traittype)) composables.set(traittype, [])
+          if (value !== null) composables.get(traittype).push(value)
+          continue
+        }
+
+        // Non-composable or own composable: yield immediately, cache inherited only
+        if (this.locked) this._set_cache(traittype, value)
+        yield /** @type {[Traittype, any]} */ ([traittype, value])
+        yielded.add(traittype)
+      }
+
+      // Add bases to queue
+      queue.push(...node._bases)
+    }
+
+    // Compose and yield all composables at the end
+    // TODO: Could yield composables earlier by tracking open branches per-traittype
+    //   and yielding as soon as all branches close. Would help pagination/early-stop.
+    for (const [traittype, values] of composables) {
+      if (yielded.has(traittype)) continue
+      const composed = values.length < 2 ? values[0] : traittype.compose(this, values)
+      if (this.locked) this._set_cache(traittype, composed)
+      yield /** @type {[Traittype, any]} */ ([traittype, composed])
+      yielded.add(traittype)
+    }
+
+    // Only mark fully cached if no promotions - promotion values are state-dependent
+    if (this.locked && !has_promotions) this._cached_all = true
   }
 
   /**

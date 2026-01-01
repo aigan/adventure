@@ -1124,6 +1124,103 @@ describe('Belief', () => {
       const child_trait_labels = child_traits.map(([tt]) => tt.label).sort();
       expect(child_trait_labels).to.deep.equal(gp_trait_labels);
     });
+
+    it('get_traits returns cached value on second iteration', () => {
+      const mind = new Materia(logos(), 'world');
+      const world_state = mind.create_state(logos().origin_state, {tt: 1});
+
+      const player = Belief.from(world_state, [Archetype.get_by_label('Person')], {});
+      player.lock(world_state);
+
+      // First iteration - populates cache
+      const traits1 = [...player.get_traits()];
+      expect(player._cached_all).to.be.true;
+
+      // Find an inherited trait that was cached
+      const about_traittype = Traittype.get_by_label('@about');
+      expect(player._cache.has(about_traittype)).to.be.true;
+
+      // Modify the cached value to a sentinel
+      const sentinel = Symbol('sentinel');
+      player._cache.set(about_traittype, sentinel);
+
+      // Second iteration - should return the modified cached value
+      const traits2 = [...player.get_traits()];
+      const about_value = traits2.find(([tt]) => tt === about_traittype)?.[1];
+
+      // Proves cache is used: we get the sentinel we set, not the original value
+      expect(about_value).to.equal(sentinel);
+    });
+
+    it('does not cache promotion-derived trait values', () => {
+      // Promotion values are state-dependent - caching them would be wrong
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
+      const location_tt = Traittype.get_by_label('location')
+
+      const workshop = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'workshop'
+      })
+      const shed = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'shed'
+      })
+
+      const base_hammer = Belief.from_template(state_1, {
+        bases: ['PortableObject'],
+        label: 'base_hammer'
+      })
+      state_1.lock()
+
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      base_hammer.branch(state_2, { location: workshop.subject }, { promote: true, certainty: 0.6 })
+      base_hammer.branch(state_2, { location: shed.subject }, { promote: true, certainty: 0.4 })
+
+      // Create belief that inherits from base with promotions
+      const hammer = Belief.from(state_2, [base_hammer], {})
+      hammer.lock(state_2)
+      state_2.lock()
+
+      // First get_traits call
+      const traits1 = [...hammer.get_traits()]
+      const location1 = traits1.find(([tt]) => tt === location_tt)?.[1]
+      expect(location1).to.be.instanceOf(Fuzzy)
+
+      // Promotion-derived values should NOT be cached
+      expect(hammer._cache.has(location_tt)).to.be.false
+      // And _cached_all should NOT be set when promotions were encountered
+      expect(hammer._cached_all).to.be.false
+    });
+
+    it('cache remains valid when no promotions in inheritance chain', () => {
+      // Normal inheritance (no promotions) should still cache
+      const mind = new Materia(logos(), 'world');
+      const world_state = mind.create_state(logos().origin_state, {tt: 1});
+
+      const workshop = Belief.from_template(world_state, {
+        bases: ['Location'],
+        label: 'workshop'
+      })
+
+      // Lock workshop so it can be used as base
+      workshop.lock(world_state)
+
+      const hammer = Belief.from(world_state, [Archetype.get_by_label('PortableObject')], {
+        location: workshop.subject
+      });
+      hammer.lock(world_state);
+
+      // First iteration populates cache
+      const traits1 = [...hammer.get_traits()];
+
+      // No promotions, so caching should work normally
+      expect(hammer._cached_all).to.be.true;
+
+      // Inherited traits should be cached
+      const about_tt = Traittype.get_by_label('@about');
+      expect(hammer._cache.has(about_tt)).to.be.true;
+    });
   });
 
   describe('get_slots()', () => {
@@ -1851,6 +1948,52 @@ describe('Belief', () => {
       const location_value = wandering_merchant.get_trait(state_1, location_tt)
       expect(location_value).to.be.instanceOf(Fuzzy)
       expect(location_value.alternatives).to.have.length(2)
+    })
+
+    it('get_traits returns same values as get_trait for promoted beliefs', () => {
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
+      const location_tt = Traittype.get_by_label('location')
+
+      const workshop = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'workshop'
+      })
+      const shed = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'shed'
+      })
+
+      // Create base belief that will have promotions
+      const base_hammer = Belief.from_template(state_1, {
+        bases: ['PortableObject'],
+        label: 'base_hammer'
+      })
+      state_1.lock()
+
+      // Create state_2 with probability promotions
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      const promo_a = base_hammer.branch(state_2, { location: workshop.subject }, { promote: true, certainty: 0.6 })
+      const promo_b = base_hammer.branch(state_2, { location: shed.subject }, { promote: true, certainty: 0.4 })
+
+      // Create a child belief that inherits from base_hammer (which has promotions)
+      const hammer = Belief.from(state_2, [base_hammer], {})
+      state_2.lock()
+
+      // get_trait returns Fuzzy for location
+      const trait_value = hammer.get_trait(state_2, location_tt)
+      expect(trait_value).to.be.instanceOf(Fuzzy)
+
+      // get_traits should return the same Fuzzy value
+      const traits_map = new Map()
+      for (const [tt, value] of hammer.get_traits()) {
+        traits_map.set(tt.label, value)
+      }
+
+      const traits_location = traits_map.get('location')
+      expect(traits_location).to.be.instanceOf(Fuzzy)
+      expect(traits_location.alternatives).to.have.length(2)
+      expect(traits_location).to.deep.equal(trait_value)
     })
   })
 
