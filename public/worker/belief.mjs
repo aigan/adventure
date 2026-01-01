@@ -387,8 +387,8 @@ export class Belief {
     if (belief.promotions.size === 0) return undefined
     if (skip_promotions.has(belief)) return undefined
 
-    const promotion = state.pick_promotion(belief.promotions, {})
-    if (!promotion) return undefined
+    const promos = state.pick_promotion(belief.promotions, {})
+    if (promos.length === 0) return undefined
 
     // Add belief AND its bases to skip_promotions (first promotion only rule)
     const new_skip = new Set(skip_promotions)
@@ -398,18 +398,18 @@ export class Belief {
     }
 
     // Multiple probability promotions - collect values from each
-    if (Array.isArray(promotion)) {
-      const result = this._collect_fuzzy_from_promotions(state, promotion, traittype, new_skip)
+    if (promos.length > 1) {
+      const result = this._collect_fuzzy_from_promotions(state, promos, traittype, new_skip)
       if (result instanceof Fuzzy && result.alternatives.length > 0) return result
       if (result !== undefined && !(result instanceof Fuzzy)) return result
       return undefined
     }
 
     // Single promotion - get trait from it
-    const value = promotion._get_trait_skip_promotions(state, traittype, new_skip)
+    const value = promos[0]._get_trait_skip_promotions(state, traittype, new_skip)
     if (value === undefined) return undefined
 
-    return this._apply_certainty(value, promotion.certainty)
+    return this._apply_certainty(value, promos[0].certainty)
   }
 
   /**
@@ -724,117 +724,25 @@ export class Belief {
   }
 
   /**
-   * Iterate over all defined traits (own and inherited) including those with null values
-   * Own traits shadow inherited traits with the same name
-   * Delegates to Traittype for derived values (composable, etc) - same logic as get_trait()
-   * Caches inherited traits when belief is locked (belief-level cache)
-   * Includes all trait definitions from archetypes (even null/unset values)
-   * @returns {Generator<[Traittype, *]>} Yields [traittype, value] pairs
-   */
-  *get_defined_traits() {
-    const yielded = new Set()
-    const belief = this;
-    
-    /**
-     * @param {Belief|Archetype} node
-     * @returns {Generator<[Traittype, any], void, void>}
-     */
-    const all_traits = function*(node) {
-      //log([node.origin_state], 'get all traits for', node)
-      for (const [traittype, trait_value] of node.get_trait_entries()) {
-        //log('  ', traittype.label)
-        if (yielded.has(traittype)) continue
-
-        let value = trait_value
-        const derived_value = traittype.get_derived_value(belief)
-        if (derived_value !== undefined) log([belief.origin_state], 'derived', derived_value)
-        if (derived_value !== undefined) value = derived_value
-        if (belief.locked) belief._set_cache(traittype, value)
-
-        yield [traittype, value]
-        yielded.add(traittype)
-      }
-    }
-    
-    // Yield own traits first
-    for (const [traittype, value] of this._traits) {
-      yield [traittype, value]
-      yielded.add(traittype)
-    }
-
-    for (const [traittype, value] of this._cache) {
-      yield [traittype, value]
-      yielded.add(traittype)
-    }
-    if (this._cached_all) return
-
-    // Walk bases chain for inherited traits
-    /** @type {(Belief|Archetype)[]} */
-    const queue = [this]
-    const seen = new Set()
-
-    while (queue.length > 0) {
-      const base = /** @type {Belief|Archetype} */ (queue.shift())
-      //log([belief.origin_state], 'get tratis for', base)
-
-      if (seen.has(base)) continue
-      seen.add(base)
-
-      yield* all_traits(base)
-
-      // Yield base's own traits
-      //for (const [traittype, trait_value] of base.get_trait_entries()) {
-      //  if (yielded.has(traittype)) continue
-      //
-      //  let value = trait_value
-      //  const derived_value = traittype.get_derived_value(this)
-      //  if (derived_value !== undefined) value = derived_value
-      //  if (this.locked) this._set_cache(traittype, value)
-      //
-      //  yield [traittype, value]
-      //  yielded.add(traittype)
-      //}
-
-      // If base belief has fully cached traits, use its cache instead of walking deeper
-      if (!(base instanceof Belief && base._cached_all)) {
-        queue.push(...base._bases)
-        continue
-      }
-
-      // Base has complete cache - iterate it instead of walking base._bases
-      for (const [traittype, cached_value] of base._cache) {
-        if (yielded.has(traittype)) continue
-
-        let value = cached_value
-        const derived_value = traittype.get_derived_value(this)
-        if (derived_value !== undefined) value = derived_value
-        if (this.locked) this._set_cache(traittype, value)
-
-        yield [traittype, value]
-        yielded.add(traittype)
-      }
-    }
-
-    if (this.locked) this._cached_all = true
-  }
-
-  /**
    * Iterate over traits that have non-null values (excludes null/undefined traits)
    * @heavy O(traits in belief + base chain) - iterates all traits
    * @returns {Generator<[Traittype, *]>} Yields [traittype, value] pairs for set traits only
    */
   *get_traits() {
-    for (const pair of this.get_defined_traits_v2()) {
+    for (const pair of this.get_defined_traits()) {
       if (pair[1] != null) yield pair
     }
   }
 
   /**
-   * Single-pass trait iteration with inline composable handling
+   * Iterate over all defined traits (own and inherited) including those with null values
+   * Own traits shadow inherited traits with the same name
+   * Caches inherited traits when belief is locked (belief-level cache)
+   * Includes all trait definitions from archetypes (even null/unset values)
    * Caches inherited traits when belief is locked
    * @returns {Generator<[Traittype, any]>}
    */
-  *get_defined_traits_v2() {
+  *get_defined_traits() {
     const yielded = new Set()
     const composables = new Map()  // traittype → values[]
     let has_promotions = false  // Track if any promotions encountered (invalidates caching)
@@ -859,35 +767,11 @@ export class Belief {
       // If node has promotions, resolve and process
       if (node instanceof Belief && node.promotions.size > 0) {
         has_promotions = true  // Promotions are state-dependent, don't cache
-        // FIXME: pick_promotion() should always return array
-        const promotion = this.origin_state.pick_promotion(node.promotions, {})
-        if (promotion) {
-          if (Array.isArray(promotion)) {
-            // Probability promotions - collect Fuzzy values for each traittype
-            const promo_traittypes = new Set()
-            for (const p of promotion) {
-              for (const [tt] of p.get_trait_entries()) promo_traittypes.add(tt)
-            }
-            for (const traittype of promo_traittypes) {
-              if (yielded.has(traittype)) continue
-              const alternatives = []
-              for (const p of promotion) {
-                const v = p._traits.get(traittype)
-                if (v !== undefined && v !== null) {
-                  alternatives.push({ value: v, certainty: p.certainty ?? 1.0 })
-                }
-              }
-              if (alternatives.length > 0) {
-                const fuzzy = new Fuzzy({ alternatives })
-                // Don't cache - promotion values are state-dependent
-                yield /** @type {[Traittype, any]} */ ([traittype, fuzzy])
-                yielded.add(traittype)
-              }
-            }
-          } else {
-            // Single promotion - add to front of queue
-            queue.unshift(promotion)
-          }
+        const promos = this.origin_state.pick_promotion(node.promotions, {})
+        if (promos.length === 1 && promos[0].certainty === null) {
+          queue.unshift(promos[0])  // Temporal: add to queue
+        } else if (promos.length > 0) {
+          yield* this._collect_fuzzy_promotions(promos, yielded)  // Probability
         }
       }
 
@@ -924,6 +808,29 @@ export class Belief {
 
     // Only mark fully cached if no promotions - promotion values are state-dependent
     if (this.locked && !has_promotions) this._cached_all = true
+  }
+
+  /**
+   * Collect Fuzzy trait values from probability promotions
+   * @param {Belief[]} promotions
+   * @param {Set<Traittype>} yielded - Traittypes already yielded (mutated)
+   * @returns {Generator<[Traittype, Fuzzy]>}
+   */
+  *_collect_fuzzy_promotions(promotions, yielded) {
+    const traittypes = new Set()
+    for (const p of promotions) {
+      for (const [tt] of p.get_trait_entries()) traittypes.add(tt)
+    }
+    for (const tt of traittypes) {
+      if (yielded.has(tt)) continue
+      const alternatives = promotions
+        .map(p => ({ value: p._traits.get(tt), certainty: p.certainty ?? 1.0 }))
+        .filter(a => a.value != null)
+      if (alternatives.length > 0) {
+        yield /** @type {[Traittype, Fuzzy]} */ ([tt, new Fuzzy({ alternatives })])
+        yielded.add(tt)
+      }
+    }
   }
 
   /**
@@ -1153,7 +1060,7 @@ export class Belief {
     if (node.promotions.size > 0) {
       const resolved = state.pick_promotion(node.promotions, {})
       // Return both single and array (probability) results
-      if (resolved) {
+      if (resolved.length > 0) {
         return { resolved, path: [...path, node] }
       }
     }

@@ -685,34 +685,18 @@ export class State {
    *
    * @param {Set<Belief>} promotions - Promoted belief versions
    * @param {object} context - Query context (for future extensions)
-   * @returns {Belief|Belief[]|null} Single belief (resolved), array (superposition), or null
+   * @returns {Belief[]} Array of beliefs (empty, single, or superposition)
    */
   pick_promotion(promotions, context = {}) {
-    // Filter by transaction time (when was this promotion created?)
-    const valid = [...promotions].filter(b => {
-      const origin = b.origin_state
-      if (!origin || origin.tt === null || this.tt === null) return false
-      return origin.tt <= this.tt
-    })
-
-    if (valid.length === 0) return null
-    if (valid.length === 1) return valid[0]
-
-    // Multiple valid promotions - check if any are probability states
-    const is_probability = valid.some(b => b.certainty !== null)
-
-    if (is_probability) {
-      // Probability promotions - return all for superposition
-      return valid
-    }
-
-    // Temporal promotions (no probability) - pick most recent by tt
-    // Note: valid array guaranteed to have non-null origin_state.tt from filter above
-    return valid.sort((a, b) => {
-      const a_tt = a.origin_state?.tt ?? 0
-      const b_tt = b.origin_state?.tt ?? 0
-      return b_tt - a_tt
-    })[0]
+    const valid = [...promotions].filter(b =>
+      b.origin_state?.tt != null && this.tt != null && b.origin_state.tt <= this.tt
+    )
+    if (valid.length === 0) return []
+    if (valid.length === 1) return valid  // single → always temporal
+    if (valid.some(b => b.certainty !== null)) return valid  // multiple with certainty → probability
+    // Multiple temporal: pick most recent
+    valid.sort((a, b) => (b.origin_state?.tt ?? 0) - (a.origin_state?.tt ?? 0))
+    return [valid[0]]
   }
 
   /**

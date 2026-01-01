@@ -584,7 +584,7 @@ describe('Promotions', () => {
       expect(my_thing.get_trait(state, color_tt)).to.equal(null)
     })
 
-    it('pick_promotion returns null when all promotions are in future', () => {
+    it('pick_promotion returns empty array when all promotions are in future', () => {
       const eidos_mind = new Materia(eidos(), 'shared')
 
       const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
@@ -601,7 +601,7 @@ describe('Promotions', () => {
       // Query at T40 - no valid promotions
       const state_40 = state_1.branch(state_1.ground_state, 40)
       const resolved = state_40.pick_promotion(ball.promotions, {})
-      expect(resolved).to.be.null
+      expect(resolved).to.deep.equal([])
     })
   })
 

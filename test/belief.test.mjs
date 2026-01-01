@@ -1761,10 +1761,10 @@ describe('Belief', () => {
 
       // Query from state_1 (tt=1) - promotion created at tt=2 should not be visible
       const resolved = state_1.pick_promotion(hammer.promotions, {})
-      expect(resolved).to.be.null
+      expect(resolved).to.deep.equal([])
     })
 
-    it('pick_promotion returns single belief for temporal promotion', () => {
+    it('pick_promotion returns single-element array for temporal promotion', () => {
       // Promotions can only be in Eidos hierarchy
       const eidos_mind = new Materia(eidos(), 'eidos_child')
       const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
@@ -1792,7 +1792,7 @@ describe('Belief', () => {
 
       // Query from state_2 - should see the promotion
       const resolved = state_2.pick_promotion(hammer.promotions, {})
-      expect(resolved).to.equal(hammer_v2)
+      expect(resolved).to.deep.equal([hammer_v2])
     })
 
     it('pick_promotion returns array for probability promotions', () => {
