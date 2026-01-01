@@ -1169,7 +1169,8 @@ describe('Belief', () => {
 
       const base_hammer = Belief.from_template(state_1, {
         bases: ['PortableObject'],
-        label: 'base_hammer'
+        label: 'base_hammer',
+        promotable: true
       })
       state_1.lock()
 
@@ -1236,7 +1237,8 @@ describe('Belief', () => {
       const base_hammer = Belief.from_template(state_1, {
         bases: ['PortableObject'],
         label: 'base_hammer',
-        traits: { location: null }  // Start with no location
+        traits: { location: null },  // Start with no location
+        promotable: true
       })
       state_1.lock()
 
@@ -1276,7 +1278,8 @@ describe('Belief', () => {
       const base_ball = Belief.from_template(state_1, {
         bases: ['PortableObject'],
         label: 'base_ball',
-        traits: { color: 'red' }
+        traits: { color: 'red' },
+        promotable: true
       })
       state_1.lock()
 
@@ -1684,7 +1687,8 @@ describe('Belief', () => {
       const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
-        label: 'hammer'
+        label: 'hammer',
+        promotable: true
       })
 
       // Create v2 as promotion
@@ -1699,7 +1703,8 @@ describe('Belief', () => {
       const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
-        label: 'hammer'
+        label: 'hammer',
+        promotable: true
       })
 
       const hammer_v2 = hammer_v1.branch(state, {}, { promote: true })
@@ -1715,7 +1720,8 @@ describe('Belief', () => {
       const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
-        label: 'hammer'
+        label: 'hammer',
+        promotable: true
       })
 
       const hammer_v2a = hammer_v1.branch(state, {}, { promote: true, certainty: 0.6 })
@@ -1731,7 +1737,8 @@ describe('Belief', () => {
       const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
-        label: 'hammer'
+        label: 'hammer',
+        promotable: true
       })
 
       const hammer_v2 = hammer_v1.branch(state, {}, { promote: true })
@@ -1752,7 +1759,8 @@ describe('Belief', () => {
       const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
-        label: 'hammer'
+        label: 'hammer',
+        promotable: true
       })
 
       expect(() => {
@@ -1765,7 +1773,8 @@ describe('Belief', () => {
       const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
-        label: 'hammer'
+        label: 'hammer',
+        promotable: true
       })
 
       expect(() => {
@@ -1778,7 +1787,8 @@ describe('Belief', () => {
       const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
-        label: 'hammer'
+        label: 'hammer',
+        promotable: true
       })
 
       const hammer_v2 = hammer_v1.branch(state, {}, { promote: true, certainty: 0.5 })
@@ -1791,7 +1801,8 @@ describe('Belief', () => {
       const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
-        label: 'hammer'
+        label: 'hammer',
+        promotable: true
       })
 
       const hammer_v2 = hammer_v1.branch(state, {}, { promote: true, certainty: null })
@@ -1804,7 +1815,8 @@ describe('Belief', () => {
       const state = createEidosState()
       const hammer_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
-        label: 'hammer'
+        label: 'hammer',
+        promotable: true
       })
 
       const hammer_v2 = hammer_v1.branch(state, {}, { promote: true })
@@ -1833,7 +1845,8 @@ describe('Belief', () => {
       const hammer = Belief.from_template(state_1, {
         bases: ['PortableObject'],
         label: 'hammer',
-        traits: { location: workshop.subject }
+        traits: { location: workshop.subject },
+        promotable: true
       })
       state_1.lock()
 
@@ -1864,7 +1877,8 @@ describe('Belief', () => {
       const hammer = Belief.from_template(state_1, {
         bases: ['PortableObject'],
         label: 'hammer',
-        traits: { location: workshop.subject }
+        traits: { location: workshop.subject },
+        promotable: true
       })
       state_1.lock()
 
@@ -1895,7 +1909,8 @@ describe('Belief', () => {
       const hammer = Belief.from_template(state_1, {
         bases: ['PortableObject'],
         label: 'hammer',
-        traits: { location: workshop.subject }
+        traits: { location: workshop.subject },
+        promotable: true
       })
       state_1.lock()
 
@@ -1929,7 +1944,8 @@ describe('Belief', () => {
       // Create base belief that will have promotions
       const base_hammer = Belief.from_template(state_1, {
         bases: ['PortableObject'],
-        label: 'base_hammer'
+        label: 'base_hammer',
+        promotable: true
       })
       state_1.lock()
 
@@ -1969,7 +1985,8 @@ describe('Belief', () => {
       const base_hammer = Belief.from_template(state_1, {
         bases: ['PortableObject'],
         label: 'base_hammer',
-        traits: { location: workshop.subject }
+        traits: { location: workshop.subject },
+        promotable: true
       })
       state_1.lock()
 
@@ -2009,7 +2026,8 @@ describe('Belief', () => {
       // Note: @form is inherited from ObjectPhysical archetype, not set on belief
       const merchant_location = Belief.from_template(state_1, {
         bases: ['ObjectPhysical'],
-        label: 'merchant_location'
+        label: 'merchant_location',
+        promotable: true
       })
 
       // Create probability promotions - they only set location, not @form
@@ -2050,7 +2068,8 @@ describe('Belief', () => {
       // Create base belief that will have promotions
       const base_hammer = Belief.from_template(state_1, {
         bases: ['PortableObject'],
-        label: 'base_hammer'
+        label: 'base_hammer',
+        promotable: true
       })
       state_1.lock()
 
@@ -2098,7 +2117,8 @@ describe('Belief', () => {
       const merchant_location = Belief.from_template(state_1, {
         bases: ['ObjectPhysical'],
         label: 'merchant_location',
-        traits: { location: 'workshop' }
+        traits: { location: 'workshop' },
+        promotable: true
       })
 
       // Create chained promotions: v2 → v3
@@ -2129,7 +2149,8 @@ describe('Belief', () => {
       const merchant_location = Belief.from_template(state_1, {
         bases: ['ObjectPhysical'],
         label: 'merchant_location',
-        traits: { location: 'workshop' }
+        traits: { location: 'workshop' },
+        promotable: true
       })
 
       // v2 has color=red, v3 only has location
@@ -2163,7 +2184,8 @@ describe('Belief', () => {
       const merchant_location = Belief.from_template(state_1, {
         bases: ['ObjectPhysical'],
         label: 'merchant_location',
-        traits: { location: 'workshop', color: 'blue' }
+        traits: { location: 'workshop', color: 'blue' },
+        promotable: true
       })
 
       // Promotions only update location, not color
@@ -2193,7 +2215,8 @@ describe('Belief', () => {
       const merchant_location = Belief.from_template(state_1, {
         bases: ['ObjectPhysical'],
         label: 'merchant_location',
-        traits: { location: 'workshop' }
+        traits: { location: 'workshop' },
+        promotable: true
       })
 
       // Promotions don't have @form
@@ -2221,7 +2244,8 @@ describe('Belief', () => {
       const merchant_location = Belief.from_template(state_1, {
         bases: ['ObjectPhysical'],
         label: 'merchant_location',
-        traits: { location: 'workshop' }
+        traits: { location: 'workshop' },
+        promotable: true
       })
 
       // v2 has certainty 0.6, v3 (off v2) has certainty 0.5
@@ -2247,7 +2271,8 @@ describe('Belief', () => {
       const state = shared_mind.create_state(eidos().origin_state, {tt: 1})
       const hammer = Belief.from_template(state, {
         bases: ['PortableObject'],
-        label: 'hammer'
+        label: 'hammer',
+        promotable: true
       })
       const hammer_id = hammer._id  // Save ID for later lookup
 
@@ -2287,7 +2312,8 @@ describe('Belief', () => {
       const state = shared_mind.create_state(eidos().origin_state, {tt: 1})
       const hammer = Belief.from_template(state, {
         bases: ['PortableObject'],
-        label: 'hammer'
+        label: 'hammer',
+        promotable: true
       })
 
       // Create promoted versions with certainty
@@ -2370,7 +2396,8 @@ describe('Belief', () => {
       const hammer = Belief.from_template(state, {
         bases: ['PortableObject'],
         traits: { location: workshop.subject },
-        label: 'hammer'
+        label: 'hammer',
+        promotable: true
       })
       const hammer_id = hammer._id  // Save ID for later lookup
 

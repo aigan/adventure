@@ -545,7 +545,8 @@ describe('recall_by_subject', () => {
       state_0.add_belief_from_template({
         label: 'hammer',
         bases: ['Tool'],
-        traits: { color: 'black' }
+        traits: { color: 'black' },
+        promotable: true
       })
       state_0.lock()
 
@@ -597,7 +598,8 @@ describe('recall_by_subject', () => {
       state_0.add_belief_from_template({
         label: 'hammer',
         bases: ['Tool'],
-        traits: { color: 'black' }
+        traits: { color: 'black' },
+        promotable: true
       })
       state_0.lock()
 
@@ -628,7 +630,8 @@ describe('recall_by_subject', () => {
       state_0.add_belief_from_template({
         label: 'hammer',
         bases: ['Tool'],
-        traits: { color: 'black' }
+        traits: { color: 'black' },
+        promotable: true
       })
       state_0.lock()
 
@@ -664,7 +667,8 @@ describe('recall_by_subject', () => {
       const hammer = state_0.add_belief_from_template({
         label: 'hammer',
         bases: ['Tool'],
-        traits: { color: 'black' }
+        traits: { color: 'black' },
+        promotable: true
       })
       state_0.lock()
 

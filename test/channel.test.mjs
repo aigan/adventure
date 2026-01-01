@@ -325,7 +325,8 @@ describe('Channel Message Handlers', () => {
 
       // Create base belief for location variations
       const merchant_loc = state.add_belief_from_template({
-        bases: ['ObjectPhysical'], label: 'merchant_location'
+        bases: ['ObjectPhysical'], label: 'merchant_location',
+        promotable: true
       });
 
       // Create promotions with certainty
@@ -361,7 +362,8 @@ describe('Channel Message Handlers', () => {
 
       // Create base belief
       const obj = state.add_belief_from_template({
-        bases: ['ObjectPhysical'], label: 'test_obj'
+        bases: ['ObjectPhysical'], label: 'test_obj',
+        promotable: true
       });
 
       // Create promotions

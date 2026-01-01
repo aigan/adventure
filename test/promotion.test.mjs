@@ -32,7 +32,8 @@ describe('Promotions', () => {
       const state = createEidosState()
       const merchant = Belief.from_template(state, {
         bases: ['Person'],
-        label: 'merchant'
+        label: 'merchant',
+        promotable: true
       })
 
       const merchant_v2 = merchant.branch(state, { color: 'red' }, { promote: true })
@@ -57,7 +58,8 @@ describe('Promotions', () => {
 
       const tradition = Belief.from_template(cultural_state, {
         bases: ['ObjectPhysical'],
-        label: 'tradition'
+        label: 'tradition',
+        promotable: true
       })
 
       expect(cultural_mind.in_eidos).to.be.true
@@ -79,7 +81,8 @@ describe('Promotions', () => {
 
       const merchant_type = Belief.from_template(state, {
         bases: ['Person'],
-        label: 'merchant_type'
+        label: 'merchant_type',
+        promotable: true
       })
 
       // 60% chance at shop, 40% at inn
@@ -109,7 +112,8 @@ describe('Promotions', () => {
       const merchant_type = Belief.from_template(state, {
         bases: ['Person'],
         traits: { '@form': 'solid' },  // Set BEFORE promotions
-        label: 'merchant_type'
+        label: 'merchant_type',
+        promotable: true
       })
 
       merchant_type.branch(state, { location: shop.subject }, { promote: true, certainty: 0.6 })
@@ -131,13 +135,14 @@ describe('Promotions', () => {
 
       const region = Belief.from_template(state, {
         bases: ['ObjectPhysical'],
-        label: 'region'
+        label: 'region',
+        promotable: true
       })
       region.branch(state, { color: 'green' }, { promote: true, certainty: 0.5 })
       region.branch(state, { color: 'brown' }, { promote: true, certainty: 0.5 })
 
       const country = Belief.from_template(state, { bases: [region], label: 'country' })
-      const city = Belief.from_template(state, { bases: [country], label: 'city' })
+      const city = Belief.from_template(state, { bases: [country], label: 'city', promotable: true })
 
       // When city creates a promotion, region's uncertainty should be materialized
       const city_v2 = city.replace(state, {}, { promote: true })
@@ -163,7 +168,8 @@ describe('Promotions', () => {
       const settlement = Belief.from_template(eidos_state_1, {
         bases: ['ObjectPhysical'],
         traits: { color: 'gray' },  // village
-        label: 'settlement'
+        label: 'settlement',
+        promotable: true
       })
       eidos_state_1.lock()
 
@@ -211,7 +217,8 @@ describe('Promotions', () => {
       const ball_v1 = Belief.from_template(state_1, {
         bases: ['PortableObject'],
         traits: { color: 'red' },
-        label: 'ball'
+        label: 'ball',
+        promotable: true
       })
       state_1.lock()
 
@@ -239,7 +246,8 @@ describe('Promotions', () => {
       const ball = Belief.from_template(state_1, {
         bases: ['PortableObject'],
         traits: { color: 'red' },
-        label: 'ball'
+        label: 'ball',
+        promotable: true
       })
       state_1.lock()
 
@@ -264,7 +272,8 @@ describe('Promotions', () => {
       const ball_v1 = Belief.from_template(state_1, {
         bases: ['PortableObject'],
         traits: { color: 'v1' },
-        label: 'ball'
+        label: 'ball',
+        promotable: true
       })
       state_1.lock()
 
@@ -314,7 +323,8 @@ describe('Promotions', () => {
       const region = Belief.from_template(state, {
         bases: ['ObjectPhysical'],
         traits: { color: 'green' },
-        label: 'region'
+        label: 'region',
+        promotable: true
       })
       region.replace(state, { color: 'brown' }, { promote: true })
 
@@ -346,12 +356,13 @@ describe('Promotions', () => {
       const C = Belief.from_template(state, {
         bases: ['ObjectPhysical'],
         traits: { color: 'red' },
-        label: 'C'
+        label: 'C',
+        promotable: true
       })
       C.replace(state, { color: 'blue' }, { promote: true })
 
       const B = Belief.from_template(state, { bases: [C], label: 'B' })
-      const A = Belief.from_template(state, { bases: ['Person', B], label: 'A' })
+      const A = Belief.from_template(state, { bases: ['Person', B], label: 'A', promotable: true })
 
       const A2 = A.replace(state, { '@form': 'vapor' }, { promote: true })
       state.lock()
@@ -366,7 +377,8 @@ describe('Promotions', () => {
       const ball_v1 = Belief.from_template(state, {
         bases: ['PortableObject'],
         traits: { color: 'red' },
-        label: 'ball'
+        label: 'ball',
+        promotable: true
       })
       const ball_v2 = ball_v1.branch(state, { color: 'blue' }, { promote: true })
       ball_v2.branch(state, { color: 'green' }, { promote: true })
@@ -390,7 +402,8 @@ describe('Promotions', () => {
 
       const obj = Belief.from_template(state, {
         bases: ['PortableObject'],  // Has @form default
-        label: 'obj'
+        label: 'obj',
+        promotable: true
       })
 
       // Promotions only set color, not @form
@@ -417,7 +430,8 @@ describe('Promotions', () => {
       const obj = Belief.from_template(state, {
         bases: ['PortableObject'],
         traits: { '@form': 'solid' },  // Set BEFORE promotions
-        label: 'obj'
+        label: 'obj',
+        promotable: true
       })
 
       obj.replace(state, { color: 'red' }, { promote: true, certainty: 0.6 })
@@ -437,7 +451,8 @@ describe('Promotions', () => {
       const obj = Belief.from_template(state, {
         bases: ['PortableObject'],
         traits: { color: 'white' },  // Will be overridden
-        label: 'obj'
+        label: 'obj',
+        promotable: true
       })
 
       obj.replace(state, { color: 'red' }, { promote: true, certainty: 0.6 })
@@ -459,7 +474,8 @@ describe('Promotions', () => {
       const obj = Belief.from_template(state, {
         bases: ['PortableObject'],
         traits: { color: 'red' },
-        label: 'obj'
+        label: 'obj',
+        promotable: true
       })
 
       // Empty promotions
@@ -483,7 +499,8 @@ describe('Promotions', () => {
 
       const obj = Belief.from_template(state, {
         bases: ['PortableObject'],
-        label: 'obj'
+        label: 'obj',
+        promotable: true
       })
 
       obj.replace(state, { color: 'red' }, { promote: true })  // No certainty
@@ -506,7 +523,8 @@ describe('Promotions', () => {
       const artisan_type = Belief.from_template(shared_state, {
         bases: ['Person'],
         traits: { location: workshop.subject },
-        label: 'artisan_type'
+        label: 'artisan_type',
+        promotable: true
       })
       artisan_type.branch(shared_state, { location: tavern.subject }, { promote: true })
       shared_state.lock()
@@ -554,7 +572,8 @@ describe('Promotions', () => {
       const thing = Belief.from_template(state, {
         bases: ['PortableObject'],
         traits: { color: 'red', '@form': 'solid' },
-        label: 'thing'
+        label: 'thing',
+        promotable: true
       })
 
       thing.branch(state, { color: 'blue' }, { promote: true })
@@ -573,7 +592,8 @@ describe('Promotions', () => {
       const thing = Belief.from_template(state, {
         bases: ['PortableObject'],
         traits: { color: 'red' },
-        label: 'thing'
+        label: 'thing',
+        promotable: true
       })
 
       thing.branch(state, { color: null }, { promote: true })
@@ -590,7 +610,8 @@ describe('Promotions', () => {
       const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
       const ball = Belief.from_template(state_1, {
         bases: ['PortableObject'],
-        label: 'ball'
+        label: 'ball',
+        promotable: true
       })
       state_1.lock()
 
@@ -614,7 +635,8 @@ describe('Promotions', () => {
       const ball_type = Belief.from_template(shared_state, {
         bases: ['PortableObject'],
         traits: { color: 'red' },
-        label: 'ball_type'
+        label: 'ball_type',
+        promotable: true
       })
       ball_type.branch(shared_state, { color: 'blue' }, { promote: true })
 
@@ -643,7 +665,8 @@ describe('Promotions', () => {
 
       const merchant_type = Belief.from_template(shared_state, {
         bases: ['Person'],
-        label: 'merchant_type'
+        label: 'merchant_type',
+        promotable: true
       })
       merchant_type.branch(shared_state, { location: shop.subject }, { promote: true, certainty: 0.6 })
       merchant_type.branch(shared_state, { location: inn.subject }, { promote: true, certainty: 0.4 })
@@ -672,7 +695,8 @@ describe('Promotions', () => {
 
       const ball_type = Belief.from_template(shared_state, {
         bases: ['PortableObject'],
-        label: 'ball_type'
+        label: 'ball_type',
+        promotable: true
       })
       ball_type.replace(shared_state, { color: 'red' }, { promote: true, certainty: 0.6 })
       ball_type.replace(shared_state, { color: 'blue' }, { promote: true, certainty: 0.4 })
@@ -703,7 +727,8 @@ describe('Promotions', () => {
       const ball_type = Belief.from_template(state_1, {
         bases: ['PortableObject'],
         traits: { color: 'red' },
-        label: 'ball_type'
+        label: 'ball_type',
+        promotable: true
       })
       state_1.lock()
 
@@ -759,7 +784,8 @@ describe('Promotions', () => {
       const ball_type = Belief.from_template(shared_state, {
         bases: ['PortableObject'],
         traits: { color: 'red' },
-        label: 'ball_type'
+        label: 'ball_type',
+        promotable: true
       })
 
       // First promotion with two traits (color + location)
@@ -803,7 +829,8 @@ describe('Promotions', () => {
       const ball_type = Belief.from_template(shared_state, {
         bases: ['PortableObject'],
         traits: { color: 'red' },
-        label: 'ball_type'
+        label: 'ball_type',
+        promotable: true
       })
       ball_type.replace(shared_state, { color: 'blue' }, { promote: true })
       shared_state.lock()

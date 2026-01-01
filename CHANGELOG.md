@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## 2026-01-01
 
+### Added
+- **Template support for `promotable` and `certainty` belief properties**
+  - `promotable: true` marks beliefs that can have promotions registered on them
+  - `certainty` sets belief confidence level (0-1) directly in template
+  - Both properties serialize/deserialize and appear in `to_inspect_view()`
+  - Promotion creation now requires BOTH `in_eidos` AND `promotable=true`
+  - Promotions inherit `promotable` from parent for chaining support
+
 ### Changed
 - **Alpha 1 Stage 2 complete** - Descriptors & Identity
   - Objects distinguished by descriptor traits (color, size)

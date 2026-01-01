@@ -223,7 +223,8 @@ describe('Fuzzy', () => {
       const ball_type = Belief.from_template(shared_state, {
         bases: ['PortableObject'],
         traits: {},
-        label: 'ball_type'
+        label: 'ball_type',
+        promotable: true
       })
 
       // Add promotions (ball_type gets removed, promotions become visible)
@@ -273,7 +274,8 @@ describe('Fuzzy', () => {
       const sized_thing = Belief.from_template(shared_state, {
         bases: ['SizedObject'],
         traits: {},
-        label: 'sized_thing'
+        label: 'sized_thing',
+        promotable: true
       })
 
       // Add TWO promotions for color (size comes from archetype)

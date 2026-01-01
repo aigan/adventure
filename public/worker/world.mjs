@@ -311,7 +311,8 @@ export function init_world() {
   // Create belief that will have probability alternatives (in Eidos)
   const merchant_location = Belief.from_template(shared_state, {
     bases: ['ObjectPhysical'],
-    label: 'merchant_location'
+    label: 'merchant_location',
+    promotable: true
   })
   // replace() with promote: true removes original and registers promotions
   merchant_location.replace(shared_state, { location: workshop.subject }, { promote: true, certainty: 0.6 })

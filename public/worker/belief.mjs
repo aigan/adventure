@@ -52,7 +52,8 @@ import { Fuzzy } from './fuzzy.mjs'
  * @property {Object<string, SerializedTraitValue>} traits - Trait values (sids, primitives, or references)
  * @property {number|null} origin_state - State _id where this belief was created (null for shared beliefs)
  * @property {number[]} [promotions] - Belief _ids registered as promotions of this belief
- * @property {number} [certainty] - Probability weight (0 < x < 1) for promoted beliefs
+ * @property {number} [certainty] - Probability weight (0 < x < 1)
+ * @property {boolean} [promotable] - Whether this belief can have promotions registered on it
  */
 
 /**
@@ -65,6 +66,8 @@ import { Fuzzy } from './fuzzy.mjs'
  * @property {Map<Traittype, *>} _traits - Trait values (sids, primitives, State/Mind refs)
  * @property {Map<string, any>} [_deserialized_traits] - Temporary storage during JSON deserialization
  * @property {boolean} locked - Whether belief can be modified
+ * @property {number|null} certainty - Probability weight (null = not a probability)
+ * @property {boolean} promotable - Whether this belief can have promotions registered on it
  */
 export class Belief {
 
@@ -127,6 +130,12 @@ export class Belief {
      * @type {Object}
      */
     this.constraints = {}
+
+    /**
+     * Whether this belief can have promotions registered on it
+     * @type {boolean}
+     */
+    this.promotable = false
 
     DB.register_belief_by_id(this)
     this.subject.beliefs.add(this)
@@ -1400,7 +1409,7 @@ export class Belief {
   toJSON() {
     const t_about = Traittype.get_by_label('@about')
     const about_trait = t_about ? this._traits.get(t_about) : null
-    const result = /** @type {{_type: string, _id: number, sid: number, label: string|null, about: any, archetypes: string[], bases: (string|number)[], traits: any, origin_state: number|null, promotions?: number[], certainty?: number}} */ ({
+    const result = /** @type {{_type: string, _id: number, sid: number, label: string|null, about: any, archetypes: string[], bases: (string|number)[], traits: any, origin_state: number|null, promotions?: number[], certainty?: number, promotable?: boolean}} */ ({
       _type: 'Belief',
       _id: this._id,
       sid: this.subject.sid,
@@ -1420,6 +1429,10 @@ export class Belief {
     // Save certainty if set (for probability beliefs)
     if (this.certainty !== null) {
       result.certainty = this.certainty
+    }
+    // Save promotable if true (beliefs that can have promotions)
+    if (this.promotable) {
+      result.promotable = this.promotable
     }
     return result
   }
@@ -1468,7 +1481,7 @@ export class Belief {
   /**
    * Create shallow inspection view of this belief for the inspect UI
    * @param {State} state - State context for resolving trait sids
-   * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string|null, type: string, id?: number}>, bases: Array<{label: string|null, id?: number}>, traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean, has_promotions?: boolean, promotions?: Array<{_id: number, label: string|null, certainty: number|null}>, children?: Array<{_id: number, label: string|null}>}} Shallow representation with references, including mind context and what this knowledge is about (for cross-mind knowledge beliefs)
+   * @returns {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string|null, type: string, id?: number}>, bases: Array<{label: string|null, id?: number}>, traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean, has_promotions?: boolean, promotions?: Array<{_id: number, label: string|null, certainty: number|null}>, promotable?: boolean, certainty?: number|null, children?: Array<{_id: number, label: string|null}>}} Shallow representation with references, including mind context and what this knowledge is about (for cross-mind knowledge beliefs)
    */
   to_inspect_view(state) {
     assert(state instanceof State, "should be State", state);
@@ -1483,7 +1496,7 @@ export class Belief {
       }
     }
 
-    const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string|null, type: string, id?: number}>, bases: Array<{label: string|null, id?: number}>, traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean, has_promotions?: boolean, promotions?: Array<{_id: number, label: string|null, certainty: number|null}>, children?: Array<{_id: number, label: string|null}>}} */ ({
+    const result = /** @type {{_type: string, _id: number, label: string|null, archetypes: string[], prototypes: Array<{label: string|null, type: string, id?: number}>, bases: Array<{label: string|null, id?: number}>, traits: any, mind_id?: number, mind_label?: string|null, about_label?: string|null, locked?: boolean, has_promotions?: boolean, promotions?: Array<{_id: number, label: string|null, certainty: number|null}>, promotable?: boolean, certainty?: number|null, children?: Array<{_id: number, label: string|null}>}} */ ({
       _type: 'Belief',
       _id: this._id,
       label: this.get_label(),
@@ -1518,6 +1531,16 @@ export class Belief {
         label: p.get_label(),
         certainty: p.certainty
       }))
+    }
+
+    // Include promotable if true
+    if (this.promotable) {
+      result.promotable = true
+    }
+
+    // Include certainty if set
+    if (this.certainty !== null) {
+      result.certainty = this.certainty
     }
 
     // @heavy - scan for children (beliefs that inherit from this one)
@@ -1604,6 +1627,7 @@ export class Belief {
     belief._cached_all = false
     belief.promotions = new Set()
     belief.certainty = data.certainty ?? null
+    belief.promotable = data.promotable ?? false
     belief.constraints = {}
     // Store promotion IDs for deferred resolution (after all beliefs are loaded)
     belief._promotion_ids = data.promotions ?? null
@@ -1664,10 +1688,10 @@ export class Belief {
   /**
    * Create belief from template with string resolution and trait templates
    * @param {State} state - State context (provides mind and creator_state)
-   * @param {any} template - Template with sid, bases, traits, about_state, label
+   * @param {any} template - Template with sid, bases, traits, about_state, label, promotable, certainty
    * @returns {Belief}
    */
-  static from_template(state, {sid=null, bases=[], traits={}, about_state=null, label=null} = {}) {
+  static from_template(state, {sid=null, bases=[], traits={}, about_state=null, label=null, promotable=false, certainty=null} = {}) {
     assert(state instanceof State, 'from_template requires State as first argument', {state})
 
     const resolved_bases = bases.map((/** @type {string|Belief|Archetype} */ base_in) => {
@@ -1714,6 +1738,8 @@ export class Belief {
     debug([state], "Create belief with", ...resolved_bases)
 
     const belief = new Belief(state, subject, resolved_bases)
+    belief.promotable = promotable
+    belief.certainty = certainty
 
     for (const [trait_label, trait_data] of Object.entries(traits)) {
       debug("  add trait", trait_label)
@@ -1818,6 +1844,11 @@ export class Belief {
         'Promotions can only be created in Eidos hierarchy (shared beliefs)',
         {mind: this.in_mind?.label, belief_id: this._id, belief_label: this.get_label()})
 
+      // Promotions require the parent belief to be marked as promotable
+      assert(this.promotable,
+        'Promotions require promotable=true on parent belief',
+        {belief_id: this._id, belief_label: this.get_label(), promotable: this.promotable})
+
       // Validate certainty: must be null/undefined (not a probability) or strictly between 0 and 1
       if (certainty != null) {
         assert(typeof certainty === 'number', 'certainty must be number or null', {certainty})
@@ -1829,9 +1860,10 @@ export class Belief {
 
       // Set direct properties on the promoted belief
       // Note: origin_state is already set in constructor
-      // Auto-copy certainty/constraints from this belief if not explicitly provided
+      // Auto-copy certainty/constraints/promotable from this belief if not explicitly provided
       replaced.certainty = certainty ?? this.certainty
       replaced.constraints = constraints ?? this.constraints
+      replaced.promotable = this.promotable  // Inherit promotable for chained promotions
 
       // Register in parent's promotions set
       this.promotions.add(replaced)
