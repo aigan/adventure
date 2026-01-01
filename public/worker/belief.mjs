@@ -319,13 +319,17 @@ export class Belief {
    * @param {State} state - State context (used by Traittype for derived values)
    * @param {Traittype} traittype - Traittype to get
    * @param {Set<Belief>} [skip_promotions] - Beliefs whose promotions should be skipped (prevents infinite recursion)
+   * @param {{from_shared?: boolean}} [context] - Mutable context to track caching constraints
    * @returns {*} trait value (Subject, not Belief), or null if not found
    * @private
    */
-  _get_inherited_trait(state, traittype, skip_promotions = new Set()) {
+  _get_inherited_trait(state, traittype, skip_promotions = new Set(), context = {}) {
     // FIXME: replace get_derived_value() with direct implementation
     const derived = traittype.get_derived_value(this)
     if (derived !== undefined) return derived
+
+    // Track if this belief is in Eidos (can't cache - promotions may be added later)
+    if (this.in_mind?.in_eidos) context.from_shared = true
 
     // Check this belief's own promotions first (before walking bases)
     const own_promo = this._get_trait_from_promotions(state, this, traittype, skip_promotions)
@@ -342,12 +346,14 @@ export class Belief {
 
       // Check node's promotions first
       if (node instanceof Belief) {
+        // Track if value comes from shared belief (can't cache - promotions may be added later)
+        if (node.in_mind?.in_eidos) context.from_shared = true
         // Propagation: if node is in skip_promotions, add its bases too
         if (skip_promotions.has(node)) {
           for (const b of node._bases) {
             if (b instanceof Belief) skip_promotions.add(b)
           }
-        } else {
+        } else if (node.promotions.size > 0) {
           const value = this._get_trait_from_promotions(state, node, traittype, skip_promotions)
           if (value !== undefined) return value
         }
@@ -498,8 +504,11 @@ export class Belief {
     if (cached !== undefined) return cached
 
     // Walk bases with skip_promotions
-    const value = this._get_inherited_trait(state, traittype, skip_promotions)
-    if (this.locked && !(value instanceof Fuzzy)) {
+    /** @type {{from_shared?: boolean}} */
+    const ctx = {}
+    const value = this._get_inherited_trait(state, traittype, skip_promotions, ctx)
+    // Don't cache if from_shared (Eidos - promotions may be added) or Fuzzy (certainty-dependent)
+    if (this.locked && !ctx.from_shared && !(value instanceof Fuzzy)) {
       this._set_cache(traittype, value)
     }
     return value
@@ -524,9 +533,11 @@ export class Belief {
     value = this._get_cached(traittype)
     if (value !== undefined) return value
 
-    value = this._get_inherited_trait(state, traittype)
-    // Don't cache Fuzzy values - they're context-dependent (state.pick_promotion varies)
-    if (this.locked && !(value instanceof Fuzzy)) {
+    /** @type {{from_shared?: boolean}} */
+    const ctx = {}
+    value = this._get_inherited_trait(state, traittype, undefined, ctx)
+    // Don't cache if from_shared (Eidos - promotions may be added) or Fuzzy (certainty-dependent)
+    if (this.locked && !ctx.from_shared && !(value instanceof Fuzzy)) {
       this._set_cache(traittype, value)
     }
 
@@ -703,6 +714,42 @@ export class Belief {
     return values
   }
 
+  // ============================================================================
+  // Trait Caching
+  // ============================================================================
+  //
+  // CURRENT APPROACH (simple, correct):
+  // - Don't cache values from Eidos hierarchy (in_mind.in_eidos) - promotions may be added
+  // - Don't cache Fuzzy values - they're certainty-dependent
+  //
+  // This is conservative but avoids complex invalidation. Since promotions only
+  // happen in Eidos, world beliefs that inherit from Eidos won't cache those values.
+  //
+  // FUTURE OPTIMIZATION IDEAS (see docs/notes/Claude-Cultural knowledge using flyweight model.md):
+  //
+  // 1. Epoch-based invalidation:
+  //    - Each belief has _own_epoch (incremented when promotion added)
+  //    - Cache entries store {value, source_belief, source_epoch}
+  //    - On cache read: if source_belief._own_epoch === source_epoch → hit
+  //    - O(1) per read, but requires storing source reference
+  //
+  // 2. @resolution pattern (META-PLAN Phase 3):
+  //    - Record collapse in Subject.resolutions index
+  //    - Check resolutions BEFORE walking bases
+  //    - Recorded collapses short-circuit the walk entirely
+  //
+  // 3. Flattening with source tracking:
+  //    - When resolving, record which base the value came from
+  //    - Future queries check that one source's epoch directly
+  //    - Amortizes walk cost across multiple queries
+  //
+  // 4. resolved_for tracking (from flyweight doc):
+  //    - Base tracks which states have resolved it
+  //    - Clear on promotion add (O(1))
+  //    - Inheritors check if they're in resolved_for set
+  //
+  // ============================================================================
+
   /**
    * Get cached trait value
    * @param {Traittype} traittype - Traittype object
@@ -745,7 +792,7 @@ export class Belief {
   *get_defined_traits() {
     const yielded = new Set()
     const composables = new Map()  // traittype → values[]
-    let has_promotions = false  // Track if any promotions encountered (invalidates caching)
+    let from_shared = false  // Track if value comes from Eidos (can't cache - promotions may be added)
 
     // Yield cached traits first
     for (const [traittype, value] of this._cache) {
@@ -764,9 +811,11 @@ export class Belief {
       if (seen.has(node)) continue
       seen.add(node)
 
+      // Track if we touch a shared belief (can't cache - promotions may be added later)
+      if (node instanceof Belief && node.in_mind?.in_eidos) from_shared = true
+
       // If node has promotions, resolve and process
       if (node instanceof Belief && node.promotions.size > 0) {
-        has_promotions = true  // Promotions are state-dependent, don't cache
         const promos = this.origin_state.pick_promotion(node.promotions, {})
         if (promos.length === 1 && promos[0].certainty === null) {
           queue.unshift(promos[0])  // Temporal: add to queue
@@ -785,8 +834,9 @@ export class Belief {
           continue
         }
 
-        // Non-composable or own composable: yield immediately, cache inherited only
-        if (this.locked) this._set_cache(traittype, value)
+        // Non-composable or own composable: yield immediately
+        // Only cache if not from shared belief (shared beliefs can get promotions later)
+        if (this.locked && !from_shared) this._set_cache(traittype, value)
         yield /** @type {[Traittype, any]} */ ([traittype, value])
         yielded.add(traittype)
       }
@@ -801,13 +851,14 @@ export class Belief {
     for (const [traittype, values] of composables) {
       if (yielded.has(traittype)) continue
       const composed = values.length < 2 ? values[0] : traittype.compose(this, values)
-      if (this.locked) this._set_cache(traittype, composed)
+      // Only cache if not from shared belief
+      if (this.locked && !from_shared) this._set_cache(traittype, composed)
       yield /** @type {[Traittype, any]} */ ([traittype, composed])
       yielded.add(traittype)
     }
 
-    // Only mark fully cached if no promotions - promotion values are state-dependent
-    if (this.locked && !has_promotions) this._cached_all = true
+    // Only mark fully cached if not from shared (Eidos beliefs can get promotions later)
+    if (this.locked && !from_shared) this._cached_all = true
   }
 
   /**
@@ -1732,6 +1783,8 @@ export class Belief {
 
       // Register in parent's promotions set
       this.promotions.add(replaced)
+      // Note: Cache invalidation for inheritors is handled by from_shared tracking
+      // (values from Eidos are not cached, so no invalidation needed)
     }
 
     // Insert into state automatically

@@ -1221,6 +1221,89 @@ describe('Belief', () => {
       const about_tt = Traittype.get_by_label('@about');
       expect(hammer._cache.has(about_tt)).to.be.true;
     });
+
+    it('does not cache temporal promotion values (different tt gives different result)', () => {
+      // Temporal promotions return concrete values (not Fuzzy), but they're still
+      // state-dependent because different tt values resolve different promotions
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
+      const location_tt = Traittype.get_by_label('location')
+
+      const workshop = Belief.from_template(state_1, {
+        bases: ['Location'],
+        label: 'workshop'
+      })
+      const base_hammer = Belief.from_template(state_1, {
+        bases: ['PortableObject'],
+        label: 'base_hammer',
+        traits: { location: null }  // Start with no location
+      })
+      state_1.lock()
+
+      // Create temporal promotion at tt=10 (no certainty = temporal, not probability)
+      const state_10 = state_1.branch(state_1.ground_state, 10)
+      base_hammer.branch(state_10, { location: workshop.subject }, { promote: true })
+      state_10.lock()
+
+      // Create hammer that inherits from base_hammer
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      const hammer = Belief.from(state_2, [base_hammer], {})
+      hammer.lock(state_2)
+      state_2.lock()
+
+      // Query at tt=15 (after promotion) - should see workshop
+      const state_15 = state_1.branch(state_1.ground_state, 15)
+      const location_at_15 = hammer.get_trait(state_15, location_tt)
+      expect(location_at_15).to.equal(workshop.subject)
+
+      // Query at tt=5 (before promotion) - should see null, NOT cached workshop
+      const state_5 = state_1.branch(state_1.ground_state, 5)
+      const location_at_5 = hammer.get_trait(state_5, location_tt)
+      expect(location_at_5).to.equal(null)  // BUG: currently returns workshop due to caching
+
+      // Cache should NOT contain the temporal promotion value
+      expect(hammer._cache.has(location_tt)).to.be.false
+    });
+
+    it('does not cache values from shared beliefs (avoids invalidation issue)', () => {
+      // Values from shared beliefs (Eidos) are not cached because they can get promotions later.
+      // This avoids the need for complex cache invalidation.
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
+      const color_tt = Traittype.get_by_label('color')
+
+      // Create base ball with color (shared belief in Eidos hierarchy)
+      const base_ball = Belief.from_template(state_1, {
+        bases: ['PortableObject'],
+        label: 'base_ball',
+        traits: { color: 'red' }
+      })
+      state_1.lock()
+
+      // Create ball that inherits from base_ball (in same Eidos hierarchy)
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      const ball = Belief.from(state_2, [base_ball], {})
+      ball.lock(state_2)
+      state_2.lock()
+
+      // Query color - should NOT be cached because base_ball is shared
+      const color1 = ball.get_trait(state_2, color_tt)
+      expect(color1).to.equal('red')
+      expect(ball._cache.has(color_tt)).to.be.false  // Not cached (from shared belief)
+
+      // Add promotion to base_ball (changes color to blue at tt=10)
+      const state_10 = state_1.branch(state_1.ground_state, 10)
+      base_ball.branch(state_10, { color: 'blue' }, { promote: true })
+      state_10.lock()
+
+      // Query at tt=10 sees the promotion
+      const color2 = ball.get_trait(state_10, color_tt)
+      expect(color2).to.equal('blue')
+
+      // Query at tt=2 still sees original (no cache corruption)
+      const color3 = ball.get_trait(state_2, color_tt)
+      expect(color3).to.equal('red')
+    });
   });
 
   describe('get_slots()', () => {
