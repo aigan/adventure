@@ -2,17 +2,19 @@
 
 ## Active
 
+- [ ] **Alpha 1: Missing Hammer Investigation** ([stages](docs/ALPHA-1.md))
+  - Stage 1: Core Belief Structure ✅
+  - Stage 2: Descriptors & Identity ✅
+  - Stage 3: Multiple Similar Objects
+  - Stage 4+: Location, NPCs, Time, Events...
+
 - [ ] **Combinatorial Explosion Components** ([meta-plan](docs/plans/META-PLAN-combinatorial-explosion.md))
-  - Implementing all "Designed - Ready for Implementation" components
-  - Phase 1: Foundation ✅ Complete (Trait object, state.certainty)
-  - Phase 2: Lazy Version Propagation ✅ Complete ([plan](docs/plans/lazy-version-propagation.md))
-    - Promotion tracking, resolver interface, trait resolution
-    - Superposition via `_join_traits_from_promotions()` → Fuzzy trait values
-  - Phase 3: @resolution Pattern (orthogonal to Phase 2)
+  - Phase 1: Foundation ✅ Complete
+  - Phase 2: Lazy Version Propagation ✅ Complete ([archived](docs/plans/archive/lazy-version-propagation.md))
+  - Phase 3: @resolution Pattern
   - Phase 4: @tracks + Session.legacy
   - Phase 5: Observation System ([plan](docs/plans/observation-events.md))
   - Phase 6: Superposition API
-  - **Key insight**: Multiple probability promotions are joined into Fuzzy trait values
   - **Deferred**: Branch lifecycle, @path_certainty cache, decision time
 
 ---

@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-01-01
+
+### Changed
+- **Alpha 1 Stage 2 complete** - Descriptors & Identity
+  - Objects distinguished by descriptor traits (color, size)
+  - Recognition reuses existing knowledge beliefs
+  - Query by descriptor via `recall_by_archetype`
+- **Lazy Version Propagation complete** - All 7 phases done, plan archived
+  - Shared beliefs update with O(1) instead of O(NPCs)
+  - Promotion tracking, resolver interface, trait resolution
+  - Materialization, superposition handling via Fuzzy trait values
+  - Full save/load round-trip test coverage
+
+### Refactored
+- **Composable trait handling inlined** in `_get_inherited_trait()`
+  - Removed `traittype.get_derived_value()` indirection
+  - Composables now handled directly with BFS accumulation pattern
+  - Matches `get_defined_traits()` approach for consistency
+
 ## 2025-12-30
 
 ### Added

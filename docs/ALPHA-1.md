@@ -32,7 +32,7 @@ Build a text-based investigation game where player finds a missing hammer throug
 
 **Test**: Player observes hammer, hammer belief created in player_mind
 
-#### Stage 2: Descriptors & Identity
+#### Stage 2: Descriptors & Identity ✓
 
 - Objects have multiple descriptors: `hammer_1: [black, heavy, worn]`
 - Observations copy descriptors into perceived objects
@@ -41,11 +41,11 @@ Build a text-based investigation game where player finds a missing hammer throug
 - Identity uncertainty when descriptors match exactly
 
 **Tests**:
-- 2.1 Multiple distinct objects: player has separate beliefs, distinguishes by color
-- 2.2 Similar objects: both black hammers, distinguished by size (large vs small)
-- 2.3 Recognition: observe same hammer twice → one belief updated, not two
-- 2.4 Identity uncertainty: two black hammers → two beliefs or ambiguous (design TBD)
-- 2.5 Query by descriptor: "black hammer" returns all matches
+- 2.1 ✓ Multiple distinct objects: player has separate beliefs, distinguishes by color
+- 2.2 ✓ Similar objects: both black hammers, distinguished by size (large vs small)
+- 2.3 ✓ Recognition: observe same hammer twice → one belief updated, not two
+- 2.4 Deferred (identity uncertainty design TBD)
+- 2.5 ✓ Query by descriptor: "black hammer" returns all matches
 
 **Implementation notes**:
 - Descriptor trait type (array of strings)

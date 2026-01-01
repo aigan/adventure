@@ -314,9 +314,9 @@ export class Belief {
 
   /**
    * Get inherited trait value from bases chain
-   * First checks if Traittype has a derivation strategy (composable, etc)
-   * Then walks the inheritance chain breadth-first to find the first defined value
-   * @param {State} state - State context (used by Traittype for derived values)
+   * For composable traits: collects one value per base chain and composes them
+   * For non-composable traits: walks BFS with promotion checking to find first value
+   * @param {State} state - State context (used for promotion resolution)
    * @param {Traittype} traittype - Traittype to get
    * @param {Set<Belief>} [skip_promotions] - Beliefs whose promotions should be skipped (prevents infinite recursion)
    * @param {{from_shared?: boolean}} [context] - Mutable context to track caching constraints
@@ -324,22 +324,42 @@ export class Belief {
    * @private
    */
   _get_inherited_trait(state, traittype, skip_promotions = new Set(), context = {}) {
-    // FIXME: replace get_derived_value() with direct implementation
-    const derived = traittype.get_derived_value(this)
-    if (derived !== undefined) return derived
-
     // Track if this belief is in Eidos (can't cache - promotions may be added later)
     if (this.in_mind?.in_eidos) context.from_shared = true
 
-    // Check this belief's own promotions first (before walking bases)
+    // Composable traits: BFS collecting one value per base chain, compose at end
+    // (Simpler path - no promotion checking, matches original get_derived_value behavior)
+    if (traittype.composable) {
+      const values = []
+      const queue = [...this._bases]
+      const seen = new Set()
+
+      while (queue.length > 0) {
+        const base = /** @type {Belief|Archetype} */ (queue.shift())
+        if (seen.has(base)) continue
+        seen.add(base)
+
+        const value = base.get_own_trait_value(traittype)
+        if (value !== undefined) {
+          if (value !== null) values.push(value)
+          continue  // Found this branch's value, don't search its ancestors
+        }
+
+        queue.push(...base._bases)
+      }
+
+      if (values.length === 0) return null
+      if (values.length === 1) return values[0]
+      return traittype.compose(this, values)
+    }
+
+    // Non-composable traits: full BFS with promotion checking
     const own_promo = this._get_trait_from_promotions(state, this, traittype, skip_promotions)
     if (own_promo !== undefined) {
-      // Values from promotions are state-dependent - don't cache
       context.from_shared = true
       return own_promo
     }
 
-    // Walk bases breadth-first
     const queue = [...this._bases]
     const seen = new Set()
 
@@ -348,11 +368,9 @@ export class Belief {
       if (seen.has(node)) continue
       seen.add(node)
 
-      // Check node's promotions first
       if (node instanceof Belief) {
-        // Track if value comes from shared belief (can't cache - promotions may be added later)
         if (node.in_mind?.in_eidos) context.from_shared = true
-        // Propagation: if node is in skip_promotions, add its bases too
+
         if (skip_promotions.has(node)) {
           for (const b of node._bases) {
             if (b instanceof Belief) skip_promotions.add(b)
@@ -360,8 +378,6 @@ export class Belief {
         } else if (node.promotions.size > 0) {
           const value = this._get_trait_from_promotions(state, node, traittype, skip_promotions)
           if (value !== undefined) {
-            // Values from promotions are state-dependent (different states return different values)
-            // Must not cache to avoid returning stale values for different query states
             context.from_shared = true
             return value
           }
@@ -692,11 +708,11 @@ export class Belief {
 
   /**
    * Collect trait values from all direct bases for composition
-   * Called by Traittype.get_derived_value() for composable traits
-   * Collects ONE value per direct base (stops at first found in each base's chain)
+   * Called by add_trait_from_template() for composable traits at template time
+   * Collects ONE value per base chain (stops at first found in each chain)
    * This implements the "latest version" semantics: each base's chain has one latest value
    * @param {Traittype} traittype - Traittype to collect
-   * @returns {Array<any>} Array of values (one per direct base that has the trait)
+   * @returns {Array<any>} Array of values (one per base chain that has the trait)
    */
   collect_latest_value_from_all_bases(traittype) {
     const values = []

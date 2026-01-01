@@ -438,26 +438,6 @@ export class Traittype {
   }
 
   /**
-   * Get derived trait value from bases (delegates to type-specific derivation logic)
-   * @param {Belief} belief - Belief to derive value for
-   * @returns {*} Derived value or undefined if no derivation needed
-   */
-  get_derived_value(belief) {
-    if (belief instanceof Archetype) return undefined // FIXME: generalize
-    if (this.composable) {
-      const values = belief.collect_latest_value_from_all_bases(this)
-
-      if (values.length < 2) {
-        return values[0]
-      }
-
-      return this.compose(belief, values)
-    }
-
-    return undefined
-  }
-
-  /**
    * Build function to convert template data to trait values
    * @returns {Function}
    */

@@ -9,7 +9,7 @@ This plan coordinates the implementation of all **"Designed - Ready for Implemen
 - `docs/notes/event-perception.md` - Stage 1 LOOK command
 
 **Existing Plans to Update** (not replace):
-- `docs/plans/lazy-version-propagation.md` - 7 phases, all incomplete
+- `docs/plans/archive/lazy-version-propagation.md` - 7 phases, ✅ ALL COMPLETE
 - `docs/plans/observation-events.md` - perceive/identify/learn_from, partially done
 
 **In Scope** (per combinatorial-explosion-components.md):
@@ -98,7 +98,7 @@ This plan coordinates the implementation of all **"Designed - Ready for Implemen
 ### Phase 2: Lazy Version Propagation ✅ COMPLETE
 **Goal**: Enable O(1) updates cascading to O(depth) queries for **shared beliefs**
 
-Reference: `docs/plans/lazy-version-propagation.md` (updated January 2026)
+Reference: `docs/plans/archive/lazy-version-propagation.md` ✅ ARCHIVED (January 2026)
 
 | Sub-phase | Status | Notes |
 |-----------|--------|-------|
@@ -311,13 +311,12 @@ Reference: `docs/plans/observation-events.md`
 
 ## Existing Plan Updates
 
-### `docs/plans/lazy-version-propagation.md`
+### `docs/plans/archive/lazy-version-propagation.md` ✅ ARCHIVED
 
-**Already complete**: Overall 7-phase structure is good.
-
-**Additions needed**:
-- Add `get_branch_heads()` API in Phase 6
-- Note that Phase 7 should skip branch lifecycle docs
+**Status**: All 7 phases complete (January 2026)
+- Promotion tracking, resolver interface, trait resolution
+- Materialization, superposition handling
+- Documentation and save/load tests all done
 
 ### `docs/plans/observation-events.md`
 
