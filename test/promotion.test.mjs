@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { Materia, Belief, Traittype, Archetype, Fuzzy, eidos, logos, DB } from '../public/worker/cosmos.mjs'
+import { Materia, Belief, Traittype, Archetype, Fuzzy, eidos, logos, logos_state, DB, save_mind, load } from '../public/worker/cosmos.mjs'
 import { createStateInNewMind, createEidosState, setupStandardArchetypes, setupAfterEachValidation, saveAndReload } from './helpers.mjs'
 
 /**
@@ -692,6 +692,157 @@ describe('Promotions', () => {
 
       const loaded_color_tt = Traittype.get_by_label('color')
       expect(loaded_my_ball.get_trait(loaded_state, loaded_color_tt)).to.be.instanceOf(Fuzzy)
+    })
+
+    it('LP-3: multiple temporal promotions at different timestamps after save/load', () => {
+      const shared_mind = new Materia(eidos(), 'shared')
+
+      // Create states at different timestamps (use eidos origin_state as ground)
+      const eidos_ground = eidos().origin_state
+      const state_1 = shared_mind.create_state(eidos_ground, { tt: 1 })
+      const ball_type = Belief.from_template(state_1, {
+        bases: ['PortableObject'],
+        traits: { color: 'red' },
+        label: 'ball_type'
+      })
+      state_1.lock()
+
+      // Promote at T2
+      const state_2 = state_1.branch(eidos_ground, 2)
+      ball_type.replace(state_2, { color: 'green' }, { promote: true })
+      state_2.lock()
+
+      // Promote again at T3
+      const state_3 = state_2.branch(eidos_ground, 3)
+      ball_type.replace(state_3, { color: 'blue' }, { promote: true })
+      state_3.lock()
+
+      // Create child that inherits
+      const state_4 = state_3.branch(eidos_ground, 4)
+      const my_ball = Belief.from_template(state_4, {
+        bases: [ball_type],
+        label: 'my_ball'
+      })
+      state_4.lock()
+
+      const color_tt = Traittype.get_by_label('color')
+
+      // Verify temporal resolution before save
+      expect(my_ball.get_trait(state_2, color_tt)).to.equal('green')
+      expect(my_ball.get_trait(state_3, color_tt)).to.equal('blue')
+      expect(my_ball.get_trait(state_4, color_tt)).to.equal('blue')
+
+      // Save and reload
+      const loaded_mind = saveAndReload(shared_mind)
+      const loaded_states = [...loaded_mind._states]
+      const loaded_state_2 = loaded_states.find(s => s.tt === 2)
+      const loaded_state_3 = loaded_states.find(s => s.tt === 3)
+      const loaded_state_4 = loaded_states.find(s => s.tt === 4)
+      const loaded_my_ball = loaded_state_4.get_belief_by_label('my_ball')
+
+      // Verify temporal resolution after save/load
+      const loaded_color_tt = Traittype.get_by_label('color')
+      expect(loaded_my_ball.get_trait(loaded_state_2, loaded_color_tt)).to.equal('green')
+      expect(loaded_my_ball.get_trait(loaded_state_3, loaded_color_tt)).to.equal('blue')
+      expect(loaded_my_ball.get_trait(loaded_state_4, loaded_color_tt)).to.equal('blue')
+    })
+
+    it('LP-7/LP-8: chained promotions work after save/load', () => {
+      const shared_mind = new Materia(eidos(), 'shared')
+      const shared_state = shared_mind.create_state(eidos().origin_state, { tt: 1 })
+
+      // Create two locations
+      const workshop = Belief.from_template(shared_state, { bases: ['Location'], label: 'workshop' })
+      const shed = Belief.from_template(shared_state, { bases: ['Location'], label: 'shed' })
+
+      // base → v2 (promote) → v3 (promote)
+      const ball_type = Belief.from_template(shared_state, {
+        bases: ['PortableObject'],
+        traits: { color: 'red' },
+        label: 'ball_type'
+      })
+
+      // First promotion with two traits (color + location)
+      const ball_v2 = ball_type.replace(shared_state, { color: 'green', location: workshop.subject }, { promote: true })
+
+      // Second promotion - chained (only overrides color, location inherited from v2)
+      ball_v2.replace(shared_state, { color: 'blue' }, { promote: true })
+
+      // Create child that inherits
+      const my_ball = Belief.from_template(shared_state, {
+        bases: [ball_type],
+        label: 'my_ball'
+      })
+      shared_state.lock()
+
+      const color_tt = Traittype.get_by_label('color')
+      const location_tt = Traittype.get_by_label('location')
+
+      // Verify chained resolution before save
+      expect(my_ball.get_trait(shared_state, color_tt)).to.equal('blue')  // from v3
+      expect(my_ball.get_trait(shared_state, location_tt)).to.equal(workshop.subject)  // from v2
+
+      // Save and reload
+      const loaded_mind = saveAndReload(shared_mind)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_my_ball = loaded_state.get_belief_by_label('my_ball')
+      const loaded_workshop = loaded_state.get_belief_by_label('workshop')
+
+      // Verify chained resolution after save/load
+      const loaded_color_tt = Traittype.get_by_label('color')
+      const loaded_location_tt = Traittype.get_by_label('location')
+      expect(loaded_my_ball.get_trait(loaded_state, loaded_color_tt)).to.equal('blue')
+      expect(loaded_my_ball.get_trait(loaded_state, loaded_location_tt)).to.equal(loaded_workshop.subject)
+    })
+
+    it('Eidos→Materia cross-mind inheritance after save/load', () => {
+      // Shared belief in Eidos with promotion
+      const shared_mind = new Materia(eidos(), 'shared')
+      const shared_state = shared_mind.create_state(eidos().origin_state, { tt: 1 })
+
+      const ball_type = Belief.from_template(shared_state, {
+        bases: ['PortableObject'],
+        traits: { color: 'red' },
+        label: 'ball_type'
+      })
+      ball_type.replace(shared_state, { color: 'blue' }, { promote: true })
+      shared_state.lock()
+
+      // Particular in world mind (Materia child of Logos, not Eidos)
+      const world_mind = new Materia(logos(), 'world')
+      const world_state = world_mind.create_state(logos_state(), { tt: 1 })
+
+      // World belief inherits from Eidos prototype
+      const my_ball = Belief.from_template(world_state, {
+        bases: [ball_type],
+        label: 'my_ball'
+      })
+      world_state.lock()
+
+      const color_tt = Traittype.get_by_label('color')
+
+      // Verify cross-mind inheritance before save
+      expect(my_ball.get_trait(world_state, color_tt)).to.equal('blue')
+
+      // Save both minds
+      const shared_json = save_mind(shared_mind)
+      const world_json = save_mind(world_mind)
+
+      // Reset and reload
+      DB.reset_registries()
+      setupStandardArchetypes()
+
+      // Load shared mind first (has the prototype)
+      load(shared_json)
+
+      // Load world mind (has the particular)
+      const loaded_world = load(world_json)
+      const loaded_world_state = [...loaded_world._states][0]
+      const loaded_my_ball = loaded_world_state.get_belief_by_label('my_ball')
+
+      // Verify cross-mind inheritance after save/load
+      const loaded_color_tt = Traittype.get_by_label('color')
+      expect(loaded_my_ball.get_trait(loaded_world_state, loaded_color_tt)).to.equal('blue')
     })
   })
 })

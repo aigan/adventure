@@ -683,21 +683,126 @@ npc_belief (bases: [city_belief → country_v1])
   No npc_belief_v2 created until explicitly needed
 ```
 
-**Branch types**:
-- **Temporal**: Different time periods (seasons, news events)
-- **Probability**: Multiple possible states (king alive 60%, dead 40%)
-- **Spatial**: Regional variations in knowledge
-- **Perspective**: Different beliefs held by different minds
+**Promotion types**:
+- **Temporal**: Different time periods (seasons, news events) - resolves to concrete value
+- **Probability**: Multiple possible states with certainty (king alive 60%, dead 40%) - resolves to Fuzzy
+- **Spatial**: Regional variations in knowledge (future)
+- **Perspective**: Different beliefs held by different minds (future)
+
+### **Promotions**
+
+**Goal**: Enable efficient updates to shared cultural beliefs without cascading version creation across millions of NPCs. Beliefs lazily resolve inherited traits through promotion detection and state-based resolution, only materializing new versions when explicitly created.
+
+**The problem**: When shared cultural knowledge updates (e.g., "it's winter now"), thousands of NPCs inherit this through city → country belief chains. Without lazy propagation, updating country requires creating new versions for every city and every NPC - millions of belief objects.
+
+**The solution**: Promotions. When a shared belief updates, we create only one new version (the promotion) and register it on the original. All inheriting beliefs automatically see the promoted version at query time - no cascade of new versions needed.
+
+```
+Without promotions:
+  country_v1 → country_v2
+  → Must create city_v2 for each city (100 versions)
+  → Must create npc_v2 for each NPC (millions of versions)
+
+With promotions:
+  country_v1.promotions = [country_v2]
+  → Cities/NPCs query traits → resolver walks to country_v2
+  → Total: 1 new belief, not millions
+```
+
+**Terminology**: A "promotion" is a belief that propagates to all children of its base. The term reflects that the new version is "promoted" to visibility for the entire subtree of inheritors. This is distinct from regular versioning where each node needs its own new version.
+
+**Key insight**: Only the updated node has promotions. City and NPC beliefs remain unchanged - they inherit from a node that has promotions. Trait resolution walks the chain and uses the state's resolver to pick the appropriate promotion.
+
+**When to use promotions**:
+- Shared beliefs in Eidos that evolve over time (seasons, news, cultural events)
+- Any belief where many other beliefs inherit from it
+- Created via `replace(state, traits, {promote: true})`
+
+**Creating promotions**:
+```yaml
+# Original shared belief
+country_culture_v1:
+  traits: {season: 'autumn'}
+  promotions: []
+
+# Create promotion via replace(..., {promote: true})
+country_culture_v2:
+  bases: [country_culture_v1]
+  origin_state: state_110  # When this promotion was created
+  certainty: null          # null = temporal (not probability)
+  traits: {season: 'winter'}
+
+# v1 now tracks the promotion
+country_culture_v1:
+  promotions: [country_culture_v2]
+```
+
+**Promotion properties**:
+- `origin_state`: State where promotion was created (used for temporal filtering)
+- `certainty`: null for temporal promotions, 0-1 for probability promotions
+- `constraints`: Future extensibility for spatial/contextual constraints
+
+### **Temporal Promotions (Common Case)**
+
+Most promotions are temporal - they represent knowledge updates at specific times. The resolver picks the appropriate version based on query timestamp:
+
+```yaml
+# Query at T100 (before promotion): returns 'autumn'
+# Query at T110 (after promotion): returns 'winter'
+
+npc_knowledge:
+  bases: [city_paris → country_culture_v1]
+
+# Query @T110:
+# Walk: npc → city → country_v1
+# Detect: country_v1.promotions = [v2]
+# Resolve: v2.origin_state.tt=110 <= query.tt=110 ✓
+# Result: season = 'winter' from v2 (concrete value)
+```
+
+**Key point**: Temporal promotions resolve to **concrete values**, not Fuzzy.
+
+### **Probability Promotions**
+
+When multiple promotions exist at the same timestamp with different certainty values, they represent genuine uncertainty and are **joined** into Fuzzy trait values:
+
+```yaml
+# Two probability promotions at same timestamp
+king_dead:
+  certainty: 0.6
+  traits: {status: 'dead'}
+
+king_alive:
+  certainty: 0.4
+  traits: {status: 'alive'}
+
+# When materializing, joined into single belief:
+king_joined:
+  bases: [king_original]
+  traits:
+    status: Fuzzy {
+      alternatives: [
+        {value: 'dead', certainty: 0.6},
+        {value: 'alive', certainty: 0.4}
+      ]
+    }
+```
+
+**Key behavior**:
+- Multiple promotions are joined, not selected
+- Each trait becomes a Fuzzy with alternatives weighted by certainty
+- Uncertainty is preserved in trait values rather than collapsed
+- Aligned with "no objective truth" philosophy
 
 ### **Lazy Propagation Pattern**
 
-When shared beliefs update, new versions propagate lazily through inheritance chains:
+Promotions enable efficient updates without cascading version creation:
 
 ```yaml
 # Tick 100: Initial state
 country_culture_v1:
   traits: {season: 'autumn'}
-  branches: []
+  promotions: []
 
 city_paris:
   bases: [country_culture_v1]
@@ -709,13 +814,14 @@ npc_knowledge:
 ```
 
 ```yaml
-# Tick 110: Country updates (1 new belief)
+# Tick 110: Country updates (1 new belief via promotion)
+country_culture_v1:
+  promotions: [country_culture_v2]
+
 country_culture_v2:
   bases: [country_culture_v1]
+  origin_state: state_110
   traits: {season: 'winter'}
-
-country_culture_v1:
-  branches: [country_culture_v2]  # Child added
 
 # City and NPC beliefs UNCHANGED
 city_paris:
@@ -726,7 +832,7 @@ npc_knowledge:
 
 # Query @T110:
 # npc → city → country_v1
-# Detect: country_v1.branches = [v2]
+# Detect: country_v1.promotions = [v2]
 # Resolve: v2 created @T110, query @T110
 # Result: season = 'winter' from v2
 #
@@ -735,14 +841,14 @@ npc_knowledge:
 
 **Materialization on demand**:
 
+When explicitly creating a new version, the promotion chain is materialized:
+
 ```yaml
 # First NPC creates explicit version @T110
-npc1_knowledge_v2:
-  bases: [npc1_knowledge_v1]
-  traits: {opinion: 'I hate winter'}
+npc1_knowledge_v2 = npc1_knowledge_v1.replace(state, {opinion: 'I hate winter'}, {promote: true})
 
 # Materialization process:
-# Walk: npc1_v1 → city → country_v1 (has branches)
+# Walk: npc1_v1 → city → country_v1 (has promotions)
 # Resolve: country_v2 selected @T110
 # Create: city_paris_v2 {bases: [country_v2]}
 # Result: npc1_v2 {bases: [city_v2]}

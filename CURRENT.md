@@ -5,12 +5,14 @@
 - [ ] **Combinatorial Explosion Components** ([meta-plan](docs/plans/META-PLAN-combinatorial-explosion.md))
   - Implementing all "Designed - Ready for Implementation" components
   - Phase 1: Foundation ✅ Complete (Trait object, state.certainty)
-  - Phase 2: Lazy Version Propagation ([plan](docs/plans/lazy-version-propagation.md))
+  - Phase 2: Lazy Version Propagation ✅ Complete ([plan](docs/plans/lazy-version-propagation.md))
+    - Promotion tracking, resolver interface, trait resolution
+    - Superposition via `_join_traits_from_promotions()` → Fuzzy trait values
   - Phase 3: @resolution Pattern (orthogonal to Phase 2)
   - Phase 4: @tracks + Session.legacy
   - Phase 5: Observation System ([plan](docs/plans/observation-events.md))
   - Phase 6: Superposition API
-  - **Key insight**: Lazy prop (query-time) and @resolution (recorded collapse) are orthogonal
+  - **Key insight**: Multiple probability promotions are joined into Fuzzy trait values
   - **Deferred**: Branch lifecycle, @path_certainty cache, decision time
 
 ---

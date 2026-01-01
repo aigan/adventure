@@ -7,7 +7,7 @@
 - docs/SPECIFICATION.md - Data model specification
 - CURRENT.md (backlog) - Clarify shared belief architecture
 
-## Current Status (December 2024)
+## Current Status (January 2026)
 
 **Implemented:**
 - ✅ `Fuzzy` class (`public/worker/fuzzy.mjs`) - uncertain trait values with alternatives
@@ -19,9 +19,9 @@
 - ✅ State resolver interface `pick_promotion()` (Phase 2)
 - ✅ Trait resolution walks promotions (Phase 3)
 - ✅ Materialization on creation - Eidos-only constraint + opportunistic flattening (Phase 4)
+- ✅ Superposition handling via `_join_traits_from_promotions()` (Phase 6)
 
 **Not Yet Implemented:**
-- Phase 6: Superposition handling (`collapse_trait()` for explicit collapse)
 - Phase 7: Documentation and examples
 
 ## Context
@@ -430,42 +430,49 @@ _materialize_promotion_chain(state) {
 
 No changes to `get_belief_by_subject()` are required.
 
-### Phase 6: Superposition Handling in State Operations
+### Phase 6: Superposition Handling ✅ COMPLETE
 
-**Files**: `public/worker/state.mjs`
+**Actual implementation** (different from original plan):
 
-**Changes**:
-- Add `collapse_trait(belief, trait_name, selected_promotion)` method
-- Creates new belief version inheriting from selected promotion path
-- Calls `materialize_path()` to ensure clean inheritance
-- If state locked, branches state; if unlocked, inserts into current state
+When `replace(..., {promote: true})` is called, `_materialize_promotion_chain()` handles multiple probability promotions by joining them into a single belief with Fuzzy trait values.
 
-**Implementation**:
+**Files**: `public/worker/belief.mjs`
+
+**`_join_traits_from_promotions(state, promotions)`** (belief.mjs:1143):
+- Assertions: All promotions must have same subject, tt, constraints
+- Collects all trait slots from all promotions
+- For each trait:
+  - Gets value from each promotion via `get_trait(state, tt)`
+  - Creates Fuzzy with alternatives weighted by `promotion.certainty`
+  - Handles nested Fuzzy by expanding and multiplying certainties
+- Returns Map of joined traits (values may be Fuzzy)
+
+**Algorithm**:
 ```javascript
-collapse_trait(belief, trait_name, selected_promotion) {
-  assert(!this.locked, 'Cannot collapse in locked state without branching')
+// In _materialize_promotion_chain(), when multiple probability promotions exist:
+const joined_traits = Belief._join_traits_from_promotions(state, promotions)
 
-  // Create new belief inheriting from selected promotion
-  const new_belief = Belief.from_template(this.in_mind, {
-    sid: belief.subject.sid,
-    bases: [selected_promotion.path]
-  }, this)
+// Create joined belief with original node as base
+const joined = new Belief(state, promotions[0].subject, [node_with_promotions])
+joined.certainty = null  // Certainty captured IN Fuzzy trait values
+joined.constraints = promotions[0].constraints
 
-  // Materialize intermediate nodes
-  const materialized = materialize_path(new_belief, this)
-
-  // Insert into state
-  this.insert_beliefs(materialized)
-
-  return materialized
+// Set joined traits (may contain Fuzzy values)
+for (const [tt, value] of joined_traits) {
+  joined.add_trait(tt, value)
 }
+
+state.insert_beliefs(joined)
 ```
 
-**Tests**:
-- Collapse superposition → creates new belief with selected promotion
-- Collapsed belief materializes intermediate nodes
-- Multiple collapses reuse materialized intermediates
-- Locked state handling (future: branch state)
+**Key insight**: No explicit `collapse_trait()` needed. Multiple promotions are joined into a single belief with Fuzzy trait values. Uncertainty is preserved, not collapsed.
+
+**@resolution pattern**: Deferred to separate phase (Phase 3 in META-PLAN)
+
+**Tests**: `test/belief.test.mjs`:
+- "get_trait returns Fuzzy for probability promotions"
+- "probability promotions - inherited trait before split"
+- "chained probability promotions combine certainties"
 
 ### Phase 7: Documentation and Examples
 
@@ -542,7 +549,7 @@ collapse_trait(belief, trait_name, selected_promotion) {
 - [x] Phase 3: Update trait resolution to walk promotions ✅ (December 2024)
 - [x] Phase 4: Materialization on explicit version creation ✅ (December 2024)
 - [x] Phase 5: NOT NEEDED — `replace()` removes original from state, so queries return latest
-- [ ] Phase 6: Superposition handling in state operations (uses Fuzzy/Notion)
+- [x] Phase 6: Superposition handling via `_join_traits_from_promotions()` ✅ (January 2026)
 - [ ] Phase 7: Documentation and examples
 
 ## Success Criteria
@@ -828,39 +835,39 @@ New criteria (December 2024):
 
 ### Documentation
 
-- [ ] Update SPECIFICATION.md to document promotions purpose and semantics:
-  - Promotions are for shared/cultural beliefs that evolve over time
-  - Primary use case: eidos beliefs (universals) that change (e.g., village event becomes common knowledge)
-  - Common case: temporal promotions resolve to **concrete values** (not Fuzzy)
-  - Special case: probability promotions (with certainty values) resolve to Fuzzy
-  - The original belief is removed from state; promotions are visible
-  - Trait resolution walks bases, encounters promotions, resolver picks appropriate version
+- [x] Update SPECIFICATION.md to document promotions purpose and semantics ✅ (January 2026)
+  - Goal, problem, solution clearly explained
+  - Temporal vs probability promotions documented
+  - Lazy propagation pattern with examples
 
-- [ ] Update IMPLEMENTATION.md with promotion mechanics:
-  - `replace(..., {promote: true})` removes original, inserts promotion, registers in `promotions` Set
-  - Trait resolution walks bases, encounters belief with promotions, calls `pick_promotion()`
-  - Temporal promotions: resolver filters by timestamp, returns single concrete value
-  - Probability promotions: `_collect_fuzzy_from_promotions()` gathers alternatives into Fuzzy
+- [x] Update IMPLEMENTATION.md with promotion mechanics ✅ (January 2026)
+  - Architecture section updated with promotion terminology
+  - Example flow with `replace(..., {promote: true})`
+  - Superposition handling via `_join_traits_from_promotions()`
 
-- [ ] Add clear summary of how to use promotion to respective function in code
+- [ ] Add clear JSDoc summary to promotion functions in code
+  - `Belief.replace()` with `promote: true` option
+  - `_materialize_promotion_chain()`
+  - `_join_traits_from_promotions()`
+  - `State.pick_promotion()`
 
-### Missing Save/Load Tests
+### Save/Load Tests
 
 Cross-reference with Test Matrix (LP-* scenarios):
 
-- [ ] LP-1/LP-2: Temporal promotion resolves to concrete value after save/load
-  - Create promotion at T2, query at T1 → v1 traits, query at T2 → v2 traits
-  - This is the **common case** - most promotions are temporal, not probability
+**Existing tests** (in `test/promotion.test.mjs` and `test/belief.test.mjs`):
+- [x] Basic temporal promotion save/load: `promotions survive serialization`
+- [x] Probability promotions save/load: `probability promotions survive serialization`
+- [x] Fuzzy from inheritance save/load: `Fuzzy from inheritance survives save/load`
 
+**Still needed**:
 - [ ] LP-3: Multiple temporal promotions at different timestamps after save/load
   - v1 → v2@T2, v3@T3, query at T2 → v2 traits
 
 - [ ] LP-7/LP-8: Chained promotions work after save/load
   - base → v2 (promote) → v3 (promote), trait in middle promotion
 
-- [ ] Eidos → Materia inheritance pattern after save/load
-  - Shared belief in eidos with promotion
-  - Particular in materia inherits from eidos belief
-  - After save/load, particular still resolves traits through eidos promotion
-
-- [ ] Single probability promotion edge case (currently returns Fuzzy incorrectly for archetype traits)
+- [ ] Eidos → Materia cross-mind inheritance pattern after save/load
+  - Shared belief in Eidos with promotion
+  - Particular in Materia (world mind) inherits from Eidos belief
+  - After save/load, particular still resolves traits through Eidos promotion

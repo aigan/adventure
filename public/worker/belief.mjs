@@ -333,7 +333,11 @@ export class Belief {
 
     // Check this belief's own promotions first (before walking bases)
     const own_promo = this._get_trait_from_promotions(state, this, traittype, skip_promotions)
-    if (own_promo !== undefined) return own_promo
+    if (own_promo !== undefined) {
+      // Values from promotions are state-dependent - don't cache
+      context.from_shared = true
+      return own_promo
+    }
 
     // Walk bases breadth-first
     const queue = [...this._bases]
@@ -355,7 +359,12 @@ export class Belief {
           }
         } else if (node.promotions.size > 0) {
           const value = this._get_trait_from_promotions(state, node, traittype, skip_promotions)
-          if (value !== undefined) return value
+          if (value !== undefined) {
+            // Values from promotions are state-dependent (different states return different values)
+            // Must not cache to avoid returning stale values for different query states
+            context.from_shared = true
+            return value
+          }
         }
       }
 
@@ -1724,16 +1733,43 @@ export class Belief {
   }
 
   /**
-   * Replace this belief with a new version having updated traits
-   * Removes old belief and inserts new one (only new version exists in state)
-   * Works even when this belief is locked (creates new belief, doesn't modify old)
+   * Replace this belief with a new version having updated traits.
+   * Removes old belief and inserts new one (only new version exists in state).
+   * Works even when this belief is locked (creates new belief, doesn't modify old).
+   *
+   * **Promotions** (`promote: true`):
+   * Use promotions for shared beliefs in Eidos that many other beliefs inherit from.
+   * When a shared belief updates (e.g., "winter arrives"), all inheriting beliefs
+   * should automatically see the new version. Without promotions, you'd need to
+   * create new versions for every city and NPC - millions of belief objects.
+   *
+   * With promotions, only one new belief is created. The promotion is registered
+   * on the original belief, and trait resolution automatically picks the promoted
+   * version based on timestamp. This enables O(1) updates instead of O(NPCs).
+   *
+   * - **Temporal promotions** (certainty: null): Resolver picks by timestamp,
+   *   returns concrete values. Use for seasonal changes, news events, etc.
+   * - **Probability promotions** (certainty: 0-1): Multiple possible outcomes,
+   *   joined into Fuzzy trait values. Use for uncertain states like "king might be dead".
+   *
    * @param {State} state - State context for the new belief (must be unlocked)
    * @param {Record<string, any>} traits - Trait updates (already resolved, not templates)
    * @param {object} [options] - Optional promotion options
-   * @param {boolean} [options.promote] - Whether to register as promotion (propagates to children)
-   * @param {number} [options.certainty] - Probability weight (0 < x < 1, null = not probability)
+   * @param {boolean} [options.promote] - Register as promotion (propagates to inheritors)
+   * @param {number} [options.certainty] - Probability weight (0 < x < 1, null = temporal)
    * @param {object} [options.constraints] - Future: exclusion rules, validity periods
    * @returns {Belief} New belief with this belief as base
+   *
+   * @example
+   * // Temporal promotion - country updates to winter
+   * country.replace(state, { season: 'winter' }, { promote: true })
+   * // All NPCs inheriting from country now see 'winter' at this timestamp
+   *
+   * @example
+   * // Probability promotion - king's fate uncertain
+   * king.replace(state, { status: 'dead' }, { promote: true, certainty: 0.6 })
+   * king.replace(state, { status: 'alive' }, { promote: true, certainty: 0.4 })
+   * // Trait resolution returns Fuzzy with both alternatives
    */
   replace(state, traits = {}, { promote, certainty, constraints } = {}) {
     assert(state instanceof State, 'replace requires State parameter', {belief_id: this._id})

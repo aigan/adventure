@@ -304,48 +304,46 @@ state.tick_with_template(belief, vt, {trait: value})
 - Automatically dereferences belief references in learned traits
 - Used for NPC and player mind initialization
 
-## Future Architecture
+## Lazy Version Propagation
 
-### Lazy Version Propagation (Planned)
+**Status**: Implemented (January 2026)
 
 **Problem**: When shared cultural beliefs update (e.g., country announces winter), thousands of NPCs inherit this knowledge. Eager propagation would require creating new versions for every intermediate node (cities, NPCs), causing version cascade explosion.
 
-**Solution**: Lazy resolution with branch tracking. Only the updated node creates a new version; dependent beliefs discover updates via trait resolution at query time.
+**Solution**: Lazy resolution with promotion tracking. Only the updated node creates a new version (promotion); dependent beliefs discover updates via trait resolution at query time.
 
 **Architecture**:
 
-1. **Branch Tracking** (`Belief.branches`):
-   - Parent belief maintains Set of child versions
-   - All children share same `subject.sid`
-   - Branch metadata tracks `origin_state`, `probability`, `constraints`
+1. **Promotion Tracking** (`Belief.promotions`):
+   - Parent belief maintains Set of promoted versions
+   - All promotions share same `subject.sid`
+   - Direct properties: `origin_state`, `certainty`, `constraints`
 
-2. **State Resolver** (`State.resolve_branches()`):
-   - Takes array of branch candidates
-   - Filters by temporal constraints (compare `origin_state.timestamp` with query timestamp)
-   - Returns single belief (decided) or array (superposition)
+2. **State Resolver** (`State.pick_promotion()`):
+   - Takes array of promotion candidates
+   - Filters by temporal constraints (compare `origin_state.tt` with query `state.tt`)
+   - Returns array of valid promotions (single or multiple)
    - Decision logic:
-     - Temporal: Pick most recent branch <= query timestamp
-     - Probability: Return array for caller to select
-     - Spatial/custom: Extensible via state subclassing
+     - Temporal: Pick most recent promotion <= query timestamp
+     - Probability: Return all for materialization to join
 
 3. **Lazy Trait Resolution** (`Belief.get_trait()`):
    - Walk bases chain looking for trait
-   - When belief with branches encountered, call `state.resolve_branches()`
-   - If resolver returns single belief, continue traversal
-   - If resolver returns array, return `{type: 'superposition', branches: [...]}`
-   - Cache concrete resolutions in `_resolved_cache[state_id][trait_name]`
+   - When belief with promotions encountered, call `state.pick_promotion()`
+   - If resolver returns single promotion, continue traversal down that path
+   - If resolver returns array, `_collect_fuzzy_from_promotions()` creates Fuzzy trait
 
-4. **Materialization** (`Belief.from_template()`, `State.branch()`):
-   - When explicitly creating new belief version, walk bases chain
-   - Detect branches and resolve via state
-   - Create intermediate materialized nodes as needed
-   - Reuse existing materialized nodes (query by subject + bases match)
-   - Update new belief's bases to point to materialized intermediate
+4. **Materialization** (`Belief.replace(state, traits, {promote: true})`):
+   - `_materialize_promotion_chain()` walks bases chain
+   - Detects promotions and resolves via state
+   - If multiple probability promotions: `_join_traits_from_promotions()` creates joined belief with Fuzzy traits
+   - Creates intermediate materialized nodes as needed
+   - Updates new belief's bases to point to materialized intermediate
 
 **Performance Characteristics**:
 
-- **Update cost**: O(1) - create one new belief with branches
-- **Query cost**: O(inheritance depth) - walk bases, resolve branches
+- **Update cost**: O(1) - create one new belief with promotion
+- **Query cost**: O(inheritance depth) - walk bases, resolve promotions
 - **Cache hit**: O(1) - return cached resolution
 - **Materialization**: O(depth × changes) - only when explicitly creating versions
 - **Memory**: O(changes + materialized) not O(NPCs)
@@ -353,85 +351,75 @@ state.tick_with_template(belief, vt, {trait: value})
 **Example Flow**:
 
 ```javascript
-// Country updates (1 new belief)
-country_v2 = Belief.from_template(state, {
-  sid: country_sid,
-  bases: [country_v1],
-  traits: {season: 'winter'}
-})
-// Belief is automatically added to state._insert during from_template()
+// Country updates (1 new belief via promotion)
+country_v2 = country_v1.replace(state, {season: 'winter'}, {promote: true})
+// country_v1.promotions now contains country_v2
 
 // NPC queries season (lazy resolution)
 npc_belief.get_trait(state, 'season')
   → walks: npc → city → country_v1
-  → detects: country_v1.branches = [country_v2]
-  → calls: state.resolve_branches([country_v2])
-  → resolver: filters by timestamp, returns country_v2
-  → returns: country_v2.traits.season = 'winter'
-  → caches result
+  → detects: country_v1.promotions = [country_v2]
+  → calls: state.pick_promotion([country_v2])
+  → resolver: filters by timestamp, returns [country_v2]
+  → continues: country_v2.traits.season = 'winter'
 
 // No npc_v2 or city_v2 created!
 
-// Later: NPC forms opinion (explicit version creation)
-npc_v2 = new Belief({bases: [npc_v1], traits: {opinion: 'hate winter'}})
-// Materialization process:
+// Later: NPC forms opinion (explicit version creation with promotion)
+npc_v2 = npc_v1.replace(state, {opinion: 'hate winter'}, {promote: true})
+// Materialization process (_materialize_promotion_chain):
 //   walks: npc_v1 → city_v1 → country_v1
-//   detects branches: country_v2
+//   detects promotions: country_v2
 //   creates: city_v2 {bases: [city_v1, country_v2]}
 //   updates: npc_v2 {bases: [npc_v1, city_v2]}
 
 // Second NPC opinion:
-npc2_v2 = new Belief({bases: [city_v2], traits: {opinion: 'love winter'}})
+npc2_v2 = npc2_v1.replace(state, {opinion: 'love winter'}, {promote: true})
 // Reuses city_v2! Only creates npc2_v2
 ```
 
 **Superposition Handling**:
 
-When resolver cannot decide (probability branches, multiple valid options):
+When multiple probability promotions exist at the same timestamp, they are **joined** rather than selected:
 
 ```javascript
-belief.get_trait(state, 'king_status')
-  → walks to country_v1
-  → detects branches: [v2a (dead, p=0.6), v2b (alive, p=0.4)]
-  → resolver: both valid at same timestamp
-  → returns: {
-      type: 'superposition',
-      branches: [
-        {path: v2a, value: 'dead', probability: 0.6},
-        {path: v2b, value: 'alive', probability: 0.4}
-      ]
-    }
+// During materialization (replace with promote: true):
+// If _materialize_promotion_chain() finds multiple probability promotions:
 
-// Caller examines and selects:
-if (result.type === 'superposition') {
-  const selected = pick_dramatically_appropriate(result.branches)
-  const collapsed = state.collapse_trait(belief, 'king_status', selected)
+const joined_traits = Belief._join_traits_from_promotions(state, promotions)
+// joined_traits contains Fuzzy values with weighted alternatives
+
+// Example: king_status becomes:
+// Fuzzy { alternatives: [{value: 'dead', certainty: 0.6}, {value: 'alive', certainty: 0.4}] }
+
+// Caller examines via recall():
+const notion = mind.recall(state, subject, ['king_status'])
+const status = notion.get(king_status_tt)
+if (status instanceof Fuzzy) {
+  for (const alt of status.alternatives) {
+    console.log(`${alt.value}: ${alt.certainty}`)
+  }
 }
 ```
 
-**Multi-Stage Resolution**:
+**Key methods**:
 
-Resolution is not JavaScript async, but conceptually multi-stage:
+- `_materialize_promotion_chain(state)`: Walks bases to find promotions, joins multiple probability promotions
+- `_join_traits_from_promotions(state, promotions)`: Collects traits into Fuzzy values with weighted alternatives
+- `mind.recall(state, subject, traits)`: Returns Notion with Fuzzy trait values when uncertainty exists
 
-1. **Query**: Get trait value (may return superposition)
-2. **Examine**: Caller looks at branches, queries related traits
-3. **Select**: Caller chooses branch based on accumulated data
-4. **Materialize**: Explicit request creates collapsed belief version
+**Uncertainty preservation**:
 
-This enables narrative-driven collapse instead of arbitrary selection.
-
-**Cache Invalidation**:
-
-- Adding new branch: Clear resolver cache for that belief
-- State locking: Resolution cache persists (immutable beliefs)
-- Unlocking state: Clear cache (state can change)
+- Multiple promotions are joined into a single belief with Fuzzy trait values
+- Certainty is captured IN the traits, not on the belief itself
+- No explicit collapse needed - caller examines Fuzzy alternatives
+- Aligned with "no objective truth" philosophy
 
 **Integration Points**:
 
 - `Belief.get_trait(state, name)`: Entry point for lazy resolution
-- `State.resolve_branches(branches, context)`: Resolver interface
-- `Belief.from_template()`: Triggers materialization
-- `State.collapse_trait()`: Explicit superposition collapse
+- `State.pick_promotion(promotions, context)`: Resolver interface
+- `Belief.replace(state, traits, {promote: true})`: Triggers materialization with promotion
 
 **See also**: `docs/plans/lazy-version-propagation.md` for implementation roadmap
 
@@ -464,6 +452,8 @@ All belief factory methods automatically insert beliefs into the state. You neve
 - Example: `hammer = hammer.replace(state, {color: 'red'})`
 
 **All factory methods auto-insert** - this prevents common errors where beliefs are created but not added to state, which would cause Subject references to fail later during trait access.
+
+## Future Architecture
 
 ### Template System (Planned)
 - Templates implement `is_applicable(template, belief_state)` returning fit quality

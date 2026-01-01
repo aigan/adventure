@@ -95,30 +95,26 @@ This plan coordinates the implementation of all **"Designed - Ready for Implemen
 
 ---
 
-### Phase 2: Lazy Version Propagation
+### Phase 2: Lazy Version Propagation ✅ COMPLETE
 **Goal**: Enable O(1) updates cascading to O(depth) queries for **shared beliefs**
 
-Reference: `docs/plans/lazy-version-propagation.md` (updated December 2024)
+Reference: `docs/plans/lazy-version-propagation.md` (updated January 2026)
 
-| Sub-phase | Status | Fits Existing Design? | Notes |
-|-----------|--------|----------------------|-------|
-| 2.1 Branch tracking in Belief | ✅ Complete | ✅ Yes | `branches: Set<Belief>`, `branch_metadata`, `add_branch()`, `branch()` with metadata |
-| 2.1a Certainty via branch_metadata | ✅ Complete | ✅ Yes | `@certainty` removed, use `branch_metadata.certainty`. `recall()` multiplies state × belief × trait certainty |
-| 2.2 State resolver interface | Designed | ✅ Yes | Add `resolve_branches()` - temporal filtering |
-| 2.3 Trait resolution with branches | Designed | ⚠️ Extends | Modify `get_trait()` to detect branches |
-| 2.4 Materialization on creation | Designed | ⚠️ Extends | Add `materialize_path()` helper |
-| 2.5 get_belief_by_subject with resolver | Designed | ⚠️ Extends | Check branches before returning |
-| 2.6 Superposition return | Designed | ✅ Yes | Return `Fuzzy` via `Notion` for probability branches |
-| 2.7 Documentation | - | - | ✅ Updated with interaction matrix |
+| Sub-phase | Status | Notes |
+|-----------|--------|-------|
+| 2.1 Promotion tracking in Belief | ✅ Complete | `promotions: Set<Belief>`, direct properties: `origin_state`, `certainty`, `constraints` |
+| 2.2 State resolver interface | ✅ Complete | `pick_promotion()` - temporal filtering |
+| 2.3 Trait resolution with promotions | ✅ Complete | `get_trait()` walks promotions via `_get_inherited_trait()` |
+| 2.4 Materialization on creation | ✅ Complete | `_materialize_promotion_chain()`, `_join_traits_from_promotions()` |
+| 2.5 get_belief_by_subject | ✅ NOT NEEDED | `replace()` removes original from state |
+| 2.6 Superposition handling | ✅ Complete | Multiple promotions joined into Fuzzy trait values |
+| 2.7 Documentation | ✅ Complete | Updated SPECIFICATION.md, IMPLEMENTATION.md |
 
-**Key clarification**: Lazy prop handles **query-time** resolution (temporal filtering).
-Does NOT record collapse - that's @resolution's job.
-
-**Already implemented**: `Mind.recall()` returns `Notion` with `Fuzzy` values when trait has uncertainty.
+**Key insight**: Multiple probability promotions are **joined** into a single belief with Fuzzy trait values via `_join_traits_from_promotions()`.
 
 **Files**: `public/worker/belief.mjs`, `public/worker/state.mjs`, `public/worker/mind.mjs`
 
-**Test matrix**: LP-1 through LP-6, COMB-1, COMB-2, EDGE-1 through EDGE-6
+**Tests**: `test/promotion.test.mjs`, `test/belief.test.mjs` (probability promotions)
 
 ---
 
@@ -225,10 +221,10 @@ Reference: `docs/plans/observation-events.md`
    - Certainty at split points → `state.mjs:789`
    - **Skip**: @path_certainty cache (deferred for v1)
 
-2. **Phase 2: Lazy Propagation** (largest chunk)
-   - Update `docs/plans/lazy-version-propagation.md` with any missing details
-   - Implement sub-phases 2.1-2.6 in order
-   - Tests: Branch tracking, resolver interface
+2. **Phase 2: Lazy Propagation** ✅ COMPLETE
+   - Promotion tracking, resolver interface, trait resolution
+   - Superposition handling via `_join_traits_from_promotions()`
+   - Tests: `test/promotion.test.mjs`, `test/belief.test.mjs`
 
 3. **Phase 3: @resolution Pattern**
    - Build on Phase 2 resolver
