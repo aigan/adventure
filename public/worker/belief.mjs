@@ -54,6 +54,7 @@ import { Fuzzy } from './fuzzy.mjs'
  * @property {number[]} [promotions] - Belief _ids registered as promotions of this belief
  * @property {number} [certainty] - Probability weight (0 < x < 1)
  * @property {boolean} [promotable] - Whether this belief can have promotions registered on it
+ * @property {number|null} [_promotable_epoch] - Cache invalidation epoch for promotable beliefs
  */
 
 /**
@@ -75,8 +76,10 @@ export class Belief {
    * @param {State} state - State creating this belief
    * @param {Subject|null} [subject] - Subject (provide to create version of existing subject)
    * @param {Array<Archetype|Belief>} [bases] - Archetype or Belief objects (no strings)
+   * @param {Object} [options] - Optional parameters
+   * @param {boolean} [options.promotable] - Whether this belief can have promotions registered on it
    */
-  constructor(state, subject = null, bases = []) {
+  constructor(state, subject = null, bases = [], {promotable = false} = {}) {
     for (const base of bases) {
       assert(typeof base !== 'string',
              'Constructor received string base - use Belief.from_template() instead',
@@ -112,6 +115,8 @@ export class Belief {
     this.origin_state = state
     /** @type {boolean} - true when all inherited traits are cached */
     this._cached_all = false
+    /** @type {Map<Belief, number>|null} - promotable beliefs this cache depends on */
+    this._cache_deps = null
 
     /**
      * Promoted versions that propagate to children of this belief
@@ -135,7 +140,14 @@ export class Belief {
      * Whether this belief can have promotions registered on it
      * @type {boolean}
      */
-    this.promotable = false
+    this.promotable = promotable
+
+    /**
+     * Cache invalidation epoch for promotable beliefs
+     * Bumped when a promotion is added, causing dependent caches to invalidate
+     * @type {number|null}
+     */
+    this._promotable_epoch = promotable ? next_id() : null
 
     DB.register_belief_by_id(this)
     this.subject.beliefs.add(this)
@@ -328,13 +340,13 @@ export class Belief {
    * @param {State} state - State context (used for promotion resolution)
    * @param {Traittype} traittype - Traittype to get
    * @param {Set<Belief>} [skip_promotions] - Beliefs whose promotions should be skipped (prevents infinite recursion)
-   * @param {{from_shared?: boolean}} [context] - Mutable context to track caching constraints
+   * @param {{deps?: Map<Belief, number>, last_promotable?: Belief, from_temporal?: boolean}} [context] - Mutable context to track cache deps
    * @returns {*} trait value (Subject, not Belief), or null if not found
    * @private
    */
   _get_inherited_trait(state, traittype, skip_promotions = new Set(), context = {}) {
-    // Track if this belief is in Eidos (can't cache - promotions may be added later)
-    if (this.in_mind?.in_eidos) context.from_shared = true
+    // Initialize deps tracking
+    if (!context.deps) context.deps = new Map()
 
     // Composable traits: BFS collecting one value per base chain, compose at end
     // (Simpler path - no promotion checking, matches original get_derived_value behavior)
@@ -348,6 +360,15 @@ export class Belief {
         if (seen.has(base)) continue
         seen.add(base)
 
+        // Track promotable beliefs for cache invalidation
+        if (base instanceof Belief) {
+          if (base.promotions.size > 0 && base._promotable_epoch !== null) {
+            context.deps.set(base, base._promotable_epoch)
+          } else if (base.promotable) {
+            context.last_promotable = base
+          }
+        }
+
         const value = base.get_own_trait_value(traittype)
         if (value !== undefined) {
           if (value !== null) values.push(value)
@@ -357,17 +378,24 @@ export class Belief {
         queue.push(...base._bases)
       }
 
+      // Add last_promotable if no promotable edge found yet
+      if (context.last_promotable && context.deps.size === 0 && context.last_promotable._promotable_epoch !== null) {
+        context.deps.set(context.last_promotable, context.last_promotable._promotable_epoch)
+      }
+
       if (values.length === 0) return null
       if (values.length === 1) return values[0]
       return traittype.compose(this, values)
     }
 
     // Non-composable traits: full BFS with promotion checking
-    const own_promo = this._get_trait_from_promotions(state, this, traittype, skip_promotions)
-    if (own_promo !== undefined) {
-      context.from_shared = true
-      return own_promo
+    if (this.promotions.size > 0) {
+      // Check if any own promotions are temporal (no certainty) - result depends on tt
+      const has_temporal = [...this.promotions].some(p => p.certainty === null)
+      if (has_temporal) context.from_temporal = true
     }
+    const own_promo = this._get_trait_from_promotions(state, this, traittype, skip_promotions)
+    if (own_promo !== undefined) return own_promo
 
     const queue = [...this._bases]
     const seen = new Set()
@@ -378,27 +406,40 @@ export class Belief {
       seen.add(node)
 
       if (node instanceof Belief) {
-        if (node.in_mind?.in_eidos) context.from_shared = true
-
         if (skip_promotions.has(node)) {
           for (const b of node._bases) {
             if (b instanceof Belief) skip_promotions.add(b)
           }
-        } else if (node.promotions.size > 0) {
+        } else if (node.promotions.size > 0 && node._promotable_epoch !== null) {
+          // First belief with promotions - record as cache dependency
+          context.deps.set(node, node._promotable_epoch)
+          // Check if any promotions are temporal (no certainty) - result depends on tt
+          const has_temporal = [...node.promotions].some(p => p.certainty === null)
+          if (has_temporal) context.from_temporal = true
           const value = this._get_trait_from_promotions(state, node, traittype, skip_promotions)
-          if (value !== undefined) {
-            context.from_shared = true
-            return value
-          }
+          if (value !== undefined) return value
+        } else if (node.promotable) {
+          // Track last promotable as potential cache dependency
+          context.last_promotable = node
         }
       }
 
       const own = node.get_own_trait_value(traittype)
-      if (own !== undefined) return own
+      if (own !== undefined) {
+        // Found value - add last_promotable to deps if not already tracking a promotable edge
+        if (context.last_promotable && !context.deps.has(context.last_promotable) && context.last_promotable._promotable_epoch !== null) {
+          context.deps.set(context.last_promotable, context.last_promotable._promotable_epoch)
+        }
+        return own
+      }
 
       queue.push(...node._bases)
     }
 
+    // No value found - still add last_promotable to deps
+    if (context.last_promotable && !context.deps.has(context.last_promotable) && context.last_promotable._promotable_epoch !== null) {
+      context.deps.set(context.last_promotable, context.last_promotable._promotable_epoch)
+    }
     return null
   }
 
@@ -538,11 +579,17 @@ export class Belief {
     if (cached !== undefined) return cached
 
     // Walk bases with skip_promotions
-    /** @type {{from_shared?: boolean}} */
+    /** @type {{deps?: Map<Belief, number>, last_promotable?: Belief, from_temporal?: boolean}} */
     const ctx = {}
     const value = this._get_inherited_trait(state, traittype, skip_promotions, ctx)
-    // Don't cache if from_shared (Eidos - promotions may be added) or Fuzzy (certainty-dependent)
-    if (this.locked && !ctx.from_shared && !(value instanceof Fuzzy)) {
+    // Cache if locked and not from temporal promotion (temporal results depend on tt)
+    if (this.locked && !ctx.from_temporal) {
+      // Store cache dependencies on promotable beliefs
+      const deps = ctx.deps
+      if (deps && deps.size > 0) {
+        if (!this._cache_deps) this._cache_deps = new Map()
+        for (const [b, e] of deps) this._cache_deps.set(b, e)
+      }
       this._set_cache(traittype, value)
     }
     return value
@@ -567,11 +614,17 @@ export class Belief {
     value = this._get_cached(traittype)
     if (value !== undefined) return value
 
-    /** @type {{from_shared?: boolean}} */
+    /** @type {{deps?: Map<Belief, number>, last_promotable?: Belief, from_temporal?: boolean}} */
     const ctx = {}
     value = this._get_inherited_trait(state, traittype, undefined, ctx)
-    // Don't cache if from_shared (Eidos - promotions may be added) or Fuzzy (certainty-dependent)
-    if (this.locked && !ctx.from_shared && !(value instanceof Fuzzy)) {
+    // Cache if locked and not from temporal promotion (temporal results depend on tt)
+    if (this.locked && !ctx.from_temporal) {
+      // Store cache dependencies on promotable beliefs
+      const deps = ctx.deps
+      if (deps && deps.size > 0) {
+        if (!this._cache_deps) this._cache_deps = new Map()
+        for (const [b, e] of deps) this._cache_deps.set(b, e)
+      }
       this._set_cache(traittype, value)
     }
 
@@ -754,10 +807,10 @@ export class Belief {
   //
   // CURRENT APPROACH (simple, correct):
   // - Don't cache values from Eidos hierarchy (in_mind.in_eidos) - promotions may be added
-  // - Don't cache Fuzzy values - they're certainty-dependent
   //
   // This is conservative but avoids complex invalidation. Since promotions only
   // happen in Eidos, world beliefs that inherit from Eidos won't cache those values.
+  // Certainties are applied from state chain at query time, not stored in cache.
   //
   // FUTURE OPTIMIZATION IDEAS (see docs/notes/Claude-Cultural knowledge using flyweight model.md):
   //
@@ -786,11 +839,22 @@ export class Belief {
 
   /**
    * Get cached trait value
+   * Validates cache dependencies before returning - if any promotable belief
+   * has a different epoch than when cached, invalidates the entire cache
    * @param {Traittype} traittype - Traittype object
    * @returns {any|undefined} Cached value or undefined if not cached
    * @private
    */
   _get_cached(traittype) {
+    // Validate cache deps - if any promotable belief has changed, invalidate
+    if (this._cache_deps) {
+      for (const [belief, epoch] of this._cache_deps) {
+        if (belief._promotable_epoch !== epoch) {
+          this._invalidate_cache()
+          return undefined
+        }
+      }
+    }
     return this._cache.get(traittype)
   }
 
@@ -802,6 +866,17 @@ export class Belief {
    */
   _set_cache(traittype, value) {
     this._cache.set(traittype, value)
+  }
+
+  /**
+   * Invalidate all cached trait values
+   * Called when a promotable belief's epoch changes
+   * @private
+   */
+  _invalidate_cache() {
+    this._cache.clear()
+    this._cache_deps = null
+    this._cached_all = false
   }
 
   /**
@@ -826,7 +901,11 @@ export class Belief {
   *get_defined_traits() {
     const yielded = new Set()
     const composables = new Map()  // traittype → values[]
-    let from_shared = false  // Track if value comes from Eidos (can't cache - promotions may be added)
+    /** @type {Map<Belief, number>} */
+    const deps = new Map()  // Track promotable beliefs for cache invalidation
+    /** @type {Belief|null} */
+    let last_promotable = null
+    let from_temporal = false  // Track if any temporal promotions were encountered
 
     // Yield cached traits first
     for (const [traittype, value] of this._cache) {
@@ -845,17 +924,21 @@ export class Belief {
       if (seen.has(node)) continue
       seen.add(node)
 
-      // Track if we touch a shared belief (can't cache - promotions may be added later)
-      if (node instanceof Belief && node.in_mind?.in_eidos) from_shared = true
-
       // If node has promotions, resolve and process
-      if (node instanceof Belief && node.promotions.size > 0) {
+      if (node instanceof Belief && node.promotions.size > 0 && node._promotable_epoch !== null) {
+        // Record as cache dependency
+        deps.set(node, node._promotable_epoch)
         const promos = this.origin_state.pick_promotion(node.promotions, {})
         if (promos.length === 1 && promos[0].certainty === null) {
           queue.unshift(promos[0])  // Temporal: add to queue
+          from_temporal = true  // Temporal promotions can't be cached (depend on tt)
         } else if (promos.length > 0) {
-          yield* this._collect_fuzzy_promotions(promos, yielded)  // Probability
+          // Probability promotions return Fuzzy - can cache with epoch tracking
+          yield* this._collect_fuzzy_promotions(promos, yielded, this.locked && !from_temporal)
         }
+      } else if (node instanceof Belief && node.promotable) {
+        // Track last promotable as potential cache dependency
+        last_promotable = node
       }
 
       for (const [traittype, value] of node.get_trait_entries()) {
@@ -869,8 +952,7 @@ export class Belief {
         }
 
         // Non-composable or own composable: yield immediately
-        // Only cache if not from shared belief (shared beliefs can get promotions later)
-        if (this.locked && !from_shared) this._set_cache(traittype, value)
+        if (this.locked && !from_temporal) this._set_cache(traittype, value)
         yield /** @type {[Traittype, any]} */ ([traittype, value])
         yielded.add(traittype)
       }
@@ -879,29 +961,40 @@ export class Belief {
       queue.push(...node._bases)
     }
 
+    // Add last_promotable if no promotable edge found yet
+    if (last_promotable && deps.size === 0 && last_promotable._promotable_epoch !== null) {
+      deps.set(last_promotable, last_promotable._promotable_epoch)
+    }
+
     // Compose and yield all composables at the end
     // TODO: Could yield composables earlier by tracking open branches per-traittype
     //   and yielding as soon as all branches close. Would help pagination/early-stop.
     for (const [traittype, values] of composables) {
       if (yielded.has(traittype)) continue
       const composed = values.length < 2 ? values[0] : traittype.compose(this, values)
-      // Only cache if not from shared belief
-      if (this.locked && !from_shared) this._set_cache(traittype, composed)
+      if (this.locked && !from_temporal) this._set_cache(traittype, composed)
       yield /** @type {[Traittype, any]} */ ([traittype, composed])
       yielded.add(traittype)
     }
 
-    // Only mark fully cached if not from shared (Eidos beliefs can get promotions later)
-    if (this.locked && !from_shared) this._cached_all = true
+    // Store cache deps and mark fully cached (only if no temporal promotions)
+    if (this.locked && !from_temporal) {
+      if (deps.size > 0) {
+        if (!this._cache_deps) this._cache_deps = new Map()
+        for (const [b, e] of deps) this._cache_deps.set(b, e)
+      }
+      this._cached_all = true
+    }
   }
 
   /**
    * Collect Fuzzy trait values from probability promotions
    * @param {Belief[]} promotions
    * @param {Set<Traittype>} yielded - Traittypes already yielded (mutated)
+   * @param {boolean} [should_cache] - Whether to cache the yielded values
    * @returns {Generator<[Traittype, Fuzzy]>}
    */
-  *_collect_fuzzy_promotions(promotions, yielded) {
+  *_collect_fuzzy_promotions(promotions, yielded, should_cache = false) {
     const traittypes = new Set()
     for (const p of promotions) {
       for (const [tt] of p.get_trait_entries()) traittypes.add(tt)
@@ -912,7 +1005,9 @@ export class Belief {
         .map(p => ({ value: p._traits.get(tt), certainty: p.certainty ?? 1.0 }))
         .filter(a => a.value != null)
       if (alternatives.length > 0) {
-        yield /** @type {[Traittype, Fuzzy]} */ ([tt, new Fuzzy({ alternatives })])
+        const fuzzy = new Fuzzy({ alternatives })
+        if (should_cache) this._set_cache(tt, fuzzy)
+        yield /** @type {[Traittype, Fuzzy]} */ ([tt, fuzzy])
         yielded.add(tt)
       }
     }
@@ -1409,7 +1504,7 @@ export class Belief {
   toJSON() {
     const t_about = Traittype.get_by_label('@about')
     const about_trait = t_about ? this._traits.get(t_about) : null
-    const result = /** @type {{_type: string, _id: number, sid: number, label: string|null, about: any, archetypes: string[], bases: (string|number)[], traits: any, origin_state: number|null, promotions?: number[], certainty?: number, promotable?: boolean}} */ ({
+    const result = /** @type {{_type: string, _id: number, sid: number, label: string|null, about: any, archetypes: string[], bases: (string|number)[], traits: any, origin_state: number|null, promotions?: number[], certainty?: number, promotable?: boolean, _promotable_epoch?: number|null}} */ ({
       _type: 'Belief',
       _id: this._id,
       sid: this.subject.sid,
@@ -1433,6 +1528,7 @@ export class Belief {
     // Save promotable if true (beliefs that can have promotions)
     if (this.promotable) {
       result.promotable = this.promotable
+      result._promotable_epoch = this._promotable_epoch
     }
     return result
   }
@@ -1625,9 +1721,11 @@ export class Belief {
     belief._locked = false
     belief._cache = new Map()
     belief._cached_all = false
+    belief._cache_deps = null
     belief.promotions = new Set()
     belief.certainty = data.certainty ?? null
     belief.promotable = data.promotable ?? false
+    belief._promotable_epoch = data._promotable_epoch ?? (data.promotable ? next_id() : null)
     belief.constraints = {}
     // Store promotion IDs for deferred resolution (after all beliefs are loaded)
     belief._promotion_ids = data.promotions ?? null
@@ -1737,8 +1835,7 @@ export class Belief {
 
     debug([state], "Create belief with", ...resolved_bases)
 
-    const belief = new Belief(state, subject, resolved_bases)
-    belief.promotable = promotable
+    const belief = new Belief(state, subject, resolved_bases, {promotable})
     belief.certainty = certainty
 
     for (const [trait_label, trait_data] of Object.entries(traits)) {
@@ -1824,7 +1921,16 @@ export class Belief {
     // This ensures the new belief has a "clean" inheritance chain without nested promotions
     /** @type {Array<Belief|Archetype>} */
     let bases = [this]
-    if (promote && this.in_mind?.in_eidos) {
+    if (promote) {
+      assert(this.in_mind?.in_eidos,
+        'Promotions can only be created in Eidos hierarchy (shared beliefs)',
+        {mind: this.in_mind?.label, belief_id: this._id, belief_label: this.get_label()})
+
+      // Promotions require the parent belief to be marked as promotable
+      assert(this.promotable,
+        'Promotions require promotable=true on parent belief',
+        {belief_id: this._id, belief_label: this.get_label(), promotable: this.promotable})
+
       const materialized = this._materialize_promotion_chain(state)
       if (materialized) bases = [this, materialized]
     }
@@ -1839,16 +1945,6 @@ export class Belief {
 
     // If promote is set, register as promotion
     if (promote) {
-      // Promotions can only be created in Eidos hierarchy (shared beliefs)
-      assert(this.in_mind?.in_eidos,
-        'Promotions can only be created in Eidos hierarchy (shared beliefs)',
-        {mind: this.in_mind?.label, belief_id: this._id, belief_label: this.get_label()})
-
-      // Promotions require the parent belief to be marked as promotable
-      assert(this.promotable,
-        'Promotions require promotable=true on parent belief',
-        {belief_id: this._id, belief_label: this.get_label(), promotable: this.promotable})
-
       // Validate certainty: must be null/undefined (not a probability) or strictly between 0 and 1
       if (certainty != null) {
         assert(typeof certainty === 'number', 'certainty must be number or null', {certainty})
@@ -1863,12 +1959,13 @@ export class Belief {
       // Auto-copy certainty/constraints/promotable from this belief if not explicitly provided
       replaced.certainty = certainty ?? this.certainty
       replaced.constraints = constraints ?? this.constraints
-      replaced.promotable = this.promotable  // Inherit promotable for chained promotions
+      // Inherit promotable for chained promotions (new epoch for new belief)
+      replaced.promotable = this.promotable
+      replaced._promotable_epoch = this.promotable ? next_id() : null
 
-      // Register in parent's promotions set
+      // Register in parent's promotions set and bump parent's epoch
       this.promotions.add(replaced)
-      // Note: Cache invalidation for inheritors is handled by from_shared tracking
-      // (values from Eidos are not cached, so no invalidation needed)
+      this._promotable_epoch = next_id()  // Invalidate caches depending on this belief
     }
 
     // Insert into state automatically

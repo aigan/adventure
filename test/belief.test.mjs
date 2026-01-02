@@ -1180,10 +1180,13 @@ describe('Belief', () => {
       const location1 = traits1.find(([tt]) => tt === location_tt)?.[1]
       expect(location1).to.be.instanceOf(Fuzzy)
 
-      // Promotion-derived values should NOT be cached
-      expect(hammer._cache.has(location_tt)).to.be.false
-      // And _cached_all should NOT be set when promotions were encountered
-      expect(hammer._cached_all).to.be.false
+      // Probability promotions (Fuzzy) CAN be cached with epoch-based invalidation
+      // The cache tracks dependencies on promotable beliefs and invalidates when epochs change
+      expect(hammer._cache.has(location_tt)).to.be.true
+      expect(hammer._cached_all).to.be.true
+      // Cache deps should track the promotable parent
+      expect(hammer._cache_deps).to.be.instanceOf(Map)
+      expect(hammer._cache_deps.size).to.be.greaterThan(0)
     });
 
     it('cache remains valid when no promotions in inheritance chain', () => {
@@ -1259,9 +1262,9 @@ describe('Belief', () => {
       expect(hammer._cache.has(location_tt)).to.be.false
     });
 
-    it('does not cache values from shared beliefs (avoids invalidation issue)', () => {
-      // Values from shared beliefs (Eidos) are not cached because they can get promotions later.
-      // This avoids the need for complex cache invalidation.
+    it('epoch-based cache invalidation handles promotions added later', () => {
+      // With epoch-based invalidation, we CAN cache values from shared beliefs.
+      // When promotions are added, the epoch bumps and caches are invalidated.
       const eidos_mind = new Materia(eidos(), 'eidos_child')
       const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
       const color_tt = Traittype.get_by_label('color')
@@ -1281,23 +1284,198 @@ describe('Belief', () => {
       ball.lock(state_2)
       state_2.lock()
 
-      // Query color - should NOT be cached because base_ball is shared
+      // Query color - CAN be cached now with epoch-based invalidation
       const color1 = ball.get_trait(state_2, color_tt)
       expect(color1).to.equal('red')
-      expect(ball._cache.has(color_tt)).to.be.false  // Not cached (from shared belief)
+      expect(ball._cache.has(color_tt)).to.be.true  // Cached with deps tracking
+      expect(ball._cache_deps).to.be.instanceOf(Map)  // Tracks base_ball epoch
+
+      const old_epoch = base_ball._promotable_epoch
 
       // Add promotion to base_ball (changes color to blue at tt=10)
       const state_10 = state_1.branch(state_1.ground_state, 10)
       base_ball.branch(state_10, { color: 'blue' }, { promote: true })
       state_10.lock()
 
-      // Query at tt=10 sees the promotion
+      // Epoch should have changed
+      expect(base_ball._promotable_epoch).to.not.equal(old_epoch)
+
+      // Query at tt=10 sees the promotion (cache was invalidated by epoch change)
       const color2 = ball.get_trait(state_10, color_tt)
       expect(color2).to.equal('blue')
 
-      // Query at tt=2 still sees original (no cache corruption)
+      // Query at tt=2 still sees original (temporal promotion not active at tt=2)
       const color3 = ball.get_trait(state_2, color_tt)
       expect(color3).to.equal('red')
+    });
+
+    it('cache invalidation triggers on epoch change', () => {
+      // Direct test: cache is invalidated when promotable epoch changes
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
+      const color_tt = Traittype.get_by_label('color')
+
+      const base = Belief.from_template(state_1, {
+        bases: ['PortableObject'],
+        traits: { color: 'red' },
+        label: 'base',
+        promotable: true
+      })
+      state_1.lock()
+
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      const child = Belief.from(state_2, [base], {})
+      child.lock(state_2)
+      state_2.lock()
+
+      // First query - caches 'red', tracks base's epoch
+      const color1 = child.get_trait(state_2, color_tt)
+      expect(color1).to.equal('red')
+      expect(child._cache.has(color_tt)).to.be.true
+      const cached_epoch = child._cache_deps.get(base)
+      expect(cached_epoch).to.equal(base._promotable_epoch)
+
+      // Add probability promotion - epoch bumps
+      const state_3 = state_1.branch(state_1.ground_state, 3)
+      base.branch(state_3, { color: 'blue' }, { promote: true, certainty: 0.7 })
+
+      // Epoch should have changed
+      expect(base._promotable_epoch).to.not.equal(cached_epoch)
+
+      // Second query - cache should invalidate, return Fuzzy
+      const color2 = child.get_trait(state_3, color_tt)
+      expect(color2).to.be.instanceOf(Fuzzy)
+
+      // Old cache entry should be gone (invalidated)
+      // New cache should have the Fuzzy
+      expect(child._cache.get(color_tt)).to.be.instanceOf(Fuzzy)
+    });
+
+    it('tracks multiple promotable beliefs in deps', () => {
+      // Chain: child → middle (promotable) → base (promotable)
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
+      const color_tt = Traittype.get_by_label('color')
+
+      const base = Belief.from_template(state_1, {
+        bases: ['PortableObject'],
+        traits: { color: 'red' },
+        label: 'base',
+        promotable: true
+      })
+      const middle = Belief.from_template(state_1, {
+        bases: [base],
+        label: 'middle',
+        promotable: true
+      })
+      state_1.lock()
+
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      const child = Belief.from(state_2, [middle], {})
+      child.lock(state_2)
+      state_2.lock()
+
+      // Query - should track the first promotable edge encountered
+      const color = child.get_trait(state_2, color_tt)
+      expect(color).to.equal('red')
+      expect(child._cache_deps).to.be.instanceOf(Map)
+      // Should track middle (first promotable in chain) - it has no promotions yet
+      // but is promotable, so it's tracked as a potential edge
+      expect(child._cache_deps.size).to.be.greaterThan(0)
+    });
+
+    it('deep inheritance with promotable in middle', () => {
+      // Chain: child → wrapper → promotable → archetype
+      // Value comes from archetype, but promotable in middle affects caching
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
+      const color_tt = Traittype.get_by_label('color')
+
+      const proto = Belief.from_template(state_1, {
+        bases: ['PortableObject'],
+        traits: { color: 'green' },
+        label: 'proto',
+        promotable: true
+      })
+      const wrapper = Belief.from_template(state_1, {
+        bases: [proto],
+        label: 'wrapper'
+      })
+      state_1.lock()
+
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      const child = Belief.from(state_2, [wrapper], {})
+      child.lock(state_2)
+      state_2.lock()
+
+      // Query traverses: child → wrapper → proto → archetype
+      const color = child.get_trait(state_2, color_tt)
+      expect(color).to.equal('green')
+      expect(child._cache.has(color_tt)).to.be.true
+      // Should track proto (the promotable in the middle)
+      expect(child._cache_deps.has(proto)).to.be.true
+    });
+
+    it('mixed temporal and probability promotions on same belief', () => {
+      // Same promotable has both temporal (no certainty) and probability (with certainty)
+      // Should NOT cache because temporal promotions exist
+      const eidos_mind = new Materia(eidos(), 'eidos_child')
+      const state_1 = eidos_mind.create_state(eidos().origin_state, { tt: 1 })
+      const color_tt = Traittype.get_by_label('color')
+
+      const base = Belief.from_template(state_1, {
+        bases: ['PortableObject'],
+        traits: { color: 'red' },
+        label: 'base',
+        promotable: true
+      })
+      state_1.lock()
+
+      // Add temporal promotion at tt=10
+      const state_10 = state_1.branch(state_1.ground_state, 10)
+      base.branch(state_10, { color: 'blue' }, { promote: true })  // no certainty = temporal
+      state_10.lock()
+
+      // Add probability promotion
+      const state_2 = state_1.branch(state_1.ground_state, 2)
+      base.branch(state_2, { color: 'green' }, { promote: true, certainty: 0.5 })
+      state_2.lock()
+
+      // Create child
+      const state_3 = state_1.branch(state_1.ground_state, 3)
+      const child = Belief.from(state_3, [base], {})
+      child.lock(state_3)
+      state_3.lock()
+
+      // Query - has temporal promotions, should NOT cache
+      const color = child.get_trait(state_3, color_tt)
+      // Result depends on pick_promotion logic, but caching should be disabled
+      expect(child._cache.has(color_tt)).to.be.false
+    });
+
+    it('invalidate_cache clears all cache state', () => {
+      const mind = new Materia(logos(), 'world')
+      const state = mind.create_state(logos().origin_state, { tt: 1 })
+
+      const ball = Belief.from_template(state, {
+        bases: ['PortableObject'],
+        traits: { color: 'red' },
+        label: 'ball'
+      })
+      ball.lock(state)
+      state.lock()
+
+      // Populate cache
+      const traits = [...ball.get_traits()]
+      expect(ball._cached_all).to.be.true
+      expect(ball._cache.size).to.be.greaterThan(0)
+
+      // Manually invalidate
+      ball._invalidate_cache()
+
+      expect(ball._cache.size).to.equal(0)
+      expect(ball._cache_deps).to.be.null
+      expect(ball._cached_all).to.be.false
     });
   });
 
