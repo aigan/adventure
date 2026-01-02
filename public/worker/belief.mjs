@@ -55,6 +55,7 @@ import { Fuzzy } from './fuzzy.mjs'
  * @property {number} [certainty] - Probability weight (0 < x < 1)
  * @property {boolean} [promotable] - Whether this belief can have promotions registered on it
  * @property {number|null} [_promotable_epoch] - Cache invalidation epoch for promotable beliefs
+ * @property {number} [resolution] - Belief _id that this belief resolves (for uncertainty collapse)
  */
 
 /**
@@ -135,6 +136,14 @@ export class Belief {
      * @type {Object}
      */
     this.constraints = {}
+
+    /**
+     * Reference to belief this resolves (null = not a resolution belief)
+     * When set, this belief "collapses" uncertainty in the referenced belief.
+     * Query flow checks Subject.resolutions before normal trait lookup.
+     * @type {Belief|null}
+     */
+    this.resolution = null
 
     /**
      * Whether this belief can have promotions registered on it
@@ -607,6 +616,13 @@ export class Belief {
       assert(state.tt != null && state.tt >= this.origin_state.tt,
         "get_trait query state.tt must be >= belief.origin_state.tt",
         {belief_id: this._id, state_tt: state.tt, origin_tt: this.origin_state.tt})
+    }
+
+    // Check for resolution BEFORE cache lookup
+    // Resolution beliefs short-circuit the entire cache/walk path
+    const resolution = this.subject.get_resolution(state)
+    if (resolution && resolution !== this) {
+      return resolution.get_trait(state, traittype)
     }
 
     let value = this._get_cached(traittype)
@@ -1536,7 +1552,7 @@ export class Belief {
   toJSON() {
     const t_about = Traittype.get_by_label('@about')
     const about_trait = t_about ? this._traits.get(t_about) : null
-    const result = /** @type {{_type: string, _id: number, sid: number, label: string|null, about: any, archetypes: string[], bases: (string|number)[], traits: any, origin_state: number|null, promotions?: number[], certainty?: number, promotable?: boolean, _promotable_epoch?: number|null}} */ ({
+    const result = /** @type {{_type: string, _id: number, sid: number, label: string|null, about: any, archetypes: string[], bases: (string|number)[], traits: any, origin_state: number|null, promotions?: number[], certainty?: number, promotable?: boolean, _promotable_epoch?: number|null, resolution?: number}} */ ({
       _type: 'Belief',
       _id: this._id,
       sid: this.subject.sid,
@@ -1561,6 +1577,10 @@ export class Belief {
     if (this.promotable) {
       result.promotable = this.promotable
       result._promotable_epoch = this._promotable_epoch
+    }
+    // Save resolution if set (for resolution beliefs that collapse uncertainty)
+    if (this.resolution !== null) {
+      result.resolution = this.resolution._id
     }
     return result
   }
@@ -1737,6 +1757,25 @@ export class Belief {
   }
 
   /**
+   * Finalize resolution after JSON deserialization - resolve belief ID reference
+   * Called after all beliefs are loaded from JSON
+   */
+  _finalize_resolution_from_json() {
+    // @ts-expect-error - _resolution_id is set dynamically in from_json()
+    const resolution_id = this._resolution_id
+    if (!resolution_id) return
+
+    const resolved_belief = DB.get_belief_by_id(resolution_id)
+    if (resolved_belief) {
+      this.resolution = resolved_belief
+    }
+
+    // Clean up temporary storage
+    // @ts-expect-error - cleaning up dynamically set property
+    delete this._resolution_id
+  }
+
+  /**
    * Load belief from JSON data
    * @param {Mind} mind
    * @param {BeliefJSON} data
@@ -1759,8 +1798,11 @@ export class Belief {
     belief.promotable = data.promotable ?? false
     belief._promotable_epoch = data._promotable_epoch ?? (data.promotable ? next_id() : null)
     belief.constraints = {}
+    belief.resolution = null
     // Store promotion IDs for deferred resolution (after all beliefs are loaded)
     belief._promotion_ids = data.promotions ?? null
+    // Store resolution ID for deferred resolution (after all beliefs are loaded)
+    belief._resolution_id = data.resolution ?? null
 
     // Resolve 'bases' (archetype labels or belief IDs)
     belief._bases = new Set()
@@ -1929,10 +1971,11 @@ export class Belief {
    *
    * @param {State} state - State context for the new belief (must be unlocked)
    * @param {Record<string, any>} traits - Trait updates (already resolved, not templates)
-   * @param {object} [options] - Optional promotion options
+   * @param {object} [options] - Optional promotion/resolution options
    * @param {boolean} [options.promote] - Register as promotion (propagates to inheritors)
    * @param {number} [options.certainty] - Probability weight (0 < x < 1, null = temporal)
    * @param {object} [options.constraints] - Future: exclusion rules, validity periods
+   * @param {Belief} [options.resolution] - Belief this resolves (collapses uncertainty)
    * @returns {Belief} New belief with this belief as base
    *
    * @example
@@ -1945,8 +1988,13 @@ export class Belief {
    * king.replace(state, { status: 'dead' }, { promote: true, certainty: 0.6 })
    * king.replace(state, { status: 'alive' }, { promote: true, certainty: 0.4 })
    * // Trait resolution returns Fuzzy with both alternatives
+   *
+   * @example
+   * // Resolution - collapse uncertainty to concrete value
+   * hammer.replace(state, { location: 'workshop' }, { resolution: uncertain_hammer })
+   * // Future queries for uncertain_hammer's subject see this resolved value
    */
-  replace(state, traits = {}, { promote, certainty, constraints } = {}) {
+  replace(state, traits = {}, { promote, certainty, constraints, resolution } = {}) {
     assert(state instanceof State, 'replace requires State parameter', {belief_id: this._id})
     assert(!state.locked, 'Cannot replace into locked state', {state_id: state._id, belief_id: this._id})
 
@@ -2002,6 +2050,13 @@ export class Belief {
       // Register in parent's promotions set and bump parent's epoch
       this.promotions.add(replaced)
       this._promotable_epoch = next_id()  // Invalidate caches depending on this belief
+    }
+
+    // If resolution is set, this belief collapses uncertainty in the referenced belief
+    if (resolution) {
+      assert(resolution instanceof Belief, 'resolution must be a Belief', {resolution})
+      replaced.resolution = resolution
+      // Note: Subject.resolutions index is updated in insert_beliefs()
     }
 
     // Insert into state automatically

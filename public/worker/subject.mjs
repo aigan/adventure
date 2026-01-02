@@ -47,6 +47,14 @@ export class Subject {
     /** @type {Set<Belief>} All beliefs with this subject across time */
     this.beliefs = new Set()
 
+    /**
+     * Resolution index: maps state._id to resolution belief
+     * When a resolution belief is inserted, it's indexed here by its origin_state._id
+     * get_resolution(state) walks state ancestry to find applicable resolution
+     * @type {Map<number, Belief>}
+     */
+    this.resolutions = new Map()
+
     // Auto-register in static registry
     Subject._registry.set(this.sid, this)
   }
@@ -141,6 +149,44 @@ export class Subject {
       {sid: this.sid, tt: state.tt})
 
     return shared[0] ?? null
+  }
+
+  /**
+   * Get resolution belief for this subject in state context
+   * Walks state ancestry to find if any resolution was created for this subject
+   * @param {State} state - Current state context
+   * @returns {Belief|null} Resolution belief if found in ancestry, null otherwise
+   */
+  get_resolution(state) {
+    if (this.resolutions.size === 0) return null
+
+    // Walk state ancestry via base chain
+    /** @type {State|null} */
+    let current = state
+    while (current) {
+      const resolution = this.resolutions.get(current._id)
+      if (resolution) return resolution
+      // @ts-ignore - base is set on temporal states
+      current = current.base ?? null
+    }
+
+    return null
+  }
+
+  /**
+   * Register a resolution belief in the index
+   * Called by State.insert_beliefs() when a belief with resolution property is inserted
+   * @param {Belief} resolution_belief - Belief with resolution property set
+   */
+  register_resolution(resolution_belief) {
+    assert(resolution_belief.resolution !== null,
+      'register_resolution called with belief that has no resolution',
+      {belief_id: resolution_belief._id})
+    assert(resolution_belief.origin_state !== null,
+      'Resolution belief must have origin_state',
+      {belief_id: resolution_belief._id})
+
+    this.resolutions.set(resolution_belief.origin_state._id, resolution_belief)
   }
 
   /**

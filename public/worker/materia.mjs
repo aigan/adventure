@@ -330,12 +330,13 @@ export class Materia extends Mind {
       }
     }
 
-    // Finalize promotions AFTER all beliefs are loaded and finalized
-    // This resolves promotion IDs to belief references
+    // Finalize promotions and resolutions AFTER all beliefs are loaded and finalized
+    // This resolves promotion IDs and resolution IDs to belief references
     for (const belief_data of data.belief) {
       const belief = DB.get_belief_by_id(belief_data._id)
       if (belief) {
         belief._finalize_promotions_from_json()
+        belief._finalize_resolution_from_json()
       }
     }
 

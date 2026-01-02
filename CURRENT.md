@@ -10,8 +10,8 @@
 
 - [ ] **Combinatorial Explosion Components** ([meta-plan](docs/plans/META-PLAN-combinatorial-explosion.md))
   - Phase 1: Foundation ✅ Complete
-  - Phase 2: Lazy Version Propagation ✅ Complete ([archived](docs/plans/archive/lazy-version-propagation.md))
-  - Phase 3: @resolution Pattern
+  - Phase 2: Promotions ✅ Complete ([archived](docs/plans/archive/lazy-version-propagation.md))
+  - **Phase 3: @resolution Pattern** ← Active
   - Phase 4: @tracks + Session.legacy
   - Phase 5: Observation System ([plan](docs/plans/observation-events.md))
   - Phase 6: Superposition API

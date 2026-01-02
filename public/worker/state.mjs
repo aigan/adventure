@@ -536,6 +536,11 @@ export class State {
           }
         }
       }
+
+      // Index resolution beliefs for O(1) lookup in get_resolution()
+      if (belief.resolution !== null) {
+        belief.subject.register_resolution(belief)
+      }
     }
     this._insert.push(...beliefs)
 

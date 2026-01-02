@@ -26,51 +26,65 @@ This plan coordinates the implementation of all **"Designed - Ready for Implemen
 
 ---
 
-## Dependency Graph (Updated December 2024)
+## Dependency Graph (Updated January 2026)
 
-**Key insight**: Lazy propagation and @resolution are **orthogonal systems**:
-- Lazy prop = query-time resolution for shared belief updates (temporal)
-- @resolution = recorded collapse of possibility space (persistent, works with legacy)
+**Key insight**: There are **four distinct resolution/navigation mechanisms**:
+- **Promotions** = query-time resolution for shared belief updates (lazy propagation)
+- **Belief Resolution** = individual belief/trait uncertainty collapse (Fuzzy, unknown)
+- **Timeline Resolution** = Convergence-level branch selection (whole branch becomes authoritative)
+- **@tracks** = timeline inheritance (fallback to parallel timeline for untouched content)
+- **Session.legacy** = cross-timeline persistence (committed discoveries survive reloads)
 
 ```
                     ┌─────────────────────────┐
                     │    FOUNDATION LAYER     │
-                    │  (Trait object, etc.)   │
+                    │  (Trait, Fuzzy, Notion) │
                     └───────────┬─────────────┘
                                 │
     ┌───────────────────────────┼───────────────────────────┐
     │                           │                           │
     ▼                           ▼                           ▼
 ┌─────────────────┐   ┌─────────────────┐   ┌──────────────────────┐
-│ LAZY PROPAGATION│   │ @resolution     │   │ OBSERVATION SYSTEM   │
-│ (shared belief  │   │ (collapse       │   │ (perceive, identify, │
-│  versioning)    │   │  recording)     │   │  learn_from)         │
-└────────┬────────┘   └────────┬────────┘   └──────────────────────┘
-         │                     │
-         │   ┌─────────────────┘
-         │   │
-         ▼   ▼
-    ┌──────────────────┐
-    │ @tracks +        │
-    │ Session.legacy   │
-    │ (timeline nav)   │
-    └────────┬─────────┘
-             │
-             ▼
-    ┌──────────────────┐
-    │ SUPERPOSITION    │
-    │ API              │
-    │ (uses both LP    │
-    │  and @resolution)│
-    └──────────────────┘
+│ PROMOTIONS      │   │ BELIEF          │   │ OBSERVATION SYSTEM   │
+│ (shared belief  │   │ RESOLUTION      │   │ (perceive, identify, │
+│  versioning)    │   │ (Fuzzy/unknown) │   │  learn_from)         │
+│ Phase 2 ✅      │   │ Phase 3 ✅      │   │ Phase 7              │
+└─────────────────┘   └────────┬────────┘   └──────────────────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │ TIMELINE RESOLUTION │
+                    │ (Convergence-level  │
+                    │  branch selection)  │
+                    │ Phase 4             │
+                    └────────┬────────────┘
+                             │
+        ┌────────────────────┴────────────────────┐
+        │                                         │
+        ▼                                         ▼
+┌───────────────────┐                   ┌─────────────────────┐
+│ @tracks           │                   │ Session.legacy      │
+│ (timeline         │                   │ (cross-timeline     │
+│  inheritance)     │                   │  persistence)       │
+│ Phase 5           │                   │ Phase 6             │
+└───────────────────┘                   └─────────────────────┘
+                             │
+                             ▼
+                    ┌──────────────────┐
+                    │ SUPERPOSITION    │
+                    │ API              │
+                    │ Phase 8          │
+                    └──────────────────┘
 ```
 
-**Query flow**:
-1. Check Subject.resolutions for recorded collapse (@resolution)
-2. If found in ancestry OR Session.legacy → return resolved
-3. Otherwise → lazy propagation (walk bases, resolve branches)
-4. Temporal branches → resolver picks by timestamp
-5. Probability branches → return superposition → caller may collapse
+**Query flow** (updated):
+1. Check Subject.resolutions for recorded collapse (belief-level)
+2. Check if in timeline descended from resolved Convergence (timeline-level)
+3. If Session.legacy set → also check legacy ancestry for resolutions
+4. Otherwise → promotions (walk bases, resolve branches via lazy propagation)
+5. If @tracks set → fall back to tracked timeline for missing content
+6. Temporal branches → resolver picks by timestamp
+7. Probability branches → return superposition → caller may collapse
 
 ---
 
@@ -95,10 +109,12 @@ This plan coordinates the implementation of all **"Designed - Ready for Implemen
 
 ---
 
-### Phase 2: Lazy Version Propagation ✅ COMPLETE
+### Phase 2: Promotions ✅ COMPLETE
 **Goal**: Enable O(1) updates cascading to O(depth) queries for **shared beliefs**
 
 Reference: `docs/plans/archive/lazy-version-propagation.md` ✅ ARCHIVED (January 2026)
+
+Note: "Promotions" (formerly "Lazy Version Propagation") describes beliefs that propagate to children of their base. Lazy propagation is the underlying pattern.
 
 | Sub-phase | Status | Notes |
 |-----------|--------|-------|
@@ -118,194 +134,345 @@ Reference: `docs/plans/archive/lazy-version-propagation.md` ✅ ARCHIVED (Januar
 
 ---
 
-### Phase 3: @resolution Pattern (Orthogonal to Phase 2)
-**Goal**: **Record** collapse of possibility space (persistent, works with legacy)
+### Phase 3: Belief Resolution ✅ COMPLETE
+**Goal**: Collapse **individual belief/trait** uncertainty (Fuzzy values, unknown traits)
 
-| Component | Status | Fits Existing Design? | Notes |
-|-----------|--------|----------------------|-------|
-| @resolution meta-trait | Designed | ✅ Yes | Add to registry, Belief reference |
-| Subject.resolutions index | Designed | ⚠️ New | Map<state_id, state_id> for O(1) lookup |
-| collapse_trait() with @resolution | Designed | ⚠️ Extends | Creates resolution belief + updates index |
-| Three uncertainty types | Designed | ✅ Yes | State, Belief, UNKNOWN trait |
+**Design Decision**: `resolution` is a direct Belief property (like `certainty`, `origin_state`), NOT a meta-trait.
 
-**Key clarification**: @resolution is checked BEFORE lazy propagation during queries.
-If resolution found in ancestry or Session.legacy → use it, skip lazy prop.
+**What this phase handles**:
+- A single belief has a Fuzzy trait value → resolve to concrete value
+- A belief has an unknown() trait → resolve to discovered value
+- Works per-subject, per-state
 
-**Files**: `public/worker/subject.mjs`, `public/worker/belief.mjs`, `public/worker/db.mjs` (registry)
+**What this phase does NOT handle** (see Phase 4):
+- Convergence-level branch selection (all beliefs in a branch resolving together)
+- Timeline-wide resolution
 
-**Test matrix**: RES-1 through RES-6, COMB-1, COMB-3, COMB-5, COMB-6
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Belief.resolution property | ✅ Complete | Direct property, Belief reference |
+| Subject.resolutions index | ✅ Complete | Map<state_id, Belief> for O(1) lookup |
+| Subject.get_resolution(state) | ✅ Complete | Walks state ancestry via base chain |
+| Resolution check in get_trait() | ✅ Complete | Short-circuits before cache lookup |
+
+**Files modified**:
+- `public/worker/belief.mjs` - resolution property, get_trait check, serialization
+- `public/worker/subject.mjs` - resolutions index, get_resolution(), register_resolution()
+- `public/worker/state.mjs` - insert_beliefs() indexing
+- `public/worker/mind.mjs` - _finalize_resolution_from_json()
+- `public/worker/materia.mjs` - _finalize_resolution_from_json()
+
+**Test matrix**:
+| Test | Type | Status | Description |
+|------|------|--------|-------------|
+| RES-2 | Belief | ✅ Done | Fuzzy → concrete value |
+| RES-3 | Trait | ✅ Done | Unknown → discovered value |
+| RES-4 | Query | ✅ Done | Query returns resolved value |
+
+**Tests**: `test/resolution.test.mjs` - 17 tests
 
 ---
 
-### Phase 4: @tracks and Session.legacy
-**Goal**: Timeline tracking and cross-timeline resolution
+### Phase 4: Timeline Resolution
+**Goal**: Resolve **entire branches** at the Convergence level (all beliefs in selected branch become authoritative)
 
-| Component | Status | Fits Existing Design? | Notes |
-|-----------|--------|----------------------|-------|
-| @tracks meta-property | Designed | ✅ Yes | Fallback to parallel timeline |
-| advance_tracked_timeline() | Designed | ✅ Yes | Follow branches to target vt |
-| Session.legacy | Designed | ⚠️ Extends | Add to Session class |
-| Cross-timeline resolution | Designed | ⚠️ Extends | Check legacy in queries |
+**Distinction from Phase 3**:
+| Phase 3 (Belief) | Phase 4 (Timeline) |
+|------------------|-------------------|
+| Resolve one belief at a time | Resolve entire branch at once |
+| `hammer.color` is Fuzzy → now "red" | Timeline A selected → ALL beliefs get Timeline A versions |
+| Per-subject resolution | Convergence-level resolution |
 
-**Files**: `public/worker/state.mjs`, `public/worker/session.mjs`
+**Use case**: Two timelines diverged at tick 5:
+- Timeline A: hammer=red, player=cave, door=open
+- Timeline B: hammer=blue, player=tower, door=closed
+- Player observes and commits to Timeline B
+- ALL queries from that point return Timeline B versions
+
+**Design** (from combinatorial-explosion-components.md:504-508):
+```
+| Type | Uncertainty | Resolution |
+|------|-------------|------------|
+| State | Convergence (explicit container) | @resolution → branch |
+```
+For State resolution, `@resolution` points to a **branch (State)**, not a Belief.
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Convergence.resolution property | Designed | Points to selected branch State |
+| Query-time branch check | Designed | If in resolved Convergence → use selected branch |
+| RES-1 enhancement | Designed | Existing test needs timeline-level behavior |
+
+**Test matrix**:
+| Test | Type | Status | Description |
+|------|------|--------|-------------|
+| RES-1 | State | ⚠️ Partial | Current: single belief. Need: all beliefs in branch |
+| TL-1 | Timeline | TODO | Multiple beliefs resolve together when branch selected |
+| TL-2 | Timeline | TODO | Query any belief → gets selected branch version |
+
+**Files**: `public/worker/convergence.mjs`, `public/worker/state.mjs`
 
 ---
 
-### Phase 5: Observation System
+### Phase 5: @tracks (Timeline Inheritance)
+**Goal**: Fallback to parallel timeline for untouched content
+
+**What @tracks does**:
+- State meta-property pointing to a parallel timeline
+- Query algorithm: local base chain first, then fall back to @tracks
+- Used for: committed branches inheriting from parent timeline, theories tracking core observations
+
+**Example** (from combinatorial-explosion-components.md:559-569):
+```javascript
+new_state_6:
+  base: state_5           // branch point (common ancestor)
+  @tracks: state_6        // fallback to legacy timeline
+  insert: [bob.location = tavern]  // local changes
+
+new_state_7:
+  base: new_state_6       // local chain continues
+  @tracks: state_7        // tracked advances via branches
+```
+
+**Query algorithm**:
+```
+query(state, trait):
+  1. Walk local base chain (depth first)
+  2. If not found AND state.@tracks exists:
+     return query(state.@tracks, trait)
+```
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| State.tracks property | Designed | Reference to parallel timeline State |
+| @tracks in query path | Designed | Fallback after local chain exhausted |
+| advance_tracked_timeline() | Designed | Follow branches to vt <= target |
+
+**Files**: `public/worker/state.mjs`, `public/worker/temporal.mjs`
+
+---
+
+### Phase 6: Session.legacy (Cross-Timeline Persistence)
+**Goal**: Committed discoveries persist across timeline navigation (reload, flashback)
+
+**What Session.legacy does**:
+- Reference to committed state from previous run/timeline
+- Query modification: check legacy ancestry for resolutions
+- Enables: "player knows answers from previous run" after reload
+
+**Example** (from combinatorial-explosion-components.md:474-500):
+```javascript
+Session:
+  world: world_mind
+  state: state_1        // current position (after reload)
+  avatar: player
+  legacy: state_50      // committed discoveries from previous run
+```
+
+**Backward navigation with legacy**:
+1. Query beliefs about subject at current state
+2. Check subject.resolutions against legacy (not just current ancestry)
+3. If legacy state is in resolutions → resolution applies
+4. Get resolved value even though "before" the discovery
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Session.legacy field | Designed | Reference to committed State |
+| Legacy check in queries | Designed | Check legacy ancestry for resolutions |
+| Resolution visibility | Designed | Resolutions visible across timeline navigation |
+
+**Test matrix**:
+| Test | Type | Status | Description |
+|------|------|--------|-------------|
+| RES-5 | Legacy | TODO | Cross-timeline resolution via Session.legacy |
+| RES-6 | Legacy | TODO | Query without legacy → superposition |
+
+**Files**: `public/worker/session.mjs`, `public/worker/belief.mjs`
+
+---
+
+### Phase 7: Observation System
 **Goal**: Complete perceive/identify/learn_from implementation
 
 Reference: `docs/plans/observation-events.md`
 
-| Component | Status | Fits Existing Design? | Notes |
-|-----------|--------|----------------------|-------|
-| EventPerception archetype | ✅ Exists | ✅ Yes | In world.mjs |
-| @about meta-trait | ✅ Exists | ✅ Yes | In registry |
-| @acquaintance meta-trait | New | ✅ Yes | Add to registry |
-| @source meta-trait | Designed | ✅ Yes | Add to registry |
-| state.perceive() | Designed | ✅ Yes | New method |
-| state.identify() | Designed | ✅ Yes | New method |
-| state.learn_from() | Designed | ⚠️ Extends | Build on learn_about() |
-| Compositional matching | Designed | ⚠️ Complex | Recursive trait comparison |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| EventPerception archetype | ✅ Exists | In world.mjs |
+| @about meta-trait | ✅ Exists | In registry |
+| @acquaintance meta-trait | Designed | Add to registry |
+| @source meta-trait | Designed | Add to registry |
+| state.perceive() | Designed | New method |
+| state.identify() | Designed | New method |
+| state.learn_from() | Designed | Build on learn_about() |
+| Compositional matching | Designed | Recursive trait comparison |
 
 **Files**: `public/worker/state.mjs`, `public/worker/db.mjs` (registry)
 
-**Pending tests this enables**:
+**Pending tests**:
 - `observation.test.mjs:1889` - Mind trait composition (partial - needs talking system)
 
 ---
 
-### Phase 6: Superposition API (Partial)
+### Phase 8: Superposition API (Partial)
 **Goal**: Basic superposition support (NOT branch lifecycle)
 
-| Component | Status | Fits Existing Design? | Notes |
-|-----------|--------|----------------------|-------|
-| Convergence yields alternatives | Designed | ⚠️ Extends | Modify get_beliefs() for @resolution |
-| get_branch_heads() | Designed | ✅ Yes | New method on State |
-| ~~Observation collapse~~ | **DEFERRED** | - | Branch pruning = branch lifecycle |
-| ~~Branch rebasing/merging~~ | **DEFERRED** | - | Branch lifecycle |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Convergence yields alternatives | Designed | Modify get_beliefs() for @resolution |
+| get_branch_heads() | Designed | New method on State |
+| ~~Observation collapse~~ | **DEFERRED** | Branch pruning = branch lifecycle |
+| ~~Branch rebasing/merging~~ | **DEFERRED** | Branch lifecycle |
 
 **Files**: `public/worker/convergence.mjs`, `public/worker/state.mjs`
 
-**Pending tests this enables**:
+**Pending tests**:
 - `superposition.test.mjs:217` - get_branch_heads() ✅ In scope
 
-**Pending tests DEFERRED**:
-- `superposition.test.mjs:224` - observation removes branches ❌ Branch lifecycle
-- `superposition.test.mjs:231` - merging confirmed branch ❌ Branch lifecycle
+**Deferred tests** (branch lifecycle):
+- `superposition.test.mjs:224` - observation removes branches
+- `superposition.test.mjs:231` - merging confirmed branch
 
 ---
 
 ## Pending Tests Summary
 
-### In Scope (3 tests)
+### Phase 4: Timeline Resolution
 
-| Test | File:Line | Phase Required | Blocking Feature |
-|------|-----------|----------------|------------------|
-| Convergence yields both alternatives | superposition.test.mjs:170 | 3 | @resolution pattern |
-| get_branch_heads() | superposition.test.mjs:217 | 2 + 6 | Branch tracking + API |
-| Mind trait composition | observation.test.mjs:1889 | 5+ | Talking system |
+| Test | File:Line | Description |
+|------|-----------|-------------|
+| RES-1 enhancement | resolution.test.mjs | Current test is single-belief, needs timeline-level |
+| TL-1 | resolution.test.mjs | Multiple beliefs resolve together when branch selected |
+| TL-2 | resolution.test.mjs | Query any belief → gets selected branch version |
 
-### Deferred (2 tests - branch lifecycle)
+### Phase 6: Session.legacy
+
+| Test | File:Line | Description |
+|------|-----------|-------------|
+| RES-5 | resolution.test.mjs | Cross-timeline resolution via Session.legacy |
+| RES-6 | resolution.test.mjs | Query without legacy → superposition |
+
+### Phase 7-8: Observation + Superposition
+
+| Test | File:Line | Phase | Description |
+|------|-----------|-------|-------------|
+| get_branch_heads() | superposition.test.mjs:217 | 8 | Branch tracking API |
+| Mind trait composition | observation.test.mjs:1889 | 7+ | Talking system |
+
+### Deferred (branch lifecycle)
 
 | Test | File:Line | Reason |
 |------|-----------|--------|
-| Observation removes branches | superposition.test.mjs:224 | Branch pruning → branch lifecycle |
-| Merging confirmed branch | superposition.test.mjs:231 | Branch rebasing → branch lifecycle |
+| Observation removes branches | superposition.test.mjs:224 | Branch pruning |
+| Merging confirmed branch | superposition.test.mjs:231 | Branch rebasing |
 
 ---
 
 ## Recommended Implementation Order
 
 1. **Phase 1: Foundation** ✅ COMPLETE
-   - Trait object class → `public/worker/trait.mjs`
-   - Certainty at split points → `state.mjs:789`
-   - **Skip**: @path_certainty cache (deferred for v1)
+   - Trait object class, Fuzzy, Notion, certainty
 
-2. **Phase 2: Lazy Propagation** ✅ COMPLETE
-   - Promotion tracking, resolver interface, trait resolution
-   - Superposition handling via `_join_traits_from_promotions()`
-   - Tests: `test/promotion.test.mjs`, `test/belief.test.mjs`
+2. **Phase 2: Promotions** ✅ COMPLETE
+   - Lazy propagation for shared beliefs
 
-3. **Phase 3: @resolution Pattern**
-   - Build on Phase 2 resolver
-   - Subject resolution index
-   - Tests: `superposition.test.mjs:170`
+3. **Phase 3: Belief Resolution** ✅ COMPLETE
+   - Individual belief/trait uncertainty collapse
+   - Tests: `test/resolution.test.mjs` (17 tests)
 
-4. **Phase 5: Observation System** (can parallelize with 3-4)
-   - Update `docs/plans/observation-events.md` with remaining items
-   - Implement perceive/identify/learn_from
-   - Independent of lazy propagation
-
-5. **Phase 4: @tracks + Session.legacy**
+4. **Phase 4: Timeline Resolution** ← NEXT
+   - Convergence-level branch selection
+   - All beliefs in branch resolve together
    - Depends on Phase 3
-   - Timeline tracking and cross-timeline resolution
 
-6. **Phase 6: Superposition API**
-   - get_branch_heads() API
-   - Convergence yielding alternatives
-   - Tests: `superposition.test.mjs:217`
-   - **Skip**: Branch pruning/rebasing (deferred)
+5. **Phase 5: @tracks** (can parallelize with Phase 6)
+   - Timeline inheritance for committed branches
+   - advance_tracked_timeline()
+
+6. **Phase 6: Session.legacy** (can parallelize with Phase 5)
+   - Cross-timeline resolution persistence
+   - Depends on Phase 3-4 for resolution infrastructure
+
+7. **Phase 7: Observation System** (independent)
+   - perceive/identify/learn_from
+   - Can parallelize with Phases 4-6
+
+8. **Phase 8: Superposition API**
+   - get_branch_heads(), Convergence alternatives
+   - **Skip**: Branch lifecycle (deferred)
 
 ---
 
 ## Design Fit Analysis
 
 ### ✅ Good Fit (No Concerns)
-- Trait object - Standard pattern
-- @certainty at splits - Already implemented (state.certainty)
-- Branch tracking - Additive change
-- EventPerception - Already exists
-- @about, @acquaintance, @source - Standard meta-traits
+- Belief.resolution - Already implemented, standard pattern
+- Subject.resolutions index - Already implemented
+- @tracks meta-property - Additive change to State
+- Session.legacy field - Additive change to Session
 - get_branch_heads() - Simple API addition
 
 ### ⚠️ Needs Careful Integration
-- get_trait() with branch resolution - Core hot path
-- get_belief_by_subject() with resolver - Backward compat needed
-- Convergence get_beliefs() changes - May affect existing callers
-- Session.legacy - Extends Session class
+- **Timeline resolution in Convergence** - Query path modification for branch selection
+- **@tracks in query path** - Core hot path, needs careful testing
+- **Session.legacy in queries** - Cross-timeline lookup, performance implications
 
 ### ❓ Remaining Open Questions
 
-1. **Materialization triggers**: Exact conditions for intermediate node creation?
-2. **Convergence iteration order**: When yielding both alternatives, what order?
-3. **Observation modalities**: Default set for perceive()?
+1. **Timeline resolution storage**: Convergence.resolution property vs State property?
+2. **@tracks query integration**: Depth-first vs BFS behavior in existing code?
+3. **Legacy check scope**: Every query or only explicit calls?
 
-### ✅ Questions Resolved (deferred)
+### ✅ Questions Resolved
 
-- Certainty float values → deferred, use keywords only for now
-- Branch lifecycle → deferred to future work
+- Belief vs Timeline resolution → Clarified: separate phases (3 vs 4)
+- @tracks vs Session.legacy → Clarified: separate mechanisms (5 vs 6)
+- Branch lifecycle → Deferred to future work
 
 ---
 
 ## Files to Modify
 
-### Already Implemented ✅
+### Phase 1-3: Already Implemented ✅
 - `public/worker/trait.mjs` - Reified Trait class
-- `public/worker/fuzzy.mjs` - Uncertain trait values with alternatives
+- `public/worker/fuzzy.mjs` - Uncertain trait values, unknown()
 - `public/worker/notion.mjs` - Materialized belief view
-- `public/worker/mind.mjs` - `recall()` returns Notion, `_compute_path_certainty()`
+- `public/worker/belief.mjs` - Belief.resolution property, promotions
+- `public/worker/subject.mjs` - Subject.resolutions index
+- `public/worker/state.mjs` - insert_beliefs() indexing
+- `public/worker/mind.mjs` - recall(), path_certainty, resolution finalization
 
-### Core (High Impact) - To Do
-- `public/worker/belief.mjs` - Branch tracking, materialization
-- `public/worker/state.mjs` - Resolver, perceive, identify, collapse
-- `public/worker/convergence.mjs` - Alternative yielding
-- `public/worker/subject.mjs` - Resolution index
+### Phase 4: Timeline Resolution
+- `public/worker/convergence.mjs` - Convergence.resolution property, query modification
+- `public/worker/state.mjs` - Branch check in queries
 
-### Registry (Medium Impact) - To Do
-- `public/worker/db.mjs` - @resolution, @acquaintance, @source traits
+### Phase 5: @tracks
+- `public/worker/state.mjs` - State.tracks property
+- `public/worker/temporal.mjs` - advance_tracked_timeline()
+- `public/worker/belief.mjs` - @tracks fallback in get_trait()
 
-### Session (Medium Impact) - To Do
-- `public/worker/session.mjs` - legacy field, cross-timeline resolution
+### Phase 6: Session.legacy
+- `public/worker/session.mjs` - legacy field
+- `public/worker/belief.mjs` - Legacy check in queries
+
+### Phase 7: Observation System
+- `public/worker/perception.mjs` - perceive(), identify(), learn_from()
+- `public/worker/db.mjs` - @acquaintance, @source traits
+
+### Phase 8: Superposition API
+- `public/worker/convergence.mjs` - get_branch_heads()
+- `public/worker/state.mjs` - Alternative yielding
 
 ---
 
 ## Success Metrics
 
-1. **3 pending tests pass** (2 deferred to branch lifecycle)
-2. Lazy propagation: 1 country update → query NPCs → no cascade
-3. Observation: perceive → identify → learn_from working
-4. @resolution: convergence, belief, and unknown resolution
-5. Timeline: @tracks inheritance with proper fallback
+1. **Phase 3 ✅**: Belief resolution tests pass (17 tests)
+2. **Phase 4**: Timeline resolution - selecting branch resolves ALL beliefs
+3. **Phase 5**: @tracks fallback works for committed branches
+4. **Phase 6**: Session.legacy enables cross-timeline resolution visibility
+5. **Phase 7**: perceive → identify → learn_from working
+6. **Phase 8**: get_branch_heads() API works
 
 ---
 
@@ -332,8 +499,6 @@ Reference: `docs/plans/observation-events.md`
 
 ## Deferred Features (for future plan)
 
-These are explicitly marked "Deferred" or "Open - Needs Design Work":
-
 1. **Branch Lifecycle** - pruning, merging, GC
    - Tests: superposition.test.mjs:224, :231
 
@@ -344,3 +509,20 @@ These are explicitly marked "Deferred" or "Open - Needs Design Work":
 4. **LOD + Minds** - distant mind compression
 
 5. **Contradiction Detection** - Psychology domain (Alpha 4+)
+
+---
+
+## Phase Summary
+
+| Phase | Name | Status | Key Deliverable |
+|-------|------|--------|-----------------|
+| 1 | Foundation | ✅ COMPLETE | Trait, Fuzzy, Notion classes |
+| 2 | Promotions | ✅ COMPLETE | Lazy propagation for shared beliefs |
+| 3 | Belief Resolution | ✅ COMPLETE | Per-belief uncertainty collapse |
+| 4 | Timeline Resolution | TODO | Convergence-level branch selection |
+| 5 | @tracks | TODO | Timeline inheritance for branches |
+| 6 | Session.legacy | TODO | Cross-timeline persistence |
+| 7 | Observation System | TODO | perceive/identify/learn_from |
+| 8 | Superposition API | TODO | get_branch_heads(), alternatives |
+
+*Last updated: January 2026 - Reorganized to separate @tracks, Session.legacy, and timeline resolution*
