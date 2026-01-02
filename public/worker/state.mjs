@@ -658,8 +658,12 @@ export class State {
     if (!this._subject_index) {
       this._subject_index = new Map()
       // @heavy - building subject index (once per locked state)
+      // Keep first belief per subject (most recent state wins)
+      // @heavy - iteration over get_beliefs()
       for (const belief of this.get_beliefs()) {
-        this._subject_index.set(belief.subject, belief)
+        if (!this._subject_index.has(belief.subject)) {
+          this._subject_index.set(belief.subject, belief)
+        }
       }
     }
 

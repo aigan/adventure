@@ -129,7 +129,7 @@ describe('get_traits() composable trait consistency', () => {
   });
 
   // Matrix 7.1 + 3.3: get_trait() vs get_traits() consistency + Composable Transitive
-  it('returns inherited composed trait consistently', () => {
+  it('returns inherited trait consistently (own replaces)', () => {
     // Test: belief inherits a composable trait that was itself composed
     const traittypes = {
       ...stdTypes,
@@ -180,11 +180,11 @@ describe('get_traits() composable trait consistency', () => {
     });
     warrior_proto.lock(eidos_state);
 
-    // Knight prototype inherits from warrior and adds shield
+    // Knight prototype inherits from warrior and sets shield (replaces warrior's sword)
     const knight_proto = eidos_state.add_belief_from_template({
       bases: [warrior_proto],
       traits: {
-        inventory: [shield.subject]  // This composes with inherited sword during creation
+        inventory: [shield.subject]  // Own value replaces inherited sword
       },
       label: 'KnightProto'
     });
@@ -194,7 +194,7 @@ describe('get_traits() composable trait consistency', () => {
     const knight_instance = state.add_belief_from_template({
       bases: [knight_proto],
       traits: {
-        // NOT setting inventory - should inherit composed [sword, shield]
+        // NOT setting inventory - should inherit [shield] from knight_proto
       },
       label: 'knight_instance'
     });
@@ -203,7 +203,7 @@ describe('get_traits() composable trait consistency', () => {
     const inventory_traittype = Traittype.get_by_label('inventory');
     expect(knight_instance._traits.has(inventory_traittype)).to.be.false;
 
-    // get_trait() should return the composed inventory from knight_proto
+    // get_trait() should return the inventory from knight_proto
     const inventory_from_get_trait = knight_instance.get_trait(state, inventory_traittype);
 
     // get_traits() should return the same
@@ -213,14 +213,14 @@ describe('get_traits() composable trait consistency', () => {
     }
     const inventory_from_get_traits = traits_map.get('inventory');
 
-    // Both should return the same composed array
+    // Both should return the same array
     expect(inventory_from_get_traits).to.deep.equal(
       inventory_from_get_trait,
       'get_traits() should return same value as get_trait() for inherited composable trait');
 
-    // Verify we got the expected composed result
+    // Verify we got the expected result - knight_proto's [shield] replaces warrior's [sword]
     expect(inventory_from_get_traits).to.be.an('array');
-    expect(inventory_from_get_traits).to.have.lengthOf(2, 'Should have sword + shield');
+    expect(inventory_from_get_traits).to.have.lengthOf(1, 'Should have shield only (replaces sword)');
   });
 
   describe('save/load round-trip', () => {

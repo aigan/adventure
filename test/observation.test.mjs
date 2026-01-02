@@ -1702,7 +1702,7 @@ describe('observation', () => {
         state.add_beliefs_from_template({
           knight: {
             bases: ['warrior_proto'],
-            traits: { inventory: [] }  // Empty array composes (adds nothing)
+            traits: { inventory: [] }  // Empty array replaces inherited
           },
           pacifist: {
             bases: ['warrior_proto'],
@@ -1728,15 +1728,12 @@ describe('observation', () => {
 
         const inventory_tt = Traittype.get_by_label('inventory')
 
-        // Verify: Knight has composed inventory [sword] ([] adds nothing)
+        // Verify: Knight has [] (own value replaces inherited sword)
         const knight_knowledge = recognize(player_state, knight)
         expect(knight_knowledge).to.have.lengthOf(1)
         const knight_inventory = knight_knowledge[0].get_trait(player_state, inventory_tt)
         expect(knight_inventory).to.be.an('array')
-        expect(knight_inventory).to.have.lengthOf(1)
-        // Check that inventory contains player's knowledge about the sword
-        const sword_about = get_knowledge_about(player_state, knight_inventory[0])
-        expect(sword_about.sid).to.equal(sword.subject.sid)
+        expect(knight_inventory).to.have.lengthOf(0)
 
         // Verify: Pacifist has null (blocks composition)
         const pacifist_knowledge = recognize(player_state, pacifist)
@@ -1770,17 +1767,17 @@ describe('observation', () => {
         state.add_shared_from_template({
           Left: {
             bases: ['Base'],
-            traits: { inventory: [sword.subject] }
+            traits: { inventory: [sword.subject] }  // Own replaces Base's [token]
           },
           Right: {
             bases: ['Base'],
-            traits: { inventory: [shield.subject] }
+            traits: { inventory: [shield.subject] }  // Own replaces Base's [token]
           }
         })
 
         state.add_beliefs_from_template({
           Diamond: {
-            bases: ['Left', 'Right']  // Inherits token via both paths
+            bases: ['Left', 'Right']  // No own - composes from Left and Right
           },
           player: {
             bases: ['Person'],
@@ -1803,15 +1800,15 @@ describe('observation', () => {
         const knowledge = recognize(player_state, diamond)
         expect(knowledge).to.have.lengthOf(1)
 
-        // Verify: Inventory deduplicated (token appears once, not twice)
+        // Verify: Inventory composed from Left and Right (each replaced Base's token)
         const inventory_tt = Traittype.get_by_label('inventory')
         const inventory = knowledge[0].get_trait(player_state, inventory_tt)
         expect(inventory).to.be.an('array')
-        expect(inventory).to.have.lengthOf(3)  // token, sword, shield
+        expect(inventory).to.have.lengthOf(2)  // sword, shield (token was replaced in each branch)
 
         // Extract @about sids for comparison (player's knowledge points to world entities)
         const inventory_about_sids = inventory.map(s => get_knowledge_about(player_state, s).sid).sort()
-        const expected_sids = [token.subject.sid, sword.subject.sid, shield.subject.sid].sort()
+        const expected_sids = [sword.subject.sid, shield.subject.sid].sort()
         expect(inventory_about_sids).to.deep.equal(expected_sids)
       })
 

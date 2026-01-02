@@ -937,28 +937,28 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
         const state = createStateInNewMind('world')
 
-        // Knight explicitly sets inventory (composes at creation time)
+        // Knight explicitly sets inventory (own value replaces inherited)
         const knight = state.add_belief_from_template({
           bases: [warrior_proto],
           traits: {
-            inventory: [shield.subject]  // Explicit set triggers composition
+            inventory: [shield.subject]  // Own value replaces inherited sword
           },
           label: 'knight'
         })
 
         state.lock()
 
-        // Verify composition happened at creation (both items in _traits)
-        assert.isTrue(knight._traits.has(inventory_tt), 'knight should have inventory in _traits (composed at creation)')
+        // Verify own value is stored (not composed with inherited)
+        assert.isTrue(knight._traits.has(inventory_tt), 'knight should have inventory in _traits')
         const knight_inventory = knight._traits.get(inventory_tt)
-        assert.lengthOf(knight_inventory, 2, 'knight._traits should have 2 items (composed)')
+        assert.lengthOf(knight_inventory, 1, 'knight._traits should have 1 item (own replaces)')
 
-        // Both items should appear in rev_trait
+        // Only shield should appear in rev_trait for knight
         const who_has_sword = [...sword.rev_trait(state, inventory_tt)]
         const who_has_shield = [...shield.rev_trait(state, inventory_tt)]
 
-        assert.include(who_has_sword, knight, 'sword should appear (composed into _traits)')
-        assert.include(who_has_shield, knight, 'shield should appear (explicit)')
+        assert.notInclude(who_has_sword, knight, 'sword should NOT appear (replaced by own)')
+        assert.include(who_has_shield, knight, 'shield should appear (own value)')
       })
     })
 
@@ -1148,8 +1148,8 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
       })
     })
 
-    describe('Test 3.4: Composable Array - Items Added Over Time', () => {
-      it('inherited and added items should both appear in rev_trait across states', () => {
+    describe('Test 3.4: Composable Array - Own Replaces Across States', () => {
+      it('own values replace inherited across temporal states', () => {
         DB.reset_registries()
         DB.register(
           {
@@ -1224,25 +1224,23 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         state3.replace_beliefs(knight_v3)
         state3.lock()
 
-        // Sword should appear in all states (inherited)
+        // state1: knight_v1 inherits sword (no own value)
         const sword_at_state1 = [...sword.rev_trait(state1, inventory_tt)]
-        const sword_at_state2 = [...sword.rev_trait(state2, inventory_tt)]
-        const sword_at_state3 = [...sword.rev_trait(state3, inventory_tt)]
-
         assert.include(sword_at_state1, knight_v1, 'sword should appear in state1 (inherited)')
-        assert.include(sword_at_state2, knight_v2, 'sword should appear in state2 (still inherited)')
-        assert.include(sword_at_state3, knight_v3, 'sword should appear in state3 (still inherited)')
 
-        // Shield should appear in state2 and state3
+        // state2: knight_v2 has own [shield] which replaces inherited sword
+        const sword_at_state2 = [...sword.rev_trait(state2, inventory_tt)]
         const shield_at_state2 = [...shield.rev_trait(state2, inventory_tt)]
+        assert.notInclude(sword_at_state2, knight_v2, 'sword should NOT appear in state2 (replaced)')
+        assert.include(shield_at_state2, knight_v2, 'shield should appear in state2 (own value)')
+
+        // state3: knight_v3 has own [shield, helmet] which replaces v2's value
+        const sword_at_state3 = [...sword.rev_trait(state3, inventory_tt)]
         const shield_at_state3 = [...shield.rev_trait(state3, inventory_tt)]
-
-        assert.include(shield_at_state2, knight_v2, 'shield should appear in state2 (added)')
-        assert.include(shield_at_state3, knight_v3, 'shield should appear in state3 (retained)')
-
-        // Helmet should only appear in state3
         const helmet_at_state3 = [...helmet.rev_trait(state3, inventory_tt)]
-        assert.include(helmet_at_state3, knight_v3, 'helmet should appear in state3 (added)')
+        assert.notInclude(sword_at_state3, knight_v3, 'sword should NOT appear in state3 (replaced)')
+        assert.include(shield_at_state3, knight_v3, 'shield should appear in state3 (in own)')
+        assert.include(helmet_at_state3, knight_v3, 'helmet should appear in state3 (in own)')
       })
     })
 
@@ -1306,7 +1304,7 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
         assert.isNull(pacifist_inventory)
       })
 
-      it('empty array composes with base values', () => {
+      it('empty array replaces inherited values', () => {
         // Test: Empty array [] is different from null - it still composes
         DB.reset_registries()
         DB.register(
@@ -1343,11 +1341,11 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
         const state = createStateInNewMind('world')
 
-        // Student sets empty array (should still compose with inherited items)
+        // Student sets empty array (own value replaces inherited)
         const student = state.add_belief_from_template({
           bases: [warrior_proto],
           traits: {
-            inventory: []  // Empty array - should compose with base
+            inventory: []  // Empty array - own value replaces inherited sword
           },
           label: 'student'
         })
@@ -1355,13 +1353,13 @@ describe('Reverse Trait Lookup (rev_trait)', () => {
 
         const inventory_tt = Traittype.get_by_label('inventory')
 
-        // Student should still have sword (empty array composes with base)
+        // Student has [] which replaces inherited [sword]
         const student_inventory = student.get_trait(state, inventory_tt)
-        assert.lengthOf(student_inventory, 1, 'empty array should compose with inherited values')
+        assert.lengthOf(student_inventory, 0, 'empty array replaces inherited values')
 
-        // Student should appear in sword.rev_trait
+        // Student should NOT appear in sword.rev_trait (replaced)
         const who_has_sword = [...sword.rev_trait(state, inventory_tt)]
-        assert.include(who_has_sword, student, 'empty array should compose - student should have inherited sword')
+        assert.notInclude(who_has_sword, student, 'empty array replaces - student has no sword')
       })
     })
   })

@@ -116,8 +116,13 @@ describe('Composable Mind Trait', () => {
         }
       })
 
+      // Lock world_state before creating beliefs that compose minds
+      // Mind composition requires all component states to be locked
+      world_state.lock()
+      const state_2 = world_state.branch(logos_state(), 2)
+
       // Create belief WITH own mind trait (so it appears in to_inspect_view)
-      const vb = Belief.from_template(world_state, {
+      const vb = Belief.from_template(state_2, {
         bases: ['Villager', 'Blacksmith'],
         traits: {
           mind: {market: ['location']}  // Own mind trait
@@ -125,15 +130,15 @@ describe('Composable Mind Trait', () => {
         label: 'village_blacksmith'
       })
 
-      const vb_belief = world_state.get_belief_by_label('village_blacksmith')
-      const view = vb_belief.to_inspect_view(world_state)
+      const vb_belief = state_2.get_belief_by_label('village_blacksmith')
+      const view = vb_belief.to_inspect_view(state_2)
 
       // View should show composed mind (because belief has own mind trait)
       expect(view.traits.mind).to.exist
       expect(view.traits.mind._type).to.equal('Mind')
 
       // The composed mind should have knowledge from all three sources
-      const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
+      const vb_mind = vb_belief.get_trait(state_2, Traittype.get_by_label('mind'))
       const beliefs = [...vb_mind.origin_state.get_beliefs()]
 
       expect(beliefs.length).to.be.at.least(3, 'Should have knowledge from Villager + Blacksmith + own')
@@ -177,8 +182,12 @@ describe('Composable Mind Trait', () => {
         }
       })
 
+      // Lock world_state before creating beliefs that compose minds
+      world_state.lock()
+      const state_2 = world_state.branch(logos_state(), 2)
+
       // VillageBlacksmith has own mind knowledge + inherits from bases
-      const vb = Belief.from_template(world_state, {
+      const vb = Belief.from_template(state_2, {
         bases: ['Villager', 'Blacksmith'],
         traits: {
           mind: {
@@ -188,20 +197,21 @@ describe('Composable Mind Trait', () => {
         label: 'village_blacksmith'
       })
 
-      const vb_belief = world_state.get_belief_by_label('village_blacksmith')
-      const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
+      const vb_belief = state_2.get_belief_by_label('village_blacksmith')
+      const vb_mind = vb_belief.get_trait(state_2, Traittype.get_by_label('mind'))
       const vb_state = vb_mind.origin_state
 
-      // Should be Convergence (composed from own + Villager + Blacksmith)
+      // Should be Convergence (composed from Villager + Blacksmith base minds)
+      // Own template creates beliefs directly in the Convergence, not as a separate component
       expect(vb_state.is_union).to.be.true
-      expect(vb_state.component_states.length).to.equal(3, 'Own mind + Villager + Blacksmith')
+      expect(vb_state.component_states.length).to.equal(2, 'Villager + Blacksmith')
 
       const beliefs = [...vb_state.get_beliefs()]
 
       // Should have knowledge about all three locations
-      const tavern = world_state.get_belief_by_label('tavern')
-      const workshop = world_state.get_belief_by_label('workshop')
-      const market = world_state.get_belief_by_label('market')
+      const tavern = state_2.get_belief_by_label('tavern')
+      const workshop = state_2.get_belief_by_label('workshop')
+      const market = state_2.get_belief_by_label('market')
 
       const has_tavern = beliefs.some(b => b.get_about(vb_state)?.subject === tavern.subject)
       const has_workshop = beliefs.some(b => b.get_about(vb_state)?.subject === workshop.subject)
@@ -302,6 +312,8 @@ describe('Composable Mind Trait', () => {
         workshop: {bases: ['Location']}
       })
 
+      // Create shared prototypes with Mind traits in Eidos
+      // These Mind states are automatically locked during template resolution
       world_state.add_shared_from_template({
         Villager: {
           bases: ['Person'],
@@ -316,14 +328,21 @@ describe('Composable Mind Trait', () => {
         }
       })
 
-      const vb = Belief.from_template(world_state, {
+      // Lock world_state before creating beliefs that compose inherited minds
+      // Mind composition requires all component states to be locked
+      world_state.lock()
+      const state_2 = world_state.branch(logos_state(), 2)
+
+      // Create belief that inherits from both prototypes (no own mind trait)
+      // This triggers Mind composition from Villager + Blacksmith
+      const vb = Belief.from_template(state_2, {
         bases: ['Villager', 'Blacksmith'],
         traits: {},
         label: 'village_blacksmith'
       })
 
-      const vb_belief = world_state.get_belief_by_label('village_blacksmith')
-      const vb_mind = vb_belief.get_trait(world_state, Traittype.get_by_label('mind'))
+      const vb_belief = state_2.get_belief_by_label('village_blacksmith')
+      const vb_mind = vb_belief.get_trait(state_2, Traittype.get_by_label('mind'))
       const vb_state = vb_mind.origin_state
 
       // Verify component_states structure
@@ -340,11 +359,11 @@ describe('Composable Mind Trait', () => {
       }
 
       // Order should match bases order (Villager first, Blacksmith second)
-      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(world_state)
-      const blacksmith = Subject.get_by_label('Blacksmith').get_shared_belief_by_state(world_state)
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(state_2)
+      const blacksmith = Subject.get_by_label('Blacksmith').get_shared_belief_by_state(state_2)
 
-      const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'))
-      const blacksmith_mind = blacksmith.get_trait(world_state, Traittype.get_by_label('mind'))
+      const villager_mind = villager.get_trait(state_2, Traittype.get_by_label('mind'))
+      const blacksmith_mind = blacksmith.get_trait(state_2, Traittype.get_by_label('mind'))
 
       expect(vb_state.component_states[0]).to.equal(villager_mind.origin_state)
       expect(vb_state.component_states[1]).to.equal(blacksmith_mind.origin_state)
@@ -757,8 +776,13 @@ describe('Composable Mind Trait', () => {
         }
       })
 
+      // Lock world_state before creating beliefs that compose minds
+      // Mind composition requires all component states to be locked
+      world_state.lock()
+      const state_2 = world_state.branch(logos_state(), 2)
+
       // Level 5: Specific villager inherits Villager, adds room knowledge
-      const alice = Belief.from_template(world_state, {
+      const alice = Belief.from_template(state_2, {
         bases: ['Villager'],
         traits: {
           mind: {room_loc: ['location']}
@@ -766,8 +790,8 @@ describe('Composable Mind Trait', () => {
         label: 'alice'
       })
 
-      const alice_belief = world_state.get_belief_by_label('alice')
-      const alice_mind = alice_belief.get_trait(world_state, Traittype.get_by_label('mind'))
+      const alice_belief = state_2.get_belief_by_label('alice')
+      const alice_mind = alice_belief.get_trait(state_2, Traittype.get_by_label('mind'))
 
       // Should have composed mind (own + base inheritance)
       expect(alice_mind).to.be.instanceOf(Mind)

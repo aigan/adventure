@@ -752,23 +752,31 @@ describe('Promotions', () => {
 
       const color_tt = Traittype.get_by_label('color')
 
-      // Verify temporal resolution before save
-      expect(my_ball.get_trait(state_2, color_tt)).to.equal('green')
-      expect(my_ball.get_trait(state_3, color_tt)).to.equal('blue')
+      // Verify temporal resolution on ball_type (exists at tt=1)
+      expect(ball_type.get_trait(state_2, color_tt)).to.equal('green')
+      expect(ball_type.get_trait(state_3, color_tt)).to.equal('blue')
+      expect(ball_type.get_trait(state_4, color_tt)).to.equal('blue')
+      // my_ball exists at tt=4, inherits from ball_type's tt=4 version
       expect(my_ball.get_trait(state_4, color_tt)).to.equal('blue')
 
       // Save and reload
       const loaded_mind = saveAndReload(shared_mind)
       const loaded_states = [...loaded_mind._states]
+      const loaded_state_1 = loaded_states.find(s => s.tt === 1)
       const loaded_state_2 = loaded_states.find(s => s.tt === 2)
       const loaded_state_3 = loaded_states.find(s => s.tt === 3)
       const loaded_state_4 = loaded_states.find(s => s.tt === 4)
+      // Get the original promotable ball_type from state_1 (where it exists)
+      // Later states contain promotions which replace ball_type in those states
+      const loaded_ball_type = loaded_state_1.get_belief_by_label('ball_type')
       const loaded_my_ball = loaded_state_4.get_belief_by_label('my_ball')
 
       // Verify temporal resolution after save/load
+      // Query the original promotable belief at different timestamps
       const loaded_color_tt = Traittype.get_by_label('color')
-      expect(loaded_my_ball.get_trait(loaded_state_2, loaded_color_tt)).to.equal('green')
-      expect(loaded_my_ball.get_trait(loaded_state_3, loaded_color_tt)).to.equal('blue')
+      expect(loaded_ball_type.get_trait(loaded_state_2, loaded_color_tt)).to.equal('green')
+      expect(loaded_ball_type.get_trait(loaded_state_3, loaded_color_tt)).to.equal('blue')
+      expect(loaded_ball_type.get_trait(loaded_state_4, loaded_color_tt)).to.equal('blue')
       expect(loaded_my_ball.get_trait(loaded_state_4, loaded_color_tt)).to.equal('blue')
     })
 

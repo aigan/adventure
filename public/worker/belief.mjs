@@ -257,23 +257,12 @@ export class Belief {
   add_trait_from_template(state, traittype, data, {about_state=null} = {}) {
     assert(!this.locked, 'Cannot modify locked belief', {belief_id: this._id, label: this.get_label()})
 
-    let value = traittype.resolve_trait_value_from_template(this, data, {about_state})
-
-    // If composable and we have bases with this trait, compose with base values
+    // Resolve template data to actual value
+    // For composable traits: own value replaces inherited (composition happens at query time if no own)
     // TODO: Support template syntax for replace/remove operations on composable traits
     //   - {replace: [...]} to ignore base values and use only provided values
     //   - {remove: [...]} to compose from bases then filter out specified items
-    //   Current: Plain arrays always compose, null blocks composition
-    //   Example: inventory: {replace: ['sword']} → only sword, ignore Villager's token
-    //            inventory: {remove: ['token']} → compose then remove token
-    if (traittype.composable && value !== null) {
-      const base_values = this.collect_latest_value_from_all_bases(traittype)
-      if (base_values.length > 0) {
-        // Compose: base values first, then new value
-        base_values.push(value)
-        value = traittype.compose(this, base_values)
-      }
-    }
+    const value = traittype.resolve_trait_value_from_template(this, data, {about_state})
 
     this.add_trait(traittype, value)
   }
@@ -340,47 +329,44 @@ export class Belief {
    * @param {State} state - State context (used for promotion resolution)
    * @param {Traittype} traittype - Traittype to get
    * @param {Set<Belief>} [skip_promotions] - Beliefs whose promotions should be skipped (prevents infinite recursion)
-   * @param {{deps?: Map<Belief, number>, last_promotable?: Belief, from_temporal?: boolean}} [context] - Mutable context to track cache deps
+   * @param {{deps: Map<Belief, number>, last_promotable?: Belief, min_cache_tt: number}} [context] - Mutable context to track cache deps
    * @returns {*} trait value (Subject, not Belief), or null if not found
    * @private
    */
-  _get_inherited_trait(state, traittype, skip_promotions = new Set(), context = {}) {
-    // Initialize deps tracking
-    if (!context.deps) context.deps = new Map()
+  _get_uncached_trait(state, traittype, skip_promotions = new Set(), context = {deps: new Map(), min_cache_tt: -Infinity}) {
 
-    // Composable traits: BFS collecting one value per base chain, compose at end
-    // (Simpler path - no promotion checking, matches original get_derived_value behavior)
+    // Composable traits: BFS from this - own value naturally shadows bases
     if (traittype.composable) {
       const values = []
-      const queue = [...this._bases]
+      const queue = [/** @type {Belief|Archetype} */ (this)]
       const seen = new Set()
 
       while (queue.length > 0) {
-        const base = /** @type {Belief|Archetype} */ (queue.shift())
-        if (seen.has(base)) continue
-        seen.add(base)
+        const node = /** @type {Belief|Archetype} */ (queue.shift())
+        if (seen.has(node)) continue
+        seen.add(node)
 
-        // Track promotable beliefs for cache invalidation
-        if (base instanceof Belief) {
-          if (base.promotions.size > 0 && base._promotable_epoch !== null) {
-            context.deps.set(base, base._promotable_epoch)
-          } else if (base.promotable) {
-            context.last_promotable = base
+        // Track promotable beliefs for cache invalidation (skip this)
+        if (node !== this && node instanceof Belief) {
+          if (node.promotions.size > 0 && node._promotable_epoch !== null) {
+            context.deps.set(node, node._promotable_epoch)
+          } else if (node.promotable) {
+            context.last_promotable = node
           }
         }
 
-        const value = base.get_own_trait_value(traittype)
+        const value = node.get_own_trait_value(traittype)
         if (value !== undefined) {
           if (value !== null) values.push(value)
           continue  // Found this branch's value, don't search its ancestors
         }
 
-        queue.push(...base._bases)
+        queue.push(...node._bases)
       }
 
-      // Add last_promotable if no promotable edge found yet
-      if (context.last_promotable && context.deps.size === 0 && context.last_promotable._promotable_epoch !== null) {
-        context.deps.set(context.last_promotable, context.last_promotable._promotable_epoch)
+      // Add last_promotable if no promotable edge found yet (epoch is non-null when promotable=true)
+      if (context.last_promotable && context.deps.size === 0) {
+        context.deps.set(context.last_promotable, /** @type {number} */ (context.last_promotable._promotable_epoch))
       }
 
       if (values.length === 0) return null
@@ -390,12 +376,18 @@ export class Belief {
 
     // Non-composable traits: full BFS with promotion checking
     if (this.promotions.size > 0) {
-      // Check if any own promotions are temporal (no certainty) - result depends on tt
-      const has_temporal = [...this.promotions].some(p => p.certainty === null)
-      if (has_temporal) context.from_temporal = true
+      // Track max tt of temporal promotions - can cache if caching belief's tt >= this
+      for (const p of this.promotions) {
+        if (p.certainty === null && p.origin_state.tt != null) {
+          context.min_cache_tt = Math.max(context.min_cache_tt, p.origin_state.tt)
+        }
+      }
     }
     const own_promo = this._get_trait_from_promotions(state, this, traittype, skip_promotions)
     if (own_promo !== undefined) return own_promo
+
+    const own = this._traits.get(traittype)
+    if (own !== undefined) return own
 
     const queue = [...this._bases]
     const seen = new Set()
@@ -413,9 +405,12 @@ export class Belief {
         } else if (node.promotions.size > 0 && node._promotable_epoch !== null) {
           // First belief with promotions - record as cache dependency
           context.deps.set(node, node._promotable_epoch)
-          // Check if any promotions are temporal (no certainty) - result depends on tt
-          const has_temporal = [...node.promotions].some(p => p.certainty === null)
-          if (has_temporal) context.from_temporal = true
+          // Track max tt of temporal promotions - can cache if caching belief's tt >= this
+          for (const p of node.promotions) {
+            if (p.certainty === null && p.origin_state.tt != null) {
+              context.min_cache_tt = Math.max(context.min_cache_tt, p.origin_state.tt)
+            }
+          }
           const value = this._get_trait_from_promotions(state, node, traittype, skip_promotions)
           if (value !== undefined) return value
         } else if (node.promotable) {
@@ -427,8 +422,8 @@ export class Belief {
       const own = node.get_own_trait_value(traittype)
       if (own !== undefined) {
         // Found value - add last_promotable to deps if not already tracking a promotable edge
-        if (context.last_promotable && !context.deps.has(context.last_promotable) && context.last_promotable._promotable_epoch !== null) {
-          context.deps.set(context.last_promotable, context.last_promotable._promotable_epoch)
+        if (context.last_promotable && !context.deps.has(context.last_promotable)) {
+          context.deps.set(context.last_promotable, /** @type {number} */ (context.last_promotable._promotable_epoch))
         }
         return own
       }
@@ -437,8 +432,8 @@ export class Belief {
     }
 
     // No value found - still add last_promotable to deps
-    if (context.last_promotable && !context.deps.has(context.last_promotable) && context.last_promotable._promotable_epoch !== null) {
-      context.deps.set(context.last_promotable, context.last_promotable._promotable_epoch)
+    if (context.last_promotable && !context.deps.has(context.last_promotable)) {
+      context.deps.set(context.last_promotable, /** @type {number} */ (context.last_promotable._promotable_epoch))
     }
     return null
   }
@@ -579,16 +574,16 @@ export class Belief {
     if (cached !== undefined) return cached
 
     // Walk bases with skip_promotions
-    /** @type {{deps?: Map<Belief, number>, last_promotable?: Belief, from_temporal?: boolean}} */
-    const ctx = {}
-    const value = this._get_inherited_trait(state, traittype, skip_promotions, ctx)
-    // Cache if locked and not from temporal promotion (temporal results depend on tt)
-    if (this.locked && !ctx.from_temporal) {
+    /** @type {{deps: Map<Belief, number>, last_promotable?: Belief, min_cache_tt: number}} */
+    const ctx = {deps: new Map(), min_cache_tt: -Infinity}
+    const value = this._get_uncached_trait(state, traittype, skip_promotions, ctx)
+    // Cache if locked and all temporal promotions are resolved (tt <= origin_state.tt)
+    const can_cache = ctx.min_cache_tt <= (this.origin_state.tt ?? Infinity)
+    if (this.locked && can_cache) {
       // Store cache dependencies on promotable beliefs
-      const deps = ctx.deps
-      if (deps && deps.size > 0) {
-        if (!this._cache_deps) this._cache_deps = new Map()
-        for (const [b, e] of deps) this._cache_deps.set(b, e)
+      if (ctx.deps.size > 0) {
+        this._cache_deps ??= new Map()
+        for (const [b, e] of ctx.deps) this._cache_deps.set(b, e)
       }
       this._set_cache(traittype, value)
     }
@@ -607,23 +602,26 @@ export class Belief {
   get_trait(state, traittype) {
     assert(state instanceof State, "get_trait requires State - shared beliefs must use origin_state or appropriate context state", {belief_id: this._id, traittype: traittype?.label, state})
     assert(traittype instanceof Traittype, "get_trait requires Traittype", {belief_id: this._id, traittype})
+    // Temporal beliefs must be queried at tt >= origin_state.tt (timeless beliefs skip this check)
+    if (this.origin_state.tt != null) {
+      assert(state.tt != null && state.tt >= this.origin_state.tt,
+        "get_trait query state.tt must be >= belief.origin_state.tt",
+        {belief_id: this._id, state_tt: state.tt, origin_tt: this.origin_state.tt})
+    }
 
-    let value = this._traits.get(traittype)
+    let value = this._get_cached(traittype)
     if (value !== undefined) return value
 
-    value = this._get_cached(traittype)
-    if (value !== undefined) return value
-
-    /** @type {{deps?: Map<Belief, number>, last_promotable?: Belief, from_temporal?: boolean}} */
-    const ctx = {}
-    value = this._get_inherited_trait(state, traittype, undefined, ctx)
-    // Cache if locked and not from temporal promotion (temporal results depend on tt)
-    if (this.locked && !ctx.from_temporal) {
+    /** @type {{deps: Map<Belief, number>, last_promotable?: Belief, min_cache_tt: number}} */
+    const ctx = {deps: new Map(), min_cache_tt: -Infinity}
+    value = this._get_uncached_trait(state, traittype, undefined, ctx)
+    // Cache if locked and all temporal promotions are resolved (tt <= origin_state.tt)
+    const can_cache = ctx.min_cache_tt <= (this.origin_state.tt ?? Infinity)
+    if (this.locked && can_cache) {
       // Store cache dependencies on promotable beliefs
-      const deps = ctx.deps
-      if (deps && deps.size > 0) {
-        if (!this._cache_deps) this._cache_deps = new Map()
-        for (const [b, e] of deps) this._cache_deps.set(b, e)
+      if (ctx.deps.size > 0) {
+        this._cache_deps ??= new Map()
+        for (const [b, e] of ctx.deps) this._cache_deps.set(b, e)
       }
       this._set_cache(traittype, value)
     }
@@ -905,7 +903,8 @@ export class Belief {
     const deps = new Map()  // Track promotable beliefs for cache invalidation
     /** @type {Belief|null} */
     let last_promotable = null
-    let from_temporal = false  // Track if any temporal promotions were encountered
+    let min_cache_tt = -Infinity  // Track max tt of temporal promotions
+    const origin_tt = this.origin_state.tt ?? Infinity
 
     // Yield cached traits first
     for (const [traittype, value] of this._cache) {
@@ -931,56 +930,77 @@ export class Belief {
         const promos = this.origin_state.pick_promotion(node.promotions, {})
         if (promos.length === 1 && promos[0].certainty === null) {
           queue.unshift(promos[0])  // Temporal: add to queue
-          from_temporal = true  // Temporal promotions can't be cached (depend on tt)
+          if (promos[0].origin_state.tt != null) {
+            min_cache_tt = Math.max(min_cache_tt, promos[0].origin_state.tt)
+          }
         } else if (promos.length > 0) {
           // Probability promotions return Fuzzy - can cache with epoch tracking
-          yield* this._collect_fuzzy_promotions(promos, yielded, this.locked && !from_temporal)
+          const can_cache = min_cache_tt <= origin_tt
+          yield* this._collect_fuzzy_promotions(promos, yielded, this.locked && can_cache)
         }
       } else if (node instanceof Belief && node.promotable) {
         // Track last promotable as potential cache dependency
         last_promotable = node
       }
 
+      // Track if we found a composable value in this node (to stop branch search)
+      let found_composable = false
+
       for (const [traittype, value] of node.get_trait_entries()) {
         if (yielded.has(traittype)) continue
 
-        if (traittype.composable && node !== this) {
-          // Accumulate composable values from inherited nodes only
-          if (!composables.has(traittype)) composables.set(traittype, [])
-          if (value !== null) composables.get(traittype).push(value)
+        if (traittype.composable) {
+          // Composable traits: own value replaces inherited, else compose from bases
+          if (node === this) {
+            // Own value: yield directly (replaces any inherited)
+            const can_cache = min_cache_tt <= origin_tt
+            if (this.locked && can_cache) this._set_cache(traittype, value)
+            yield /** @type {[Traittype, any]} */ ([traittype, value])
+            yielded.add(traittype)
+          } else if (value !== null) {
+            // Base value: accumulate for composition (only if no own value)
+            if (!composables.has(traittype)) composables.set(traittype, [])
+            composables.get(traittype).push(value)
+            found_composable = true  // Mark branch as closed
+          }
           continue
         }
 
-        // Non-composable or own composable: yield immediately
-        if (this.locked && !from_temporal) this._set_cache(traittype, value)
+        // Non-composable: yield immediately
+        const can_cache = min_cache_tt <= origin_tt
+        if (this.locked && can_cache) this._set_cache(traittype, value)
         yield /** @type {[Traittype, any]} */ ([traittype, value])
         yielded.add(traittype)
       }
 
-      // Add bases to queue
-      queue.push(...node._bases)
+      // Add bases to queue - but stop if we found a composable value (consistent with _get_uncached_trait)
+      if (!found_composable) {
+        queue.push(...node._bases)
+      }
     }
 
     // Add last_promotable if no promotable edge found yet
-    if (last_promotable && deps.size === 0 && last_promotable._promotable_epoch !== null) {
-      deps.set(last_promotable, last_promotable._promotable_epoch)
+    if (last_promotable && deps.size === 0) {
+      deps.set(last_promotable, /** @type {number} */ (last_promotable._promotable_epoch))
     }
 
     // Compose and yield all composables at the end
     // TODO: Could yield composables earlier by tracking open branches per-traittype
     //   and yielding as soon as all branches close. Would help pagination/early-stop.
+    const can_cache_final = min_cache_tt <= origin_tt
     for (const [traittype, values] of composables) {
       if (yielded.has(traittype)) continue
+
       const composed = values.length < 2 ? values[0] : traittype.compose(this, values)
-      if (this.locked && !from_temporal) this._set_cache(traittype, composed)
+      if (this.locked && can_cache_final) this._set_cache(traittype, composed)
       yield /** @type {[Traittype, any]} */ ([traittype, composed])
       yielded.add(traittype)
     }
 
-    // Store cache deps and mark fully cached (only if no temporal promotions)
-    if (this.locked && !from_temporal) {
+    // Store cache deps and mark fully cached (only if temporal promotions resolved)
+    if (this.locked && can_cache_final) {
       if (deps.size > 0) {
-        if (!this._cache_deps) this._cache_deps = new Map()
+        this._cache_deps ??= new Map()
         for (const [b, e] of deps) this._cache_deps.set(b, e)
       }
       this._cached_all = true
@@ -1791,6 +1811,10 @@ export class Belief {
    */
   static from_template(state, {sid=null, bases=[], traits={}, about_state=null, label=null, promotable=false, certainty=null} = {}) {
     assert(state instanceof State, 'from_template requires State as first argument', {state})
+    // Promotable beliefs must be in temporal states (not timeless Eidos/Logos)
+    assert(!promotable || state.tt != null,
+      'Promotable beliefs require temporal state (state.tt must not be null)',
+      {promotable, state_tt: state.tt, mind: state.in_mind?.label})
 
     const resolved_bases = bases.map((/** @type {string|Belief|Archetype} */ base_in) => {
       if (typeof base_in === 'string') {

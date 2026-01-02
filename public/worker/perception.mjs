@@ -119,6 +119,47 @@ export function _perceive_single(state, world_entity, about_state, modalities) {
 }
 
 /**
+ * Recursively perceive a Subject-valued trait item
+ *
+ * @param {State} state - Learning state
+ * @param {Subject} subject_value - Subject to perceive
+ * @param {State} world_state - State to resolve in
+ * @param {string[]} modalities - Observable modalities
+ * @param {Traittype|null} uncertain_tt - Uncertain identity traittype
+ * @returns {Subject} Knowledge subject reference
+ */
+function _perceive_subject_value(state, subject_value, world_state, modalities, uncertain_tt) {
+  const nested_belief = subject_value.get_belief_by_state(world_state)
+  if (!nested_belief) return subject_value
+
+  const is_uncertain = uncertain_tt && nested_belief.get_trait(world_state, uncertain_tt) === true
+
+  if (is_uncertain) {
+    // Nested entity is uncertain: use slow path
+    const perceived = _perceive_single(state, nested_belief, world_state, modalities)
+    return perceived.subject
+  }
+
+  // Nested entity is certain: recursive fast path WITH pruning
+  const nested_knowledge = recognize(state, nested_belief)
+
+  if (nested_knowledge.length > 0) {
+    const nested_memory = nested_knowledge[0]
+    const world_vt = nested_belief.origin_state?.vt
+    const memory_tt = nested_memory.origin_state?.tt
+
+    // If memory is current, reuse it (prune tree walk for this nested entity)
+    if (world_vt != null && memory_tt != null && world_vt <= memory_tt) {
+      return nested_memory.subject
+    }
+  }
+
+  // Memory stale or doesn't exist - recurse normally
+  const result = _perceive_with_recognition(state, nested_belief, world_state, modalities)
+  return result.belief.subject
+}
+
+/**
  * Perceive entity with identity recognition (fast path)
  * Recursively perceives nested entities and creates versioned beliefs when traits change
  * @param {State} state - State instance for this perception
@@ -145,39 +186,15 @@ export function _perceive_with_recognition(state, world_entity, world_state, mod
     if (value !== null && !(value instanceof Fuzzy)) {
       // If Subject-valued, recursively perceive it
       if (value instanceof Subject) {
-        const nested_belief = value.get_belief_by_state(world_state)
-        if (nested_belief) {
-          const is_uncertain = uncertain_tt && nested_belief.get_trait(world_state, uncertain_tt) === true
-
-          if (is_uncertain) {
-            // Nested entity is uncertain: use slow path
-            const perceived = _perceive_single(state, nested_belief, world_state, modalities)
-            value = perceived.subject
-            // NOTE: Don't add to all_perceived - parts are implicit, not content items
-          } else {
-            // Nested entity is certain: recursive fast path WITH pruning
-            const nested_knowledge = recognize(state, nested_belief)
-
-            if (nested_knowledge.length > 0) {
-              const nested_memory = nested_knowledge[0]
-              const world_vt = nested_belief.origin_state?.vt
-              const memory_tt = nested_memory.origin_state?.tt
-
-              // If memory is current, reuse it (prune tree walk for this nested entity)
-              if (world_vt != null && memory_tt != null && world_vt <= memory_tt) {
-                value = nested_memory.subject
-                // NOTE: Don't add to all_perceived - parts are implicit
-                observed_traits[traittype.label] = value
-                continue  // Skip recursive call - memory is current
-              }
-            }
-
-            // Memory stale or doesn't exist - recurse normally
-            const result = _perceive_with_recognition(state, nested_belief, world_state, modalities)
-            value = result.belief.subject
-            // NOTE: Don't add nested parts to all_perceived - only top-level entities in content
+        value = _perceive_subject_value(state, value, world_state, modalities, uncertain_tt)
+      } else if (Array.isArray(value)) {
+        // Handle arrays of Subjects
+        value = value.map(item => {
+          if (item instanceof Subject) {
+            return _perceive_subject_value(state, item, world_state, modalities, uncertain_tt)
           }
-        }
+          return item
+        })
       }
 
       observed_traits[traittype.label] = value

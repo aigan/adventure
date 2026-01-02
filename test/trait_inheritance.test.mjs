@@ -572,42 +572,40 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
             Left: {
               bases: ['Base'],
               traits: {
-                inventory: ['sword']  // Adds sword, inherits token
+                inventory: ['sword']  // Own replaces Base's token
               }
             },
             Right: {
               bases: ['Base'],
               traits: {
-                inventory: ['shield']  // Adds shield, inherits token
+                inventory: ['shield']  // Own replaces Base's token
               }
             },
             Diamond: {
-              bases: ['Left', 'Right']  // Token reachable via two paths
+              bases: ['Left', 'Right']  // No own - composes from Left and Right
             }
           }
         )
       })
 
-      it('deduplicates items appearing via multiple inheritance paths', () => {
+      it('composes from bases when no own value (Left and Right each replaced Base)', () => {
         const eidos_state = eidos().origin_state
         const diamond = eidos_state.get_belief_by_label('Diamond')
 
         const inventory_traittype = Traittype.get_by_label('inventory')
         const result = diamond.get_trait(eidos_state, inventory_traittype)
 
+        // Left has [sword] (replaced token), Right has [shield] (replaced token)
+        // Diamond has no own, so composes: [sword, shield]
         expect(result).to.be.an('array')
-        expect(result).to.have.lengthOf(3)  // token, sword, shield
+        expect(result).to.have.lengthOf(2)  // sword, shield (token was replaced in each branch)
 
         const labels = result.map(subj => {
           const belief = eidos_state.get_belief_by_subject(subj)
           return belief.get_label()
         }).sort()
 
-        expect(labels).to.deep.equal(['shield', 'sword', 'token'])
-
-        // Verify token appears only once despite two paths
-        const token_count = labels.filter(l => l === 'token').length
-        expect(token_count).to.equal(1)
+        expect(labels).to.deep.equal(['shield', 'sword'])
       })
     })
 
@@ -833,7 +831,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         expect(result[0]).to.equal(sword.subject)
       })
 
-      it('own value composes with single base', () => {
+      it('own value replaces inherited (not composes)', () => {
         const state = createStateInNewMind('test')
 
         const sword = state.add_belief_from_template({
@@ -858,11 +856,11 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         })
         warrior_proto.lock(eidos_state)
 
-        // Add own inventory that composes with base
+        // Add own inventory - replaces inherited (not composes)
         const knight = state.add_belief_from_template({
           bases: [warrior_proto],
           traits: {
-            inventory: [shield.subject]  // Adds to inherited
+            inventory: [shield.subject]  // Own value replaces inherited
           },
           label: 'knight'
         })
@@ -870,16 +868,10 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
         const inventory_traittype = Traittype.get_by_label('inventory')
         const result = knight.get_trait(state, inventory_traittype)
 
-        // Should compose: base + own
+        // Own value replaces inherited
         expect(result).to.be.an('array')
-        expect(result).to.have.lengthOf(2)
-
-        const labels = result.map(subj => {
-          const belief = state.get_belief_by_subject(subj)
-          return belief.get_label()
-        }).sort()
-
-        expect(labels).to.deep.equal(['shield', 'sword'])
+        expect(result).to.have.lengthOf(1)
+        expect(result[0]).to.equal(shield.subject)
       })
     })
 
@@ -1139,7 +1131,7 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
       expect(loaded_child.get_trait(loaded_state, loaded_color_tt)).to.equal('blue')
     })
 
-    it('composable array inheritance works after save/load', () => {
+    it('composable array own replaces works after save/load', () => {
       setupInheritanceArchetypes()
       const state = createStateInNewMind('test')
 
@@ -1163,17 +1155,18 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
 
       const knight = state.add_belief_from_template({
         bases: [warrior],
-        traits: { inventory: [shield.subject] },
+        traits: { inventory: [shield.subject] },  // Own replaces warrior's sword
         label: 'knight'
       })
 
       state.lock()
 
-      // Verify composition before save
+      // Verify own replaces before save
       const inventory_tt = Traittype.get_by_label('inventory')
       const inv_before = knight.get_trait(state, inventory_tt)
       expect(inv_before).to.be.an('array')
-      expect(inv_before).to.have.lengthOf(2)
+      expect(inv_before).to.have.lengthOf(1)
+      expect(inv_before[0]).to.equal(shield.subject)
 
       // Save and reload
       const json = save_mind(state.in_mind)
@@ -1183,11 +1176,11 @@ describe('Trait Inheritance - Comprehensive Coverage', () => {
       const loaded_state = [...loaded_mind._states][0]
       const loaded_knight = loaded_state.get_belief_by_label('knight')
 
-      // Composition should work after load
+      // Own replaces should work after load
       const loaded_inventory_tt = Traittype.get_by_label('inventory')
       const inv_after = loaded_knight.get_trait(loaded_state, loaded_inventory_tt)
       expect(inv_after).to.be.an('array')
-      expect(inv_after).to.have.lengthOf(2)
+      expect(inv_after).to.have.lengthOf(1)
     })
 
     it('trait shadowing works after save/load', () => {

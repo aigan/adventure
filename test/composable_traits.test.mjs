@@ -35,8 +35,8 @@ describe('Composable Traits', () => {
 
 
   describe('Inventory Composition', () => {
-    // Matrix 3.3: Composable Transitive (A→B→C)
-    it('composes inventory from multiple bases (transitive)', () => {
+    // Matrix 3.3: Own value replaces inherited (not composes)
+    it('own inventory replaces inherited (no composition)', () => {
       // Register inventory as composable
       DB.register(
         {
@@ -83,15 +83,15 @@ describe('Composable Traits', () => {
       const eidos_state = eidos().origin_state
       const blacksmith = eidos_state.get_belief_by_label('Blacksmith')
 
-      // Verify Blacksmith composes all three items transitively
-      // (token from Villager + hammer + badge from own inventory)
+      // Blacksmith has own inventory ['hammer', 'badge'] which REPLACES inherited
+      // (own value replaces, no composition with bases)
       const inventory_traittype = Traittype.get_by_label('inventory')
       const blacksmith_inv = blacksmith.get_trait(eidos_state, inventory_traittype)
       expect(blacksmith_inv).to.be.an('array')
-      expect(blacksmith_inv).to.have.lengthOf(3)
+      expect(blacksmith_inv).to.have.lengthOf(2)
 
       const labels = blacksmith_inv.map(b => b.get_label()).sort()
-      expect(labels).to.deep.equal(['badge', 'hammer', 'token'])
+      expect(labels).to.deep.equal(['badge', 'hammer'])
     })
 
     // Matrix 3.5: Composable Deduplication
@@ -147,7 +147,7 @@ describe('Composable Traits', () => {
     })
 
     // Matrix 7.3: to_inspect_view() shows composed values
-    it('composes inventory in to_inspect_view()', () => {
+    it('to_inspect_view shows own inventory (replaces inherited)', () => {
       DB.register(
         {
           '@about': {type: 'Subject', mind: 'parent'},
@@ -190,13 +190,13 @@ describe('Composable Traits', () => {
       const eidos_state = eidos().origin_state
       const blacksmith = eidos_state.get_belief_by_label('Blacksmith')
 
-      // Check to_inspect_view shows composed inventory
+      // Blacksmith has own inventory ['hammer'] which replaces inherited
       const view = blacksmith.to_inspect_view(eidos_state)
       expect(view.traits.inventory).to.be.an('array')
-      expect(view.traits.inventory).to.have.lengthOf(2)
+      expect(view.traits.inventory).to.have.lengthOf(1)
 
       const labels = view.traits.inventory.map(item => item.label).sort()
-      expect(labels).to.deep.equal(['hammer', 'token'])
+      expect(labels).to.deep.equal(['hammer'])
     })
   })
 

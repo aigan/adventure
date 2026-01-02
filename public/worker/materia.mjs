@@ -121,6 +121,9 @@ export class Materia extends Mind {
       return state
     })
 
+    // Component states must be locked to ensure consistent Convergence view
+    // Mind states are automatically locked during template resolution (see Mind.resolve_trait_value_from_template)
+    // If this assertion fails, ensure all source minds were created before the state was locked
     for (const state of component_states) {
       assert(state.locked, 'All component states must be locked', {state})
     }

@@ -114,11 +114,13 @@ describe('Composable Traits - Complex Scenarios', () => {
       const eidos_state = eidos().origin_state
       const master = eidos_state.get_belief_by_label('MasterCraftsman')
 
-      // Should compose from entire chain: Villager -> Blacksmith -> MasterCraftsman + Guard
+      // MasterCraftsman has no own, composes from Blacksmith and Guard
+      // Blacksmith's [hammer, badge] replaces Villager's [token]
+      // Guard has [sword]
       const inv = master.get_trait(eidos_state, Traittype.get_by_label('inventory'))
-      expect(inv).to.have.lengthOf(4)
+      expect(inv).to.have.lengthOf(3)
       const labels = inv.map(b => b.get_label()).sort()
-      expect(labels).to.deep.equal(['badge', 'hammer', 'sword', 'token'])
+      expect(labels).to.deep.equal(['badge', 'hammer', 'sword'])
     })
   })
 
@@ -260,7 +262,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       expect(labels).to.deep.equal(['apprentice_token', 'sword'])
     })
 
-    it('explicit empty array COMPOSES with base values (adds nothing)', () => {
+    it('explicit empty array REPLACES base values (own value)', () => {
       DB.register(
         {
           inventory: {
@@ -289,24 +291,22 @@ describe('Composable Traits - Complex Scenarios', () => {
       const world_mind = new Materia(logos(), 'world')
       const state = world_mind.create_state(logos_state(), {tt: 1})
 
-      // NPC with explicit empty inventory - still composes with base!
-      // Empty array is not null, so composition happens: [token] + [] = [token]
+      // NPC with explicit empty inventory - own replaces inherited
       const npc = state.add_belief_from_template({
         bases: ['Villager'],
         traits: {
-          inventory: []
+          inventory: []  // Own [] replaces Villager's [token]
         },
         label: 'villager_npc'
       })
 
-      // Still has token from base (empty array composes to base + empty = base)
+      // Empty array replaces inherited (own value replaces)
       const inv = npc.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv).to.be.an('array')
-      expect(inv).to.have.lengthOf(1)
-      expect(inv[0].get_label()).to.equal('token')
+      expect(inv).to.have.lengthOf(0)
     })
 
-    it('own trait blocks composition lookup (but creation composes)', () => {
+    it('own trait replaces inherited (no composition)', () => {
       DB.register(
         {
           inventory: {
@@ -342,24 +342,20 @@ describe('Composable Traits - Complex Scenarios', () => {
         label: 'sword'
       })
 
-      // NPC with own inventory - composition happens at creation
+      // NPC with own inventory - replaces inherited
       const npc = state.add_belief_from_template({
         bases: ['Villager'],
         traits: {
-          inventory: ['sword']  // Own trait: composes [token] + [sword] at creation
+          inventory: ['sword']  // Own trait: replaces Villager's [token]
         },
         label: 'guard'
       })
 
-      // Has both token (from base) and sword (own) via creation-time composition
+      // Own [sword] replaces inherited [token]
       const inv = npc.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv).to.be.an('array')
-      expect(inv).to.have.lengthOf(2)
-      const labels = inv.map(b => b.get_label()).sort()
-      expect(labels).to.deep.equal(['sword', 'token'])
-
-      // Own trait blocks lookup composition (get_trait returns own value)
-      // But it was already composed at creation, so we still get both
+      expect(inv).to.have.lengthOf(1)
+      expect(inv[0].get_label()).to.equal('sword')
     })
   })
 
@@ -434,7 +430,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       expect(labels).to.deep.equal(['sword', 'token'])
     })
 
-    it('NPC gains own inventory at tick 2 (composes with base)', () => {
+    it('NPC gains own inventory at tick 2 (replaces inherited)', () => {
       DB.register(
         {
           inventory: {
@@ -470,7 +466,7 @@ describe('Composable Traits - Complex Scenarios', () => {
         label: 'sword'
       })
 
-      // Tick 1: Create NPC inheriting from Villager (has token via composition)
+      // Tick 1: Create NPC inheriting from Villager (has token via inheritance)
       const npc = state.add_belief_from_template({
         bases: ['Villager'],
         traits: {},
@@ -483,21 +479,19 @@ describe('Composable Traits - Complex Scenarios', () => {
 
       state.lock()
 
-      // Tick 2: NPC acquires sword (should compose with prototype Villager's token)
+      // Tick 2: NPC acquires sword (own replaces inherited token)
       state = state.branch(logos_state(), 2)
       state = state.tick_with_template(npc, 2, {
-        inventory: ['sword']  // Should compose: Villager[token] + [sword] = [token, sword]
+        inventory: ['sword']  // Own [sword] replaces inherited [token]
       })
 
       const npc_v2 = state.get_belief_by_subject(npc.subject)
       const inv2 = npc_v2.get_trait(state, Traittype.get_by_label('inventory'))
       expect(inv2).to.be.an('array')
 
-      // Actual behavior: tick_with_template creates new belief with same bases
-      // Composition happens: Villager[token] + [sword]
-      expect(inv2).to.have.lengthOf(2)
-      const labels = inv2.map(b => b.get_label()).sort()
-      expect(labels).to.deep.equal(['sword', 'token'])
+      // Own [sword] replaces inherited [token]
+      expect(inv2).to.have.lengthOf(1)
+      expect(inv2[0].get_label()).to.equal('sword')
     })
 
     it('composition works across state branches with different timestamps', () => {
@@ -561,7 +555,7 @@ describe('Composable Traits - Complex Scenarios', () => {
   })
 
   describe('Mixed scenarios', () => {
-    it('deep inheritance + empty array + temporal evolution', () => {
+    it('deep inheritance + own replaces + temporal evolution', () => {
       DB.register(
         {
           inventory: {
@@ -602,32 +596,30 @@ describe('Composable Traits - Complex Scenarios', () => {
         label: 'sword'
       })
 
-      // Tick 1: NPC inherits from deep chain (Blacksmith -> Villager)
+      // Tick 1: NPC inherits from Blacksmith (whose [hammer] replaced Villager's [token])
       const npc = state.add_belief_from_template({
         bases: ['Blacksmith'],
         traits: {},
         label: 'npc'
       })
 
-      // Should have token + hammer via composition
+      // Blacksmith has [hammer] (replaced [token]), NPC inherits [hammer]
       const inv1 = npc.get_trait(state, Traittype.get_by_label('inventory'))
-      expect(inv1).to.have.lengthOf(2)
-      const labels1 = inv1.map(b => b.get_label()).sort()
-      expect(labels1).to.deep.equal(['hammer', 'token'])
+      expect(inv1).to.have.lengthOf(1)
+      expect(inv1[0].get_label()).to.equal('hammer')
 
       state.lock()
 
-      // Tick 2: NPC gains sword (composes with existing inventory)
+      // Tick 2: NPC gains sword (replaces inherited inventory)
       state = state.branch(logos_state(), 2)
       state = state.tick_with_template(npc, 2, {
-        inventory: ['sword']  // Composes: [token, hammer] + [sword]
+        inventory: ['sword']  // Own [sword] replaces inherited [hammer]
       })
 
       const npc_v2 = state.get_belief_by_subject(npc.subject)
       const inv2 = npc_v2.get_trait(state, Traittype.get_by_label('inventory'))
-      expect(inv2).to.have.lengthOf(3)
-      const labels2 = inv2.map(b => b.get_label()).sort()
-      expect(labels2).to.deep.equal(['hammer', 'sword', 'token'])
+      expect(inv2).to.have.lengthOf(1)
+      expect(inv2[0].get_label()).to.equal('sword')
     })
   })
 
@@ -654,7 +646,7 @@ describe('Composable Traits - Complex Scenarios', () => {
       })
     }
 
-    it('multi-level composition works after save/load', () => {
+    it('own value replaces inherited after save/load', () => {
       setupComplexArchetypes()
 
       const world_mind = new Materia(logos(), 'world')
@@ -673,14 +665,14 @@ describe('Composable Traits - Complex Scenarios', () => {
         label: 'base'
       })
 
-      // Parent adds sword
+      // Parent adds sword (replaces base's token)
       const parent = state.add_belief_from_template({
         bases: [base],
         traits: { inventory: [sword.subject] },
         label: 'parent'
       })
 
-      // Child adds shield (should have all 3)
+      // Child adds shield (replaces parent's sword)
       const child = state.add_belief_from_template({
         bases: [parent],
         traits: { inventory: [shield.subject] },
@@ -689,10 +681,11 @@ describe('Composable Traits - Complex Scenarios', () => {
 
       state.lock()
 
-      // Verify before save
+      // Verify before save - child has own [shield] which replaces inherited
       const inv_tt = Traittype.get_by_label('inventory')
       const inv_before = child.get_trait(state, inv_tt)
-      expect(inv_before).to.have.lengthOf(3)
+      expect(inv_before).to.have.lengthOf(1)
+      expect(inv_before[0].get_label()).to.equal('shield')
 
       // Save and reload
       const json = save_mind(world_mind)
@@ -702,10 +695,10 @@ describe('Composable Traits - Complex Scenarios', () => {
       const loaded_state = [...loaded_mind._states][0]
       const loaded_child = loaded_state.get_belief_by_label('child')
 
-      // Verify composition works after load
+      // Verify own replaces inherited works after load
       const loaded_inv_tt = Traittype.get_by_label('inventory')
       const inv_after = loaded_child.get_trait(loaded_state, loaded_inv_tt)
-      expect(inv_after).to.have.lengthOf(3)
+      expect(inv_after).to.have.lengthOf(1)
     })
 
     it('null blocking works after save/load', () => {
