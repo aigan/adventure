@@ -871,5 +871,304 @@ describe('Promotions', () => {
       const loaded_color_tt = Traittype.get_by_label('color')
       expect(loaded_my_ball.get_trait(loaded_world_state, loaded_color_tt)).to.equal('blue')
     })
+
+    it('Fuzzy from promotions persists after save/load', () => {
+      // Promotions are for inheritance - a belief that inherits from a belief
+      // with promotions gets Fuzzy when resolving traits through the promotions
+      // Promotions can only be in Eidos hierarchy
+      const shared_mind = new Materia(eidos(), 'shared')
+      const shared_state = shared_mind.create_state(eidos().origin_state, {tt: 1})
+
+      // Create shared belief (like cultural knowledge in eidos)
+      const ball_type = Belief.from_template(shared_state, {
+        bases: ['PortableObject'],
+        traits: {},
+        label: 'ball_type',
+        promotable: true
+      })
+
+      // Add promotions (ball_type gets removed, promotions become visible)
+      ball_type.replace(shared_state, { color: 'red' }, { promote: true, certainty: 0.6 })
+      ball_type.replace(shared_state, { color: 'blue' }, { promote: true, certainty: 0.4 })
+
+      // Create particular that inherits from the shared belief
+      const my_ball = Belief.from_template(shared_state, {
+        bases: [ball_type],  // Inherits from the belief with promotions
+        traits: {},
+        label: 'my_ball'
+      })
+
+      shared_state.lock()
+
+      // Before save: inheriting belief gets Fuzzy through base's promotions
+      const color_tt = Traittype.get_by_label('color')
+      const color_before = my_ball.get_trait(shared_state, color_tt)
+      expect(color_before).to.be.instanceOf(Fuzzy)
+      expect(color_before.alternatives).to.have.lengthOf(2)
+
+      // Save and reload
+      const loaded_mind = saveAndReload(shared_mind, setupStandardArchetypes)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_my_ball = loaded_state.get_belief_by_label('my_ball')
+
+      // After load: should still get Fuzzy through inheritance
+      const loaded_color_tt = Traittype.get_by_label('color')
+      const color_after = loaded_my_ball.get_trait(loaded_state, loaded_color_tt)
+      expect(color_after).to.be.instanceOf(Fuzzy)
+      expect(color_after.alternatives).to.have.lengthOf(2)
+    })
+
+    it('archetype traits not affected by promotions after save/load', () => {
+      // Register additional archetypes for this test
+      DB.register({
+        size: { type: 'string', values: ['small', 'medium', 'large'], exposure: 'visual' }
+      }, {
+        SizedObject: { bases: ['ObjectPhysical'], traits: { size: 'medium' } }
+      }, {})
+
+      // Promotions can only be in Eidos hierarchy
+      const shared_mind = new Materia(eidos(), 'shared')
+      const shared_state = shared_mind.create_state(eidos().origin_state, {tt: 1})
+
+      // Create shared belief with promotions on one trait
+      const sized_thing = Belief.from_template(shared_state, {
+        bases: ['SizedObject'],
+        traits: {},
+        label: 'sized_thing',
+        promotable: true
+      })
+
+      // Add TWO promotions for color (size comes from archetype)
+      sized_thing.replace(shared_state, { color: 'red' }, { promote: true, certainty: 0.6 })
+      sized_thing.replace(shared_state, { color: 'blue' }, { promote: true, certainty: 0.4 })
+
+      // Create particular inheriting from sized_thing
+      const my_thing = Belief.from_template(shared_state, {
+        bases: [sized_thing],
+        traits: {},
+        label: 'my_thing'
+      })
+
+      shared_state.lock()
+
+      // Save and reload
+      function setupWithSizedObject() {
+        setupStandardArchetypes()
+        DB.register({
+          size: { type: 'string', values: ['small', 'medium', 'large'], exposure: 'visual' }
+        }, {
+          SizedObject: { bases: ['ObjectPhysical'], traits: { size: 'medium' } }
+        }, {})
+      }
+
+      const loaded_mind = saveAndReload(shared_mind, setupWithSizedObject)
+      const loaded_state = [...loaded_mind._states][0]
+      const loaded_my_thing = loaded_state.get_belief_by_label('my_thing')
+
+      // Size from archetype should NOT be Fuzzy
+      const loaded_size_tt = Traittype.get_by_label('size')
+      const size = loaded_my_thing.get_trait(loaded_state, loaded_size_tt)
+      expect(size).to.equal('medium')
+      expect(size).to.not.be.instanceOf(Fuzzy)
+    })
+  })
+
+  describe('Recall with promotions', () => {
+    it('returns combined certainty from path and belief', () => {
+      // Promotions can only be in Eidos hierarchy
+      const mind = new Materia(eidos(), 'player')
+      const ground = eidos().origin_state
+
+      const state_0 = mind.create_state(ground, { tt: 1 })
+      state_0.add_belief_from_template({
+        label: 'hammer',
+        bases: ['Tool'],
+        traits: { color: 'black' },
+        promotable: true
+      })
+      state_0.lock()
+
+      // Branch with 70% path certainty
+      const state_1 = state_0.branch(ground, 2, { certainty: 0.7 })
+      const hammer = state_1.get_belief_by_label('hammer')
+      // Create promotion with 80% belief certainty
+      hammer.branch(state_1, { weight: 2 }, { promote: true, certainty: 0.8 })
+      state_1.lock()
+
+      const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['weight'])
+      const weight_tt = Traittype.get_by_label('weight')
+
+      // 0.7 (path) x 0.8 (belief) = 0.56
+      expect(notion.get(weight_tt).alternatives[0].certainty).to.be.closeTo(0.56, 0.001)
+    })
+
+    it('defaults belief certainty to 1.0 when not set', () => {
+      const mind = new Materia(logos(), 'player')
+      const ground = logos_state()
+
+      const state_0 = mind.create_state(ground, { tt: 1 })
+      state_0.add_belief_from_template({
+        label: 'hammer',
+        bases: ['Tool'],
+        traits: { color: 'black' }
+      })
+      state_0.lock()
+
+      // Branch with 70% certainty
+      const state_1 = state_0.branch(ground, 2, { certainty: 0.7 })
+      const hammer = state_1.get_belief_by_label('hammer')
+      hammer.replace(state_1, { weight: 2 })  // No branch_metadata.certainty
+      state_1.lock()
+
+      const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['weight'])
+      const weight_tt = Traittype.get_by_label('weight')
+
+      // path_certainty only (belief_certainty defaults to 1.0)
+      expect(notion.get(weight_tt).alternatives[0].certainty).to.equal(0.7)
+    })
+
+    it('belief certainty multiplies with nested state certainty', () => {
+      // Promotions can only be in Eidos hierarchy
+      const mind = new Materia(eidos(), 'player')
+      const ground = eidos().origin_state
+
+      const state_0 = mind.create_state(ground, { tt: 1 })
+      state_0.add_belief_from_template({
+        label: 'hammer',
+        bases: ['Tool'],
+        traits: { color: 'black' },
+        promotable: true
+      })
+      state_0.lock()
+
+      // First branch: 70% certain
+      const state_1 = state_0.branch(ground, 2, { certainty: 0.7 })
+      state_1.lock()
+
+      // Second branch: 50% certain
+      const state_2 = state_1.branch(ground, 3, { certainty: 0.5 })
+      const hammer = state_2.get_belief_by_label('hammer')
+      // Create promotion with 60% belief certainty
+      hammer.branch(state_2, { weight: 2 }, { promote: true, certainty: 0.6 })
+      state_2.lock()
+
+      const notion = mind.recall_by_subject(ground, hammer.subject, 3, ['weight'])
+      const weight_tt = Traittype.get_by_label('weight')
+
+      // path: 0.7 x 0.5 = 0.35, combined: 0.35 x 0.6 = 0.21
+      expect(notion.get(weight_tt).alternatives[0].certainty).to.be.closeTo(0.21, 0.001)
+    })
+
+    it('recall_by_archetype includes belief certainty', () => {
+      // Promotions can only be in Eidos hierarchy
+      const mind = new Materia(eidos(), 'player')
+      const ground = eidos().origin_state
+
+      const state_0 = mind.create_state(ground, { tt: 1 })
+      state_0.add_belief_from_template({
+        label: 'hammer',
+        bases: ['Tool'],
+        traits: { color: 'black' },
+        promotable: true
+      })
+      state_0.lock()
+
+      // Branch with 70% path certainty
+      const state_1 = state_0.branch(ground, 2, { certainty: 0.7 })
+      const hammer = state_1.get_belief_by_label('hammer')
+      // Create promotion with 80% belief certainty
+      hammer.branch(state_1, { weight: 2 }, { promote: true, certainty: 0.8 })
+      state_1.lock()
+
+      const notions = [...mind.recall_by_archetype(ground, 'Tool', 2, ['weight'])]
+      const weight_tt = Traittype.get_by_label('weight')
+
+      expect(notions).to.have.length(1)
+      expect(notions[0].get(weight_tt).alternatives[0].certainty).to.be.closeTo(0.56, 0.001)
+    })
+
+    it('multiplies state × belief × trait certainty in Notion only', () => {
+      // Promotions can only be in Eidos hierarchy
+      const mind = new Materia(eidos(), 'player')
+      const ground = eidos().origin_state
+      const location_tt = Traittype.get_by_label('location')
+
+      const state_0 = mind.create_state(ground, { tt: 1 })
+      const workshop = state_0.add_belief_from_template({
+        label: 'workshop',
+        bases: ['Location']
+      })
+      const shed = state_0.add_belief_from_template({
+        label: 'shed',
+        bases: ['Location']
+      })
+      const hammer = state_0.add_belief_from_template({
+        label: 'hammer',
+        bases: ['Tool'],
+        traits: { color: 'black' },
+        promotable: true
+      })
+      state_0.lock()
+
+      // State branch with 0.7 certainty (stored independently)
+      const state_1 = state_0.branch(ground, 2, { certainty: 0.7 })
+
+      // Verify state certainty is stored unchanged
+      expect(state_1.certainty).to.equal(0.7)
+
+      // Get hammer from new state and create belief branch with Fuzzy trait
+      const hammer_v1 = state_1.get_belief_by_label('hammer')
+
+      // Create promotion with 0.8 belief certainty and Fuzzy location trait
+      const hammer_v2 = hammer_v1.branch(state_1, {
+        location: new Fuzzy({ alternatives: [
+          { value: workshop.subject, certainty: 0.5 },  // stored independently
+          { value: shed.subject, certainty: 0.3 }       // stored independently
+        ]})
+      }, { promote: true, certainty: 0.8 })
+
+      state_1.lock()
+
+      // Verify stored values are unchanged
+      expect(state_1.certainty).to.equal(0.7)
+      expect(hammer_v2.certainty).to.equal(0.8)
+      const stored_fuzzy = hammer_v2.get_trait(state_1, location_tt)
+      expect(stored_fuzzy.alternatives[0].certainty).to.equal(0.5)  // unchanged
+      expect(stored_fuzzy.alternatives[1].certainty).to.equal(0.3)  // unchanged
+
+      // Notion multiplies all three levels
+      const notion = mind.recall_by_subject(ground, hammer.subject, 2, ['location'])
+      const fuzzy = notion.get(location_tt)
+
+      // Combined in Notion: 0.7 × 0.8 × 0.5 = 0.28 for workshop
+      // Combined in Notion: 0.7 × 0.8 × 0.3 = 0.168 for shed
+      expect(fuzzy.alternatives).to.have.length(2)
+      const workshop_alt = fuzzy.alternatives.find(a => a.value === workshop.subject)
+      const shed_alt = fuzzy.alternatives.find(a => a.value === shed.subject)
+      expect(workshop_alt.certainty).to.be.closeTo(0.28, 0.001)
+      expect(shed_alt.certainty).to.be.closeTo(0.168, 0.001)
+    })
+  })
+
+  describe('Inspection', () => {
+    it('has_promotions flag is true for belief with promotions in to_inspect_view', () => {
+      // Promotions can only be in Eidos hierarchy
+      const mind = new Materia(eidos(), 'promo_view_mind')
+      const state = mind.create_state(eidos().origin_state, {tt: 1})
+
+      // Create base belief
+      const obj = state.add_belief_from_template({
+        bases: ['ObjectPhysical'], label: 'test_obj',
+        promotable: true
+      })
+
+      // Create promotions
+      obj.replace(state, { color: 'red' }, { promote: true, certainty: 0.6 })
+      obj.replace(state, { color: 'blue' }, { promote: true, certainty: 0.4 })
+
+      // The has_promotions flag shows when viewing a belief that HAS promotions
+      const view = obj.to_inspect_view(state)
+      expect(view.has_promotions).to.equal(true)
+    })
   })
 })

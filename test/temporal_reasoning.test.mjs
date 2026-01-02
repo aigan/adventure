@@ -7,49 +7,12 @@ import { setupAfterEachValidation, setupStandardArchetypes } from './helpers.mjs
 describe('Temporal Reasoning', () => {
   beforeEach(() => {
     DB.reset_registries()
+    setupStandardArchetypes()
   })
   setupAfterEachValidation();
 
-
-  // Helper to setup archetypes
-  function setupArchetypes() {
-    const archetypes = {
-      ObjectPhysical: {
-        traits: {
-          '@about': null,
-          location: null,
-        },
-      },
-      Location: {
-        bases: ['ObjectPhysical'],
-      },
-      PortableObject: {
-        bases: ['ObjectPhysical'],
-      },
-      Person: {
-        bases: ['ObjectPhysical'],
-        traits: {
-          mind: null,
-        },
-      },
-    }
-
-    const traittypes = {
-      '@about': {
-        type: 'Subject',
-        mind: 'parent'
-      },
-      location: 'Location',
-      mind: 'Mind',
-    }
-
-    DB.register(traittypes, archetypes, {})
-  }
-
   describe('Fork Invariant (child.tt = parent_state.vt)', () => {
     it('child mind state inherits tt from ground_state.vt', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
@@ -81,8 +44,6 @@ describe('Temporal Reasoning', () => {
     it('Mind.create_from_template follows fork invariant', () => {
       // Was skipped due to "Cannot create state for locked self" error
       // Reactivated to test if issue has been resolved
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 200})
 
@@ -116,8 +77,6 @@ describe('Temporal Reasoning', () => {
     })
 
     it('get_or_create_open_state_for_ground follows fork invariant', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 150})
 
@@ -147,8 +106,6 @@ describe('Temporal Reasoning', () => {
     })
 
     it('child state created at different parent vt has corresponding tt', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state1 = world_mind.create_state(logos().origin_state, {tt: 100})
 
@@ -182,8 +139,6 @@ describe('Temporal Reasoning', () => {
     })
 
     it('throws error when ground_state is in wrong mind', () => {
-      setupArchetypes()
-
       const world_mind1 = new Materia(logos(), 'world1')
       const world_state1 = world_mind1.create_state(logos().origin_state, {tt: 100})
 
@@ -275,8 +230,6 @@ describe('Temporal Reasoning', () => {
 
   describe('Memory Scenarios (vt < tt)', () => {
     it('NPC recalls what workshop looked like in the past', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       let world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
@@ -321,8 +274,6 @@ describe('Temporal Reasoning', () => {
     })
 
     it('NPC can have multiple memories at different vt', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 300})
 
@@ -357,8 +308,6 @@ describe('Temporal Reasoning', () => {
 
   describe('Planning Scenarios (vt > tt)', () => {
     it('NPC plans future action', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
@@ -391,8 +340,6 @@ describe('Temporal Reasoning', () => {
     })
 
     it('NPC can have multiple plans at different future vt', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
@@ -427,8 +374,6 @@ describe('Temporal Reasoning', () => {
 
   describe('Ground State Time Coordination', () => {
     it('child state synchronizes with advancing parent', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       let world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
@@ -464,8 +409,6 @@ describe('Temporal Reasoning', () => {
     })
 
     it('nested mind chain maintains coordination (3 levels)', () => {
-      setupArchetypes()
-
       // World → NPC → NPC's model of other NPC
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
@@ -511,8 +454,6 @@ describe('Temporal Reasoning', () => {
     })
 
     it('branch() with explicit vt overrides ground_state.vt', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
@@ -542,8 +483,6 @@ describe('Temporal Reasoning', () => {
 
   describe('Superposition (same tt, different possibilities)', () => {
     it('multiple states at same tt with same ground_state', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
@@ -579,8 +518,6 @@ describe('Temporal Reasoning', () => {
     })
 
     it('different beliefs in each superposed state', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
@@ -722,8 +659,6 @@ describe('Temporal Reasoning', () => {
     it('states_at_tt filters by ground_state', () => {
       // states_at_tt(ground_state, tt) only returns states for the specified ground_state
       // This ensures you get states relevant to a specific parent context
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
 
       // Create two parallel world branches at tt=100
@@ -771,8 +706,6 @@ describe('Temporal Reasoning', () => {
 
   describe('Error Conditions & Edge Cases', () => {
     it('ground_state must be in parent mind', () => {
-      setupArchetypes()
-
       const world_mind1 = new Materia(logos(), 'world1')
       const world_state1 = world_mind1.create_state(logos().origin_state, {tt: 100})
 
@@ -818,8 +751,6 @@ describe('Temporal Reasoning', () => {
 
   describe('save/load round-trip', () => {
     it('preserves tt and vt after save/load', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
@@ -842,7 +773,7 @@ describe('Temporal Reasoning', () => {
       // Save and reload
       const json = save_mind(world_mind)
       DB.reset_registries()
-      setupArchetypes()
+      setupStandardArchetypes()
       const loaded_world = load(json)
 
       // Find states by tt
@@ -855,8 +786,6 @@ describe('Temporal Reasoning', () => {
     })
 
     it('states_at_tt works correctly after save/load', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state1 = world_mind.create_state(logos().origin_state, {tt: 100})
       world_state1.lock()
@@ -870,7 +799,7 @@ describe('Temporal Reasoning', () => {
       // Save and reload
       const json = save_mind(world_mind)
       DB.reset_registries()
-      setupArchetypes()
+      setupStandardArchetypes()
       const loaded_world = load(json)
 
       // Verify states_at_tt works correctly
@@ -891,8 +820,6 @@ describe('Temporal Reasoning', () => {
     })
 
     it('child mind preserves temporal coordination after save/load', () => {
-      setupArchetypes()
-
       const world_mind = new Materia(logos(), 'world')
       const world_state = world_mind.create_state(logos().origin_state, {tt: 100})
 
@@ -915,7 +842,7 @@ describe('Temporal Reasoning', () => {
       // Save world and reload
       const json = save_mind(world_mind)
       DB.reset_registries()
-      setupArchetypes()
+      setupStandardArchetypes()
       const loaded_world = load(json)
 
       // Find loaded state

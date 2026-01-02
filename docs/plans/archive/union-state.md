@@ -170,5 +170,5 @@ bob_mind.state.ground_state = world_state  // Where Bob belief exists
 
 ## Related
 
-- [Lazy Version Propagation](../lazy-version-propagation.md) - Uses bases to reference sibling group minds
+- [Lazy Version Propagation](./lazy-version-propagation.md) - Uses bases to reference sibling group minds
 - [Shared Belief Architecture](shared-belief-architecture.md) - Evolution from limbo pattern

@@ -129,13 +129,11 @@ describe('observation', () => {
       // Count beliefs BEFORE learn_about
       const about_traittype = Traittype.get_by_label('@about')
       const before = [...hammer.rev_trait(player_state, about_traittype)]
-      console.log('Before learn_about:', before.length, 'beliefs about hammer')
 
       learn_about(player_state,hammer)
 
       // Count beliefs AFTER learn_about
       const after = [...hammer.rev_trait(player_state, about_traittype)]
-      console.log('After learn_about:', after.length, 'beliefs about hammer')
 
       state.lock()
 
@@ -214,8 +212,6 @@ describe('observation', () => {
         bases.push({ id: s._id, locked: s.locked, mind: s.in_mind?.label })
         s = s.base
       }
-
-      console.log('Player state base chain:', bases)
 
       // Player state should have a base (the template state)
       expect(player_state.base, 'player_state should have base').to.exist

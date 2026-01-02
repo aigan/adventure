@@ -1,6 +1,6 @@
 # Test Suite
 
-455 tests using Mocha. Run with `npm test`.
+715 tests using Mocha. Run with `npm test`.
 
 ## Running Tests
 
@@ -24,7 +24,7 @@ mocha --grep "caching"                    # Pattern match
 - `trait_inheritance.test.mjs` - Value inheritance through bases
 - `composable_traits.test.mjs` - Array composition basics
 - `composable_complex.test.mjs` - Multi-level composition scenarios
-- `composable_mind.test.mjs` - Mind trait composition (Convergence)
+- `composable_mind.test.mjs` - Mind trait composition (Convergence), P1.x/P2.x inheritance patterns
 - `get_traits_composable.test.mjs` - `get_traits()` with composition
 
 ### Reverse Lookups
@@ -40,7 +40,7 @@ mocha --grep "caching"                    # Pattern match
 - `temporal_reasoning.test.mjs` - Time-based queries
 - `logos.test.mjs` - Root mind behavior
 - `load.test.mjs` - Serialization round-trips
-- `promotion.test.mjs` - Promotions: Eidos constraint, probability, temporal, inheritance
+- `promotion.test.mjs` - Promotions: Eidos constraint, probability, temporal, inheritance, recall certainty, inspection
 
 ### UI/Communication
 - `channel.test.mjs` - BroadcastChannel, inspection

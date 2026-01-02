@@ -1,6 +1,5 @@
 import { expect } from 'chai';
 import { Mind, Materia, State, Temporal, Belief, Subject, Archetype, Traittype, save_mind, load } from '../public/worker/cosmos.mjs';
-import * as Cosmos from '../public/worker/cosmos.mjs';
 import { logos, logos_state } from '../public/worker/logos.mjs'
 import * as DB from '../public/worker/db.mjs';
 import { createMindWithBeliefs, setupMinimalArchetypes, setupStandardArchetypes, setupAfterEachValidation } from './helpers.mjs';

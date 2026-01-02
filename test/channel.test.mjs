@@ -355,27 +355,6 @@ describe('Channel Message Handlers', () => {
       expect(merchant_loc_base.has_promotions).to.equal(true);
     });
 
-    it('shows has_promotions flag on belief with promotions in to_inspect_view', () => {
-      // Promotions can only be in Eidos hierarchy
-      const mind = new Materia(eidos(), 'promo_view_mind');
-      const state = mind.create_state(eidos().origin_state, {tt: 1});
-
-      // Create base belief
-      const obj = state.add_belief_from_template({
-        bases: ['ObjectPhysical'], label: 'test_obj',
-        promotable: true
-      });
-
-      // Create promotions
-      obj.replace(state, { color: 'red' }, { promote: true, certainty: 0.6 });
-      obj.replace(state, { color: 'blue' }, { promote: true, certainty: 0.4 });
-
-      // Query the original object (which is removed from state but still accessible)
-      // The has_promotions should show when viewing a belief that HAS promotions
-      const view = obj.to_inspect_view(state);
-      expect(view.has_promotions).to.equal(true);
-    });
-
     it('returns mind trait correctly for Person with mind', () => {
       const world_mind = new Materia(logos(), 'world');
       const world_state = world_mind.create_state(logos().origin_state, {tt: 1});

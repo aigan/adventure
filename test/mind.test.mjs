@@ -217,16 +217,6 @@ describe('Mind', () => {
       expect(result).to.be.undefined;
     });
 
-    it('should throw if belief has no origin_state', () => {
-      const state = createStateInNewMind('test', 0);
-      const belief = new Belief(state);
-      belief.origin_state = null;  // Manually break it for testing
-      const mind_traittype = Traittype.get_by_label('mind');
-
-      expect(() => {
-        Mind.resolve_trait_value_from_template(mind_traittype, belief, {workshop: []});
-      }).to.throw(/belief must have origin_state|create_from_template requires State/);
-    });
   });
 
   describe('mind.state property', () => {

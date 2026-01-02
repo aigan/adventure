@@ -88,6 +88,7 @@ describe('Locking Constraints', () => {
         label: 'player'
       })
 
+      // Access internal _states to verify locking cascade (intentional internal access for testing)
       const player_mind = player._traits.get(Traittype.get_by_label('mind'))
       const player_states = [...player_mind._states]
 
@@ -119,6 +120,7 @@ describe('Locking Constraints', () => {
         label: 'player'
       })
 
+      // Access internal _states to verify locking cascade (intentional internal access for testing)
       const player_mind = player._traits.get(Traittype.get_by_label('mind'))
       const player_states = [...player_mind._states]
 
@@ -214,6 +216,7 @@ describe('Locking Constraints', () => {
         label: 'base_player'
       })
 
+      // Access internal _states to verify locking cascade (intentional internal access for testing)
       const base_mind = base_player._traits.get(Traittype.get_by_label('mind'))
       const base_states = [...base_mind._states]
 
@@ -296,6 +299,7 @@ describe('Locking Constraints', () => {
         label: 'player'
       })
 
+      // Access internal _states to verify locking prevents modification
       const player_mind = player._traits.get(Traittype.get_by_label('mind'))
       const player_state = [...player_mind._states][0]
 

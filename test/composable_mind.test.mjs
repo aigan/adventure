@@ -1171,4 +1171,559 @@ describe('Composable Mind Trait', () => {
       expect(has_workshop).to.be.true
     })
   })
+
+  describe('Mind Inheritance Patterns (P1.x/P2.x)', () => {
+    // These tests verify specific patterns for mind trait composition and inheritance
+
+    it('P1.1: multiple bases with mind traits (VillageBlacksmith = Villager + Blacksmith)', () => {
+      // Tests Convergence composition with knowledge from multiple prototype bases
+      // VillageBlacksmith inherits knowledge from BOTH Villager and Blacksmith minds
+
+      DB.reset_registries();
+
+      // Setup traittypes and archetypes
+      DB.register({
+        '@about': {type: 'Subject', mind: 'parent'},
+        location: 'Location',
+        mind: {type: 'Mind', composable: true},
+        skill: 'string',
+      }, {
+        Thing: {
+          traits: {'@about': null}
+        },
+        Location: {
+          bases: ['Thing'],
+          traits: {location: null}
+        },
+        Mental: {
+          bases: ['Thing'],
+          traits: {mind: null}
+        },
+        Person: {
+          bases: ['Mental'],
+          traits: {skill: null}
+        },
+      }, {});
+
+      // Create world with entities
+      const world = Materia.create_world();
+      const world_state = world.create_state(logos_state(), {tt: 1});
+      world_state.add_beliefs_from_template({
+        village: {
+          bases: ['Location']
+        },
+        workshop: {
+          bases: ['Location'],
+          traits: {location: 'village'}
+        },
+        tavern: {
+          bases: ['Location'],
+          traits: {location: 'village'}
+        }
+      });
+
+      // Create Villager prototype with mind template (knows about tavern)
+      world_state.add_shared_from_template({
+        Villager: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              tavern: ['location']
+            }
+          }
+        }
+      });
+
+      // Create Blacksmith prototype with mind template (knows about workshop)
+      world_state.add_shared_from_template({
+        Blacksmith: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              workshop: ['location']
+            }
+          }
+        }
+      });
+
+      // Create VillageBlacksmith with BOTH bases
+      // When Convergence is implemented, this should merge knowledge from both minds
+      const village_blacksmith_belief = Belief.from_template(world_state, {
+        bases: ['Villager', 'Blacksmith'],
+        traits: {},
+        label: 'village_blacksmith'
+      });
+
+      const village_blacksmith = world_state.get_belief_by_label('village_blacksmith');
+      expect(village_blacksmith).to.not.be.null;
+
+      // Verify VillageBlacksmith has mind trait
+      const vb_mind = village_blacksmith.get_trait(world_state, Traittype.get_by_label('mind'));
+      expect(vb_mind).to.be.instanceOf(Mind);
+
+      const vb_state = vb_mind.origin_state;
+
+      // KEY TEST: Verify VillageBlacksmith's mind has knowledge from BOTH bases
+      const beliefs_in_vb_mind = [...vb_state.get_beliefs()];
+
+      // Should have at least 2 beliefs (tavern knowledge + workshop knowledge)
+      expect(beliefs_in_vb_mind.length).to.be.at.least(2);
+
+      // Verify knowledge about tavern (from Villager)
+      const tavern = world_state.get_belief_by_label('tavern');
+      const tavern_beliefs = beliefs_in_vb_mind.filter(b => {
+        const about = b.get_about(vb_state);
+        return about && about.subject === tavern.subject;
+      });
+      expect(tavern_beliefs.length).to.equal(1, 'Should have exactly one belief about tavern (no duplication)');
+
+      // Verify knowledge about workshop (from Blacksmith)
+      const workshop = world_state.get_belief_by_label('workshop');
+      const workshop_beliefs = beliefs_in_vb_mind.filter(b => {
+        const about = b.get_about(vb_state);
+        return about && about.subject === workshop.subject;
+      });
+      expect(workshop_beliefs.length).to.equal(1, 'Should have exactly one belief about workshop (no duplication)');
+
+      // Verify the beliefs have correct traits
+      const vb_tavern = tavern_beliefs[0];
+      expect(vb_tavern.get_trait(vb_state, Traittype.get_by_label('location'))).to.not.be.null;
+
+      const vb_workshop = workshop_beliefs[0];
+      expect(vb_workshop.get_trait(vb_state, Traittype.get_by_label('location'))).to.not.be.null;
+    });
+
+    it('P1.3: empty mind template behavior (override vs inherit)', () => {
+      // Tests what happens when belief explicitly provides `mind: {}` while inheriting from base with mind
+      // Expected: Empty template creates new Mind instance, but state inherits via base chain
+
+      DB.reset_registries();
+
+      // Setup traittypes and archetypes
+      DB.register({
+        '@about': {type: 'Subject', mind: 'parent'},
+        location: 'Location',
+        mind: 'Mind',
+      }, {
+        Thing: {
+          traits: {'@about': null}
+        },
+        Location: {
+          bases: ['Thing'],
+          traits: {location: null}
+        },
+        Mental: {
+          bases: ['Thing'],
+          traits: {mind: null}
+        },
+        Person: {
+          bases: ['Mental'],
+        },
+      }, {});
+
+      // Create world with entities
+      const world = Materia.create_world();
+      const world_state = world.create_state(logos_state(), {tt: 1});
+      world_state.add_beliefs_from_template({
+        workshop: {
+          bases: ['Location']
+        }
+      });
+
+      // Create Villager prototype with mind template
+      world_state.add_shared_from_template({
+        Villager: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              workshop: ['location']
+            }
+          }
+        }
+      });
+
+      // Create player that inherits from Villager but provides EMPTY mind template
+      const player = Belief.from_template(world_state, {
+        bases: ['Villager'],
+        traits: {
+          mind: {}  // Empty template - does this override or inherit?
+        },
+        label: 'player'
+      });
+
+      const player_belief = world_state.get_belief_by_label('player');
+      const player_mind = player_belief.get_trait(world_state, Traittype.get_by_label('mind'));
+      const player_state = player_mind.origin_state;
+
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(world_state);
+      const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
+      const villager_state = villager_mind.origin_state;
+
+      // Empty template creates NEW mind instance (not same as Villager's)
+      expect(player_mind).to.not.equal(villager_mind);
+
+      // But player's mind state should have Villager's state as base (inherits knowledge)
+      expect(player_state.base).to.equal(villager_state);
+
+      // Player's mind should inherit knowledge from Villager via state.base
+      const player_beliefs = [...player_state.get_beliefs()];
+      expect(player_beliefs.length).to.be.greaterThan(0, 'Should inherit knowledge via state.base');
+
+      // Verify player can access workshop knowledge from Villager
+      const workshop = world_state.get_belief_by_label('workshop');
+      const workshop_beliefs = player_beliefs.filter(b => {
+        const about = b.get_about(player_state);
+        return about && about.subject === workshop.subject;
+      });
+      expect(workshop_beliefs.length).to.equal(1, 'Should inherit workshop knowledge from Villager');
+    });
+
+    it('P2.1: transitive mind inheritance (depth 2+ state.base chain)', () => {
+      // Tests that knowledge inheritance works through multiple levels
+      // Culture → Villager → Player (depth 2 chain)
+      // Each level adds knowledge, player should inherit from all
+
+      DB.reset_registries();
+
+      // Setup traittypes and archetypes
+      DB.register({
+        '@about': {type: 'Subject', mind: 'parent'},
+        location: 'Location',
+        mind: 'Mind',
+      }, {
+        Thing: {
+          traits: {'@about': null}
+        },
+        Location: {
+          bases: ['Thing'],
+          traits: {location: null}
+        },
+        Mental: {
+          bases: ['Thing'],
+          traits: {mind: null}
+        },
+        Person: {
+          bases: ['Mental'],
+        },
+      }, {});
+
+      // Create world with entities
+      const world = Materia.create_world();
+      const world_state = world.create_state(logos_state(), {tt: 1});
+      world_state.add_beliefs_from_template({
+        workshop: {bases: ['Location']},
+        tavern: {bases: ['Location']},
+        market: {bases: ['Location']},
+      });
+
+      // Create Culture prototype (depth 2 - root of chain)
+      world_state.add_shared_from_template({
+        Culture: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              workshop: ['location']
+            }
+          }
+        }
+      });
+
+      // Create Villager prototype (depth 1 - inherits from Culture)
+      world_state.add_shared_from_template({
+        Villager: {
+          bases: ['Culture'],
+          traits: {
+            mind: {
+              tavern: ['location']
+            }
+          }
+        }
+      });
+
+      // Create Player (depth 0 - inherits from Villager)
+      const player = Belief.from_template(world_state, {
+        bases: ['Villager'],
+        traits: {
+          mind: {
+            market: ['location']
+          }
+        },
+        label: 'player'
+      });
+
+      // Get all the minds and states in the chain
+      const culture = Subject.get_by_label('Culture').get_shared_belief_by_state(world_state);
+      const culture_mind = culture.get_trait(world_state, Traittype.get_by_label('mind'));
+      const culture_state = culture_mind.origin_state;
+
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(world_state);
+      const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
+      const villager_state = villager_mind.origin_state;
+
+      const player_belief = world_state.get_belief_by_label('player');
+      const player_mind = player_belief.get_trait(world_state, Traittype.get_by_label('mind'));
+      const player_state = player_mind.origin_state;
+
+      // Verify the state.base chain: Player → Villager → Culture
+      expect(player_state.base).to.equal(villager_state, 'Player state.base should be Villager state');
+      expect(villager_state.base).to.equal(culture_state, 'Villager state.base should be Culture state');
+      expect(culture_state.base).to.be.null; // Culture is root
+
+      // Verify Player has knowledge from ALL levels
+      const player_beliefs = [...player_state.get_beliefs()];
+
+      const workshop = world_state.get_belief_by_label('workshop');
+      const tavern = world_state.get_belief_by_label('tavern');
+      const market = world_state.get_belief_by_label('market');
+
+      // Check for workshop knowledge (from Culture, depth 2)
+      const workshop_beliefs = player_beliefs.filter(b => {
+        const about = b.get_about(player_state);
+        return about && about.subject === workshop.subject;
+      });
+      expect(workshop_beliefs.length).to.equal(1, 'Should inherit workshop from Culture (depth 2)');
+
+      // Check for tavern knowledge (from Villager, depth 1)
+      const tavern_beliefs = player_beliefs.filter(b => {
+        const about = b.get_about(player_state);
+        return about && about.subject === tavern.subject;
+      });
+      expect(tavern_beliefs.length).to.equal(1, 'Should inherit tavern from Villager (depth 1)');
+
+      // Check for market knowledge (from Player, depth 0)
+      const market_beliefs = player_beliefs.filter(b => {
+        const about = b.get_about(player_state);
+        return about && about.subject === market.subject;
+      });
+      expect(market_beliefs.length).to.equal(1, 'Should have market from own template (depth 0)');
+
+      // Total should be at least 3 (workshop + tavern + market)
+      expect(player_beliefs.length).to.be.at.least(3);
+    });
+
+    it('P2.2: overlapping knowledge merging (extending inherited knowledge)', () => {
+      // Tests what happens when child learns new traits about subject already known from base
+      // Villager knows: workshop (location, tools)
+      // Player inherits from Villager, learns: workshop (size)
+      // Expected: Player has ONE belief with ALL traits (location, tools, size)
+
+      DB.reset_registries();
+
+      // Setup traittypes and archetypes
+      DB.register({
+        '@about': {type: 'Subject', mind: 'parent'},
+        location: 'Location',
+        mind: 'Mind',
+        tools: {type: 'string', container: Array},
+        size: 'number',
+      }, {
+        Thing: {
+          traits: {'@about': null}
+        },
+        Location: {
+          bases: ['Thing'],
+          traits: {location: null, tools: null, size: null}
+        },
+        Mental: {
+          bases: ['Thing'],
+          traits: {mind: null}
+        },
+        Person: {
+          bases: ['Mental'],
+        },
+      }, {});
+
+      // Create world with entities
+      const world = Materia.create_world();
+      const world_state = world.create_state(logos_state(), {tt: 1});
+      world_state.add_beliefs_from_template({
+        village: {bases: ['Location']},
+        workshop: {
+          bases: ['Location'],
+          traits: {
+            location: 'village',
+            tools: ['hammer', 'anvil'],
+            size: 500
+          }
+        }
+      });
+
+      // Create Villager prototype - knows workshop location and tools
+      world_state.add_shared_from_template({
+        Villager: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              workshop: ['location', 'tools']  // Partial knowledge
+            }
+          }
+        }
+      });
+
+      // Create Player - inherits from Villager, extends workshop knowledge with size
+      const player = Belief.from_template(world_state, {
+        bases: ['Villager'],
+        traits: {
+          mind: {
+            workshop: ['size']  // Adds size to inherited location+tools
+          }
+        },
+        label: 'player'
+      });
+
+      const player_belief = world_state.get_belief_by_label('player');
+      const player_mind = player_belief.get_trait(world_state, Traittype.get_by_label('mind'));
+      const player_state = player_mind.origin_state;
+
+      // Get beliefs in player's mind
+      const player_beliefs = [...player_state.get_beliefs()];
+
+      const workshop = world_state.get_belief_by_label('workshop');
+
+      // Find beliefs about workshop
+      const workshop_beliefs = player_beliefs.filter(b => {
+        const about = b.get_about(player_state);
+        return about && about.subject === workshop.subject;
+      });
+
+      // Should have exactly ONE belief about workshop (merged, not duplicated)
+      expect(workshop_beliefs.length).to.equal(1, 'Should have one merged belief, not two separate ones');
+
+      const player_workshop = workshop_beliefs[0];
+
+      // Verify ALL traits are present (inherited + new)
+      expect(player_workshop.get_trait(player_state, Traittype.get_by_label('location'))).to.not.be.null;
+      expect(player_workshop.get_trait(player_state, Traittype.get_by_label('tools'))).to.not.be.null;
+      expect(player_workshop.get_trait(player_state, Traittype.get_by_label('size'))).to.equal(500);
+
+      // Verify the belief is versioned (extends inherited knowledge)
+      // Player's workshop belief should have bases array with at least the archetype
+      const player_workshop_archetypes = [...player_workshop.get_archetypes()].map(a => a.label);
+      expect(player_workshop_archetypes).to.include('Location');
+
+      // Verify inheritance structure
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(world_state);
+      const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
+      const villager_state = villager_mind.origin_state;
+
+      // Villager should also have workshop knowledge
+      const villager_beliefs = [...villager_state.get_beliefs()];
+      const villager_workshop_beliefs = villager_beliefs.filter(b => {
+        const about = b.get_about(villager_state);
+        return about && about.subject === workshop.subject;
+      });
+      expect(villager_workshop_beliefs.length).to.equal(1, 'Villager should have workshop knowledge');
+
+      // Verify villager's workshop only has partial knowledge (location, tools, NOT size)
+      const villager_workshop = villager_workshop_beliefs[0];
+      expect(villager_workshop.get_trait(villager_state, Traittype.get_by_label('location'))).to.not.be.null;
+      expect(villager_workshop.get_trait(villager_state, Traittype.get_by_label('tools'))).to.not.be.null;
+
+      // Villager doesn't have size trait (returns null from trait resolution)
+      const villager_size = villager_workshop.get_trait(villager_state, Traittype.get_by_label('size'));
+      expect(villager_size === null || villager_size === undefined).to.be.true;
+    });
+
+    it('P2.3: complete re-learning (no duplication when re-learning same traits)', () => {
+      // Tests what happens when child tries to learn exactly same traits as base
+      // Villager knows: workshop (location)
+      // Player inherits from Villager, tries to learn: workshop (location) again
+      // Expected: Player has ONE belief (recognizes inherited knowledge, no duplication)
+
+      DB.reset_registries();
+
+      // Setup traittypes and archetypes
+      DB.register({
+        '@about': {type: 'Subject', mind: 'parent'},
+        location: 'Location',
+        mind: 'Mind',
+      }, {
+        Thing: {
+          traits: {'@about': null}
+        },
+        Location: {
+          bases: ['Thing'],
+          traits: {location: null}
+        },
+        Mental: {
+          bases: ['Thing'],
+          traits: {mind: null}
+        },
+        Person: {
+          bases: ['Mental'],
+        },
+      }, {});
+
+      // Create world with entities
+      const world = Materia.create_world();
+      const world_state = world.create_state(logos_state(), {tt: 1});
+      world_state.add_beliefs_from_template({
+        village: {bases: ['Location']},
+        workshop: {
+          bases: ['Location'],
+          traits: {location: 'village'}
+        }
+      });
+
+      // Create Villager prototype - knows workshop location
+      world_state.add_shared_from_template({
+        Villager: {
+          bases: ['Person'],
+          traits: {
+            mind: {
+              workshop: ['location']
+            }
+          }
+        }
+      });
+
+      // Create Player - inherits from Villager, tries to learn SAME traits
+      const player = Belief.from_template(world_state, {
+        bases: ['Villager'],
+        traits: {
+          mind: {
+            workshop: ['location']  // Same trait as Villager - should recognize, not duplicate
+          }
+        },
+        label: 'player'
+      });
+
+      const player_belief = world_state.get_belief_by_label('player');
+      const player_mind = player_belief.get_trait(world_state, Traittype.get_by_label('mind'));
+      const player_state = player_mind.origin_state;
+
+      // Get beliefs in player's mind
+      const player_beliefs = [...player_state.get_beliefs()];
+
+      const workshop = world_state.get_belief_by_label('workshop');
+
+      // Find beliefs about workshop
+      const workshop_beliefs = player_beliefs.filter(b => {
+        const about = b.get_about(player_state);
+        return about && about.subject === workshop.subject;
+      });
+
+      // Should have exactly ONE belief about workshop (recognized inherited, no duplication)
+      expect(workshop_beliefs.length).to.equal(1, 'Should recognize inherited knowledge, not create duplicate');
+
+      // Verify the belief has the location trait
+      const player_workshop = workshop_beliefs[0];
+      expect(player_workshop.get_trait(player_state, Traittype.get_by_label('location'))).to.not.be.null;
+
+      // Verify Villager has the same knowledge
+      const villager = Subject.get_by_label('Villager').get_shared_belief_by_state(world_state);
+      const villager_mind = villager.get_trait(world_state, Traittype.get_by_label('mind'));
+      const villager_state = villager_mind.origin_state;
+      const villager_beliefs = [...villager_state.get_beliefs()];
+      const villager_workshop_beliefs = villager_beliefs.filter(b => {
+        const about = b.get_about(villager_state);
+        return about && about.subject === workshop.subject;
+      });
+
+      expect(villager_workshop_beliefs.length).to.equal(1);
+
+      // Since Player didn't add any new traits, should just inherit from Villager
+      // (no new belief created in Player's state, just inherited through base chain)
+    });
+  })
 })
