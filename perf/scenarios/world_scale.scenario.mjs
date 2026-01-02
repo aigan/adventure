@@ -153,6 +153,6 @@ export async function run() {
 }
 
 // Allow running directly
-if (process.argv[1].endsWith('world_scale.scenario.mjs')) {
+if (process.argv[1]?.endsWith('world_scale.scenario.mjs')) {
   run().catch(console.error)
 }

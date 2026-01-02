@@ -1,0 +1,1612 @@
+╔════════════════════════════════════════╗
+║     PERFORMANCE BENCHMARK SUITE        ║
+╚════════════════════════════════════════╝
+
+System Info:
+  Node.js: v22.21.1
+  Platform: linux x64
+  GC exposed: yes
+  Initial heap: 5.74 MB
+  Heap total: 7.51 MB
+
+Run: node --expose-gc perf/run_benchmarks.mjs
+
+
+╔════════════════════════════════════════╗
+║         BENCHMARK SUITES               ║
+╚════════════════════════════════════════╝
+
+=== Composition ===
+
+compose_5_bases
+  Trait lookup on belief with 5 bases
+  compose_5_bases:
+    median: 270.00 ns, p95: 441.00 ns, p99: 2.17 us
+    min: 241.00 ns, max: 45.90 us, mean: 386.39 ns
+
+compose_15_bases
+  Trait lookup on belief with 15 bases
+  compose_15_bases:
+    median: 251.00 ns, p95: 802.00 ns, p99: 1.02 us
+    min: 230.00 ns, max: 282.00 us, mean: 596.67 ns
+
+compose_50_bases
+  Trait lookup on belief with 50 bases
+  compose_50_bases:
+    median: 190.00 ns, p95: 251.00 ns, p99: 842.00 ns
+    min: 180.00 ns, max: 2.14 us, mean: 223.68 ns
+
+compose_100_bases
+  Trait lookup on belief with 100 bases
+  compose_100_bases:
+    median: 181.00 ns, p95: 191.00 ns, p99: 231.00 ns
+    min: 180.00 ns, max: 531.00 ns, mean: 187.09 ns
+
+compose_tree_100_prototypes
+  Trait lookup in tree with ~100 prototype nodes
+  compose_tree_100_prototypes:
+    median: 190.00 ns, p95: 201.00 ns, p99: 311.00 ns
+    min: 180.00 ns, max: 13.37 us, mean: 217.12 ns
+
+compose_tree_500_prototypes
+  Trait lookup in tree with ~500 prototype nodes
+  compose_tree_500_prototypes:
+    median: 170.00 ns, p95: 171.00 ns, p99: 241.00 ns
+    min: 160.00 ns, max: 511.00 ns, mean: 170.37 ns
+
+compose_deep_chain_10_bases
+  Deep chain (20 levels) where each level has 10 sibling bases
+  compose_deep_chain_10_bases:
+    median: 170.00 ns, p95: 181.00 ns, p99: 520.00 ns
+    min: 160.00 ns, max: 520.00 ns, mean: 174.94 ns
+
+compose_null_blocking_deep
+  Composition with null trait blocking at various depths
+  compose_null_blocking_deep:
+    median: 170.00 ns, p95: 290.00 ns, p99: 331.00 ns
+    min: 160.00 ns, max: 431.00 ns, mean: 180.62 ns
+
+compose_get_traits_all_complex
+  Iterate all traits on belief with 50 bases
+  compose_get_traits_all_complex:
+    median: 992.00 ns, p95: 1.06 us, p99: 1.41 us
+    min: 971.00 ns, max: 3.29 us, mean: 1.02 us
+
+compose_cache_analysis
+  Analyze cache behavior with complex composition
+  first_access_median: 1.41 us
+  cached_access_median: 141.00 ns
+  speedup: 10.0142
+  cached_traits: 1.0000
+  cached_all: false
+
+=== Promotions ===
+
+promotion_create_single
+  Create a single temporal promotion
+  promotion_create_single:
+    median: 35.08 us, p95: 56.89 us, p99: 370.11 us
+    min: 24.01 us, max: 512.55 us, mean: 41.36 us
+
+promotion_create_chain_10
+  Create temporal promotion chain of depth 10
+  promotion_create_chain_10:
+    median: 169.36 us, p95: 439.05 us, p99: 1.326 ms
+    min: 107.87 us, max: 1.326 ms, mean: 200.32 us
+
+promotion_create_chain_50
+  Create temporal promotion chain of depth 50
+  promotion_create_chain_50:
+    median: 1.262 ms, p95: 1.546 ms, p99: 1.546 ms
+    min: 1.182 ms, max: 1.546 ms, mean: 1.329 ms
+
+promotion_create_chain_100
+  Create temporal promotion chain of depth 100
+  promotion_create_chain_100:
+    median: 3.579 ms, p95: 4.889 ms, p99: 4.889 ms
+    min: 3.408 ms, max: 4.889 ms, mean: 3.706 ms
+
+promotion_probability_5
+  Create 5 probability promotions on one belief
+  promotion_probability_5:
+    median: 35.02 us, p95: 42.74 us, p99: 251.95 us
+    min: 33.94 us, max: 546.50 us, mean: 39.31 us
+
+promotion_probability_20
+  Create 20 probability promotions on one belief
+  promotion_probability_20:
+    median: 105.46 us, p95: 138.82 us, p99: 639.32 us
+    min: 77.30 us, max: 639.32 us, mean: 112.47 us
+
+promotion_probability_50
+  Create 50 probability promotions on one belief
+  promotion_probability_50:
+    median: 198.17 us, p95: 404.63 us, p99: 435.94 us
+    min: 179.45 us, max: 435.94 us, mean: 215.99 us
+
+promotion_pick_from_chain_50
+  pick_promotion() with 50-deep temporal chain
+  promotion_pick_from_chain_50:
+    median: 80.00 ns, p95: 90.00 ns, p99: 120.00 ns
+    min: 70.00 ns, max: 431.00 ns, mean: 82.61 ns
+
+promotion_pick_from_chain_100
+  pick_promotion() with 100-deep temporal chain
+  promotion_pick_from_chain_100:
+    median: 80.00 ns, p95: 91.00 ns, p99: 110.00 ns
+    min: 70.00 ns, max: 391.00 ns, mean: 83.56 ns
+
+promotion_pick_from_chain_500
+  pick_promotion() with 500-deep temporal chain
+  promotion_pick_from_chain_500:
+    median: 80.00 ns, p95: 90.00 ns, p99: 130.00 ns
+    min: 70.00 ns, max: 421.00 ns, mean: 83.01 ns
+
+promotion_trait_with_fuzzy_10
+  Get trait that resolves to Fuzzy with 10 alternatives
+  promotion_trait_with_fuzzy_10:
+    median: 230.00 ns, p95: 401.00 ns, p99: 471.00 ns
+    min: 210.00 ns, max: 8.70 us, mean: 255.87 ns
+
+promotion_trait_with_fuzzy_50
+  Get trait that resolves to Fuzzy with 50 alternatives
+  promotion_trait_with_fuzzy_50:
+    median: 240.00 ns, p95: 250.00 ns, p99: 271.00 ns
+    min: 220.00 ns, max: 481.00 ns, mean: 237.56 ns
+
+promotion_epoch_invalidation_cascade
+  Cache invalidation across dependent beliefs when promotion added
+  median_reaccess_100_deps: 0.0320 ms
+  p99_reaccess_100_deps: 0.9616 ms
+
+promotion_mixed_temporal_probability
+  Trait resolution with mixed temporal (10) + probability (5) promotions
+  promotion_mixed_temporal_probability:
+    median: 70.00 ns, p95: 81.00 ns, p99: 130.00 ns
+    min: 60.00 ns, max: 7.85 us, mean: 90.09 ns
+
+=== Reverse Lookup ===
+
+rev_trait_10_referrers
+  Find 10 beliefs referencing a location
+  rev_trait_10_referrers:
+    median: 1.24 us, p95: 1.34 us, p99: 2.08 us
+    min: 1.21 us, max: 10.39 us, mean: 1.27 us
+
+rev_trait_100_referrers
+  Find 100 beliefs referencing a location
+  rev_trait_100_referrers:
+    median: 4.59 us, p95: 8.59 us, p99: 8.91 us
+    min: 4.46 us, max: 409.65 us, mean: 5.80 us
+
+rev_trait_1000_referrers
+  Find 1000 beliefs referencing a location
+  rev_trait_1000_referrers:
+    median: 42.80 us, p95: 45.27 us, p99: 79.94 us
+    min: 42.15 us, max: 241.89 us, mean: 43.75 us
+
+rev_trait_10000_referrers
+  Find 10000 beliefs referencing a location
+  rev_trait_10000_referrers:
+    median: 542.00 us, p95: 741.00 us, p99: 876.94 us
+    min: 534.01 us, max: 876.94 us, mean: 562.61 us
+
+rev_trait_across_state_chain
+  rev_trait with 100 states, some with changes
+  rev_trait_across_state_chain:
+    median: 3.89 us, p95: 4.18 us, p99: 6.03 us
+    min: 3.47 us, max: 41.09 us, mean: 3.94 us
+
+rev_trait_no_results
+  rev_trait when no beliefs reference the subject
+  rev_trait_no_results:
+    median: 160.00 ns, p95: 171.00 ns, p99: 200.00 ns
+    min: 150.00 ns, max: 460.00 ns, mean: 161.75 ns
+
+rev_trait_multiple_traittypes
+  rev_trait for different traittypes on same subject
+  location: 2.35 us
+  held_by: 160.00 ns
+  owned_by: 160.00 ns
+
+=== State Operations ===
+
+state_branch_empty
+  Branch from empty state
+  state_branch_empty:
+    median: 401.00 ns, p95: 531.00 ns, p99: 1.16 us
+    min: 360.00 ns, max: 165.35 us, mean: 602.49 ns
+
+state_branch_100_beliefs
+  Branch from state with 100 beliefs
+  state_branch_100_beliefs:
+    median: 391.00 ns, p95: 611.00 ns, p99: 1.09 us
+    min: 341.00 ns, max: 7.51 us, mean: 434.37 ns
+
+state_branch_1000_beliefs
+  Branch from state with 1000 beliefs
+  state_branch_1000_beliefs:
+    median: 391.00 ns, p95: 461.00 ns, p99: 1.19 us
+    min: 350.00 ns, max: 42.27 us, mean: 472.55 ns
+
+state_branch_10000_beliefs
+  Branch from state with 10000 beliefs
+  state_branch_10000_beliefs:
+    median: 210.00 ns, p95: 350.00 ns, p99: 1.86 us
+    min: 170.00 ns, max: 5.14 us, mean: 256.97 ns
+
+state_lock_100_beliefs
+  Lock state with 100 beliefs
+  state_lock_100_beliefs:
+    median: 263.84 us, p95: 569.40 us, p99: 626.71 us
+    min: 260.11 us, max: 626.71 us, mean: 293.56 us
+
+state_lock_1000_beliefs
+  Lock state with 1000 beliefs
+  state_lock_1000_beliefs:
+    median: 2.945 ms, p95: 3.094 ms, p99: 5.074 ms
+    min: 2.576 ms, max: 5.074 ms, mean: 2.954 ms
+
+get_beliefs_100
+  Iterate get_beliefs() with 100 beliefs
+  get_beliefs_100:
+    median: 2.00 us, p95: 2.75 us, p99: 3.55 us
+    min: 1.53 us, max: 327.45 us, mean: 2.45 us
+
+get_beliefs_1000
+  Iterate get_beliefs() with 1000 beliefs
+  get_beliefs_1000:
+    median: 15.92 us, p95: 20.78 us, p99: 27.83 us
+    min: 15.11 us, max: 188.25 us, mean: 16.81 us
+
+get_beliefs_10000
+  Iterate get_beliefs() with 10000 beliefs
+  get_beliefs_10000:
+    median: 160.05 us, p95: 202.43 us, p99: 323.10 us
+    min: 156.84 us, max: 323.10 us, mean: 165.01 us
+
+get_beliefs_spread_10000
+  Spread get_beliefs() to array with 10000 beliefs
+  get_beliefs_spread_10000:
+    median: 219.61 us, p95: 267.12 us, p99: 292.45 us
+    min: 213.23 us, max: 292.45 us, mean: 224.03 us
+
+get_belief_by_subject_cached
+  Lookup belief by subject (cached)
+  get_belief_by_subject_cached:
+    median: 50.00 ns, p95: 61.00 ns, p99: 80.00 ns
+    min: 50.00 ns, max: 6.55 us, mean: 61.09 ns
+
+get_belief_by_subject_uncached
+  Lookup belief by subject (cache miss, progressive)
+  median: 231.00 ns
+  p95: 601.00 ns
+  min: 110.00 ns
+  max: 3.99 us
+
+get_belief_by_label
+  Lookup belief by label (O(1) index)
+  get_belief_by_label:
+    median: 80.00 ns, p95: 90.00 ns, p99: 121.00 ns
+    min: 70.00 ns, max: 19.74 us, mean: 100.01 ns
+
+state_chain_walk
+  Walk through 100-state chain via base references
+  state_chain_walk:
+    median: 40.00 ns, p95: 41.00 ns, p99: 41.00 ns
+    min: 30.00 ns, max: 140.00 ns, mean: 37.92 ns
+
+add_belief_from_template
+  Create belief with add_belief_from_template
+  add_belief_from_template:
+    median: 2.91 us, p95: 3.81 us, p99: 12.39 us
+    min: 2.74 us, max: 457.56 us, mean: 4.10 us
+
+=== Trait Resolution ===
+
+get_trait_own
+  Direct trait lookup (no inheritance)
+  get_trait_own:
+    median: 60.00 ns, p95: 70.00 ns, p99: 71.00 ns
+    min: 50.00 ns, max: 441.00 ns, mean: 62.85 ns
+    cache: 1 traits cached, cached_all: false
+
+get_trait_inherited_depth_5
+  Trait lookup through 5 levels of inheritance
+  get_trait_inherited_depth_5:
+    median: 60.00 ns, p95: 61.00 ns, p99: 61.00 ns
+    min: 50.00 ns, max: 140.00 ns, mean: 57.73 ns
+    cache: 1 traits cached, cached_all: false
+
+get_trait_inherited_depth_10
+  Trait lookup through 10 levels of inheritance
+  get_trait_inherited_depth_10:
+    median: 60.00 ns, p95: 61.00 ns, p99: 70.00 ns
+    min: 50.00 ns, max: 8.61 us, mean: 66.80 ns
+    cache: 1 traits cached, cached_all: false
+
+get_trait_inherited_depth_50
+  Trait lookup through 50 levels of inheritance
+  get_trait_inherited_depth_50:
+    median: 50.00 ns, p95: 81.00 ns, p99: 91.00 ns
+    min: 50.00 ns, max: 351.00 ns, mean: 60.41 ns
+    cache: 1 traits cached, cached_all: false
+
+get_trait_inherited_depth_100
+  Trait lookup through 100 levels of inheritance
+  get_trait_inherited_depth_100:
+    median: 50.00 ns, p95: 60.00 ns, p99: 61.00 ns
+    min: 50.00 ns, max: 120.00 ns, mean: 51.82 ns
+    cache: 1 traits cached, cached_all: false
+
+get_trait_cached_vs_first_access
+  Compare first access (cache miss) vs subsequent (cache hit)
+  first_access_median: 0.0029
+  cached_access_median: 0.0000
+  speedup: 58.7200
+
+get_trait_unlocked_no_cache
+  Trait lookup on unlocked belief (no caching)
+  get_trait_unlocked_no_cache:
+    median: 2.72 us, p95: 2.85 us, p99: 4.40 us
+    min: 2.66 us, max: 233.35 us, mean: 2.99 us
+
+get_traits_iterator
+  Iterate all traits with get_traits()
+  get_traits_iterator:
+    median: 331.00 ns, p95: 501.00 ns, p99: 591.00 ns
+    min: 310.00 ns, max: 862.00 ns, mean: 353.35 ns
+    cache: 4 traits cached, cached_all: true
+
+get_defined_traits_iterator
+  Iterate all defined traits (including null)
+  get_defined_traits_iterator:
+    median: 391.00 ns, p95: 431.00 ns, p99: 521.00 ns
+    min: 370.00 ns, max: 8.15 us, mean: 405.04 ns
+    cache: 4 traits cached, cached_all: true
+
+╔════════════════════════════════════════╗
+║         SCALE SCENARIOS                ║
+╚════════════════════════════════════════╝
+
+========================================
+Composition & Cache Scale
+Test performance with extreme composition and caching scenarios
+========================================
+
+--- bases=10, depth=20, beliefs=10,000 ---
+
+  [Wide Composition - 10 bases]
+    Creation time: 215.14 us
+    Memory: -273.43 KB
+    Bytes per base: -27999 B
+  wide_trait_color:
+    median: 130.00 ns, p95: 140.00 ns, p99: 170.00 ns
+    min: 120.00 ns, max: 371.00 ns, mean: 130.26 ns
+    Cached traits: 1
+    Cached all: false
+
+  [Deep Prototype Chain - 20 levels]
+    Creation time: 176.72 us
+    Memory: 24.19 KB
+    Bytes per level: 1238 B
+  deep_first_access:
+    median: 159.74 us, p95: 185.74 us, p99: 185.74 us
+    min: 140.48 us, max: 185.74 us, mean: 159.01 us
+  deep_cached_access:
+    median: 130.00 ns, p95: 140.00 ns, p99: 170.00 ns
+    min: 120.00 ns, max: 6.13 us, mean: 137.68 ns
+    Cache speedup: 1228.8x
+
+  [Mass Belief Creation - 10,000 beliefs]
+    Creation time: 47.302 ms
+    Memory: 12.78 MB
+    Bytes per belief: 1340 B
+    Beliefs per second: 211407
+  mass_trait_access:
+    median: 170.00 ns, p95: 361.00 ns, p99: 421.00 ns
+    min: 150.00 ns, max: 1.00 us, mean: 186.35 ns
+    Cache analysis (sample of 1000):
+      Avg cached traits per belief: 0.01
+      Cached all percentage: 0.0%
+
+  [get_traits() Iteration Scaling]
+    10 traits:
+      median: 702.00 ns, p99: 942.00 ns
+
+  [Registry Counts]
+    Beliefs: 11
+    States: 3
+    Subjects: 11
+    Traittypes: 0
+
+  Total memory used: 17.05 MB
+
+--- bases=50, depth=50, beliefs=100,000 ---
+
+  [Wide Composition - 50 bases]
+    Creation time: 352.07 us
+    Memory: -44.25 KB
+    Bytes per base: -906 B
+  wide_trait_color:
+    median: 110.00 ns, p95: 121.00 ns, p99: 150.00 ns
+    min: 110.00 ns, max: 240.00 ns, mean: 113.35 ns
+    Cached traits: 1
+    Cached all: false
+
+  [Deep Prototype Chain - 50 levels]
+    Creation time: 458.87 us
+    Memory: 62.81 KB
+    Bytes per level: 1286 B
+  deep_first_access:
+    median: 452.17 us, p95: 784.64 us, p99: 784.64 us
+    min: 425.84 us, max: 784.64 us, mean: 483.77 us
+  deep_cached_access:
+    median: 40.00 ns, p95: 50.00 ns, p99: 51.00 ns
+    min: 40.00 ns, max: 80.00 ns, mean: 42.64 ns
+    Cache speedup: 11304.3x
+
+  [Mass Belief Creation - 100,000 beliefs]
+    Creation time: 447.541 ms
+    Memory: 123.49 MB
+    Bytes per belief: 1295 B
+    Beliefs per second: 223443
+  mass_trait_access:
+    median: 70.00 ns, p95: 401.00 ns, p99: 812.00 ns
+    min: 50.00 ns, max: 6.20 us, mean: 113.17 ns
+    Cache analysis (sample of 1000):
+      Avg cached traits per belief: 0.00
+      Cached all percentage: 0.0%
+
+  [get_traits() Iteration Scaling]
+    10 traits:
+      median: 301.00 ns, p99: 671.00 ns
+    50 traits:
+      median: 301.00 ns, p99: 2.13 us
+
+  [Registry Counts]
+    Beliefs: 51
+    States: 3
+    Subjects: 51
+    Traittypes: 0
+
+  Total memory used: 119.06 MB
+
+--- bases=100, depth=100, beliefs=500,000 ---
+
+  [Wide Composition - 100 bases]
+    Creation time: 587.78 us
+    Memory: 32.71 KB
+    Bytes per base: 335 B
+  wide_trait_color:
+    median: 40.00 ns, p95: 50.00 ns, p99: 51.00 ns
+    min: 40.00 ns, max: 311.00 ns, mean: 43.00 ns
+    Cached traits: 1
+    Cached all: false
+
+  [Deep Prototype Chain - 100 levels]
+    Creation time: 895.34 us
+    Memory: 131.33 KB
+    Bytes per level: 1345 B
+  deep_first_access:
+    median: 895.13 us, p95: 1.251 ms, p99: 1.251 ms
+    min: 758.86 us, max: 1.251 ms, mean: 895.26 us
+  deep_cached_access:
+    median: 40.00 ns, p95: 50.00 ns, p99: 51.00 ns
+    min: 40.00 ns, max: 3.48 us, mean: 46.05 ns
+    Cache speedup: 22378.2x
+
+  [Mass Belief Creation - 500,000 beliefs]
+    Creation time: 2.30 s
+    Memory: 616.85 MB
+    Bytes per belief: 1294 B
+    Beliefs per second: 216924
+  mass_trait_access:
+    median: 70.00 ns, p95: 1.22 us, p99: 2.26 us
+    min: 50.00 ns, max: 39.15 us, mean: 244.30 ns
+    Cache analysis (sample of 1000):
+      Avg cached traits per belief: 0.00
+      Cached all percentage: 0.0%
+
+  [get_traits() Iteration Scaling]
+    10 traits:
+      median: 301.00 ns, p99: 1.44 us
+    50 traits:
+      median: 361.00 ns, p99: 1.56 us
+    100 traits:
+      median: 331.00 ns, p99: 1.64 us
+
+  [Registry Counts]
+    Beliefs: 101
+    States: 3
+    Subjects: 101
+    Traittypes: 0
+
+  Total memory used: 584.98 MB
+
+========================================
+Mind Scale
+Test performance with extreme mind/state hierarchy scenarios
+========================================
+
+--- minds=100, states/mind=10, beliefs/state=10 ---
+    Expected: 1,000 states, 10,000 beliefs
+
+  [Mind Hierarchy Creation]
+    Creation time: 38.532 ms
+    Memory: 14.72 MB
+    Minds created: 100
+    States created: 1,000
+    Beliefs created: 10,000
+    Bytes per mind: 154319 B
+    Bytes per state: 15432 B
+    Bytes per belief: 1543 B
+    States per second: 25952
+    Beliefs per second: 259522
+
+  [Cross-Mind Belief Access]
+  belief_access_early:
+    median: 1.75 us, p95: 1.85 us, p99: 12.28 us
+    min: 1.72 us, max: 12.28 us, mean: 1.87 us
+  belief_access_mid:
+    median: 1.78 us, p95: 1.99 us, p99: 12.96 us
+    min: 1.72 us, max: 12.96 us, mean: 1.98 us
+  belief_access_late:
+    median: 1.48 us, p95: 1.60 us, p99: 1.82 us
+    min: 1.45 us, max: 1.82 us, mean: 1.50 us
+
+  [get_beliefs() Iteration]
+  get_beliefs_early:
+    median: 691.00 ns, p95: 711.00 ns, p99: 721.00 ns
+    min: 661.00 ns, max: 721.00 ns, mean: 688.32 ns
+  get_beliefs_late:
+    median: 661.00 ns, p95: 711.00 ns, p99: 911.00 ns
+    min: 631.00 ns, max: 911.00 ns, mean: 667.84 ns
+
+  [State Chain - 1,000 states]
+    Creation time: 2.715 ms
+    Memory: 1.36 MB
+    Bytes per state: 1427 B
+    States per second: 368367
+    Entities created: 99
+  rev_trait_chain_1000:
+    median: 18.34 us, p95: 22.08 us, p99: 53.20 us
+    min: 18.07 us, max: 53.20 us, mean: 19.37 us
+    Chain hops: 999 (0.1% skipped via skip list)
+    Branch from start: median 371.00 ns
+    Branch from mid: median 371.00 ns
+    Branch from end: median 371.00 ns
+
+  [Final Registry Counts]
+    Beliefs: 100
+    States: 1,332
+    Minds: 3
+    Subjects: 100
+
+  Total memory used: 19.80 MB
+
+--- minds=500, states/mind=20, beliefs/state=10 ---
+    Expected: 10,000 states, 100,000 beliefs
+
+  [Mind Hierarchy Creation]
+    Creation time: 278.332 ms
+    Memory: 142.67 MB
+    Minds created: 500
+    States created: 10,000
+    Beliefs created: 100,000
+    Bytes per mind: 299204 B
+    Bytes per state: 14960 B
+    Bytes per belief: 1496 B
+    States per second: 35928
+    Beliefs per second: 359283
+
+  [Cross-Mind Belief Access]
+  belief_access_early:
+    median: 390.00 ns, p95: 431.00 ns, p99: 751.00 ns
+    min: 380.00 ns, max: 751.00 ns, mean: 395.76 ns
+  belief_access_mid:
+    median: 381.00 ns, p95: 441.00 ns, p99: 1.11 us
+    min: 370.00 ns, max: 1.11 us, mean: 395.14 ns
+  belief_access_late:
+    median: 381.00 ns, p95: 411.00 ns, p99: 561.00 ns
+    min: 371.00 ns, max: 561.00 ns, mean: 388.53 ns
+
+  [get_beliefs() Iteration]
+  get_beliefs_early:
+    median: 281.00 ns, p95: 320.00 ns, p99: 461.00 ns
+    min: 270.00 ns, max: 461.00 ns, mean: 289.88 ns
+  get_beliefs_late:
+    median: 271.00 ns, p95: 320.00 ns, p99: 471.00 ns
+    min: 260.00 ns, max: 471.00 ns, mean: 283.06 ns
+
+  [State Chain - 1,000 states]
+    Creation time: 2.588 ms
+    Memory: 1.41 MB
+    Bytes per state: 1480 B
+    States per second: 386433
+    Entities created: 99
+  rev_trait_chain_1000:
+    median: 11.62 us, p95: 13.50 us, p99: 34.96 us
+    min: 10.71 us, max: 34.96 us, mean: 11.98 us
+    Chain hops: 999 (0.1% skipped via skip list)
+    Branch from start: median 481.00 ns
+    Branch from mid: median 551.00 ns
+    Branch from end: median 460.00 ns
+
+  [State Chain - 10,000 states]
+    Creation time: 97.551 ms
+    Memory: 30.53 MB
+    Bytes per state: 3201 B
+    States per second: 102510
+    Entities created: 999
+  rev_trait_chain_10000:
+    median: 151.42 us, p95: 180.02 us, p99: 530.11 us
+    min: 149.06 us, max: 530.11 us, mean: 158.23 us
+    Chain hops: 9999 (0.0% skipped via skip list)
+    Branch from start: median 811.00 ns
+    Branch from mid: median 711.00 ns
+    Branch from end: median 691.00 ns
+
+  [Final Registry Counts]
+    Beliefs: 1,000
+    States: 10,332
+    Minds: 3
+    Subjects: 1,000
+
+  Total memory used: 159.25 MB
+
+--- minds=1000, states/mind=50, beliefs/state=20 ---
+    Expected: 50,000 states, 1,000,000 beliefs
+
+  [Mind Hierarchy Creation]
+    Creation time: 3.40 s
+    Memory: 1.31 GB
+    Minds created: 1,000
+    States created: 50,000
+    Beliefs created: 1,000,000
+    Bytes per mind: 1411656 B
+    Bytes per state: 28233 B
+    Bytes per belief: 1412 B
+    States per second: 14721
+    Beliefs per second: 294428
+
+  [Cross-Mind Belief Access]
+  belief_access_early:
+    median: 2.95 us, p95: 3.84 us, p99: 41.16 us
+    min: 2.90 us, max: 41.16 us, mean: 3.45 us
+  belief_access_mid:
+    median: 2.96 us, p95: 3.40 us, p99: 4.47 us
+    min: 2.93 us, max: 4.47 us, mean: 3.03 us
+  belief_access_late:
+    median: 3.06 us, p95: 3.36 us, p99: 5.72 us
+    min: 3.01 us, max: 5.72 us, mean: 3.13 us
+
+  [get_beliefs() Iteration]
+  get_beliefs_early:
+    median: 982.00 ns, p95: 1.30 us, p99: 1.45 us
+    min: 971.00 ns, max: 1.45 us, mean: 1.01 us
+  get_beliefs_late:
+    median: 982.00 ns, p95: 1.27 us, p99: 1.88 us
+    min: 971.00 ns, max: 1.88 us, mean: 1.03 us
+
+  [State Chain - 1,000 states]
+    Creation time: 3.674 ms
+    Memory: 1.40 MB
+    Bytes per state: 1473 B
+    States per second: 272159
+    Entities created: 99
+  rev_trait_chain_1000:
+    median: 22.70 us, p95: 39.88 us, p99: 46.38 us
+    min: 20.16 us, max: 46.38 us, mean: 27.28 us
+    Chain hops: 999 (0.1% skipped via skip list)
+    Branch from start: median 440.00 ns
+    Branch from mid: median 471.00 ns
+    Branch from end: median 471.00 ns
+
+  [State Chain - 10,000 states]
+    Creation time: 130.394 ms
+    Memory: 30.55 MB
+    Bytes per state: 3204 B
+    States per second: 76691
+    Entities created: 999
+  rev_trait_chain_10000:
+    median: 186.38 us, p95: 235.29 us, p99: 3.163 ms
+    min: 171.19 us, max: 3.163 ms, mean: 222.90 us
+    Chain hops: 9999 (0.0% skipped via skip list)
+    Branch from start: median 1.12 us
+    Branch from mid: median 1.13 us
+    Branch from end: median 1.21 us
+
+  [State Chain - 50,000 states]
+    Creation time: 2.89 s
+    Memory: 558.17 MB
+    Bytes per state: 11706 B
+    States per second: 17277
+    Entities created: 4999
+  rev_trait_chain_50000:
+    median: 1.005 ms, p95: 1.505 ms, p99: 5.564 ms
+    min: 974.39 us, max: 5.564 ms, mean: 1.089 ms
+    Chain hops: 49999 (0.0% skipped via skip list)
+    Branch from start: median 701.00 ns
+    Branch from mid: median 631.00 ns
+    Branch from end: median 731.00 ns
+
+  [State Chain - 100,000 states]
+    Creation time: 16.45 s
+    Memory: 2.06 GB
+    Bytes per state: 22114 B
+    States per second: 6081
+    Entities created: 9999
+  rev_trait_chain_100000:
+    median: 1.847 ms, p95: 2.797 ms, p99: 2.958 ms
+    min: 1.826 ms, max: 2.958 ms, mean: 2.024 ms
+    Chain hops: 99999 (0.0% skipped via skip list)
+    Branch from start: median 1.00 us
+    Branch from mid: median 932.00 ns
+    Branch from end: median 951.00 ns
+
+  [Final Registry Counts]
+    Beliefs: 10,000
+    States: 100,332
+    Minds: 3
+    Subjects: 10,000
+
+  Total memory used: 3.22 GB
+
+========================================
+Promotion Scale
+Test performance with extreme promotion scenarios
+========================================
+
+--- temporal=10, probability=5, dependents=1,000 ---
+
+  [Temporal Chain Creation]
+    Creation time: 1.222 ms
+    Memory: -244.33 KB
+    Bytes per promotion: -25019 B
+    Promotions created: 11
+  temporal_query_early:
+    median: 6.79 us, p95: 16.39 us, p99: 98.85 us
+    min: 5.82 us, max: 98.85 us, mean: 9.36 us
+  temporal_query_mid:
+    median: 10.61 us, p95: 30.87 us, p99: 45.49 us
+    min: 9.25 us, max: 45.49 us, mean: 14.35 us
+  temporal_query_late:
+    median: 23.83 us, p95: 35.98 us, p99: 97.80 us
+    min: 13.80 us, max: 97.80 us, mean: 25.72 us
+
+  [Probability Promotions]
+    Creation time: 151.62 us
+    Memory: 3.65 KB
+    Bytes per alternative: 747 B
+  fuzzy_resolution:
+    median: 210.00 ns, p95: 381.00 ns, p99: 451.00 ns
+    min: 200.00 ns, max: 822.00 ns, mean: 224.87 ns
+
+  [Cache Invalidation Cascade]
+    Dependent beliefs created: 1,000
+    Creation time: 4.105 ms
+    Memory: 1.30 MB
+    Bytes per dependent: 1358 B
+    Cache prime time: 717.49 us
+    Reaccess time after invalidation: 885.03 us
+    Time per belief: 885.03 ns
+
+  [Mixed Temporal + Probability]
+    Temporal steps: 10
+    Probability width: 5
+    Total promotions: 50
+    Creation time: 511.12 us
+    Memory: 73.62 KB
+  mixed_query:
+    median: 12.50 us, p95: 16.31 us, p99: 28.38 us
+    min: 11.57 us, max: 28.38 us, mean: 12.82 us
+
+  [Registry Counts]
+    Beliefs: 156
+    States: 118
+    Minds: 2
+
+  Total memory used: 8.00 MB
+
+--- temporal=100, probability=20, dependents=10,000 ---
+
+  [Temporal Chain Creation]
+    Creation time: 7.512 ms
+    Memory: 466.08 KB
+    Bytes per promotion: 4773 B
+    Promotions created: 101
+  temporal_query_early:
+    median: 10.87 us, p95: 12.04 us, p99: 27.88 us
+    min: 10.67 us, max: 27.88 us, mean: 11.16 us
+  temporal_query_mid:
+    median: 34.87 us, p95: 41.54 us, p99: 181.59 us
+    min: 19.94 us, max: 181.59 us, mean: 36.52 us
+  temporal_query_late:
+    median: 44.00 us, p95: 61.12 us, p99: 273.11 us
+    min: 42.41 us, max: 273.11 us, mean: 50.46 us
+
+  [Probability Promotions]
+    Creation time: 124.04 us
+    Memory: 24.09 KB
+    Bytes per alternative: 1233 B
+  fuzzy_resolution:
+    median: 50.00 ns, p95: 51.00 ns, p99: 51.00 ns
+    min: 40.00 ns, max: 130.00 ns, mean: 46.64 ns
+
+  [Cache Invalidation Cascade]
+    Dependent beliefs created: 10,000
+    Creation time: 21.133 ms
+    Memory: 13.49 MB
+    Bytes per dependent: 1415 B
+    Cache prime time: 4.722 ms
+    Reaccess time after invalidation: 2.935 ms
+    Time per belief: 293.47 ns
+
+  [Mixed Temporal + Probability]
+    Temporal steps: 100
+    Probability width: 20
+    Total promotions: 2,000
+    Creation time: 105.558 ms
+    Memory: 2.26 MB
+  mixed_query:
+    median: 87.06 us, p95: 187.09 us, p99: 459.09 us
+    min: 84.27 us, max: 459.09 us, mean: 118.79 us
+
+  [Registry Counts]
+    Beliefs: 2,106
+    States: 208
+    Minds: 2
+
+  Total memory used: 22.38 MB
+
+--- temporal=500, probability=50, dependents=100,000 ---
+
+  [Temporal Chain Creation]
+    Creation time: 82.157 ms
+    Memory: 5.53 MB
+    Bytes per promotion: 11596 B
+    Promotions created: 501
+  temporal_query_early:
+    median: 25.00 us, p95: 54.99 us, p99: 151.56 us
+    min: 18.84 us, max: 151.56 us, mean: 33.32 us
+  temporal_query_mid:
+    median: 157.20 us, p95: 306.15 us, p99: 346.46 us
+    min: 150.56 us, max: 346.46 us, mean: 176.75 us
+  temporal_query_late:
+    median: 626.66 us, p95: 719.06 us, p99: 899.48 us
+    min: 454.62 us, max: 899.48 us, mean: 568.27 us
+
+  [Probability Promotions]
+    Creation time: 730.56 us
+    Memory: -5.54 KB
+    Bytes per alternative: -113 B
+  fuzzy_resolution:
+    median: 200.00 ns, p95: 220.00 ns, p99: 320.00 ns
+    min: 190.00 ns, max: 8.03 us, mean: 219.53 ns
+
+  [Cache Invalidation Cascade]
+    Dependent beliefs created: 100,000
+    Creation time: 210.973 ms
+    Memory: 130.53 MB
+    Bytes per dependent: 1369 B
+    Cache prime time: 28.688 ms
+    Reaccess time after invalidation: 36.484 ms
+    Time per belief: 364.84 ns
+
+  [Mixed Temporal + Probability]
+    Temporal steps: 100
+    Probability width: 20
+    Total promotions: 2,000
+    Creation time: 100.608 ms
+    Memory: 2.14 MB
+  mixed_query:
+    median: 82.17 us, p95: 165.10 us, p99: 254.62 us
+    min: 80.22 us, max: 254.62 us, mean: 97.13 us
+
+  [Registry Counts]
+    Beliefs: 2,106
+    States: 208
+    Minds: 2
+
+  Total memory used: 14.79 MB
+
+========================================
+Prototype Depth
+Test performance with deep prototype inheritance chains
+========================================
+
+--- depth=10 (belief chain length) ---
+  Prototype chain creation: 136.15 us
+  Memory for prototypes: -143.38 KB
+  Memory for instance: -27.20 KB
+  deep_trait_first:
+    median: 79.12 us, p95: 136.41 us, p99: 136.41 us
+    min: 74.13 us, max: 136.41 us, mean: 89.84 us
+  deep_trait_cached:
+    median: 130.00 ns, p95: 131.00 ns, p99: 151.00 ns
+    min: 120.00 ns, max: 451.00 ns, mean: 128.31 ns
+  archetype_trait:
+    median: 130.00 ns, p95: 140.00 ns, p99: 160.00 ns
+    min: 120.00 ns, max: 3.62 us, mean: 135.80 ns
+  get_traits_all:
+    median: 992.00 ns, p95: 1.06 us, p99: 1.34 us
+    min: 962.00 ns, max: 1.34 us, mean: 1.00 us
+  Cache analysis:
+    cached_traits: 5
+    cached_all: true
+    bases_count: 1
+  deep_trait_no_cache:
+    median: 1.89 us, p95: 2.00 us, p99: 2.19 us
+    min: 1.58 us, max: 23.65 us, mean: 1.85 us
+  Cache speedup: 14.6x
+  Total memory used: 5.79 MB
+
+--- depth=50 (belief chain length) ---
+  Prototype chain creation: 504.02 us
+  Memory for prototypes: 65.48 KB
+  Memory for instance: 2.09 KB
+  deep_trait_first:
+    median: 486.26 us, p95: 770.62 us, p99: 770.62 us
+    min: 473.90 us, max: 770.62 us, mean: 512.94 us
+  deep_trait_cached:
+    median: 120.00 ns, p95: 200.00 ns, p99: 230.00 ns
+    min: 110.00 ns, max: 4.38 us, mean: 131.14 ns
+  archetype_trait:
+    median: 120.00 ns, p95: 121.00 ns, p99: 131.00 ns
+    min: 110.00 ns, max: 4.31 us, mean: 123.16 ns
+  get_traits_all:
+    median: 941.00 ns, p95: 1.02 us, p99: 16.07 us
+    min: 901.00 ns, max: 16.07 us, mean: 1.10 us
+  Cache analysis:
+    cached_traits: 5
+    cached_all: true
+    bases_count: 1
+  deep_trait_no_cache:
+    median: 4.33 us, p95: 4.75 us, p99: 7.88 us
+    min: 4.02 us, max: 242.44 us, mean: 4.70 us
+  Cache speedup: 36.1x
+  Total memory used: 5.99 MB
+
+--- depth=100 (belief chain length) ---
+  Prototype chain creation: 1.638 ms
+  Memory for prototypes: 41.38 KB
+  Memory for instance: 10.69 KB
+  deep_trait_first:
+    median: 1.415 ms, p95: 2.070 ms, p99: 2.070 ms
+    min: 811.22 us, max: 2.070 ms, mean: 1.459 ms
+  deep_trait_cached:
+    median: 130.00 ns, p95: 140.00 ns, p99: 170.00 ns
+    min: 120.00 ns, max: 5.77 us, mean: 141.07 ns
+  archetype_trait:
+    median: 130.00 ns, p95: 150.00 ns, p99: 251.00 ns
+    min: 120.00 ns, max: 11.81 us, mean: 162.07 ns
+  get_traits_all:
+    median: 902.00 ns, p95: 1.07 us, p99: 4.28 us
+    min: 881.00 ns, max: 4.28 us, mean: 952.77 ns
+  Cache analysis:
+    cached_traits: 5
+    cached_all: true
+    bases_count: 1
+  deep_trait_no_cache:
+    median: 8.09 us, p95: 13.39 us, p99: 19.29 us
+    min: 7.72 us, max: 146.41 us, mean: 9.40 us
+  Cache speedup: 62.2x
+  Total memory used: 6.12 MB
+
+--- depth=100 (belief chain length) ---
+  Prototype chain creation: 1.613 ms
+  Memory for prototypes: 33.05 KB
+  Memory for instance: 6.02 KB
+  deep_trait_first:
+    median: 1.434 ms, p95: 1.776 ms, p99: 1.776 ms
+    min: 1.249 ms, max: 1.776 ms, mean: 1.449 ms
+  deep_trait_cached:
+    median: 130.00 ns, p95: 131.00 ns, p99: 151.00 ns
+    min: 120.00 ns, max: 6.60 us, mean: 136.69 ns
+  archetype_trait:
+    median: 130.00 ns, p95: 140.00 ns, p99: 161.00 ns
+    min: 120.00 ns, max: 3.36 us, mean: 136.08 ns
+  get_traits_all:
+    median: 961.00 ns, p95: 1.04 us, p99: 14.17 us
+    min: 932.00 ns, max: 14.17 us, mean: 1.10 us
+  Cache analysis:
+    cached_traits: 5
+    cached_all: true
+    bases_count: 1
+  deep_trait_no_cache:
+    median: 7.85 us, p95: 13.18 us, p99: 14.78 us
+    min: 7.66 us, max: 157.10 us, mean: 9.41 us
+  Cache speedup: 60.4x
+  Total memory used: 6.12 MB
+
+--- depth=200 (belief chain length) ---
+  Prototype chain creation: 4.952 ms
+  Memory for prototypes: 174.34 KB
+  Memory for instance: 6.02 KB
+  deep_trait_first:
+    median: 2.676 ms, p95: 4.248 ms, p99: 4.248 ms
+    min: 2.575 ms, max: 4.248 ms, mean: 2.803 ms
+  deep_trait_cached:
+    median: 130.00 ns, p95: 140.00 ns, p99: 160.00 ns
+    min: 120.00 ns, max: 8.80 us, mean: 139.11 ns
+  archetype_trait:
+    median: 130.00 ns, p95: 131.00 ns, p99: 160.00 ns
+    min: 120.00 ns, max: 3.50 us, mean: 130.31 ns
+  get_traits_all:
+    median: 902.00 ns, p95: 982.00 ns, p99: 7.50 us
+    min: 891.00 ns, max: 7.50 us, mean: 979.91 ns
+  Cache analysis:
+    cached_traits: 5
+    cached_all: true
+    bases_count: 1
+  deep_trait_no_cache:
+    median: 15.62 us, p95: 25.86 us, p99: 33.38 us
+    min: 15.32 us, max: 156.22 us, mean: 17.15 us
+  Cache speedup: 120.1x
+  Total memory used: 6.39 MB
+
+========================================
+Prototype Tree
+Test performance with deep tree-structured prototype hierarchies
+========================================
+
+--- depth=5, branch=3, traits/node=5 ---
+    Expected: 121 nodes, 605 total traits
+    Leaf nodes: 81
+
+  [Prototype Tree Creation]
+    Creation time: 1.201 ms
+    Memory: 41.60 KB
+    Nodes created: 121
+    Bytes per node: 352 B
+    Bytes per trait: 70 B
+    Nodes per second: 100724
+
+  [Trait Resolution at Different Depths]
+  trait_from_tree:
+    median: 130.00 ns, p95: 140.00 ns, p99: 181.00 ns
+    min: 120.00 ns, max: 431.00 ns, mean: 132.40 ns
+
+  [Cache Effectiveness]
+    First access: 2.53 us
+    Cached access median: 130.00 ns
+    Cache speedup: 19.5x
+    Cached traits: 1
+    Cached all: false
+
+  [get_traits() Iteration]
+  get_traits_first:
+    median: 803.06 us, p95: 1.469 ms, p99: 1.469 ms
+    min: 614.25 us, max: 1.469 ms, mean: 799.36 us
+  get_traits_cached:
+    median: 691.00 ns, p95: 822.00 ns, p99: 1.07 us
+    min: 671.00 ns, max: 1.07 us, mean: 702.72 ns
+
+  [Multiple Instances from Tree]
+    10 instances:
+      Creation time: 62.72 us
+      Per instance: 6.27 us
+      Trait access median: 170.00 ns
+    100 instances:
+      Creation time: 369.50 us
+      Per instance: 3.69 us
+      Trait access median: 180.00 ns
+    1000 instances:
+      Creation time: 2.971 ms
+      Per instance: 2.97 us
+      Trait access median: 311.00 ns
+
+  [Wide vs Deep Tree Comparison]
+    Wide tree (depth=3, branch=5): 31 nodes in 95.56 us
+    Deep tree (depth=7, branch=2): 127 nodes in 488.35 us
+
+  [Registry Counts]
+    Beliefs: 127
+    Subjects: 127
+    Traittypes: 0
+
+  Total memory used: 7.78 MB
+
+--- depth=6, branch=4, traits/node=10 ---
+    Expected: 1,365 nodes, 13,650 total traits
+    Leaf nodes: 1,024
+
+  [Prototype Tree Creation]
+    Creation time: 10.970 ms
+    Memory: 1.81 MB
+    Nodes created: 1,365
+    Bytes per node: 1390 B
+    Bytes per trait: 139 B
+    Nodes per second: 124433
+
+  [Trait Resolution at Different Depths]
+  trait_from_tree:
+    median: 130.00 ns, p95: 131.00 ns, p99: 150.00 ns
+    min: 120.00 ns, max: 220.00 ns, mean: 125.99 ns
+
+  [Cache Effectiveness]
+    First access: 4.02 us
+    Cached access median: 130.00 ns
+    Cache speedup: 30.9x
+    Cached traits: 1
+    Cached all: false
+
+  [get_traits() Iteration]
+  get_traits_first:
+    median: 5.571 ms, p95: 7.956 ms, p99: 7.956 ms
+    min: 5.240 ms, max: 7.956 ms, mean: 5.799 ms
+  get_traits_cached:
+    median: 280.00 ns, p95: 321.00 ns, p99: 431.00 ns
+    min: 261.00 ns, max: 431.00 ns, mean: 282.20 ns
+
+  [Multiple Instances from Tree]
+    10 instances:
+      Creation time: 41.19 us
+      Per instance: 4.12 us
+      Trait access median: 160.00 ns
+    100 instances:
+      Creation time: 305.32 us
+      Per instance: 3.05 us
+      Trait access median: 130.00 ns
+    1000 instances:
+      Creation time: 3.473 ms
+      Per instance: 3.47 us
+      Trait access median: 411.00 ns
+
+  [Wide vs Deep Tree Comparison]
+    Wide tree (depth=3, branch=12): 157 nodes in 505.32 us
+    Deep tree (depth=11, branch=2): 2047 nodes in 11.449 ms
+
+  [Registry Counts]
+    Beliefs: 2,047
+    Subjects: 2,047
+    Traittypes: 0
+
+  Total memory used: 14.81 MB
+
+--- depth=7, branch=4, traits/node=15 ---
+    Expected: 5,461 nodes, 81,915 total traits
+    Leaf nodes: 4,096
+
+  [Prototype Tree Creation]
+    Creation time: 31.910 ms
+    Memory: 7.55 MB
+    Nodes created: 5,461
+    Bytes per node: 1450 B
+    Bytes per trait: 97 B
+    Nodes per second: 171135
+
+  [Trait Resolution at Different Depths]
+  trait_from_tree:
+    median: 121.00 ns, p95: 131.00 ns, p99: 150.00 ns
+    min: 120.00 ns, max: 280.00 ns, mean: 125.25 ns
+
+  [Cache Effectiveness]
+    First access: 4.59 us
+    Cached access median: 130.00 ns
+    Cache speedup: 35.3x
+    Cached traits: 1
+    Cached all: false
+
+  [get_traits() Iteration]
+  get_traits_first:
+    median: 24.302 ms, p95: 33.707 ms, p99: 33.707 ms
+    min: 23.839 ms, max: 33.707 ms, mean: 25.048 ms
+  get_traits_cached:
+    median: 271.00 ns, p95: 370.00 ns, p99: 237.55 us
+    min: 260.00 ns, max: 237.55 us, mean: 2.67 us
+
+  [Multiple Instances from Tree]
+    10 instances:
+      Creation time: 46.59 us
+      Per instance: 4.66 us
+      Trait access median: 170.00 ns
+    100 instances:
+      Creation time: 334.46 us
+      Per instance: 3.34 us
+      Trait access median: 171.00 ns
+    1000 instances:
+      Creation time: 3.541 ms
+      Per instance: 3.54 us
+      Trait access median: 261.00 ns
+
+  [Wide vs Deep Tree Comparison]
+    Wide tree (depth=3, branch=18): 343 nodes in 1.346 ms
+    Deep tree (depth=13, branch=2): 8191 nodes in 50.420 ms
+
+  [Registry Counts]
+    Beliefs: 8,191
+    Subjects: 8,191
+    Traittypes: 0
+
+  Total memory used: 37.31 MB
+
+--- depth=8, branch=4, traits/node=10 ---
+    Expected: 21,845 nodes, 218,450 total traits
+    Leaf nodes: 16,384
+
+  [Prototype Tree Creation]
+    Creation time: 117.672 ms
+    Memory: 30.14 MB
+    Nodes created: 21,845
+    Bytes per node: 1447 B
+    Bytes per trait: 145 B
+    Nodes per second: 185644
+
+  [Trait Resolution at Different Depths]
+  trait_from_tree:
+    median: 120.00 ns, p95: 131.00 ns, p99: 160.00 ns
+    min: 120.00 ns, max: 15.55 us, mean: 155.80 ns
+
+  [Cache Effectiveness]
+    First access: 7.06 us
+    Cached access median: 111.00 ns
+    Cache speedup: 63.6x
+    Cached traits: 1
+    Cached all: false
+
+  [get_traits() Iteration]
+  get_traits_first:
+    median: 110.206 ms, p95: 132.362 ms, p99: 132.362 ms
+    min: 108.158 ms, max: 132.362 ms, mean: 112.957 ms
+  get_traits_cached:
+    median: 280.00 ns, p95: 321.00 ns, p99: 491.00 ns
+    min: 260.00 ns, max: 491.00 ns, mean: 284.22 ns
+
+  [Multiple Instances from Tree]
+    10 instances:
+      Creation time: 56.60 us
+      Per instance: 5.66 us
+      Trait access median: 151.00 ns
+    100 instances:
+      Creation time: 381.78 us
+      Per instance: 3.82 us
+      Trait access median: 160.00 ns
+    1000 instances:
+      Creation time: 4.041 ms
+      Per instance: 4.04 us
+      Trait access median: 311.00 ns
+
+  [Wide vs Deep Tree Comparison]
+    Wide tree (depth=3, branch=28): 813 nodes in 3.179 ms
+    Deep tree (depth=15, branch=2): 32767 nodes in 228.849 ms
+
+  [Registry Counts]
+    Beliefs: 32,767
+    Subjects: 32,767
+    Traittypes: 0
+
+  Total memory used: 127.30 MB
+
+========================================
+Session Length
+Test performance with long state chains (many transactions)
+========================================
+
+--- 100 states, 5 changes each (47 total beliefs) ---
+  Chain creation time: 801.42 us
+  Memory for chain: -9.67 KB
+  Bytes per state: -99 B
+  Average time per state: 8.01 us
+  branch_from_end:
+    median: 782.00 ns, p95: 1.17 us, p99: 5.37 us
+    min: 701.00 ns, max: 39.84 us, mean: 994.83 ns
+  branch_from_middle:
+    median: 772.00 ns, p95: 1.13 us, p99: 1.33 us
+    min: 701.00 ns, max: 19.55 us, mean: 882.18 ns
+  get_beliefs_at_end:
+    median: 6.63 us, p95: 7.31 us, p99: 38.69 us
+    min: 6.22 us, max: 38.69 us, mean: 7.19 us
+    (returned 47 beliefs)
+  get_beliefs_at_start:
+    median: 260.00 ns, p95: 290.00 ns, p99: 641.00 ns
+    min: 240.00 ns, max: 18.13 us, mean: 334.16 ns
+  walk_chain_via_base:
+    median: 592.00 ns, p95: 612.00 ns, p99: 701.00 ns
+    min: 110.00 ns, max: 19.13 us, mean: 484.76 ns
+  rev_trait_across_chain:
+    median: 6.20 us, p95: 6.71 us, p99: 11.19 us
+    min: 5.98 us, max: 11.19 us, mean: 6.32 us
+    (expected 46 referrers)
+  get_belief_by_subject_first_state:
+    median: 60.00 ns, p95: 70.00 ns, p99: 71.00 ns
+    min: 60.00 ns, max: 271.00 ns, mean: 63.68 ns
+  get_belief_by_subject_final_state:
+    median: 60.00 ns, p95: 70.00 ns, p99: 71.00 ns
+    min: 60.00 ns, max: 260.00 ns, mean: 63.12 ns
+  Skip list analysis:
+    total states in chain: 100
+    states with changes: 10
+    hops with skip list: 19
+    states skipped: 81
+    skip efficiency: 81.0%
+  Registry counts:
+    beliefs: 47
+    states: 1,122
+    subjects: 47
+  Final heap: 7.05 MB
+
+--- 500 states, 3 changes each (149 total beliefs) ---
+  Chain creation time: 1.631 ms
+  Memory for chain: 913.17 KB
+  Bytes per state: 1870 B
+  Average time per state: 3.26 us
+  branch_from_end:
+    median: 190.00 ns, p95: 261.00 ns, p99: 601.00 ns
+    min: 150.00 ns, max: 21.35 us, mean: 248.05 ns
+  branch_from_middle:
+    median: 200.00 ns, p95: 441.00 ns, p99: 632.00 ns
+    min: 160.00 ns, max: 13.60 us, mean: 267.81 ns
+  get_beliefs_at_end:
+    median: 9.83 us, p95: 10.95 us, p99: 22.20 us
+    min: 8.68 us, max: 22.20 us, mean: 10.10 us
+    (returned 149 beliefs)
+  get_beliefs_at_start:
+    median: 110.00 ns, p95: 140.00 ns, p99: 351.00 ns
+    min: 110.00 ns, max: 10.59 us, mean: 140.96 ns
+  walk_chain_via_base:
+    median: 1.03 us, p95: 1.98 us, p99: 2.10 us
+    min: 911.00 ns, max: 17.32 us, mean: 1.25 us
+  rev_trait_across_chain:
+    median: 11.73 us, p95: 12.45 us, p99: 16.67 us
+    min: 11.04 us, max: 16.67 us, mean: 11.83 us
+    (expected 148 referrers)
+  get_belief_by_subject_first_state:
+    median: 50.00 ns, p95: 51.00 ns, p99: 51.00 ns
+    min: 40.00 ns, max: 80.00 ns, mean: 46.79 ns
+  get_belief_by_subject_final_state:
+    median: 50.00 ns, p95: 51.00 ns, p99: 51.00 ns
+    min: 40.00 ns, max: 7.73 us, mean: 57.97 ns
+  Skip list analysis:
+    total states in chain: 500
+    states with changes: 50
+    hops with skip list: 59
+    states skipped: 441
+    skip efficiency: 88.2%
+  Registry counts:
+    beliefs: 149
+    states: 1,522
+    subjects: 149
+  Final heap: 7.80 MB
+
+--- 1,000 states, 2 changes each (200 total beliefs) ---
+  Chain creation time: 4.184 ms
+  Memory for chain: 1.69 MB
+  Bytes per state: 1775 B
+  Average time per state: 4.18 us
+  branch_from_end:
+    median: 461.00 ns, p95: 521.00 ns, p99: 671.00 ns
+    min: 401.00 ns, max: 30.26 us, mean: 550.75 ns
+  branch_from_middle:
+    median: 471.00 ns, p95: 521.00 ns, p99: 682.00 ns
+    min: 330.00 ns, max: 26.99 us, mean: 508.60 ns
+  get_beliefs_at_end:
+    median: 16.37 us, p95: 22.45 us, p99: 34.00 us
+    min: 13.36 us, max: 34.00 us, mean: 16.67 us
+    (returned 200 beliefs)
+  get_beliefs_at_start:
+    median: 110.00 ns, p95: 130.00 ns, p99: 271.00 ns
+    min: 110.00 ns, max: 431.00 ns, mean: 116.69 ns
+  walk_chain_via_base:
+    median: 2.66 us, p95: 3.83 us, p99: 3.88 us
+    min: 2.17 us, max: 37.70 us, mean: 2.83 us
+  rev_trait_across_chain:
+    median: 26.62 us, p95: 30.85 us, p99: 201.78 us
+    min: 26.26 us, max: 201.78 us, mean: 29.60 us
+    (expected 199 referrers)
+  get_belief_by_subject_first_state:
+    median: 50.00 ns, p95: 51.00 ns, p99: 51.00 ns
+    min: 40.00 ns, max: 6.59 us, mean: 53.33 ns
+  get_belief_by_subject_final_state:
+    median: 50.00 ns, p95: 51.00 ns, p99: 51.00 ns
+    min: 40.00 ns, max: 17.45 us, mean: 66.59 ns
+  Skip list analysis:
+    total states in chain: 1000
+    states with changes: 100
+    hops with skip list: 109
+    states skipped: 891
+    skip efficiency: 89.1%
+  Registry counts:
+    beliefs: 200
+    states: 2,022
+    subjects: 200
+  Final heap: 8.62 MB
+
+--- 5,000 states, 1 changes each (501 total beliefs) ---
+  Chain creation time: 24.913 ms
+  Memory for chain: 8.38 MB
+  Bytes per state: 1758 B
+  Average time per state: 4.98 us
+  branch_from_end:
+    median: 211.00 ns, p95: 310.00 ns, p99: 551.00 ns
+    min: 170.00 ns, max: 771.00 ns, mean: 225.06 ns
+  branch_from_middle:
+    median: 210.00 ns, p95: 261.00 ns, p99: 531.00 ns
+    min: 180.00 ns, max: 5.53 us, mean: 229.36 ns
+  get_beliefs_at_end:
+    median: 53.75 us, p95: 77.02 us, p99: 219.40 us
+    min: 51.29 us, max: 219.40 us, mean: 58.94 us
+    (returned 501 beliefs)
+  get_beliefs_at_start:
+    median: 110.00 ns, p95: 131.00 ns, p99: 191.00 ns
+    min: 110.00 ns, max: 5.90 us, mean: 128.20 ns
+  walk_chain_via_base:
+    median: 11.25 us, p95: 12.36 us, p99: 18.95 us
+    min: 9.75 us, max: 33.52 us, mean: 11.55 us
+  rev_trait_across_chain:
+    median: 50.63 us, p95: 57.25 us, p99: 130.81 us
+    min: 49.53 us, max: 130.81 us, mean: 51.93 us
+    (expected 500 referrers)
+  get_belief_by_subject_first_state:
+    median: 50.00 ns, p95: 51.00 ns, p99: 60.00 ns
+    min: 40.00 ns, max: 7.58 us, mean: 54.74 ns
+  get_belief_by_subject_final_state:
+    median: 50.00 ns, p95: 51.00 ns, p99: 60.00 ns
+    min: 40.00 ns, max: 3.76 us, mean: 50.09 ns
+  Skip list analysis:
+    total states in chain: 5000
+    states with changes: 500
+    hops with skip list: 509
+    states skipped: 4491
+    skip efficiency: 89.8%
+  Registry counts:
+    beliefs: 501
+    states: 6,022
+    subjects: 501
+  Final heap: 17.73 MB
+
+========================================
+World Scale
+Test performance with large numbers of beliefs
+========================================
+
+--- 1,000 beliefs (100 locations, 900 entities) ---
+  Creation time: 3.573 ms
+  Memory before lock: -9.93 MB
+  Bytes per belief: -10411 B
+  Lock time: 97.28 us
+  Memory growth from lock: 28.25 KB
+  get_beliefs:
+    median: 19.29 us, p95: 20.06 us, p99: 31.95 us
+    min: 15.36 us, max: 31.95 us, mean: 18.11 us
+    (returned 1000 beliefs)
+  get_beliefs_spread:
+    median: 21.84 us, p95: 29.63 us, p99: 51.79 us
+    min: 21.09 us, max: 51.79 us, mean: 23.18 us
+  rev_trait_popular_location:
+    median: 571.00 ns, p95: 621.00 ns, p99: 792.00 ns
+    min: 541.00 ns, max: 76.52 us, mean: 733.40 ns
+    (expected ~9 referrers)
+  get_belief_by_subject_cached:
+    median: 50.00 ns, p95: 51.00 ns, p99: 51.00 ns
+    min: 40.00 ns, max: 100.00 ns, mean: 48.34 ns
+  get_belief_by_label:
+    median: 70.00 ns, p95: 71.00 ns, p99: 90.00 ns
+    min: 60.00 ns, max: 120.00 ns, mean: 70.15 ns
+  get_trait_on_entity:
+    median: 130.00 ns, p95: 140.00 ns, p99: 160.00 ns
+    min: 120.00 ns, max: 4.41 us, mean: 134.83 ns
+  branch_from_large_state:
+    median: 200.00 ns, p95: 441.00 ns, p99: 1.36 us
+    min: 160.00 ns, max: 6.53 us, mean: 260.73 ns
+  Registry counts:
+    beliefs: 1,000
+    subjects: 1,000
+    states: 513
+  Final heap used: 8.00 MB
+  Final bytes per belief: 8390 B
+
+--- 10,000 beliefs (1,000 locations, 9,000 entities) ---
+  Creation time: 38.115 ms
+  Memory before lock: 14.16 MB
+  Bytes per belief: 1484 B
+  Lock time: 3.575 ms
+  Memory growth from lock: 432.66 KB
+  get_beliefs:
+    median: 159.59 us, p95: 212.54 us, p99: 251.18 us
+    min: 155.34 us, max: 251.18 us, mean: 163.96 us
+    (returned 10000 beliefs)
+  get_beliefs_spread:
+    median: 220.37 us, p95: 269.17 us, p99: 280.50 us
+    min: 214.79 us, max: 280.50 us, mean: 224.79 us
+  rev_trait_popular_location:
+    median: 1.19 us, p95: 1.36 us, p99: 1.65 us
+    min: 1.15 us, max: 61.59 us, mean: 1.35 us
+    (expected ~9 referrers)
+  get_belief_by_subject_cached:
+    median: 50.00 ns, p95: 51.00 ns, p99: 51.00 ns
+    min: 40.00 ns, max: 621.00 ns, mean: 49.96 ns
+  get_belief_by_label:
+    median: 60.00 ns, p95: 70.00 ns, p99: 71.00 ns
+    min: 60.00 ns, max: 5.74 us, mean: 68.46 ns
+  get_trait_on_entity:
+    median: 130.00 ns, p95: 140.00 ns, p99: 160.00 ns
+    min: 120.00 ns, max: 3.53 us, mean: 133.12 ns
+  branch_from_large_state:
+    median: 802.00 ns, p95: 932.00 ns, p99: 4.18 us
+    min: 761.00 ns, max: 9.91 us, mean: 896.11 ns
+  Registry counts:
+    beliefs: 10,000
+    subjects: 10,000
+    states: 513
+  Final heap used: 21.17 MB
+  Final bytes per belief: 2220 B
+
+--- 50,000 beliefs (5,000 locations, 45,000 entities) ---
+  Creation time: 161.054 ms
+  Memory before lock: 69.09 MB
+  Bytes per belief: 1449 B
+  Lock time: 11.010 ms
+  Memory growth from lock: 1.77 MB
+  get_beliefs:
+    median: 817.90 us, p95: 879.01 us, p99: 1.035 ms
+    min: 791.73 us, max: 1.035 ms, mean: 826.29 us
+    (returned 50000 beliefs)
+  get_beliefs_spread:
+    median: 1.250 ms, p95: 1.456 ms, p99: 1.457 ms
+    min: 1.224 ms, max: 1.457 ms, mean: 1.295 ms
+  rev_trait_popular_location:
+    median: 581.00 ns, p95: 621.00 ns, p99: 762.00 ns
+    min: 551.00 ns, max: 21.32 us, mean: 624.47 ns
+    (expected ~9 referrers)
+  get_belief_by_subject_cached:
+    median: 50.00 ns, p95: 51.00 ns, p99: 51.00 ns
+    min: 40.00 ns, max: 5.02 us, mean: 54.02 ns
+  get_belief_by_label:
+    median: 60.00 ns, p95: 61.00 ns, p99: 61.00 ns
+    min: 50.00 ns, max: 4.06 us, mean: 61.94 ns
+  get_trait_on_entity:
+    median: 120.00 ns, p95: 121.00 ns, p99: 160.00 ns
+    min: 110.00 ns, max: 6.01 us, mean: 129.50 ns
+  branch_from_large_state:
+    median: 591.00 ns, p95: 852.00 ns, p99: 3.88 us
+    min: 551.00 ns, max: 12.90 us, mean: 702.61 ns
+  Registry counts:
+    beliefs: 50,000
+    subjects: 50,000
+    states: 513
+  Final heap used: 77.41 MB
+  Final bytes per belief: 1623 B
+
+--- 100,000 beliefs (10,000 locations, 90,000 entities) ---
+  Creation time: 329.686 ms
+  Memory before lock: 76.75 MB
+  Bytes per belief: 805 B
+  Lock time: 20.323 ms
+  Memory growth from lock: 3.50 MB
+  get_beliefs:
+    median: 1.635 ms, p95: 1.681 ms, p99: 2.376 ms
+    min: 1.574 ms, max: 2.376 ms, mean: 1.630 ms
+    (returned 100000 beliefs)
+  get_beliefs_spread:
+    median: 2.575 ms, p95: 2.694 ms, p99: 2.756 ms
+    min: 2.402 ms, max: 2.756 ms, mean: 2.545 ms
+  rev_trait_popular_location:
+    median: 561.00 ns, p95: 601.00 ns, p99: 751.00 ns
+    min: 541.00 ns, max: 1.02 us, mean: 568.42 ns
+    (expected ~9 referrers)
+  get_belief_by_subject_cached:
+    median: 50.00 ns, p95: 51.00 ns, p99: 60.00 ns
+    min: 40.00 ns, max: 7.12 us, mean: 54.81 ns
+  get_belief_by_label:
+    median: 60.00 ns, p95: 61.00 ns, p99: 70.00 ns
+    min: 50.00 ns, max: 9.49 us, mean: 69.85 ns
+  get_trait_on_entity:
+    median: 50.00 ns, p95: 51.00 ns, p99: 60.00 ns
+    min: 40.00 ns, max: 7.65 us, mean: 54.84 ns
+  branch_from_large_state:
+    median: 521.00 ns, p95: 781.00 ns, p99: 3.08 us
+    min: 471.00 ns, max: 8.53 us, mean: 610.97 ns
+  Registry counts:
+    beliefs: 100,000
+    subjects: 100,000
+    states: 513
+  Final heap used: 148.34 MB
+  Final bytes per belief: 1555 B
+
+╔════════════════════════════════════════╗
+║            COMPLETE                    ║
+╚════════════════════════════════════════╝
+Total time: 37.23 s
+Final heap: 148.34 MB

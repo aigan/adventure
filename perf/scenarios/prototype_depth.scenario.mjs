@@ -163,6 +163,6 @@ export async function run() {
 }
 
 // Allow running directly
-if (process.argv[1].endsWith('prototype_depth.scenario.mjs')) {
+if (process.argv[1]?.endsWith('prototype_depth.scenario.mjs')) {
   run().catch(console.error)
 }

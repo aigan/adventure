@@ -221,6 +221,6 @@ export async function run() {
 }
 
 // Allow running directly
-if (process.argv[1].endsWith('session_length.scenario.mjs')) {
+if (process.argv[1]?.endsWith('session_length.scenario.mjs')) {
   run().catch(console.error)
 }

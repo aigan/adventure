@@ -743,4 +743,294 @@ describe('Composable Traits - Complex Scenarios', () => {
       expect(loaded_pacifist.get_trait(loaded_state, loaded_inv_tt)).to.be.null
     })
   })
+
+  describe('get_defined_traits() branch stopping per-traittype', () => {
+    it('Test 1: different composable traits on sibling bases', () => {
+      // A (inventory=[token])     B (skills=[smithing])
+      //  \                        /
+      //           C (this)
+      DB.register(
+        {
+          inventory: { type: 'Item', container: Array, composable: true },
+          skills: { type: 'Skill', container: Array, composable: true }
+        },
+        {
+          Thing: {},
+          Item: { bases: ['Thing'] },
+          Skill: { bases: ['Thing'] },
+          Person: { bases: ['Thing'], traits: { inventory: null, skills: null } }
+        },
+        {
+          token: { bases: ['Item'] },
+          smithing: { bases: ['Skill'] },
+          Merchant: { bases: ['Person'], traits: { inventory: ['token'] } },
+          Craftsman: { bases: ['Person'], traits: { skills: ['smithing'] } }
+        }
+      )
+
+      const eidos_state = eidos().origin_state
+      const world_mind = new Materia(logos(), 'world')
+      const state = world_mind.create_state(logos_state(), {tt: 1})
+
+      const merchant = eidos_state.get_belief_by_label('Merchant')
+      const craftsman = eidos_state.get_belief_by_label('Craftsman')
+
+      // NPC with two bases having different composable traits
+      const npc = state.add_belief_from_template({
+        bases: [merchant, craftsman],
+        traits: {},
+        label: 'merchant_craftsman'
+      })
+      state.lock()
+
+      const inv_tt = Traittype.get_by_label('inventory')
+      const skills_tt = Traittype.get_by_label('skills')
+
+      // Call get_defined_traits FIRST (before get_trait populates cache)
+      const defined = new Map(npc.get_defined_traits())
+      expect(defined.has(inv_tt), 'get_defined_traits should include inventory').to.be.true
+      expect(defined.has(skills_tt), 'get_defined_traits should include skills').to.be.true
+
+      // get_trait should also work
+      const inv_via_get_trait = npc.get_trait(state, inv_tt)
+      const skills_via_get_trait = npc.get_trait(state, skills_tt)
+      expect(inv_via_get_trait).to.have.lengthOf(1)
+      expect(skills_via_get_trait).to.have.lengthOf(1)
+    })
+
+    it('Test 2: composable shadows but ancestor has different composable (THE BUG)', () => {
+      // A (inventory=[token], skills=[farming])
+      // |
+      // B (inventory=[sword])  ← B shadows A's inventory
+      // |
+      // C (this)
+      DB.register(
+        {
+          inventory: { type: 'Item', container: Array, composable: true },
+          skills: { type: 'Skill', container: Array, composable: true }
+        },
+        {
+          Thing: {},
+          Item: { bases: ['Thing'] },
+          Skill: { bases: ['Thing'] },
+          Person: { bases: ['Thing'], traits: { inventory: null, skills: null } }
+        },
+        {
+          token: { bases: ['Item'] },
+          sword: { bases: ['Item'] },
+          farming: { bases: ['Skill'] },
+          // A: has both inventory and skills
+          Peasant: { bases: ['Person'], traits: { inventory: ['token'], skills: ['farming'] } },
+          // B: shadows inventory, no skills
+          Warrior: { bases: ['Peasant'], traits: { inventory: ['sword'] } }
+        }
+      )
+
+      const eidos_state = eidos().origin_state
+      const world_mind = new Materia(logos(), 'world')
+      const state = world_mind.create_state(logos_state(), {tt: 1})
+
+      const warrior = eidos_state.get_belief_by_label('Warrior')
+
+      // C inherits from Warrior (B)
+      const npc = state.add_belief_from_template({
+        bases: [warrior],
+        traits: {},
+        label: 'soldier'
+      })
+      state.lock()
+
+      const inv_tt = Traittype.get_by_label('inventory')
+      const skills_tt = Traittype.get_by_label('skills')
+
+      // Call get_defined_traits FIRST (before get_trait populates cache)
+      const defined = new Map(npc.get_defined_traits())
+      expect(defined.has(inv_tt), 'get_defined_traits should include inventory').to.be.true
+      expect(defined.has(skills_tt), 'get_defined_traits should include skills').to.be.true
+      expect(defined.get(inv_tt)).to.have.lengthOf(1)
+      expect(defined.get(skills_tt)).to.have.lengthOf(1)
+
+      // get_trait should also work (verifies both methods agree)
+      const inv_via_get_trait = npc.get_trait(state, inv_tt)
+      const skills_via_get_trait = npc.get_trait(state, skills_tt)
+      expect(inv_via_get_trait).to.have.lengthOf(1)
+      expect(inv_via_get_trait[0].get_label()).to.equal('sword')
+      expect(skills_via_get_trait).to.have.lengthOf(1)
+      expect(skills_via_get_trait[0].get_label()).to.equal('farming')
+    })
+
+    it('Test 3: mixed composable + non-composable ancestor', () => {
+      // A (inventory=[token], @name="Alice")
+      // |
+      // B (inventory=[sword])
+      // |
+      // C (this)
+      DB.register(
+        {
+          inventory: { type: 'Item', container: Array, composable: true },
+          '@name': { type: 'string' }
+        },
+        {
+          Thing: {},
+          Item: { bases: ['Thing'] },
+          Person: { bases: ['Thing'], traits: { '@name': null, inventory: null } }
+        },
+        {
+          token: { bases: ['Item'] },
+          sword: { bases: ['Item'] },
+          // A: has inventory and name
+          Alice: { bases: ['Person'], traits: { inventory: ['token'], '@name': 'Alice' } },
+          // B: shadows inventory only
+          AliceWarrior: { bases: ['Alice'], traits: { inventory: ['sword'] } }
+        }
+      )
+
+      const eidos_state = eidos().origin_state
+      const world_mind = new Materia(logos(), 'world')
+      const state = world_mind.create_state(logos_state(), {tt: 1})
+
+      const alice_warrior = eidos_state.get_belief_by_label('AliceWarrior')
+
+      // C inherits from AliceWarrior (B)
+      const npc = state.add_belief_from_template({
+        bases: [alice_warrior],
+        traits: {},
+        label: 'alice_soldier'
+      })
+      state.lock()
+
+      const inv_tt = Traittype.get_by_label('inventory')
+      const name_tt = Traittype.get_by_label('@name')
+
+      // Call get_defined_traits FIRST (before get_trait populates cache)
+      const defined = new Map(npc.get_defined_traits())
+      expect(defined.has(inv_tt), 'get_defined_traits should include inventory').to.be.true
+      expect(defined.has(name_tt), 'get_defined_traits should include @name').to.be.true
+      expect(defined.get(name_tt)).to.equal('Alice')
+
+      // get_trait should also work
+      expect(npc.get_trait(state, inv_tt)).to.have.lengthOf(1)
+      expect(npc.get_trait(state, name_tt)).to.equal('Alice')
+    })
+
+    it('Test 4: deep chain with multiple shadow points', () => {
+      // A (T1=[a], T2=[b], T3=[c])
+      // |
+      // B (T1=[x])  ← shadows T1
+      // |
+      // C (T2=[y])  ← shadows T2
+      // |
+      // D (this)
+      DB.register(
+        {
+          T1: { type: 'Item', container: Array, composable: true },
+          T2: { type: 'Item', container: Array, composable: true },
+          T3: { type: 'Item', container: Array, composable: true }
+        },
+        {
+          Thing: {},
+          Item: { bases: ['Thing'] },
+          Base: { bases: ['Thing'], traits: { T1: null, T2: null, T3: null } }
+        },
+        {
+          a: { bases: ['Item'] },
+          b: { bases: ['Item'] },
+          c: { bases: ['Item'] },
+          x: { bases: ['Item'] },
+          y: { bases: ['Item'] },
+          // A: has all three
+          LevelA: { bases: ['Base'], traits: { T1: ['a'], T2: ['b'], T3: ['c'] } },
+          // B: shadows T1 only
+          LevelB: { bases: ['LevelA'], traits: { T1: ['x'] } },
+          // C: shadows T2 only
+          LevelC: { bases: ['LevelB'], traits: { T2: ['y'] } }
+        }
+      )
+
+      const eidos_state = eidos().origin_state
+      const world_mind = new Materia(logos(), 'world')
+      const state = world_mind.create_state(logos_state(), {tt: 1})
+
+      const level_c = eidos_state.get_belief_by_label('LevelC')
+
+      // D inherits from LevelC
+      const npc = state.add_belief_from_template({
+        bases: [level_c],
+        traits: {},
+        label: 'level_d'
+      })
+      state.lock()
+
+      const t1_tt = Traittype.get_by_label('T1')
+      const t2_tt = Traittype.get_by_label('T2')
+      const t3_tt = Traittype.get_by_label('T3')
+
+      // Call get_defined_traits FIRST (before get_trait populates cache)
+      const defined = new Map(npc.get_defined_traits())
+      expect(defined.has(t1_tt), 'should have T1').to.be.true
+      expect(defined.has(t2_tt), 'should have T2').to.be.true
+      expect(defined.has(t3_tt), 'should have T3').to.be.true
+      expect(defined.get(t1_tt)[0].get_label()).to.equal('x')
+      expect(defined.get(t2_tt)[0].get_label()).to.equal('y')
+      expect(defined.get(t3_tt)[0].get_label()).to.equal('c')
+
+      // get_trait should also work
+      expect(npc.get_trait(state, t1_tt)[0].get_label()).to.equal('x')
+      expect(npc.get_trait(state, t2_tt)[0].get_label()).to.equal('y')
+      expect(npc.get_trait(state, t3_tt)[0].get_label()).to.equal('c')
+    })
+
+    it('Test 5: get_trait() vs get_defined_traits() consistency', () => {
+      // Verify all traits return same value from both methods
+      DB.register(
+        {
+          inventory: { type: 'Item', container: Array, composable: true },
+          skills: { type: 'Skill', container: Array, composable: true },
+          '@name': { type: 'string' }
+        },
+        {
+          Thing: {},
+          Item: { bases: ['Thing'] },
+          Skill: { bases: ['Thing'] },
+          Person: { bases: ['Thing'], traits: { '@name': null, inventory: null, skills: null } }
+        },
+        {
+          token: { bases: ['Item'] },
+          sword: { bases: ['Item'] },
+          farming: { bases: ['Skill'] },
+          combat: { bases: ['Skill'] },
+          // Complex chain
+          Base: { bases: ['Person'], traits: { '@name': 'Base', inventory: ['token'], skills: ['farming'] } },
+          Mid: { bases: ['Base'], traits: { inventory: ['sword'] } },
+          Top: { bases: ['Mid'], traits: { skills: ['combat'] } }
+        }
+      )
+
+      const eidos_state = eidos().origin_state
+      const world_mind = new Materia(logos(), 'world')
+      const state = world_mind.create_state(logos_state(), {tt: 1})
+
+      const top = eidos_state.get_belief_by_label('Top')
+
+      const npc = state.add_belief_from_template({
+        bases: [top],
+        traits: {},
+        label: 'test_npc'
+      })
+      state.lock()
+
+      // Collect all traits from get_defined_traits
+      const defined = new Map(npc.get_defined_traits())
+
+      // For each traittype, verify get_trait returns same value
+      for (const [traittype, defined_value] of defined) {
+        const trait_value = npc.get_trait(state, traittype)
+        if (Array.isArray(defined_value)) {
+          expect(trait_value, `${traittype.label} should match`).to.deep.equal(defined_value)
+        } else {
+          expect(trait_value, `${traittype.label} should match`).to.equal(defined_value)
+        }
+      }
+    })
+  })
 })

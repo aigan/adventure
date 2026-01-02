@@ -899,6 +899,22 @@ export class Belief {
   *get_defined_traits() {
     const yielded = new Set()
     const composables = new Map()  // traittype → values[]
+    const composable_contributors = new Map()  // traittype → Set<nodes that contributed>
+
+    // Check if base_node is in derived_node's ancestor chain
+    const is_base_of = (/** @type {Belief|Archetype} */ base_node, /** @type {Belief|Archetype} */ derived_node) => {
+      const q = [...derived_node._bases]
+      const s = new Set()
+      for (let i = 0; i < q.length; i++) {
+        const n = q[i]
+        if (n === base_node) return true
+        if (s.has(n)) continue
+        s.add(n)
+        q.push(...n._bases)
+      }
+      return false
+    }
+
     /** @type {Map<Belief, number>} */
     const deps = new Map()  // Track promotable beliefs for cache invalidation
     /** @type {Belief|null} */
@@ -943,14 +959,10 @@ export class Belief {
         last_promotable = node
       }
 
-      // Track if we found a composable value in this node (to stop branch search)
-      let found_composable = false
-
       for (const [traittype, value] of node.get_trait_entries()) {
         if (yielded.has(traittype)) continue
 
         if (traittype.composable) {
-          // Composable traits: own value replaces inherited, else compose from bases
           if (node === this) {
             // Own value: yield directly (replaces any inherited)
             const can_cache = min_cache_tt <= origin_tt
@@ -958,10 +970,15 @@ export class Belief {
             yield /** @type {[Traittype, any]} */ ([traittype, value])
             yielded.add(traittype)
           } else if (value !== null) {
-            // Base value: accumulate for composition (only if no own value)
-            if (!composables.has(traittype)) composables.set(traittype, [])
-            composables.get(traittype).push(value)
-            found_composable = true  // Mark branch as closed
+            // Base value: check if shadowed by a more-derived node that already contributed
+            const contributors = composable_contributors.get(traittype)
+            const shadowed = contributors && [...contributors].some(c => is_base_of(node, c))
+            if (!shadowed) {
+              if (!composables.has(traittype)) composables.set(traittype, [])
+              composables.get(traittype).push(value)
+              if (!composable_contributors.has(traittype)) composable_contributors.set(traittype, new Set())
+              composable_contributors.get(traittype).add(node)
+            }
           }
           continue
         }
@@ -973,10 +990,8 @@ export class Belief {
         yielded.add(traittype)
       }
 
-      // Add bases to queue - but stop if we found a composable value (consistent with _get_uncached_trait)
-      if (!found_composable) {
-        queue.push(...node._bases)
-      }
+      // Always add bases - per-traittype shadowing handled above
+      queue.push(...node._bases)
     }
 
     // Add last_promotable if no promotable edge found yet
@@ -985,12 +1000,9 @@ export class Belief {
     }
 
     // Compose and yield all composables at the end
-    // TODO: Could yield composables earlier by tracking open branches per-traittype
-    //   and yielding as soon as all branches close. Would help pagination/early-stop.
     const can_cache_final = min_cache_tt <= origin_tt
     for (const [traittype, values] of composables) {
       if (yielded.has(traittype)) continue
-
       const composed = values.length < 2 ? values[0] : traittype.compose(this, values)
       if (this.locked && can_cache_final) this._set_cache(traittype, composed)
       yield /** @type {[Traittype, any]} */ ([traittype, composed])
