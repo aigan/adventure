@@ -48,10 +48,10 @@ export class Subject {
     this.beliefs = new Set()
 
     /**
-     * Resolution index: maps state._id to resolution belief
-     * When a resolution belief is inserted, it's indexed here by its origin_state._id
+     * Resolution index: maps State to resolution Belief
+     * When a resolution belief is inserted, it's indexed here by its origin_state
      * get_resolution(state) walks state ancestry to find applicable resolution
-     * @type {Map<number, Belief>}
+     * @type {Map<State, Belief>}
      */
     this.resolutions = new Map()
 
@@ -164,7 +164,7 @@ export class Subject {
     /** @type {State|null} */
     let current = state
     while (current) {
-      const resolution = this.resolutions.get(current._id)
+      const resolution = this.resolutions.get(current)
       if (resolution) return resolution
       // @ts-ignore - base is set on temporal states
       current = current.base ?? null
@@ -186,7 +186,7 @@ export class Subject {
       'Resolution belief must have origin_state',
       {belief_id: resolution_belief._id})
 
-    this.resolutions.set(resolution_belief.origin_state._id, resolution_belief)
+    this.resolutions.set(resolution_belief.origin_state, resolution_belief)
   }
 
   /**

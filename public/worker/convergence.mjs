@@ -79,6 +79,68 @@ export class Convergence extends State {
     // Convergence-specific properties
     this.component_states = Object.freeze([...component_states])
     this.is_union = true
+
+    /**
+     * Resolution index: maps State (from_state) to State (selected branch)
+     * When a state resolves this Convergence, it's indexed here
+     * get_resolution(state) walks state ancestry to find applicable resolution
+     * @type {Map<State, State>}
+     */
+    this.resolutions = new Map()
+  }
+
+  /**
+   * Register resolution of this Convergence to a specific branch
+   * @param {State} from_state - State where resolution is being made
+   * @param {State} to_branch - Selected branch (must be in component_states)
+   */
+  register_resolution(from_state, to_branch) {
+    assert(this.locked, 'Convergence must be locked before resolution')
+    assert(
+      this.component_states.includes(to_branch),
+      'to_branch must be in component_states',
+      { to_branch_id: to_branch._id, components: this.component_states.map(s => s._id) }
+    )
+    this.resolutions.set(from_state, to_branch)
+  }
+
+  /**
+   * Get resolution for this Convergence from state context
+   * Walks state ancestry to find if any resolution was recorded
+   * @param {State} state - Current state context
+   * @returns {State|null} Selected branch if resolved in ancestry, null otherwise
+   */
+  get_resolution(state) {
+    if (this.resolutions.size === 0) return null
+
+    // Walk state ancestry via base chain
+    /** @type {State|null} */
+    let current = state
+    while (current) {
+      const resolution = this.resolutions.get(current)
+      if (resolution) return resolution
+      current = current.base ?? null
+    }
+    return null
+  }
+
+  /**
+   * Get Belief for a Subject in this Convergence
+   * Checks timeline resolution first, then falls back to first-wins merge
+   * @param {Subject} subject - Subject to find belief for
+   * @param {State|null} [query_state] - State context for resolution check
+   * @returns {Belief|null} The belief for this subject visible in this state
+   */
+  get_belief_by_subject(subject, query_state = null) {
+    // Check timeline resolution - may redirect to specific branch
+    const effective_query = query_state ?? this
+    const resolved_branch = this.get_resolution(effective_query)
+    if (resolved_branch) {
+      return resolved_branch.get_belief_by_subject(subject)
+    }
+
+    // Unresolved: use parent's implementation (first-wins via get_beliefs)
+    return super.get_belief_by_subject(subject)
   }
 
   /**
@@ -162,12 +224,22 @@ export class Convergence extends State {
 
   /**
    * Override: Get next state(s) for reverse trait lookup traversal
-   * Returns all component next states (polymorphic with State.rev_base)
+   * If resolved from query_state's perspective, returns only the resolved branch.
+   * Otherwise returns all component states (first-wins behavior).
    * @param {Subject} subject - Subject being queried in reverse lookup
    * @param {Traittype} traittype - Traittype being queried
-   * @returns {State[]} Array of next states from all components
+   * @param {State} [query_state] - Original query state (for resolution checks)
+   * @returns {State[]} Array of next states (resolved branch or all components)
    */
-  rev_base(subject, traittype) {
+  rev_base(subject, traittype, query_state = undefined) {
+    // Check if this Convergence was resolved from query_state's perspective
+    if (query_state) {
+      const resolved_branch = this.get_resolution(query_state)
+      if (resolved_branch) {
+        return [resolved_branch]
+      }
+    }
+    // Unresolved: return all component states (first-wins)
     return [...this.component_states]
   }
 
@@ -185,7 +257,7 @@ export class Convergence extends State {
 
   /**
    * Serialize to JSON
-   * @returns {{_type: string, _id: number, tt: number|null, vt: number|null, base: null, component_states: number[], ground_state: number, self: number|null, insert: number[], remove: number[], in_mind: number}}
+   * @returns {{_type: string, _id: number, tt: number|null, vt: number|null, base: null, component_states: number[], ground_state: number, self: number|null, insert: number[], remove: number[], in_mind: number, resolutions: Object<string, number>}}
    */
   toJSON() {
     return {
@@ -199,7 +271,10 @@ export class Convergence extends State {
       self: this.self?.toJSON() ?? null,
       insert: this._insert.map(b => b._id),
       remove: this._remove.map(b => b._id),
-      in_mind: this.in_mind._id
+      in_mind: this.in_mind._id,
+      resolutions: Object.fromEntries(
+        [...this.resolutions].map(([from_state, to_branch]) => [from_state._id, to_branch._id])
+      )
     }
   }
 
@@ -229,11 +304,38 @@ export class Convergence extends State {
     state.component_states = Object.freeze(component_states)
     state.is_union = true
 
+    // Initialize resolutions Map (will be populated in second phase)
+    state.resolutions = new Map()
+
+    // Store raw IDs for second phase (states may not be loaded yet)
+    // @ts-ignore - _resolution_refs is temporary storage for two-phase loading
+    state._resolution_refs = data.resolutions ?? {}
+
     state._load_insert_from_json(data)
     state._load_remove_from_json(data)
     // No _link_base() needed - Convergence doesn't use base chain
 
     return state
+  }
+
+  /**
+   * Finalize resolutions from JSON after all states are loaded
+   * Called by Mind._finalize_resolution_from_json()
+   */
+  _finalize_resolutions_from_json() {
+    // @ts-ignore - _resolution_refs is temporary storage set in from_json
+    if (!this._resolution_refs) return
+
+    // @ts-ignore - _resolution_refs is temporary storage set in from_json
+    for (const [from_id, to_id] of Object.entries(this._resolution_refs)) {
+      const from_state = DB.get_state_by_id(Number(from_id))
+      const to_branch = DB.get_state_by_id(Number(to_id))
+      if (from_state && to_branch) {
+        this.resolutions.set(from_state, to_branch)
+      }
+    }
+    // @ts-ignore - cleaning up temporary storage
+    delete this._resolution_refs
   }
 
   /**

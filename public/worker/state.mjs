@@ -250,6 +250,13 @@ export class State {
     this._insert = []
     this._remove = []
 
+    // FIXME: generalize to all tracked states
+    // Track Convergence ancestor for timeline resolution
+    // When branching from a Convergence, queries need to check if it was resolved
+    /** @type {State|null} */
+    // @ts-ignore - is_union exists on Convergence, _convergence_ancestor on States branched from Convergence
+    this._convergence_ancestor = base?.is_union ? base : (base?._convergence_ancestor ?? null)
+
     // Initialize collections and register (keep existing method)
     this._init_state_properties()
   }
@@ -378,9 +385,10 @@ export class State {
    * Returns array of states to continue traversal (polymorphic with Convergence)
    * @param {Subject} subject - Subject being queried in reverse lookup
    * @param {Traittype} traittype - Traittype being queried
+   * @param {State} [query_state] - Original query state (for Convergence resolution checks)
    * @returns {State[]} Array of next states to check (single element or empty)
    */
-  rev_base(subject, traittype) {
+  rev_base(subject, traittype, query_state = undefined) {
     const next = this._rev_base.get(subject)?.get(traittype) ?? this.base
     return next ? [next] : []
   }
@@ -634,6 +642,39 @@ export class State {
           yield belief
         }
       }
+
+      // FIXME: simplify
+      // Handle Convergence in base chain: merge component_states
+      // Check resolution first - if resolved, only use the resolved branch
+      // @ts-ignore - is_union exists on Convergence
+      if (s.is_union) {
+        // Check if this Convergence was resolved from the perspective of `this`
+        // @ts-ignore - get_resolution exists on Convergence
+        const resolved_branch = s.get_resolution(this)
+        if (resolved_branch) {
+          // Resolved: only yield beliefs from the resolved branch
+          // @heavy - iterating resolved branch beliefs
+          for (const belief of resolved_branch.get_beliefs()) {
+            if (!removed.has(belief._id)) {
+              yield belief
+            }
+          }
+        } else {
+          // Unresolved: merge from all components (first-wins by subject.sid)
+          const conv_seen = new Set()  // Track subjects within convergence
+          // @ts-ignore - component_states exists on Convergence
+          for (const component of s.component_states) {
+            // @heavy - convergence merges beliefs from multiple component states
+            for (const belief of component.get_beliefs()) {
+              if (!conv_seen.has(belief.subject.sid) && !removed.has(belief._id)) {
+                conv_seen.add(belief.subject.sid)
+                yield belief
+              }
+            }
+          }
+        }
+        break  // Convergence has no base (base is null)
+      }
     }
   }
 
@@ -644,6 +685,33 @@ export class State {
    * @returns {Belief|null} The belief for this subject visible in this state
    */
   get_belief_by_subject(subject) {
+    // FIXME: Generalize to all tracked states
+    // Timeline resolution: If descended from Convergence with resolution,
+    // we need to find beliefs in the resolved branch. But we also need to
+    // check our own _insert and base chain for beliefs created AFTER the Convergence.
+    if (this._convergence_ancestor) {
+      // Walk our own state chain (from this to convergence) looking for the belief
+      // This finds beliefs created after the Convergence in descendant states
+      let s = /** @type {State|null} */ (this)
+      while (s && s !== this._convergence_ancestor) {
+        for (const b of s._insert) {
+          if (b.subject === subject) return b
+        }
+        for (const b of s._remove) {
+          if (b.subject === subject) return null  // Removed
+        }
+        s = s.base ?? null
+      }
+
+      // Not found in post-Convergence states - check if resolved
+      // @ts-ignore - get_resolution exists on Convergence
+      const resolved_branch = this._convergence_ancestor.get_resolution(this)
+      if (resolved_branch) {
+        return resolved_branch.get_belief_by_subject(subject)
+      }
+      // Unresolved: fall through to normal lookup (first-wins from Convergence)
+    }
+
     if (this.locked && this._subject_index?.has(subject)) {
       // TypeScript: .has() check guarantees .get() returns Belief|null, not undefined
       return /** @type {Belief|null} */ (this._subject_index.get(subject))

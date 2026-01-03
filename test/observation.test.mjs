@@ -2321,4 +2321,262 @@ describe('observation', () => {
       expect(knowledge_after[0].get_trait(loaded_player_state, color_tt)).to.equal('blue')
     })
   })
+
+  describe('Convergence-descended states', () => {
+    beforeEach(() => {
+      // Register EventPerception for perceive() tests
+      DB.register({
+        content: { type: 'Thing', container: Array, exposure: 'internal' }
+      }, {
+        EventAwareness: { bases: ['Thing'], traits: { content: null } },
+        EventPerception: { bases: ['EventAwareness'] }
+      }, {})
+    })
+
+    it('perceive() works from state descended from resolved Convergence', () => {
+      const { Convergence } = Cosmos
+
+      const world_mind = Cosmos.Materia.create_world('world')
+      const ground = Cosmos.logos_state()
+
+      // Base state with hammer
+      const state_0 = world_mind.create_state(ground, { tt: 1 })
+      state_0.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer: { bases: ['PortableObject'], traits: { color: 'gray', location: 'workshop' } }
+      })
+      const hammer = state_0.get_belief_by_label('hammer')
+      state_0.lock()
+
+      // Timeline A: red hammer
+      const timeline_a = state_0.branch(ground, 2)
+      hammer.replace(timeline_a, { color: 'red' })
+      timeline_a.lock()
+
+      // Timeline B: blue hammer
+      const timeline_b = state_0.branch(ground, 2)
+      hammer.replace(timeline_b, { color: 'blue' })
+      timeline_b.lock()
+
+      // Convergence
+      const conv = new Convergence(world_mind, ground, [timeline_a, timeline_b], { tt: 3 })
+      conv.lock()
+
+      // Resolve to timeline_b
+      const resolved = conv.branch(ground, 4)
+      conv.register_resolution(resolved, timeline_b)
+
+      // Add player after resolution
+      resolved.add_beliefs_from_template({
+        player: {
+          bases: ['Person'],
+          traits: {
+            location: 'workshop',
+            mind: {}  // Empty mind - will learn via perceive
+          }
+        }
+      })
+      resolved.lock()
+
+      // Branch to work with unlocked state (like session.tick())
+      const working = resolved.branch(ground, 5)
+
+      const player = working.get_belief_by_label('player')
+      const player_state = working.get_active_state_by_host(player.subject)
+
+      // Get hammer from working state - should be blue (resolved)
+      const hammer_in_working = working.get_belief_by_label('hammer')
+      expect(hammer_in_working).to.exist
+
+      const t_color = Traittype.get_by_label('color')
+      expect(hammer_in_working.get_trait(working, t_color)).to.equal('blue')
+
+      // Perceive hammer - this should work
+      const perception = perceive(player_state, [hammer_in_working])
+      expect(perception).to.exist
+
+      // Learn from perception - this was failing before the fix
+      learn_from(player_state, perception)
+
+      // Player should now know about hammer
+      const knowledge = recognize(player_state, hammer_in_working)
+      expect(knowledge).to.have.lengthOf(1)
+      expect(knowledge[0].get_trait(player_state, t_color)).to.equal('blue')
+    })
+
+    it('learn_about() works from state descended from resolved Convergence', () => {
+      const { Convergence } = Cosmos
+
+      const world_mind = Cosmos.Materia.create_world('world')
+      const ground = Cosmos.logos_state()
+
+      // Base state with hammer and chisel
+      const state_0 = world_mind.create_state(ground, { tt: 1 })
+      state_0.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer: { bases: ['PortableObject'], traits: { color: 'gray', location: 'workshop' } },
+        chisel: { bases: ['PortableObject'], traits: { color: 'silver', location: 'workshop' } }
+      })
+      const hammer = state_0.get_belief_by_label('hammer')
+      state_0.lock()
+
+      // Timeline A: red hammer
+      const timeline_a = state_0.branch(ground, 2)
+      hammer.replace(timeline_a, { color: 'red' })
+      timeline_a.lock()
+
+      // Timeline B: blue hammer
+      const timeline_b = state_0.branch(ground, 2)
+      hammer.replace(timeline_b, { color: 'blue' })
+      timeline_b.lock()
+
+      // Convergence
+      const conv = new Convergence(world_mind, ground, [timeline_a, timeline_b], { tt: 3 })
+      conv.lock()
+
+      // Resolve to timeline_b
+      const resolved = conv.branch(ground, 4)
+      conv.register_resolution(resolved, timeline_b)
+
+      // Add player after resolution
+      resolved.add_beliefs_from_template({
+        player: {
+          bases: ['Person'],
+          traits: {
+            location: 'workshop',
+            mind: {}
+          }
+        }
+      })
+      resolved.lock()
+
+      // Branch to work
+      const working = resolved.branch(ground, 5)
+
+      const player = working.get_belief_by_label('player')
+      const player_state = working.get_active_state_by_host(player.subject)
+      const chisel = working.get_belief_by_label('chisel')
+
+      // Direct learn_about should work
+      learn_about(player_state, chisel)
+
+      // Player should know about chisel
+      const knowledge = recognize(player_state, chisel)
+      expect(knowledge).to.have.lengthOf(1)
+
+      const t_color = Traittype.get_by_label('color')
+      expect(knowledge[0].get_trait(player_state, t_color)).to.equal('silver')
+    })
+
+    it('session-like flow: tick and look in location after resolution', () => {
+      const { Convergence } = Cosmos
+      const T = { location: Traittype.get_by_label('location') }
+
+      const world_mind = Cosmos.Materia.create_world('world')
+      const ground = Cosmos.logos_state()
+
+      // Base state with workshop, hammer
+      const state_0 = world_mind.create_state(ground, { tt: 1 })
+      state_0.add_beliefs_from_template({
+        workshop: { bases: ['Location'] },
+        hammer: { bases: ['PortableObject'], traits: { color: 'gray', location: 'workshop' } }
+      })
+      const hammer = state_0.get_belief_by_label('hammer')
+      state_0.lock()
+
+      // Two timelines
+      const timeline_a = state_0.branch(ground, 2)
+      hammer.replace(timeline_a, { color: 'red' })
+      timeline_a.lock()
+
+      const timeline_b = state_0.branch(ground, 2)
+      hammer.replace(timeline_b, { color: 'blue' })
+      timeline_b.lock()
+
+      // Convergence
+      const conv = new Convergence(world_mind, ground, [timeline_a, timeline_b], { tt: 3 })
+      conv.lock()
+
+      // Resolve
+      const resolved = conv.branch(ground, 4)
+      conv.register_resolution(resolved, timeline_b)
+
+      // Add player
+      resolved.add_beliefs_from_template({
+        player: {
+          bases: ['Person'],
+          traits: {
+            location: 'workshop',
+            mind: { hammer: ['color', 'location'] }
+          }
+        }
+      })
+      resolved.lock()
+
+      // === Session-like flow ===
+      // tick(): branch from resolved state
+      const working = resolved.branch(ground, 5)
+
+      // do_look_in_location: get location content
+      const player = working.get_belief_by_label('player')
+      const workshop = working.get_belief_by_label('workshop')
+      const content = [...workshop.rev_trait(working, T.location)]
+
+      // get_active_state_by_host
+      const pov = working.get_active_state_by_host(player.subject)
+
+      // perceive and learn_from
+      const perception = perceive(pov, content)
+      learn_from(pov, perception)  // This was failing
+
+      // Verify player learned about hammer
+      const hammer_in_working = working.get_belief_by_label('hammer')
+      const knowledge = recognize(pov, hammer_in_working)
+      expect(knowledge.length).to.be.at.least(1)
+    })
+
+    it('get_belief_by_state works for subjects in Convergence ancestry', () => {
+      const { Convergence } = Cosmos
+
+      const world_mind = Cosmos.Materia.create_world('world')
+      const ground = Cosmos.logos_state()
+
+      // Base state with hammer
+      const state_0 = world_mind.create_state(ground, { tt: 1 })
+      state_0.add_beliefs_from_template({
+        hammer: { bases: ['PortableObject'], traits: { color: 'gray' } }
+      })
+      const hammer = state_0.get_belief_by_label('hammer')
+      state_0.lock()
+
+      // Timeline A: red
+      const timeline_a = state_0.branch(ground, 2)
+      hammer.replace(timeline_a, { color: 'red' })
+      timeline_a.lock()
+
+      // Timeline B: blue
+      const timeline_b = state_0.branch(ground, 2)
+      hammer.replace(timeline_b, { color: 'blue' })
+      timeline_b.lock()
+
+      // Convergence
+      const conv = new Convergence(world_mind, ground, [timeline_a, timeline_b], { tt: 3 })
+      conv.lock()
+
+      // Resolve to timeline_b
+      const resolved = conv.branch(ground, 4)
+      conv.register_resolution(resolved, timeline_b)
+      resolved.lock()
+
+      // Branch again (like tick)
+      const working = resolved.branch(ground, 5)
+
+      // get_belief_by_state should find hammer via Convergence ancestry
+      const hammer_belief = hammer.subject.get_belief_by_state(working)
+      expect(hammer_belief).to.exist
+
+      const t_color = Traittype.get_by_label('color')
+      expect(hammer_belief.get_trait(working, t_color)).to.equal('blue')
+    })
+  })
 })

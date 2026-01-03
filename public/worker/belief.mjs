@@ -618,7 +618,33 @@ export class Belief {
         {belief_id: this._id, state_tt: state.tt, origin_tt: this.origin_state.tt})
     }
 
-    // Check for resolution BEFORE cache lookup
+    // Check for timeline resolution (Phase 4) - Convergence resolves to specific branch
+    // This must be checked before belief resolution since timeline resolution affects all beliefs
+    // When branched from Convergence, queries should see Convergence's view (resolved or first-wins)
+    // Only redirect if this belief predates the Convergence (beliefs created after are authoritative)
+    // @ts-ignore - _convergence_ancestor exists on states branched from Convergence
+    const conv_ancestor = state._convergence_ancestor
+    // @ts-ignore - conv_ancestor.tt is always set for Convergence states
+    if (conv_ancestor && (this.origin_state.tt === null || this.origin_state.tt < conv_ancestor.tt)) {
+      // @ts-ignore - get_resolution exists on Convergence
+      const resolved_branch = conv_ancestor.get_resolution(state)
+      if (resolved_branch) {
+        // Resolved: get belief from specific branch
+        const resolved_belief = resolved_branch.get_belief_by_subject(this.subject)
+        if (resolved_belief && resolved_belief !== this) {
+          return resolved_belief.get_trait(resolved_branch, traittype)
+        }
+      } else {
+        // Unresolved: get belief from Convergence (first-wins behavior)
+        const conv_belief = conv_ancestor.get_belief_by_subject(this.subject)
+        if (conv_belief && conv_belief !== this) {
+          // Pass original state (not conv) to preserve context for belief resolution lookup
+          return conv_belief.get_trait(state, traittype)
+        }
+      }
+    }
+
+    // Check for belief resolution (Phase 3) BEFORE cache lookup
     // Resolution beliefs short-circuit the entire cache/walk path
     const resolution = this.subject.get_resolution(state)
     if (resolution && resolution !== this) {
@@ -715,7 +741,8 @@ export class Belief {
       }
 
       // Get next state(s) via polymorphic rev_base (handles Convergence components)
-      const next_states = current.rev_base(this.subject, traittype)
+      // Pass original query state for resolution checks in Convergence
+      const next_states = current.rev_base(this.subject, traittype, state)
       queue.push(...next_states)
     }
   }

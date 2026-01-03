@@ -14,6 +14,7 @@ import { Traittype } from "./traittype.mjs"
 import { Archetype } from "./archetype.mjs"
 import { log, assert, sysdesig } from "./debug.mjs"
 import { Materia } from './materia.mjs'
+import { Convergence } from './convergence.mjs'
 import { logos, logos_state } from './logos.mjs'
 import { eidos } from './eidos.mjs'
 import { State } from './state.mjs'
@@ -175,6 +176,139 @@ DB.register(traittypes, archetypes, prototypes_1)
  * @returns {{world_state: State, avatar: Subject}}
  */
 export function init_world() {
+  // Re-register schemas in case reset_registries was called (e.g., in tests)
+  // Check if already registered by looking for 'Thing' archetype
+  if (!Archetype.get_by_label('Thing')) {
+    DB.register(traittypes, archetypes, prototypes_1)
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Timeline Resolution Example: Divergent timelines with hammer scenario
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const world_mind = Materia.create_world('workshop_world')
+  const ground = logos_state()
+
+  // Base state (tt=1): workshop with hammer, anvil, tongs
+  const state_0 = world_mind.create_state(ground, { tt: 1 })
+
+  state_0.add_beliefs_from_template({
+    workshop: {
+      bases: ['Location'],
+    },
+    hammer: {
+      bases: ['PortableObject'],
+      traits: { color: 'gray', material: 'iron', location: 'workshop' }
+    },
+    anvil: {
+      bases: ['PortableObject'],
+      traits: { color: 'black', material: 'iron', location: 'workshop' }
+    },
+    tongs: {
+      bases: ['PortableObject'],
+      traits: { color: 'dark_gray', material: 'iron', location: 'workshop' }
+    },
+  })
+
+  const hammer = state_0.get_belief_by_label('hammer')
+  const anvil = state_0.get_belief_by_label('anvil')
+  state_0.lock()
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Timeline A (tt=2): "The Red Hammer Path"
+  // - Hammer painted red
+  // - Anvil gets rusty (changed)
+  // - Tongs unchanged
+  // ══════════════════════════════════════════════════════════════════════════
+  const timeline_a = state_0.branch(ground, 2)
+  hammer.replace(timeline_a, { color: 'red' })
+  anvil.replace(timeline_a, { color: 'rusty_black' })
+  timeline_a.lock()
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Timeline B (tt=2): "The Blue Hammer Path"
+  // - Hammer painted blue
+  // - Anvil broken and removed
+  // - New chisel added
+  // - Tongs unchanged
+  // ══════════════════════════════════════════════════════════════════════════
+  const timeline_b = state_0.branch(ground, 2)
+  hammer.replace(timeline_b, { color: 'blue' })
+  timeline_b.remove_beliefs(anvil)  // Anvil is gone in this timeline
+  timeline_b.add_beliefs_from_template({
+    chisel: {
+      bases: ['PortableObject'],
+      traits: { color: 'silver', material: 'steel', location: 'workshop' }
+    }
+  })
+  timeline_b.lock()
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Convergence (tt=3): Both timelines exist as possibilities
+  // Before resolution, first-wins applies (timeline_a values)
+  // ══════════════════════════════════════════════════════════════════════════
+  const convergence = new Convergence(world_mind, ground, [timeline_a, timeline_b], { tt: 3 })
+  convergence.lock()
+
+  const t_color = Traittype.get_by_label('color')
+
+  // Verify first-wins behavior BEFORE resolution
+  const hammer_in_conv = convergence.get_belief_by_label('hammer')
+  assert(hammer_in_conv.get_trait(convergence, t_color) === 'red',
+    'Before resolution: hammer should be red (first-wins from timeline_a)')
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Resolution (tt=4): An observation collapses uncertainty to Timeline B
+  // From this point forward, all queries see Timeline B's reality
+  // ══════════════════════════════════════════════════════════════════════════
+  const resolved_state = convergence.branch(ground, 4)
+  convergence.register_resolution(resolved_state, timeline_b)
+
+  // Add player to resolved state - their mind learns about the resolved world
+  // Player is created AFTER resolution so their mind state connects to this timeline
+  resolved_state.add_beliefs_from_template({
+    player: {
+      bases: ['Person'],
+      traits: {
+        location: 'workshop',
+        mind: {
+          // Player learns about resolved world: blue hammer, no anvil, new chisel
+          hammer: ['color', 'location'],
+          tongs: ['color', 'location'],
+          chisel: ['color', 'location'],
+        }
+      }
+    }
+  })
+
+  const player = resolved_state.get_belief_by_label('player')
+
+  resolved_state.lock()
+
+  // Verify resolution AFTER registering
+  const hammer_after = resolved_state.get_belief_by_label('hammer')
+  const anvil_after = resolved_state.get_belief_by_label('anvil')
+  const chisel_after = resolved_state.get_belief_by_label('chisel')
+
+  assert(hammer_after.get_trait(resolved_state, t_color) === 'blue',
+    'After resolution: hammer should be blue (from timeline_b)')
+  assert(anvil_after === null,
+    'After resolution: anvil should NOT exist (removed in timeline_b)')
+  assert(chisel_after !== null,
+    'After resolution: chisel should exist (added in timeline_b)')
+
+  log('Timeline resolution world initialized successfully!')
+  log(`  - hammer color: ${hammer_after.get_trait(resolved_state, t_color)}`)
+  log(`  - anvil exists: ${anvil_after !== null}`)
+  log(`  - chisel exists: ${chisel_after !== null}`)
+
+  return { world_state: resolved_state, avatar: player.subject }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * PREVIOUS init_world() - commented out for reference
+ * ══════════════════════════════════════════════════════════════════════════
+export function init_world_original() {
   // Create world mind and initial state
   const world_mind = new Materia(logos(), 'world');
   let state = world_mind.create_state(logos_state(), {tt: 1});
@@ -359,23 +493,149 @@ export function init_world() {
 
   const person1 = state.get_belief_by_label('person1')
 
-  /*
-    const hammer1 = state.get_belief_by_label('hammer1')
-    const person1_pov = state.get_active_state_by_host(person1)
-    person1_pov.learn_about(hammer1)
-  */
-
   state.lock();
-
-  /*
-  state = state.branch(logos_state(), 2)
-  assert(person1, 'person1 belief not found')
-  const person1_state = state.get_active_state_by_host(person1)
-  const hammer = state.get_belief_by_label('hammer')
-  assert(hammer, 'hammer belief not found')
-  learn_about(person1_state, hammer)
-  state.lock();
-  */
 
   return { world_state: state, avatar: person1.subject }
+}
+*/
+
+/**
+ * Timeline Resolution Example: Hammer Scenario
+ *
+ * Demonstrates two divergent timelines where:
+ * - Timeline A: hammer is painted red, anvil gains rust
+ * - Timeline B: hammer is painted blue, anvil is removed (broken), chisel added
+ *
+ * When resolved to Timeline B, ALL queries from that point forward
+ * see the blue hammer, no anvil, and the new chisel.
+ *
+ * @example
+ * ```javascript
+ * import { setupTimelineResolutionExample } from './world.mjs'
+ * const { convergence, timeline_a, timeline_b, resolved_state, tools } = setupTimelineResolutionExample()
+ *
+ * // Before resolution: first-wins behavior (Timeline A)
+ * tools.hammer.get_trait(convergence, t_color)  // → 'red'
+ * convergence.get_belief_by_label('anvil')       // → anvil belief
+ *
+ * // After resolution to Timeline B:
+ * tools.hammer.get_trait(resolved_state, t_color)  // → 'blue'
+ * resolved_state.get_belief_by_label('anvil')       // → null (removed)
+ * resolved_state.get_belief_by_label('chisel')      // → chisel belief
+ * ```
+ */
+export function setupTimelineResolutionExample() {
+  // Convergence imported at module level (via materia.mjs → convergence.mjs dependency chain)
+
+  const world_mind = Materia.create_world('workshop_world')
+  const ground = logos_state()
+
+  // Base state: workshop with hammer, anvil, and tongs
+  const state_0 = world_mind.create_state(ground, { tt: 1 })
+
+  state_0.add_beliefs_from_template({
+    hammer: {
+      bases: ['PortableObject'],
+      traits: { color: 'gray', material: 'iron' }
+    },
+    anvil: {
+      bases: ['PortableObject'],
+      traits: { color: 'black', material: 'iron' }
+    },
+    tongs: {
+      bases: ['PortableObject'],
+      traits: { color: 'dark_gray', material: 'iron' }
+    }
+  })
+
+  const hammer = state_0.get_belief_by_label('hammer')
+  const anvil = state_0.get_belief_by_label('anvil')
+  const tongs = state_0.get_belief_by_label('tongs')
+  state_0.lock()
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Timeline A: "The Red Hammer Path"
+  // - Hammer painted red
+  // - Anvil gets rusty (changed)
+  // - Tongs unchanged
+  // ══════════════════════════════════════════════════════════════════════════
+  const timeline_a = state_0.branch(ground, 2)
+  hammer.replace(timeline_a, { color: 'red' })
+  anvil.replace(timeline_a, { color: 'rusty_black' })
+  timeline_a.lock()
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Timeline B: "The Blue Hammer Path"
+  // - Hammer painted blue
+  // - Anvil broken and removed
+  // - New chisel added
+  // - Tongs unchanged
+  // ══════════════════════════════════════════════════════════════════════════
+  const timeline_b = state_0.branch(ground, 2)
+  hammer.replace(timeline_b, { color: 'blue' })
+  timeline_b.remove_beliefs(anvil)  // Anvil is gone in this timeline
+  timeline_b.add_beliefs_from_template({
+    chisel: {
+      bases: ['PortableObject'],
+      traits: { color: 'silver', material: 'steel' }
+    }
+  })
+  timeline_b.lock()
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Convergence: Both timelines exist as possibilities
+  // Before resolution, first-wins applies (timeline_a values)
+  // ══════════════════════════════════════════════════════════════════════════
+  const convergence = new Convergence(world_mind, ground, [timeline_a, timeline_b], { tt: 3 })
+  convergence.lock()
+
+  const t_color = Traittype.get_by_label('color')
+
+  // Verify first-wins behavior BEFORE resolution
+  const hammer_in_conv = convergence.get_belief_by_label('hammer')
+  const anvil_in_conv = convergence.get_belief_by_label('anvil')
+  const chisel_in_conv = convergence.get_belief_by_label('chisel')
+
+  assert(hammer_in_conv.get_trait(convergence, t_color) === 'red',
+    'Before resolution: hammer should be red (first-wins from timeline_a)')
+  assert(anvil_in_conv !== null,
+    'Before resolution: anvil should exist (from timeline_a)')
+  assert(chisel_in_conv !== null,
+    'Before resolution: chisel should exist (from timeline_b, not removed)')
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Resolution: An observation collapses uncertainty to Timeline B
+  // From this point forward, all queries see Timeline B's reality
+  // ══════════════════════════════════════════════════════════════════════════
+  const resolved_state = convergence.branch(ground, 4)
+  convergence.register_resolution(resolved_state, timeline_b)
+  resolved_state.lock()
+
+  // Verify resolution AFTER registering
+  const hammer_after = resolved_state.get_belief_by_label('hammer')
+  const anvil_after = resolved_state.get_belief_by_label('anvil')
+  const chisel_after = resolved_state.get_belief_by_label('chisel')
+  const tongs_after = resolved_state.get_belief_by_label('tongs')
+
+  assert(hammer_after.get_trait(resolved_state, t_color) === 'blue',
+    'After resolution: hammer should be blue (from timeline_b)')
+  assert(anvil_after === null,
+    'After resolution: anvil should NOT exist (removed in timeline_b)')
+  assert(chisel_after !== null,
+    'After resolution: chisel should exist (added in timeline_b)')
+  assert(tongs_after.get_trait(resolved_state, t_color) === 'dark_gray',
+    'After resolution: tongs unchanged (inherited from base)')
+
+  log('Timeline resolution example passed all assertions!')
+
+  return {
+    world_mind,
+    state_0,
+    timeline_a,
+    timeline_b,
+    convergence,
+    resolved_state,
+    tools: { hammer, anvil, tongs },
+    t_color
+  }
 }

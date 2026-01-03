@@ -480,6 +480,18 @@ export class Mind {
       }
     }
 
+    // Finalize Convergence resolutions (timeline resolution)
+    for (const state_data of data.state) {
+      if (state_data._type === 'Convergence') {
+        const state = DB.get_state_by_id(state_data._id)
+        // @ts-ignore - _finalize_resolutions_from_json exists on Convergence
+        if (state?._finalize_resolutions_from_json) {
+          // @ts-ignore - _finalize_resolutions_from_json exists on Convergence
+          state._finalize_resolutions_from_json()
+        }
+      }
+    }
+
     return mind
   }
 

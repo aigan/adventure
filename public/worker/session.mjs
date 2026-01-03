@@ -197,14 +197,15 @@ export class Session {
     lines.push(narrator.say`You are in ${obs}.`)
     postMessage(['main_add', ...lines])
 
-    let badge = st.get_belief_by_label('badge1')
-    assert(badge)
+    // Use hammer from current world setup
+    let target = st.get_belief_by_label('hammer')
+    assert(target, 'Expected hammer in world')
 
     //return true
 
     st = this.tick()
 
-    badge = badge.replace(st, {color: 'red'})
+    target = target.replace(st, {color: 'red'})
 
     narrator.do_look_in_location({
       session: this,
