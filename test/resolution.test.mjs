@@ -1134,11 +1134,12 @@ describe('Timeline Resolution - Extended Permutations', () => {
       const conv = new Convergence(mind, ground, [state_a, state_b], { tt: 3 })
       conv.lock()
 
-      // Before resolution: first-wins gets state_a's box (with sword)
+      // Before resolution: composables MERGE across unresolved Convergence branches
       const box_in_conv = conv.get_belief_by_label('box')
       const before = box_in_conv.get_trait(conv, inventory_tt)
-      expect(before).to.have.lengthOf(1)
-      expect(before[0]).to.equal(sword.subject)
+      expect(before).to.have.lengthOf(2)
+      expect(before).to.include(sword.subject)
+      expect(before).to.include(shield.subject)
 
       // Resolve to state_b (shield)
       const resolved = conv.branch(ground, 4)

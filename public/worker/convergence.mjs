@@ -144,6 +144,17 @@ export class Convergence extends State {
   }
 
   /**
+   * @param {Subject} subject
+   * @yields {Belief}
+   */
+  *get_all_beliefs_by_subject(subject) {
+    for (const component of this.component_states) {
+      const belief = component.get_belief_by_subject(subject)
+      if (belief) yield belief
+    }
+  }
+
+  /**
    * Iterator that merges beliefs from all component states
    * - Iterates components left-to-right
    * - Recursively traverses nested Convergence states

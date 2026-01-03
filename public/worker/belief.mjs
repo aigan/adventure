@@ -344,33 +344,40 @@ export class Belief {
    */
   _get_uncached_trait(state, traittype, skip_promotions = new Set(), context = {deps: new Map(), min_cache_tt: -Infinity}) {
 
-    // Composable traits: BFS from this - own value naturally shadows bases
+    // Composable: BFS walk, merging from all Convergence components if unresolved
     if (traittype.composable) {
       const values = []
-      const queue = [/** @type {Belief|Archetype} */ (this)]
       const seen = new Set()
 
-      while (queue.length > 0) {
-        const node = /** @type {Belief|Archetype} */ (queue.shift())
-        if (seen.has(node)) continue
-        seen.add(node)
+      // @ts-ignore - Convergence properties/methods
+      const conv = state.is_union ? state : state._convergence_ancestor
+      // @ts-ignore
+      const sources = conv?.get_resolution(state) === null ? [...conv.get_all_beliefs_by_subject(this.subject)] : [this]
 
-        // Track promotable beliefs for cache invalidation (skip this)
-        if (node !== this && node instanceof Belief) {
-          if (node.promotions.size > 0 && node._promotable_epoch !== null) {
-            context.deps.set(node, node._promotable_epoch)
-          } else if (node.promotable) {
-            context.last_promotable = node
+      for (const source of sources) {
+        const queue = [/** @type {Belief|Archetype} */ (source)]
+
+        while (queue.length > 0) {
+          const node = /** @type {Belief|Archetype} */ (queue.shift())
+          if (seen.has(node)) continue
+          seen.add(node)
+
+          // Track promotable beliefs for cache invalidation (skip this)
+          if (node !== this && node instanceof Belief) {
+            if (node.promotions.size > 0 && node._promotable_epoch !== null) {
+              context.deps.set(node, node._promotable_epoch)
+            } else if (node.promotable) {
+              context.last_promotable = node
+            }
+          }
+
+          const value = node.get_own_trait_value(traittype)
+          if (value === undefined) {
+            queue.push(...node._bases)
+          } else if (value !== null) {
+            values.push(value)
           }
         }
-
-        const value = node.get_own_trait_value(traittype)
-        if (value !== undefined) {
-          if (value !== null) values.push(value)
-          continue  // Found this branch's value, don't search its ancestors
-        }
-
-        queue.push(...node._bases)
       }
 
       // Add last_promotable if no promotable edge found yet (epoch is non-null when promotable=true)
