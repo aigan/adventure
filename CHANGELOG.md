@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-01-11
+
+### Changed
+- **Phase 5a: tracks integration into core methods**
+  - `get_beliefs()` now includes tracks overlay: local beliefs by subject, unhandled fall through to tracks
+  - `get_belief_by_subject()` considers tracks when building `_subject_index` cache
+  - Chained tracks support: if `tracks` has its own `tracks`, chain is followed recursively
+  - Cycle detection via `seen` Set prevents infinite loops
+  - `branch()` auto-updates tracks to latest locked state in tracked timeline
+  - Added `get_last_locked_edge()` helper for finding tracked state at vt
+  - Removed separate `get_beliefs_with_tracks()` method
+  - Validation: tracks must be locked, `tracks.vt <= this.vt`, base chain cannot intersect tracks chain
+  - 45+ comprehensive tests for tracks (overlay semantics, chaining, caching, branching)
+- **Phase 4: Timeline Resolution marked complete** - Convergence branch resolution fully implemented
+  - `Convergence.register_resolution(from_state, to_branch)` selects authoritative timeline
+  - `Convergence.get_resolution(state)` walks ancestry to find applicable resolution
+  - All beliefs in selected branch become authoritative for queries
+  - Full serialization/deserialization support
+  - 37 resolution tests passing (RES-1, TL-1 through TL-20)
+
 ## 2026-01-01
 
 ### Added

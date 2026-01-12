@@ -8,13 +8,16 @@
   - Stage 3: Multiple Similar Objects
   - Stage 4+: Location, NPCs, Time, Events...
 
-- [ ] **Combinatorial Explosion Components** ([meta-plan](docs/plans/META-PLAN-combinatorial-explosion.md))
-  - Phase 1: Foundation ✅ Complete
-  - Phase 2: Promotions ✅ Complete ([archived](docs/plans/archive/lazy-version-propagation.md))
-  - **Phase 3: @resolution Pattern** ← Active
-  - Phase 4: @tracks + Session.legacy
-  - Phase 5: Observation System ([plan](docs/plans/observation-events.md))
-  - Phase 6: Superposition API
+- [ ] **Combinatorial Explosion Components**
+  - Phase 1: Foundation ✅
+  - Phase 2: Promotions ✅ ([archived](docs/plans/archive/lazy-version-propagation.md))
+  - Phase 3: Belief Resolution ✅
+  - Phase 4: Timeline Resolution ✅ ([archived](docs/plans/archive/phase4-timeline-resolution.md))
+  - **Phase 5a: @tracks** ← Next ([plan](docs/plans/phase5a-tracks.md))
+  - Phase 5b: alts ([plan](docs/plans/phase5b-alts.md)) - depends on Phase 5a
+  - Phase 6: Session.legacy ([plan](docs/plans/phase6-session-legacy.md)) - depends on Phase 4
+  - Phase 7: Observation System + recall() ([plan](docs/plans/phase7-observation-system.md)) - independent
+  - Phase 8: Superposition API ([plan](docs/plans/phase8-superposition-api.md)) - depends on Phase 5b
   - **Deferred**: Branch lifecycle, @path_certainty cache, decision time
 
 ---

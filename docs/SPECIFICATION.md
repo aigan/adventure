@@ -184,6 +184,22 @@ The core insight: optimize for working sets during story generation rather than 
 - States track forward links via `branches` for navigation
 - Nested mind states can ground to parent mind states via `ground_state`
 
+### Timeline Inheritance (tracks)
+
+States can track another timeline via the `tracks` property:
+- `tracks` points to a specific state in the tracked timeline (at the same vt)
+- **Overlay semantics**: Local beliefs win by subject; unhandled subjects fall through to tracks
+- States with `tracks` must have `base: null` (no shared ancestry with tracked timeline)
+- Used for: alt timelines, theories tracking core observations, committed branches
+
+Example:
+```yaml
+alt_state_6:
+  base: null              # NO shared base with core
+  tracks: core_state_6    # tracked timeline state at same vt
+  _insert: [belief_bob_forest]  # local deviation
+```
+
 ### Object Versioning
 
 - New versions inherit via `base` (e.g., hammer_2 base: hammer_1)

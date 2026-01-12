@@ -111,7 +111,7 @@ export const dispatch = {
 			path_mind = next_mind
 		}
 
-		const state_info = /** @type {{id: number, tt: number, vt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
+		const state_info = /** @type {{id: number, tt: number, vt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, tracks_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
 			id: state._id,
 			tt: state.tt,
 			vt: state.vt,
@@ -119,6 +119,7 @@ export const dispatch = {
 			mind_label: state.in_mind.label,
 			self_label: state.in_mind.self?.get_label(),
 			base_id: state.base?._id ?? null,
+			tracks_id: state.tracks?._id ?? null,
 			branch_ids: state.get_branches().map(b => b._id),
 			beliefs: data,
 		})
@@ -183,7 +184,7 @@ export const dispatch = {
 			path_mind = next_mind
 		}
 
-		const state_info = /** @type {{id: number, tt: number, vt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
+		const state_info = /** @type {{id: number, tt: number, vt: number, mind_id: number, mind_label: string|null, self_label: string|null|undefined, base_id: number|null, tracks_id: number|null, branch_ids: number[], beliefs: {id: number, label: string|null, desig: string}[], locked?: boolean}} */ ({
 			id: state_obj._id,
 			tt: state_obj.tt,
 			vt: state_obj.vt,
@@ -191,6 +192,7 @@ export const dispatch = {
 			mind_label: state_obj.in_mind.label,
 			self_label: state_obj.in_mind.self?.get_label(),
 			base_id: state_obj.base?._id ?? null,
+			tracks_id: state_obj.tracks?._id ?? null,
 			branch_ids: state_obj.get_branches().map(b => b._id),
 			beliefs: data,
 		})
@@ -724,6 +726,7 @@ export const dispatch = {
 				vt: state.vt,
 				locked: state.locked,
 				base_id: state.base?._id ?? null,
+				tracks_id: state.tracks?._id ?? null,
 			})
 		}
 		// Client will handle sorting

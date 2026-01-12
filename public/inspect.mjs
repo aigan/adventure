@@ -1098,7 +1098,7 @@ function render_mind_info(dat){
     });
 
     main_html += '<section><h2>States</h2><table class="traits">';
-    main_html += '<tr><th>ID</th><th>TT</th><th>VT</th><th>Locked</th><th>Base</th></tr>';
+    main_html += '<tr><th>ID</th><th>TT</th><th>VT</th><th>Locked</th><th>Base</th><th>Tracks</th></tr>';
 
     for (const state of sorted_states) {
       const state_link = `<a href="?state=${state.id}">#${state.id}</a>`;
@@ -1106,6 +1106,7 @@ function render_mind_info(dat){
       const vt_display = state.vt !== null ? state.vt : '-';
       const locked_display = state.locked ? renderIcon('locked') : '-';
       const base_display = state.base_id ? `<a href="?state=${state.base_id}">#${state.base_id}</a>` : '-';
+      const tracks_display = state.tracks_id ? `<a href="?state=${state.tracks_id}">#${state.tracks_id}</a>` : '-';
 
       main_html += `<tr>
         <td>${state_link}</td>
@@ -1113,6 +1114,7 @@ function render_mind_info(dat){
         <td>${vt_display}</td>
         <td>${locked_display}</td>
         <td>${base_display}</td>
+        <td>${tracks_display}</td>
       </tr>`;
     }
 

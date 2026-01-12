@@ -34,7 +34,7 @@ Each axis multiplies the others. Without mitigation, a simple scenario quickly b
 The `@resolution` pattern handles multiple concerns:
 
 1. **Convergence → branch**: Which world-state branch is real
-2. **Multi-base belief → single base**: Which uncertain belief is true
+2. **Multi-base belief → single base**: Which uncertain belief is true  
 3. **Unknown → known**: Which belief resolves an unknown trait
 
 All use the same mechanism: `@resolution` as belief reference, indexed for lookup, filtered by legacy/ancestry.
@@ -50,15 +50,26 @@ The `Trait` object standardizes query results:
 
 All return the same structure with subject, type, value, source, certainty.
 
-### Lazy Propagation as Universal Efficiency
+### Promotions as Universal Efficiency
 
-The lazy pattern applies across axes:
+The promotion pattern (from belief.mjs) applies across axes:
 
 1. **Cultural inheritance**: Query resolves through chain, no eager cascade
-2. **Timeline tracking**: @tracks fallback, follow legacy branches forward
+2. **Timeline tracking**: @tracks fallback to tracked timeline
 3. **Theory updates**: Core observations accessible without copying
 
-All use: inherit by default, materialize only on deviation.
+All use: inherit by default, materialize only on deviation. Cache when locked, keyed by tt.
+
+### @tracks and alts
+
+Timeline relationships are bidirectional and relative:
+
+| Property | Direction | Cardinality | Purpose |
+|----------|-----------|-------------|---------|
+| `@tracks` | back | singular | Content fallback - "what timeline am I tracking?" |
+| `alts` | forward | plural | Possibilities - "what alternatives branch from me?" |
+
+**Core is relative**: Whatever timeline you're on is "core". Alts are alternatives from your perspective. Jumping to an alt makes it the new core.
 
 ### Three Mechanisms for Multi-Source Data
 
@@ -66,7 +77,7 @@ All use: inherit by default, materialize only on deviation.
 |----------|-----------|------------|
 | Timeline tracking | `@tracks` meta-property | Depth-first: local base chain, then @tracks |
 | Prototype composition | Multiple `bases` | First-found (composable traits merge) |
-| World uncertainty | Multiple `bases` + `@uncertainty` | Superposition |
+| World uncertainty | `alts` + `@uncertainty` | Superposition across alts |
 
 ### Certainty Without Propagation
 
@@ -207,22 +218,24 @@ country_v1 (autumn)
 
 Eager propagation when country changes to winter = O(n) new beliefs.
 
-### Current Mitigation: Lazy Version Propagation
-Only the source creates a new version. Dependents discover via resolution:
+### Current Mitigation: Promotions
+Only the source creates a new version. Dependents discover via promotion resolution:
 
 ```javascript
-// Country updates (creates 1 belief)
+// Country updates (creates 1 belief with promotion)
 country_v2 = {..., bases: [country_v1], traits: {season: 'winter'}}
-country_v1.branches.push(country_v2)
+country_v1.promotions.add(country_v2)
 
 // City and NPC beliefs UNCHANGED
-// Query resolves lazily:
+// Query resolves via promotions:
 npc.get_trait(state, 'season')
   → walks: npc → city → country_v1
-  → detects: country_v1.branches = [v2]
-  → resolves: v2 matches timestamp
+  → detects: country_v1.promotions
+  → resolves: picks by tt
   → returns: 'winter'
 ```
+
+Caching: safe when querying belief's tt >= promotion's tt (promotion is in past).
 
 ### Current Mitigation: Deferred Materialization
 New intermediate versions only created when entity needs to record own state:
@@ -249,7 +262,7 @@ Need terminology for "all data at a conceptual moment" - all minds, all states, 
 
 **Terminology candidates** (avoiding conflict with State class):
 - **Snapshot** - neutral, common in save/load
-- **Chronicle** - emphasizes temporal accumulation
+- **Chronicle** - emphasizes temporal accumulation  
 - **Cosmos** - fits Logos/Eidos philosophical naming
 
 Currently handled by serialize module but unnamed conceptually.
@@ -308,7 +321,7 @@ This is a core design constraint, not optional:
 
 Player actions cause butterfly effects. Future is not predetermined. Outcomes emerge from NPC psychology + circumstances, recalculated when circumstances change.
 
-### Timeline Inheritance (Forward Lazy Propagation)
+### Timeline Inheritance (Forward via Promotions)
 
 New branch inherits parent timeline's future as default:
 
@@ -324,14 +337,9 @@ Timeline B: tick 5 ───(inherited from A)───► tick 50
 
 NOT "fresh uncertainty regenerated" but inherited default that only changes where butterfly effect applies.
 
-**Efficiency insight**: Like lazy propagation for inheritance chains, but applied temporally. Future states aren't regenerated, they're inherited. Computation only at deviation points.
+**Efficiency insight**: Like promotions for inheritance chains, but applied temporally. Future states aren't regenerated, they're inherited via @tracks. Computation only at deviation points.
 
-**Implementation options:**
-1. Explicit parent-timeline reference on branched states
-2. States default to lookup in parent timeline until overwritten
-3. Copy-on-write - states only materialize when they differ
-
-Options 2/3 fit existing lazy pattern.
+**Implementation**: States use @tracks to reference parent timeline. Query falls back to @tracks when local chain has no value. Copy-on-write - states only materialize when they differ.
 
 ---
 
@@ -544,59 +552,76 @@ No mode field needed. Uncertainty is the special case.
 
 ### Timeline Tracking via @tracks
 
-New timeline tracks legacy via `@tracks` meta-property, not convergence (which uses BFS). Need depth-first: exhaust local chain, then fall back.
+New timeline tracks another timeline via `@tracks` meta-property. Uses **overlay semantics**: local beliefs take precedence by subject, @tracks provides content for unhandled subjects.
 
-**Legacy timeline structure:**
+**Key concept:** `@tracks` is a **timeline reference**, not a specific state. The resolver navigates forward via `_branches` to find the appropriate state for the query vt.
+
+**Timeline structure:**
 ```
-state_5 → state_6 → state_7 → ... → state_50
-    ↓ branches   ↓ branches
-  [state_6]    [state_7]   (forward links exist)
-
-Session.legacy = state_50
-```
-
-**New timeline branches at tick 5:**
-```
-new_state_6:
-  base: state_5           # branch point (common ancestor)
-  @tracks: state_6        # fallback to legacy
-  insert: [bob.location = tavern]
-
-new_state_7:
-  base: new_state_6       # local chain continues
-  @tracks: state_7        # tracked advances via branches
-  insert: []
+core: state_5 → state_6 → state_7 → ... → state_50
+         ↓ _branches  ↓ _branches
+       [state_6]    [state_7]   (forward links exist)
 ```
 
-**Query algorithm:**
+**Alt timeline with base:null + @tracks:**
 ```
-query(state, trait):
-  # 1. Walk local base chain (depth first)
-  result = walk_base_chain(state, trait)
-  if result: return result
-  
-  # 2. Fall back to @tracks chain
-  if state.@tracks:
-    return query(state.@tracks, trait)
-  
-  return not_found
+alt_state_6:
+  base: null              # NO shared base with core
+  @tracks: state_5        # entry point into tracked timeline (≤ own vt)
+  _insert: [belief_bob_forest]  # local deviation
+
+alt_state_8:
+  base: alt_state_6       # own chain continues
+  @tracks: state_5        # same entry point, resolver advances
+  _insert: []
 ```
 
-Local changes win. Legacy provides fallback for untouched content.
+**Query algorithm (overlay with handled_subjects):**
+```javascript
+*get_beliefs_with_tracks(query_vt) {
+  const handled_subjects = new Set()
 
-**Creating new tracked state:**
-```
-advance_tracked_timeline(local_state, target_vt):
-  tracked = local_state.@tracks
-  
-  # Follow branches while vt <= target_vt
-  while tracked.branches.length == 1 and tracked.branches[0].vt <= target_vt:
-    tracked = tracked.branches[0]
-  
-  return new State { base: local_state, @tracks: tracked }
+  // Walk local chain first - collect handled subjects
+  for (let s = this; s; s = s.base) {
+    for (const belief of s._remove) {
+      handled_subjects.add(belief.subject)  // removed = handled
+    }
+    for (const belief of s._insert) {
+      handled_subjects.add(belief.subject)  // inserted = handled
+      yield belief
+    }
+  }
+
+  // Navigate @tracks forward to query_vt, yield unhandled subjects
+  if (this.@tracks) {
+    const tracked_state = advance_to_vt(this.@tracks, query_vt)
+    for (const belief of tracked_state.get_beliefs()) {
+      if (!handled_subjects.has(belief.subject)) {
+        yield belief
+      }
+    }
+  }
+}
 ```
 
-Finds latest tracked state where vt <= target. Legacy handles resolutions. Multiple branches deferred.
+**Local wins by subject:** If local chain has ANY belief about a subject (insert or remove), @tracks belief for that subject is skipped. No automatic trait merging - use belief `_bases` for trait continuity.
+
+**Navigating @tracks to query vt:**
+```javascript
+advance_to_vt(entry_state, target_vt):
+  let current = entry_state
+
+  // Follow _branches forward while vt <= target_vt
+  while (current._branches.length >= 1) {
+    const next = current._branches.find(b => b.vt <= target_vt)
+    if (!next || next.vt > target_vt) break
+    current = next
+  }
+
+  return current
+```
+
+Entry state must be ≤ tracking state's vt. Resolver walks forward via `_branches` to find state at query vt. Multiple branches filtering deferred (initially follow all that advance vt).
 
 ### Prototype Composition via Bases
 
@@ -625,7 +650,77 @@ Returns superposition. Needs @resolution to collapse.
 |----------|-----------|------------|
 | Timeline tracking | `@tracks` meta-property | Depth-first: local, then @tracks |
 | Prototype composition | Multiple `bases` | First-found (composable traits merge) |
-| World uncertainty | Multiple `bases` + `@uncertainty` | Superposition |
+| World uncertainty | `alts` + `@uncertainty` | Superposition across alternatives |
+
+### Alternative Timelines (alts)
+
+Bidirectional relationship between core and alternative timelines:
+
+```
+core_state:
+  alts: [alt_A, alt_B, alt_C]
+  @uncertainty: true  # if alternatives are live possibilities
+
+alt_A:
+  @tracks: core_state  # content fallback
+  base: previous_alt_A_state
+```
+
+**Properties:**
+- `alts` (forward, plural) - "what alternatives branch from me?"
+- `@tracks` (back, singular) - "what timeline am I tracking for content?"
+
+**Core is relative**: Whatever timeline you're on is "core". Alts are alternatives from your perspective.
+
+**Jumping to an alt:**
+```
+Before:
+  Session.state = core_state
+  core_state.alts = [alt_A, alt_B]
+  alt_A.@tracks = core_state
+
+After jump to alt_A:
+  new_state = State {
+    base: alt_A,
+    alts: [old_core_as_alt],  # old reality as possibility
+  }
+  old_core_as_alt.@tracks = new_state  # inverts
+  Session.state = new_state
+```
+
+Future observations happen in new_state. Old core demoted to alt.
+
+### Adding Past Possibilities
+
+To add a possibility branching in the past (e.g., "hammer was dropped at vt=2" added at tt=10):
+
+**Problem**: Can't modify locked states. Adding alt to past state would change it.
+
+**Solution**: Switch core timeline. Old core becomes an alt:
+
+```
+Before:
+  core: obs_1 → obs_2 → obs_3 → obs_4
+  core.alts: [alt_A, alt_B]
+
+Want to add possibility C branching at vt=2.
+
+After:
+  new_core: (shared observations only)
+  new_core.alts: [old_core_as_alt, alt_C]
+  
+  old_core_as_alt:
+    @tracks: new_core
+    # what was "certain" - now just one possibility
+    
+  alt_C:
+    @tracks: new_core
+    # the new past possibility
+```
+
+The "certain" past becomes uncertain. Old core demoted to alt. New core holds only what's truly shared across all possibilities.
+
+**Caching**: Safe because locked nodes don't change. @tracks points to specific locked state. Cache keyed by tt - queries from before alt was added don't see it.
 
 ---
 
@@ -908,7 +1003,7 @@ NPCs don't duplicate "wolves are dangerous" - they inherit it.
 
 ### Deferred Questions
 - Prototype minds for theory of mind → see Open topics
-- Temporal updates use lazy propagation
+- Temporal updates use promotions
 
 ---
 
@@ -916,7 +1011,7 @@ NPCs don't duplicate "wolves are dangerous" - they inherit it.
 
 Timeline branching resembles git. Key patterns now captured:
 - Branch inherits parent → `base` chain + `@tracks`
-- Only creates new on change → lazy propagation
+- Only creates new on change → promotions
 - Branch metadata → `@tracks` references
 
 Remaining VC concepts for future consideration: merge, cherry-pick, rebase, reflog.
@@ -962,7 +1057,7 @@ Remaining VC concepts for future consideration: merge, cherry-pick, rebase, refl
 ### Designed - Ready for Implementation
 | Component | Location | Notes |
 |-----------|----------|-------|
-| Lazy version propagation | IMPLEMENTATION.md | Core pattern established |
+| Promotions | IMPLEMENTATION.md, belief.mjs | Core pattern established |
 | Unified @resolution trait | This document | Simple belief reference, no wrapper |
 | Belief-level uncertainty | This document | Multiple beliefs, same subject/vt |
 | Unknown trait resolution | This document | New belief with value + @resolution marker |
@@ -977,6 +1072,9 @@ Remaining VC concepts for future consideration: merge, cherry-pick, rebase, refl
 | Theory tracking core | This document | Theories use @tracks for observations, local chain for interpretations |
 | Certainty at split only | This document | No propagation to children |
 | Combined certainty | This document | path_certainty × belief_certainty |
+| alts property | This document | Forward links to alternative timelines |
+| Relative core pattern | This document | Core = current, jumping inverts @tracks/alts |
+| Past possibility addition | This document | Switch core, demote old core to alt |
 
 ### Specified - Needs Implementation Design
 | Component | Location | Notes |
@@ -996,7 +1094,7 @@ Remaining VC concepts for future consideration: merge, cherry-pick, rebase, refl
 
 ## Discussion Topics - Analyzed Status
 
-### Resolved by @resolution + Lazy Propagation + Trait + @tracks
+### Resolved by @resolution + Promotions + Trait + @tracks
 
 These concerns are addressed by the current design:
 
@@ -1005,7 +1103,7 @@ These concerns are addressed by the current design:
 | **World uncertainty collapse** | @resolution on convergence selects branch |
 | **Belief uncertainty collapse** | @resolution on multi-base belief selects path |
 | **Unknown trait discovery** | @resolution marks discovery, new belief has value |
-| **Cultural propagation** | Lazy propagation - O(1) update, O(depth) query |
+| **Cultural propagation** | Promotions - O(1) update, O(depth) query |
 | **Change vs discovery semantics** | @resolution is discovery; new belief at different vt is change |
 | **Sparse independent uncertainty** | Belief-level: multiple beliefs, same subject/vt/base |
 | **Structural correlated uncertainty** | State-level: convergence with @uncertainty |
@@ -1016,7 +1114,7 @@ These concerns are addressed by the current design:
 | **Theory core/overlay** | Theories use @tracks to follow core, local chain for interpretations |
 | **Committed branch constraints** | Session.legacy carries resolutions across timeline resets |
 | **Query/compare/observe results** | Trait object: reified trait with context |
-| **Forward timeline inheritance** | @tracks meta-property, depth-first: local then fallback |
+| **Forward timeline inheritance** | @tracks meta-property, overlay semantics: local wins by subject |
 | **Certainty propagation** | No propagation - @certainty only at split point |
 | **Combined certainty** | path_certainty × belief_certainty |
 | **Convergence modes** | Simplified: @uncertainty → superposition, else first-found |
@@ -1024,6 +1122,13 @@ These concerns are addressed by the current design:
 | **Diamond inheritance** | Eliminated - theories track core via @tracks, no multi-base needed |
 | **Theory update flyweight** | @tracks advances via branches, local chain for interpretations |
 | **Theory initialization** | base: null, @tracks: core_state - starts fresh, observations from @tracks |
+| **Alternative timelines** | alts (forward plural) + @tracks (back singular), bidirectional |
+| **Relative core** | Core = where you are, alts from your perspective, jumping inverts |
+| **Past possibility addition** | Switch core timeline, old core becomes alt |
+| **@tracks overlay semantics** | handled_subjects pattern: local insert/remove marks subject as handled, skip from @tracks |
+| **Cross-timeline belief._bases** | Allowed if in accessible scope (own mind, Eidos, mind prototypes) |
+| **@tracks resolver navigation** | Forward via _branches from entry point to query vt |
+| **Trait continuity across timelines** | Via belief._bases inheritance, no automatic merging |
 
 ### Deferred - Not Needed for First Implementation
 
@@ -1060,6 +1165,8 @@ These concerns are addressed by the current design:
 
 1. **@tracks and multiple branches in legacy**: When `tracked.branches.length > 1` during advance - deferred, use legacy resolutions for now.
 
+2. **Alts during core advancement**: When core advances, need to update alts list to point to current tip of each alt timeline. Mechanism TBD.
+
 ---
 
-*Last updated: Cleaned up - all questions resolved or deferred, removed duplicates, fixed contradictions*
+*Last updated: Clarified @tracks overlay semantics (handled_subjects pattern), forward navigation via _branches, cross-timeline belief._bases allowed, trait continuity via inheritance not merging*

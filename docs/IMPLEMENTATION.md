@@ -286,6 +286,53 @@ state.tick_with_template(belief, vt, {trait: value})
 - Objects never change, only new versions created with `base` inheritance
 - Property lookup follows prototype chain: `hammer_1 → hammer_1_v2 → hammer_1_v3`
 
+### Timeline Inheritance (tracks)
+
+States can inherit beliefs from a tracked timeline via `state.tracks`. This enables alternative timelines (theories, hypotheticals) that build on a core reality.
+
+**Property:**
+- `State.tracks` - Reference to a locked state in another timeline (null if not tracking)
+
+**Validation:**
+- `tracks` must be a locked state
+- `tracks.vt <= this.vt` (cannot track future state)
+- `base` cannot be in the tracked timeline (base chain must not intersect tracks chain)
+
+**Integrated into `get_beliefs()`:**
+- Overlay semantics: local beliefs win by subject, unhandled subjects fall through to tracks
+- Chained tracks: if `tracks` has its own `tracks`, the chain is followed recursively
+- Cycle detection: `seen` Set prevents infinite loops in degenerate cases
+
+**Auto-update in `branch()`:**
+- When branching from a tracking state, `tracks` auto-updates to latest locked state in tracked timeline
+- Uses `get_last_locked_edge()` helper to find correct tracked state for new vt
+
+**Caching:**
+- `_subject_index` cache includes beliefs from entire tracks chain
+- `get_belief_by_subject()` builds cache from `get_beliefs()` which includes tracks
+
+**Usage:**
+```javascript
+// Core timeline: c1 → c2 → c3
+const c1 = mind.create_state(ground, { tt: 1 })
+c1.lock()
+const c2 = c1.branch(ground, 2)
+c2.lock()
+
+// Theory timeline tracking core
+const t1 = new Temporal(mind, ground, null, { tt: 1, tracks: c1 })
+t1.add_beliefs_from_template({ hypothesis: { bases: ['ObjectPhysical'] } })
+t1.lock()
+
+// branch() auto-updates tracks
+const t2 = t1.branch(ground, 2)  // t2.tracks === c2
+
+// get_beliefs() includes tracked beliefs
+for (const belief of t1.get_beliefs()) {
+  // Local hypothesis + core beliefs from c1
+}
+```
+
 ### Message Flow
 1. Client sends message via `Message.send(cmd, data)` → returns Promise
 2. Worker receives in message handler → dispatches to registered handler

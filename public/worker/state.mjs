@@ -38,6 +38,26 @@ import { Fuzzy } from './fuzzy.mjs'
 // (circular dependencies). Use registries instead. See docs/CIRCULAR_DEPENDENCIES.md
 
 /**
+ * Find latest locked state in timeline with vt <= query_vt
+ * Follows _branches from start state forward until no valid next state exists
+ * NOTE: Currently assumes single child per state (linear timeline).
+ * When implementing alts, multiple branches should be handled as uncertain
+ * alternatives, possibly adding them as alts rather than picking one.
+ * @param {State} start - Starting state to search from
+ * @param {number} query_vt - Maximum vt to allow
+ * @returns {State} The latest locked state with vt <= query_vt
+ */
+function get_last_locked_edge(start, query_vt) {
+  let current = start
+  while (current._branches.length > 0) {
+    const next = current._branches.find(b => b.vt !== null && b.vt <= query_vt && b.locked)
+    if (!next) break
+    current = next
+  }
+  return current
+}
+
+/**
  * @typedef {object} StateJSON
  * @property {string} _type - "State", "Temporal", "Timeless", or "Convergence"
  * @property {number} _id - State identifier
@@ -51,6 +71,7 @@ import { Fuzzy } from './fuzzy.mjs'
  * @property {number[]} insert - Belief _ids present in this state (serialized from private _insert)
  * @property {number[]} remove - Belief _ids removed in this state (serialized from private _remove)
  * @property {number} in_mind - Mind _id this state belongs to
+ * @property {number|null} [tracks] - Tracked state _id for overlay inheritance
  * @property {number[]} [component_states] - Component state _ids (only for Convergence)
  */
 
@@ -133,6 +154,7 @@ export class State {
   /** @type {Map<Subject, Map<Traittype, State|null>>} */ _rev_base = new Map()
   /** @type {Map<Subject, Map<Traittype, Set<Belief>>>} */ _rev_add = new Map()
   /** @type {Map<Subject, Map<Traittype, Set<Belief>>>} */ _rev_del = new Map()
+  /** @type {State|null} */ tracks = null  // Tracked state for overlay inheritance
 
   /**
    * @param {Mind} mind
@@ -145,8 +167,9 @@ export class State {
    * @param {State|null} [options.about_state] - Alternative resolution context (Eidos→World lookups)
    * @param {boolean} [options.derivation] - True if this state is a derivation (computed view, non-mutating)
    * @param {number} [options.certainty] - Certainty level 0.0-1.0 for superposition states (defaults to 1.0)
+   * @param {State|null} [options.tracks] - Tracked state for overlay inheritance (requires base: null)
    */
-  constructor(mind, ground_state, base=null, {tt: tt_option, vt, self, about_state, derivation, certainty} = {}) {
+  constructor(mind, ground_state, base=null, {tt: tt_option, vt, self, about_state, derivation, certainty, tracks} = {}) {
     // Prevent direct instantiation - State is abstract
     // Only allow construction through subclasses (Temporal, Timeless, Convergence)
     if (new.target === State) {
@@ -170,6 +193,8 @@ export class State {
         ground_state_vt: ground_state?.vt
       }
     )
+
+    // Tracks validation moved below after effective_vt is calculated
 
     // Allow null ground_state for Timeless (Logos bootstrap)
     if (ground_state !== null) {
@@ -217,8 +242,44 @@ export class State {
       assert(self_belief === null || !self_belief.locked, 'Cannot create state for locked self')
     }
 
+    // Validate tracks constraints
+    if (tracks) {
+      // Tracked state must be locked
+      assert(
+        tracks.locked,
+        'Cannot track unlocked state',
+        { tracks_id: tracks._id, tracks_locked: tracks.locked }
+      )
+
+      // Can't track future state (tracks.vt must be <= this.vt)
+      // Skip check if either vt is null (timeless states)
+      if (tracks.vt !== null && effective_vt !== null) {
+        assert(
+          tracks.vt <= effective_vt,
+          'Cannot track future state',
+          { tracks_vt: tracks.vt, this_vt: effective_vt }
+        )
+      }
+
+      // Base cannot be in tracked timeline (check chain intersection)
+      if (base) {
+        /** @type {Set<State>} */
+        const tracks_chain = new Set()
+        for (let s = /** @type {State|null} */ (tracks); s; s = s.base) {
+          tracks_chain.add(s)
+        }
+        for (let s = /** @type {State|null} */ (base); s; s = s.base) {
+          assert(
+            !tracks_chain.has(s),
+            'base cannot be in tracked timeline',
+            { base_id: base._id, tracks_id: tracks._id, conflict_state_id: s._id }
+          )
+        }
+      }
+    }
+
     // Use shared initialization
-    this._init_properties(mind, ground_state, base, tt, effective_vt, effective_self, about_state ?? null, null, certainty ?? 1.0)
+    this._init_properties(mind, ground_state, base, tt, effective_vt, effective_self, about_state ?? null, null, certainty ?? 1.0, tracks ?? null)
   }
 
   /**
@@ -234,8 +295,9 @@ export class State {
    * @param {State|null} about_state
    * @param {number|null} [id] - ID for deserialization (null = generate new)
    * @param {number} [certainty] - Certainty level 0.0-1.0 (defaults to 1.0)
+   * @param {State|null} [tracks] - Tracked state for overlay inheritance
    */
-  _init_properties(in_mind, ground_state, base, tt, vt, self, about_state, id = null, certainty = 1.0) {
+  _init_properties(in_mind, ground_state, base, tt, vt, self, about_state, id = null, certainty = 1.0, tracks = null) {
     // Initialize ALL properties
     this._kind = 'State'  // Base class identifier (same for all State subclasses)
     this._id = id ?? next_id()  // Use provided ID or generate new one
@@ -247,6 +309,7 @@ export class State {
     this.self = self
     this.about_state = about_state
     this._certainty = certainty
+    this.tracks = tracks
     this._insert = []
     this._remove = []
 
@@ -481,6 +544,7 @@ export class State {
    * @param {number|null} [vt] - Valid time override (for temporal reasoning about past/future)
    * @param {object} [opts] - Additional options
    * @param {number} [opts.certainty] - Certainty level 0.0-1.0 for superposition states
+   * @param {State} [opts.tracks] - Tracked state for overlay inheritance
    * @returns {State} New unlocked state
    */
   branch(ground_state, vt, opts = {}) {
@@ -504,6 +568,20 @@ export class State {
     } else if (this._certainty !== 1.0) {
       // Inherit non-default certainty from base state
       options.certainty = this._certainty
+    }
+
+    // Handle tracks: explicit override or auto-update from base
+    if (opts.tracks !== undefined) {
+      options.tracks = opts.tracks
+    } else if (this.tracks) {
+      // Auto-update tracks to latest locked state in tracked timeline with vt <= new vt
+      const new_vt = vt ?? ground_state.vt
+      if (new_vt !== null) {
+        options.tracks = get_last_locked_edge(this.tracks, new_vt)
+      } else {
+        // Timeless case - keep same tracks
+        options.tracks = this.tracks
+      }
     }
 
     // self is inherited from this.self via base.self in constructor (no need to pass explicitly)
@@ -624,26 +702,40 @@ export class State {
   }
 
   /**
-   * @heavy O(beliefs in state + base chain) - iterates all beliefs
-   * @yields {Belief}
+   * @heavy O(beliefs in state + base chain + tracks chain) - iterates all beliefs
+   * Includes tracks overlay: local beliefs win by subject, unhandled subjects fall through to tracks
+   * @param {Set<State>} [seen] - Cycle detection for tracks (internal use)
+   * @returns {Generator<Belief, void, undefined>}
    */
-  *get_beliefs() {
-    const removed = new Set()
+  *get_beliefs(seen = new Set()) {
+    // Cycle detection for tracks
+    if (seen.has(this)) {
+      return  // Already visited, prevent infinite loop
+    }
+    seen.add(this)
 
-    /** @type {State|null} s */ let s
+    const removed_ids = new Set()       // For versioning (by _id)
+    const handled_subjects = new Set()  // For tracks overlay (by subject) - NOT for local chain
+
+    /** @type {State|null} */ let s
     for (s = this; s; s = s.base) {
       // Process _remove BEFORE _insert to handle same-state updates correctly
       // (e.g., when a belief is both inserted and then removed/replaced in same state)
       for (const belief of s._remove) {
-        removed.add(belief._id)
+        removed_ids.add(belief._id)
       }
       for (const belief of s._insert) {
-        if (!removed.has(belief._id)) {
-          yield belief
-        }
+        if (removed_ids.has(belief._id)) continue
+        // Track subject for tracks overlay (but yield all local beliefs)
+        handled_subjects.add(belief.subject)
+        yield belief
       }
 
-      // FIXME: simplify
+      // Mark removed subjects as handled for tracks
+      for (const belief of s._remove) {
+        handled_subjects.add(belief.subject)
+      }
+
       // Handle Convergence in base chain: merge component_states
       // Check resolution first - if resolved, only use the resolved branch
       // @ts-ignore - is_union exists on Convergence
@@ -654,26 +746,37 @@ export class State {
         if (resolved_branch) {
           // Resolved: only yield beliefs from the resolved branch
           // @heavy - iterating resolved branch beliefs
-          for (const belief of resolved_branch.get_beliefs()) {
-            if (!removed.has(belief._id)) {
-              yield belief
-            }
+          for (const belief of resolved_branch.get_beliefs(seen)) {
+            if (removed_ids.has(belief._id)) continue
+            handled_subjects.add(belief.subject)
+            yield belief
           }
         } else {
-          // Unresolved: merge from all components (first-wins by subject.sid)
-          const conv_seen = new Set()  // Track subjects within convergence
+          // Unresolved: merge from all components (first-wins by subject)
           // @ts-ignore - component_states exists on Convergence
           for (const component of s.component_states) {
             // @heavy - convergence merges beliefs from multiple component states
-            for (const belief of component.get_beliefs()) {
-              if (!conv_seen.has(belief.subject.sid) && !removed.has(belief._id)) {
-                conv_seen.add(belief.subject.sid)
-                yield belief
-              }
+            for (const belief of component.get_beliefs(seen)) {
+              if (removed_ids.has(belief._id)) continue
+              handled_subjects.add(belief.subject)
+              yield belief
             }
           }
         }
         break  // Convergence has no base (base is null)
+      }
+    }
+
+    // Get beliefs from tracked state
+    // tracks points directly to the correct State
+    // Chaining happens automatically via recursive get_beliefs() calls
+    // Only filter by subject here - tracks beliefs are shadowed by local beliefs
+    if (this.tracks) {
+      // @heavy - iterating tracked state beliefs
+      for (const belief of this.tracks.get_beliefs(seen)) {
+        if (!handled_subjects.has(belief.subject)) {
+          yield belief
+        }
       }
     }
   }
@@ -960,6 +1063,7 @@ export class State {
       ground_state: this.ground_state?._id ?? null,
       self: this.self?.toJSON() ?? null,
       about_state: this.about_state?._id ?? null,
+      tracks: this.tracks?._id ?? null,
       insert: this._insert.map(b => b._id),
       remove: this._remove.map(b => b._id),
       in_mind: this.in_mind?._id ?? null
@@ -974,7 +1078,7 @@ export class State {
    * Load references from JSON data (ID → object lookup)
    * @param {Mind} mind - Mind context for resolution
    * @param {StateJSON} data - JSON data
-   * @returns {{in_mind: Mind, base: State|null, ground_state: State|null, self: Subject|null, about_state: State|null}}
+   * @returns {{in_mind: Mind, base: State|null, ground_state: State|null, self: Subject|null, about_state: State|null, tracks: State|null}}
    */
   static _load_refs_from_json(mind, data) {
     // Load in_mind
@@ -1012,7 +1116,14 @@ export class State {
       if (!about_state) throw new Error(`Cannot load about_state ${data.about_state} for state ${data._id}`)
     }
 
-    return { in_mind, base, ground_state, self, about_state }
+    // Load tracks
+    let tracks = null
+    if (data.tracks != null) {
+      tracks = DB.get_state_by_id(data.tracks)
+      if (!tracks) throw new Error(`Cannot load tracks ${data.tracks} for state ${data._id}`)
+    }
+
+    return { in_mind, base, ground_state, self, about_state, tracks }
   }
 
   /**
@@ -1068,7 +1179,7 @@ export class State {
     state._type = 'State'
 
     const vt = data.vt ?? data.tt
-    state._init_properties(refs.in_mind, refs.ground_state, refs.base, data.tt, vt, refs.self, refs.about_state, data._id, data.certainty)
+    state._init_properties(refs.in_mind, refs.ground_state, refs.base, data.tt, vt, refs.self, refs.about_state, data._id, data.certainty, refs.tracks)
     state._load_insert_from_json(data)
     state._load_remove_from_json(data)
     state._link_base()

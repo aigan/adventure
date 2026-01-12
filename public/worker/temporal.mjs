@@ -46,10 +46,11 @@ export class Temporal extends State {
    * @param {State|null} [options.about_state] - State context for belief resolution
    * @param {boolean} [options.derivation] - True if this state is a derivation
    * @param {number} [options.certainty] - Certainty level 0.0-1.0 for superposition states
+   * @param {State|null} [options.tracks] - Tracked state for overlay inheritance
    */
-  constructor(mind, ground_state, base=null, {tt, vt, self, about_state, derivation, certainty} = {}) {
+  constructor(mind, ground_state, base=null, {tt, vt, self, about_state, derivation, certainty, tracks} = {}) {
     // Call State constructor which handles all validation
-    super(mind, ground_state, base, {tt, vt, self, about_state, derivation, certainty})
+    super(mind, ground_state, base, {tt, vt, self, about_state, derivation, certainty, tracks})
 
     // Set type (overrides State's default)
     this._type = 'Temporal'
@@ -67,7 +68,7 @@ export class Temporal extends State {
     state._type = 'Temporal'
 
     const vt = data.vt ?? data.tt
-    state._init_properties(refs.in_mind, refs.ground_state, refs.base, data.tt, vt, refs.self, refs.about_state, data._id, data.certainty)
+    state._init_properties(refs.in_mind, refs.ground_state, refs.base, data.tt, vt, refs.self, refs.about_state, data._id, data.certainty, refs.tracks)
     state._load_insert_from_json(data)
     state._load_remove_from_json(data)
     state._link_base()
