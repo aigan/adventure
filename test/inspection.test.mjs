@@ -6,7 +6,7 @@ import { stdTypes, Thing, setupBrowserMocks, cleanupBrowserMocks, MockBroadcastC
 // Set up browser mocks at module load time
 setupBrowserMocks();
 
-describe('Channel Message Handlers', () => {
+describe('Inspection Message Handlers', () => {
   beforeEach(() => {
     setupBrowserMocks(); // Reset mocks (including sequence counter)
     DB.reset_registries();
@@ -66,7 +66,7 @@ describe('Channel Message Handlers', () => {
     let mockChannel;
 
     before(async () => {
-      Channel = await import('../public/worker/channel.mjs');
+      Channel = await import('../public/worker/inspection.mjs');
     });
 
     beforeEach(async () => {
@@ -154,7 +154,7 @@ describe('Channel Message Handlers', () => {
     let messages;
 
     before(async () => {
-      Channel = await import('../public/worker/channel.mjs');
+      Channel = await import('../public/worker/inspection.mjs');
     });
 
     beforeEach(async () => {
@@ -208,7 +208,7 @@ describe('Channel Message Handlers', () => {
     let messages;
 
     before(async () => {
-      Channel = await import('../public/worker/channel.mjs');
+      Channel = await import('../public/worker/inspection.mjs');
     });
 
     beforeEach(async () => {
@@ -390,7 +390,7 @@ describe('Channel Message Handlers', () => {
     let messages;
 
     before(async () => {
-      Channel = await import('../public/worker/channel.mjs');
+      Channel = await import('../public/worker/inspection.mjs');
     });
 
     beforeEach(async () => {
@@ -449,7 +449,7 @@ describe('Channel Message Handlers', () => {
     let messages;
 
     before(async () => {
-      Channel = await import('../public/worker/channel.mjs');
+      Channel = await import('../public/worker/inspection.mjs');
     });
 
     it('increments client_id and sends welcome message', async () => {

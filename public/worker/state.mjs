@@ -243,7 +243,7 @@ export class State {
     }
 
     // Validate tracks constraints
-    if (tracks) {
+    if (tracks) { // FIXME: only do validation if tracks and not base.tracks
       // Tracked state must be locked
       assert(
         tracks.locked,

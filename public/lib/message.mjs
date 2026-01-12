@@ -2,7 +2,7 @@ import { log } from "./debug.mjs";
 // import {worker} from "./boot.mjs";
 //## Firefox do not support worker modules yet!
 // URL relative to containing HTML page.
-export const worker = new Worker('worker/worker.mjs', {type:"module"});
+export const worker = new Worker('worker/channel.mjs', {type:"module"});
 
 /**
  * Action data sent from GUI to worker

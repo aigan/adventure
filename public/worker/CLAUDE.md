@@ -31,8 +31,8 @@ Core game logic in Web Worker thread.
 - `reset.mjs` - Test reset hooks (see [CIRCULAR_DEPENDENCIES.md](../../docs/CIRCULAR_DEPENDENCIES.md))
 
 ### Worker/UI
-- `worker.mjs` - Message dispatch
-- `channel.mjs` - Inspection UI
+- `channel.mjs` - Game client communication (Channel class, message dispatch)
+- `inspection.mjs` - Dev tools BroadcastChannel
 - `session.mjs` - Player session
 - `narrator.mjs` - Presentation (stub)
 - `world.mjs` - Initial setup

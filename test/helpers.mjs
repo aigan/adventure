@@ -9,6 +9,8 @@ import { Mind, Materia, State, Belief, Archetype, Traittype, Subject, save_mind,
 import { eidos } from '../public/worker/eidos.mjs';
 import * as DB from '../public/worker/db.mjs';
 import { sysdesig } from '../public/worker/debug.mjs';
+import { Channel } from '../public/worker/channel.mjs';
+import { Session } from '../public/worker/session.mjs';
 
 // Browser API mocks for Node.js test environment
 
@@ -70,12 +72,22 @@ export function createMockIndexedDB() {
 }
 
 /**
- * Setup browser API mocks (BroadcastChannel, indexedDB)
+ * Setup browser API mocks (BroadcastChannel, indexedDB, worker globals)
  * Call in before() hook for tests that need channel/session functionality
  */
 export function setupBrowserMocks() {
   global.BroadcastChannel = MockBroadcastChannel
   global.indexedDB = createMockIndexedDB()
+  // Worker global mocks for importing worker.mjs
+  if (!global.addEventListener) {
+    global.addEventListener = () => {}
+  }
+  if (!global.postMessage) {
+    global.postMessage = () => {}
+  }
+  if (!global.self) {
+    global.self = { onerror: null }
+  }
 }
 
 /**
@@ -539,4 +551,46 @@ export function saveAndReload(mind, setupFn = setupStandardArchetypes) {
   DB.reset_registries()
   setupFn()
   return load(json)
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Scenario Test Utilities
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Create a mock channel for testing
+ * @returns {Channel}
+ */
+export function create_mock_channel() {
+  return Channel.create_mock()
+}
+
+/**
+ * Reset the singleton channel (for tests)
+ */
+export function reset_channel() {
+  Channel.reset()
+}
+
+/**
+ * Create a test session with mock channel
+ * @returns {{session: Session, channel: Channel}}
+ */
+export function create_test_session() {
+  const channel = Channel.create_mock()
+  const session = new Session(null, null, null, channel)
+  return { session, channel }
+}
+
+/**
+ * Run a scenario in test mode with mock channel
+ * Sets up browser mocks, runs the scenario, returns captured messages
+ * @param {string} scenario_name - Name of scenario to run
+ * @returns {Promise<{session: Session, messages: Array<[string, ...any[]]>, result: {success: boolean}}>}
+ */
+export async function run_test_scenario(scenario_name) {
+  setupBrowserMocks()
+  const { session, channel } = create_test_session()
+  const result = await session.start(scenario_name)
+  return { session, messages: channel.messages, result }
 }

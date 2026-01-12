@@ -14,6 +14,8 @@ import { logos_state } from './logos.mjs'
 import { Belief } from './belief.mjs'
 import { Subject } from './subject.mjs'
 import { A } from './archetype.mjs'
+import { Channel } from './channel.mjs'
+import { get_scenario } from './scenarios/index.mjs'
 
 /**
  * Session class - manages the current game state
@@ -33,8 +35,9 @@ export class Session {
    * @param {Mind} [world_mind] - Optional world mind (for tests)
    * @param {State} [initial_state] - Optional initial state (for tests)
    * @param {Subject} [avatar] - Optional avatar subject (for tests)
+   * @param {Channel} [channel] - Optional UI channel (for tests, defaults to singleton)
    */
-  constructor(world_mind, initial_state, avatar) {
+  constructor(world_mind, initial_state, avatar, channel) {
     // Support both constructor injection (tests) and async loading (production)
     /** @type {Mind|undefined} */
     this.world = undefined
@@ -43,7 +46,9 @@ export class Session {
     /** @type {Subject|null|undefined} */
     this.avatar = undefined
     /** @type {BroadcastChannel|null} */
-    this._channel = null
+    this._broadcast_channel = null
+    /** @type {Channel} UI channel for postMessage */
+    this.channel = channel ?? Channel.get()
     /** @type {Set<number>} Dirty state IDs pending notification */
     this._dirty_states = new Set()
     /** @type {ReturnType<typeof setTimeout>|null} Debounce timer ID */
@@ -84,8 +89,8 @@ export class Session {
    * Broadcast dirty states to inspect UI and clear the set
    */
   _broadcast_dirty_states() {
-    if (this._channel && this._dirty_states.size > 0) {
-      this._channel.postMessage({
+    if (this._broadcast_channel && this._dirty_states.size > 0) {
+      this._broadcast_channel.postMessage({
         msg: 'states_changed',
         state_ids: [...this._dirty_states]
       })
@@ -113,11 +118,11 @@ export class Session {
   }
 
   /**
-   * Set the broadcast channel for notifications
-   * @param {BroadcastChannel} channel
+   * Set the broadcast channel for inspection UI notifications
+   * @param {BroadcastChannel} broadcast_channel
    */
-  set_channel(channel) {
-    this._channel = channel
+  set_broadcast_channel(broadcast_channel) {
+    this._broadcast_channel = broadcast_channel
   }
 
   /**
@@ -160,93 +165,40 @@ export class Session {
   }
 
   async establish_channel() {
-    const Channel = await import("./channel.mjs")
-    await Channel.init_channel(this);
+    const { init_channel } = await import("./inspection.mjs")
+    await init_channel(this)
   }
   
-  async start() {
-    postMessage(['header_set', `Loading world`])
-    await this.load_world()
+  /**
+   * Start game session with specified scenario
+   * @param {string} [scenario_name='workshop'] - Scenario to run
+   * @returns {Promise<{success: boolean}>}
+   */
+  async start(scenario_name = 'workshop') {
+    const scenario = get_scenario(scenario_name)
+    if (!scenario) {
+      throw new Error(`Unknown scenario: ${scenario_name}`)
+    }
+
+    this.channel.post('header_set', `Loading ${scenario.name}`)
+
+    // World setup: use scenario's setup_world if provided, else default
+    if (scenario.setup_world) {
+      const { world_state, avatar } = scenario.setup_world()
+      this.world = world_state.in_mind
+      this._state = world_state
+      this.avatar = avatar
+    } else {
+      await this.load_world()
+    }
+
     await this.establish_channel()
 
-    const narrator = await import("./narrator.mjs")
+    const narrator = await import('./narrator.mjs')
     await narrator.ensure_init()
 
-    assert(this.avatar, 'avatar not loaded')
-    assert(this.state, 'state not loaded')
-
-    postMessage(['header_set', `Waking up`])
-
-    const pl = this.avatar
-    let st = this.state
-    const avatar_belief = pl.get_belief_by_state(st)
-    const loc = avatar_belief.get_trait(st, T.location)
-
-    const obs = {
-      subject: loc,
-      known_as: narrator.desig(st, loc),
-      actions: [
-        {
-          do: 'look_in_location',
-          subject: loc.sid,
-          label: `Look around`,
-        },
-      ],
-      }
-    const lines = []
-    lines.push(narrator.say`You are in ${obs}.`)
-    postMessage(['main_add', ...lines])
-
-    // Use hammer from current world setup
-    let target = st.get_belief_by_label('hammer')
-    assert(target, 'Expected hammer in world')
-
-    //return true
-
-    st = this.tick()
-
-    target = target.replace(st, {color: 'red'})
-
-    narrator.do_look_in_location({
-      session: this,
-      subject: loc,
-    })
-
-    return true
-
-    // Scratchpad code below (experimental)
-    /* eslint-disable no-unreachable */
-    //log([st], st, st.lock)
-
-    let hammer = st.get_belief_by_label('hammer3')
-    assert(hammer instanceof Belief)
-
-    st = this.tick()
-
-    const handle = Belief.from(st, [A.HammerHandle], {
-      color: 'blue',
-    })
-
-    // @ts-ignore - scratchpad code
-    hammer = hammer.replace(st, {
-      handle: handle.subject,
-    })
-    // @ts-ignore - scratchpad code
-    log([st], hammer, hammer.subject)
-
-
-    return true
-
-    // Will create another copy of whats percieved
-    narrator.do_look_in_location({
-      session: this,
-      subject: loc,
-    })
-
-    st = this.tick()
-
-    return true
-    /* eslint-enable no-unreachable */
+    // Run scenario
+    return scenario.run({ session: this, narrator })
   }
 }
 

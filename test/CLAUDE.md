@@ -43,9 +43,10 @@ mocha --grep "caching"                    # Pattern match
 - `promotion.test.mjs` - Promotions: Eidos constraint, probability, temporal, inheritance, recall certainty, inspection
 
 ### UI/Communication
-- `channel.test.mjs` - BroadcastChannel, inspection
+- `inspection.test.mjs` - BroadcastChannel for dev tools inspection
 - `inspect.test.mjs` - Inspection views
 - `session.test.mjs` - Session lifecycle
+- `scenario.test.mjs` - Scenario loading, Channel abstraction, test mode
 - `sysdesig.test.mjs` - System designation formatting
 - `subject_inspect.test.mjs` - Subject inspection views
 

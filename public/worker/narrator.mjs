@@ -9,7 +9,7 @@
  * which happens within minds. The narrator presents the session to the player.
  */
 
-import { log } from "./debug.mjs"
+import { log, is_test } from "./debug.mjs"
 import { Subject } from "./subject.mjs"
 import {Traittype, T} from "./traittype.mjs"
 import { perceive, learn_from } from './perception.mjs'
@@ -32,13 +32,18 @@ let _initialized = false
 
 /**
  * One-time initialization of narrator handlers
+ * In test mode, skips channel.mjs import to avoid polluting module cache
  */
 export async function ensure_init() {
   if (_initialized) return
   _initialized = true
 
-  const {handler_register} = await import("./worker.mjs")
-  handler_register('look_in_location', do_look_in_location)
+  // Skip channel import in test mode - worker_dispatch tests need
+  // to control when channel.mjs is first imported
+  if (!is_test) {
+    const { Channel } = await import("./channel.mjs")
+    Channel.register('look_in_location', do_look_in_location)
+  }
 }
 
 /**
@@ -64,7 +69,7 @@ export function do_look_in_location(context) {
     seen.push(desig(ext,item))
   }
 
-  postMessage(['main_add', say`You see ${seen.join(", ")}.`])
+  session.channel.post('main_add', say`You see ${seen.join(", ")}.`)
 }
 
 /**

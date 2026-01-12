@@ -1,5 +1,5 @@
 /**
- * Tests for actual worker.mjs dispatch logic
+ * Tests for actual channel.mjs dispatch logic
  * Mocks the Worker environment to test the real worker code
  */
 
@@ -9,29 +9,26 @@ import { setupBrowserMocks, cleanupBrowserMocks, setupAfterEachValidation } from
 
 describe('Worker Dispatch (Real Implementation)', () => {
   let postedMessages;
-  let messageHandler;
+  let Channel;
+  let _handle_message;
 
   before(async () => {
     // Set up browser API mocks (BroadcastChannel, indexedDB)
     setupBrowserMocks();
 
-    // Set up worker mocks BEFORE importing worker.mjs
+    // Set up worker mocks
     global.postMessage = (data) => {
       if (postedMessages) {
         postedMessages.push(data);
       }
     };
 
-    global.addEventListener = (type, handler) => {
-      if (type === 'message') {
-        messageHandler = handler;
-      }
-    };
-
     global.self = { onerror: null };
 
-    // Import worker.mjs once to register the message handler
-    await import('../public/worker/worker.mjs');
+    // Import channel.mjs and get the exported message handler
+    const mod = await import('../public/worker/channel.mjs');
+    Channel = mod.Channel;
+    _handle_message = mod._handle_message;
   });
 
   beforeEach(() => {
@@ -56,7 +53,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
         data: ['ping', {}, 1]
       };
 
-      await messageHandler(event);
+      await _handle_message(event);
 
       // Should send ack with 'pong' result
       expect(postedMessages).to.have.lengthOf(1);
@@ -68,20 +65,20 @@ describe('Worker Dispatch (Real Implementation)', () => {
         data: ['start', {}, 2]
       };
 
-      await messageHandler(event);
+      await _handle_message(event);
 
       // Should send header_set messages and main_add, then ack
       expect(postedMessages.length).to.be.at.least(3);
 
-      // First message is header_set "Loading world"
-      expect(postedMessages[0]).to.deep.equal(['header_set', 'Loading world']);
+      // First message is header_set with scenario name
+      expect(postedMessages[0]).to.deep.equal(['header_set', 'Loading Workshop']);
 
       // Last message should be ack with result
       const ackMsg = postedMessages[postedMessages.length - 1];
       expect(ackMsg[0]).to.equal('ack');
       expect(ackMsg[1]).to.equal(2);
-      // Result should be truthy (returns true)
-      expect(ackMsg[2]).to.equal(true);
+      // Result should be {success: true}
+      expect(ackMsg[2]).to.deep.equal({success: true});
     });
 
     it('should require ackid for all messages', async () => {
@@ -91,7 +88,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
 
       // Should throw assertion error
       try {
-        await messageHandler(event);
+        await _handle_message(event);
         expect.fail('Should have thrown');
       } catch (err) {
         expect(err.message).to.include('expected ackid');
@@ -104,7 +101,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
       };
 
       try {
-        await messageHandler(event);
+        await _handle_message(event);
         expect.fail('Should have thrown');
       } catch (err) {
         expect(err.message).to.include('not recognized');
@@ -118,7 +115,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
 
       // String without ackid should fail assertion
       try {
-        await messageHandler(event);
+        await _handle_message(event);
         expect.fail('Should have thrown');
       } catch (err) {
         expect(err.message).to.include('expected ackid');
@@ -128,10 +125,8 @@ describe('Worker Dispatch (Real Implementation)', () => {
 
   describe('Handler registration', () => {
     it('should allow registering custom handlers', async () => {
-      const { handler_register } = await import('../public/worker/worker.mjs');
-
       // Register custom handler
-      handler_register('test_command', (data) => {
+      Channel.register('test_command', (data) => {
         return { custom: 'response', received: data };
       });
 
@@ -139,7 +134,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
         data: ['test_command', { foo: 'bar' }, 4]
       };
 
-      await messageHandler(event);
+      await _handle_message(event);
 
       // Should send ack with handler result
       expect(postedMessages).to.have.lengthOf(1);
@@ -151,9 +146,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
     });
 
     it('should allow async handlers', async () => {
-      const { handler_register } = await import('../public/worker/worker.mjs');
-
-      handler_register('async_command', async (data) => {
+      Channel.register('async_command', async (data) => {
         // Simulate async work
         await new Promise(resolve => setImmediate(resolve));
         return { async: true, value: data.value * 2 };
@@ -163,7 +156,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
         data: ['async_command', { value: 21 }, 5]
       };
 
-      await messageHandler(event);
+      await _handle_message(event);
 
       expect(postedMessages).to.have.lengthOf(1);
       expect(postedMessages[0]).to.deep.equal([
@@ -174,9 +167,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
     });
 
     it('should support handlers that return void', async () => {
-      const { handler_register } = await import('../public/worker/worker.mjs');
-
-      handler_register('void_command', (data) => {
+      Channel.register('void_command', (data) => {
         // No return value
       });
 
@@ -184,7 +175,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
         data: ['void_command', {}, 6]
       };
 
-      await messageHandler(event);
+      await _handle_message(event);
 
       // Should send ack with undefined result
       expect(postedMessages).to.have.lengthOf(1);
@@ -195,8 +186,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
   describe('Message format handling', () => {
     it('should parse ClientMessage format correctly', async () => {
       let receivedData = null;
-      const { handler_register } = await import('../public/worker/worker.mjs');
-      handler_register('format_test', (data) => {
+      Channel.register('format_test', (data) => {
         receivedData = data;
         return 'ok';
       });
@@ -205,7 +195,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
         data: ['format_test', { test: 'data' }, 7]
       };
 
-      await messageHandler(event);
+      await _handle_message(event);
 
       expect(receivedData).to.deep.equal({ test: 'data' });
       expect(postedMessages[0]).to.deep.equal(['ack', 7, 'ok']);
@@ -216,7 +206,7 @@ describe('Worker Dispatch (Real Implementation)', () => {
         data: ['ping', {}, 8]
       };
 
-      await messageHandler(event);
+      await _handle_message(event);
 
       const ackMsg = postedMessages[0];
       // Should be exactly ['ack', ackid, result]
