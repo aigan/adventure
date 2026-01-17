@@ -29,14 +29,14 @@ describe('Scenarios', () => {
       expect(names).to.include('workshop')
     })
 
-    it('returns scenario by name', () => {
-      const scenario = get_scenario('workshop')
+    it('returns scenario by name', async () => {
+      const scenario = await get_scenario('workshop')
       expect(scenario).to.exist
       expect(scenario.name).to.equal('Workshop')
     })
 
-    it('returns undefined for unknown scenario', () => {
-      expect(get_scenario('nonexistent')).to.be.undefined
+    it('returns undefined for unknown scenario', async () => {
+      expect(await get_scenario('nonexistent')).to.be.undefined
     })
   })
 

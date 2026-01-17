@@ -185,35 +185,42 @@ export async function _handle_message(e) {
   //log("Received message", cmd, data)
   assert(ackid > 0, "expected ackid")
 
-  // Bootstrap command - creates session
-  if (cmd === "start") {
-    log('Starting')
-    Channel.session = new Session()
-    const scenario_name = data?.scenario ?? 'workshop'
-    const res = await Channel.session.start(scenario_name)
-    Session.ready()
+  try {
+    // Bootstrap command - creates session
+    if (cmd === "start") {
+      log('Starting')
+      Channel.session = new Session()
+      const scenario_name = data?.scenario ?? 'workshop'
+      const res = await Channel.session.start(scenario_name)
+      Session.ready()
+      /** @type {AckMessage} */
+      const ackMsg = ['ack', ackid, res]
+      postMessage(ackMsg)
+      return
+    }
+
+    if (!Channel._dispatch[cmd]) throw(Error(`Message ${cmd} not recognized`))
+
+    // Enrich data with session context if session is initialized
+    if (Channel.session?.state) {
+      const state = Channel.session.state
+      data.session = Channel.session
+      data.state = state
+      if (data.subject) data.subject = Subject.get_by_sid(data.subject)
+      if (data.target) data.target = Subject.get_by_sid(data.target)
+    }
+
+    //log('dispatch', cmd, data)
+    const res = await Channel._dispatch[cmd](data)
     /** @type {AckMessage} */
     const ackMsg = ['ack', ackid, res]
     postMessage(ackMsg)
-    return
+  } catch (err) {
+    const message = err instanceof Error ? err.stack : String(err)
+    /** @type {AckMessage} */
+    const ackMsg = ['ack', ackid, { error: message }]
+    postMessage(ackMsg)
   }
-
-  if (!Channel._dispatch[cmd]) throw(Error(`Message ${cmd} not recognized`))
-
-  // Enrich data with session context if session is initialized
-  if (Channel.session?.state) {
-    const state = Channel.session.state
-    data.session = Channel.session
-    data.state = state
-    if (data.subject) data.subject = Subject.get_by_sid(data.subject)
-    if (data.target) data.target = Subject.get_by_sid(data.target)
-  }
-
-  //log('dispatch', cmd, data)
-  const res = await Channel._dispatch[cmd](data)
-  /** @type {AckMessage} */
-  const ackMsg = ['ack', ackid, res]
-  postMessage(ackMsg)
 }
 
 // Only register in worker context (not Node.js)

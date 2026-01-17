@@ -95,17 +95,18 @@ describe('Worker Dispatch (Real Implementation)', () => {
       }
     });
 
-    it('should throw for unrecognized commands', async () => {
+    it('should send error ack for unrecognized commands', async () => {
       const event = {
         data: ['unknown_command', {}, 3]
       };
 
-      try {
-        await _handle_message(event);
-        expect.fail('Should have thrown');
-      } catch (err) {
-        expect(err.message).to.include('not recognized');
-      }
+      await _handle_message(event);
+
+      expect(postedMessages).to.have.lengthOf(1);
+      expect(postedMessages[0][0]).to.equal('ack');
+      expect(postedMessages[0][1]).to.equal(3);
+      expect(postedMessages[0][2]).to.have.property('error');
+      expect(postedMessages[0][2].error).to.include('not recognized');
     });
 
     it('should convert string messages to array format', async () => {

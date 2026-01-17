@@ -134,15 +134,15 @@ The system is built from interconnected classes. Each one addresses a fundamenta
 
 **Why**: Systemic games are complex. Need tools to understand what's happening. Traditional debuggers don't show "what does this NPC believe?" Channel makes the simulation observable. Worker architecture keeps game logic isolated from UI concerns.
 
-### [World](public/worker/world.mjs) - The Starting Scenario
+### [Scenarios](public/worker/scenarios/) - The Starting Situations
 
-**World** is how scenarios get initialized. Register archetypes and traittypes, create world Mind, populate initial state with beliefs, create Session.
+**Scenarios** are how game situations get initialized. Register schema, create world Mind, populate initial state with beliefs, run gameplay sequences.
 
-**Relationships**: Uses all the classes above. Defines what archetypes exist (Person, Location, PortableObject), what traits they can have, creates initial beliefs (village, workshop, NPCs), hands you a Session to play.
+**Relationships**: Uses all the classes above. Schema defines what archetypes exist (Person, Location, PortableObject), what traits they can have. Scenarios create initial beliefs (workshop, tools, NPCs), hand you a Session to play.
 
-**What this enables**: Scenario authoring. Different starting situations. Modding support. Test scenarios for development. Each world is a fresh story instantiated from Eidos templates.
+**What this enables**: Scenario authoring. Different starting situations. Modding support. Test scenarios for development. Each scenario is a fresh story instantiated from Eidos templates.
 
-**Why**: Stories need beginnings. World is that setup - "here's the village, here are the NPCs, here's what they know." Not hardcoded - data-driven scenario definition. Create new adventures by writing new world definitions.
+**Why**: Stories need beginnings. Scenarios are that setup - "here's the workshop, here are the tools, here's what the player knows." Not hardcoded - data-driven scenario definition. Create new adventures by writing new scenario modules.
 
 ---
 

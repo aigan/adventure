@@ -56,7 +56,11 @@ const dispatch = {
   ack([ ackid, res ]){
     // log('ack', ackid, res);
     if( !jobs[ackid] ) throw `No job ${ackid} found`;
-    jobs[ackid].resolve( res );
+    if (res?.error) {
+      jobs[ackid].reject(new Error(res.error))
+    } else {
+      jobs[ackid].resolve( res );
+    }
     delete jobs[ackid];
     // log('ack', ackid);
   },

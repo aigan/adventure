@@ -156,49 +156,36 @@ export class Session {
     return this.state
   }
 
-  async load_world() {
-    const { init_world } = await import("./world.mjs")
-    const { world_state, avatar } = init_world()
-    this.world = world_state.in_mind
-    this._state = world_state
-    this.avatar = avatar
-  }
-
   async establish_channel() {
     const { init_channel } = await import("./inspection.mjs")
     await init_channel(this)
   }
-  
+
   /**
    * Start game session with specified scenario
    * @param {string} [scenario_name='workshop'] - Scenario to run
    * @returns {Promise<{success: boolean}>}
    */
   async start(scenario_name = 'workshop') {
-    const scenario = get_scenario(scenario_name)
+    const scenario = await get_scenario(scenario_name)
     if (!scenario) {
       throw new Error(`Unknown scenario: ${scenario_name}`)
     }
 
     this.channel.post('header_set', `Loading ${scenario.name}`)
 
-    // World setup: use scenario's setup_world if provided, else default
-    if (scenario.setup_world) {
-      const { world_state, avatar } = scenario.setup_world()
-      this.world = world_state.in_mind
-      this._state = world_state
-      this.avatar = avatar
-    } else {
-      await this.load_world()
-    }
+    // Always use async setup_world (unified path)
+    const { world_state, avatar } = await scenario.setup_world()
+    this.world = world_state.in_mind
+    this._state = world_state
+    this.avatar = avatar
 
     await this.establish_channel()
 
     const narrator = await import('./narrator.mjs')
     await narrator.ensure_init()
 
-    // Run scenario
-    return scenario.run({ session: this, narrator })
+    await scenario.run({ session: this, narrator })
+    return { success: true }
   }
 }
-
